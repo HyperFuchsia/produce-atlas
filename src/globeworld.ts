@@ -1,6 +1,7 @@
 import Globe, { type GlobeInstance } from "globe.gl";
 import type { Crop, JourneyChapter } from "./types";
 import { CATEGORY_COLOR } from "./data/categories";
+import { renderPlant } from "./plant";
 import dayTex from "./assets/earth-day.jpg";
 import bumpTex from "./assets/earth-bump.png";
 import skyTex from "./assets/night-sky.png";
@@ -155,14 +156,18 @@ function dist(a: [number, number], b: [number, number]): number {
 
 function buildMarker(d: Marker, onSelect: (id: string) => void): HTMLElement {
   if (d.kind === "crop") {
+    const color = CATEGORY_COLOR[d.crop.category];
     const wrap = document.createElement("div");
     wrap.className = "gpin";
     wrap.dataset.id = d.crop.id;
-    wrap.style.setProperty("--cat", CATEGORY_COLOR[d.crop.category]);
+    wrap.style.setProperty("--cat", color);
     wrap.innerHTML = `
-      <div class="gpin__icon">${d.crop.glyph}</div>
+      <div class="gpin__tag"><canvas class="gpin__plate"></canvas></div>
       <div class="gpin__stem"></div>
       <div class="gpin__base"></div>`;
+    // The botanical plate is the icon — the herbarium illustration on the Earth.
+    const cv = wrap.querySelector<HTMLCanvasElement>("canvas")!;
+    renderPlant(cv, d.crop.id, { color, category: d.crop.category, ink: "#2c2620", size: 58 });
     wrap.title = `${d.crop.name} — ${d.crop.scientificName}`;
     wrap.addEventListener("click", (e) => { e.stopPropagation(); onSelect(d.crop.id); });
     return wrap;
