@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CROPS } from "./crops";
+import { INDEX_SPECIES } from "./speciesIndex";
 import { CATEGORIES } from "./categories";
 import { SOURCES, SOURCE_BY_ID, MATURITY } from "./sources";
 import type { Category, Maturity } from "../types";
@@ -96,6 +97,36 @@ describe("evidence-governance layer", () => {
   it("uses globally unique claim ids", () => {
     const claimIds = CROPS.flatMap((c) => c.claims ?? []).map((cl) => cl.id);
     expect(new Set(claimIds).size).toBe(claimIds.length);
+  });
+});
+
+describe("baseline species index", () => {
+  it("gives every index species the required fields and a valid category", () => {
+    for (const s of INDEX_SPECIES) {
+      expect(s.id).toMatch(/^idx-[a-z0-9-]+$/);
+      expect(s.name.length).toBeGreaterThan(0);
+      expect(s.scientificName.length).toBeGreaterThan(0);
+      expect(s.family.length).toBeGreaterThan(0);
+      expect(CATEGORY_IDS.has(s.category)).toBe(true);
+      expect(s.maturity).toBe("baseline");
+    }
+  });
+
+  it("uses ids that are globally unique across both tiers", () => {
+    const ids = [...CROPS.map((c) => c.id), ...INDEX_SPECIES.map((s) => s.id)];
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("never shadows a fully-authored atlas record's species", () => {
+    const atlasSci = new Set(CROPS.map((c) => c.scientificName.toLowerCase()));
+    for (const s of INDEX_SPECIES) {
+      expect(atlasSci.has(s.scientificName.toLowerCase())).toBe(false);
+    }
+  });
+
+  it("has unique scientific names within the index", () => {
+    const sci = INDEX_SPECIES.map((s) => s.scientificName.toLowerCase());
+    expect(new Set(sci).size).toBe(sci.length);
   });
 });
 

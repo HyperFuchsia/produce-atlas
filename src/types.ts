@@ -8,7 +8,8 @@ export type Category =
   | "tuber"
   | "beverage"
   | "oil"
-  | "spice";
+  | "spice"
+  | "nut";
 
 /** A single leg of a crop's historical dispersal, drawn as a globe arc. */
 export interface SpreadLeg {
@@ -26,6 +27,35 @@ export interface CategoryMeta {
   id: Category;
   label: string;
   color: string;
+}
+
+/**
+ * A lightweight baseline-index record: a real edible species identified by
+ * name, scientific name, and family, but not yet individually researched for
+ * origin and spread. No origin is claimed, so it is not plotted on the globe.
+ * This is the audit's "baseline" tier — breadth, honestly labeled.
+ */
+export interface IndexSpecies {
+  id: string;
+  name: string;
+  scientificName: string;
+  family: string;
+  category: Category;
+  maturity: "baseline";
+}
+
+/** Unified shape the list + search operate over (atlas crops and index alike). */
+export interface ListEntry {
+  id: string;
+  name: string;
+  scientificName: string;
+  family: string;
+  category: Category;
+  maturity: Maturity;
+  /** Emoji glyph for atlas records; undefined for baseline (uses a dot). */
+  glyph?: string;
+  /** True when the record has a real origin and appears on the globe. */
+  plotted: boolean;
 }
 
 /**

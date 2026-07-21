@@ -2,6 +2,33 @@
 
 _Last updated: 2026-07-21_
 
+## Update — two-tier catalog, specimen signatures, scroll fix
+
+- **Scroll fix**: the detail dossier was clipping instead of scrolling
+  (`.detail__scroll` needed `flex:1` + `min-height:0`). Fixed.
+- **Specimen signatures** (`src/signature.ts`): deterministic generative 2-D
+  marks (golden-angle phyllotaxis) per species, drawn on canvas in the category
+  colour. Rendered in atlas and baseline detail heroes. This is the answer to
+  "individual icons at scale" — no assets, crisp, on-brand. (Recommended 2-D
+  procedural over 3-D; 3-D per-species is unauthorable and the audit's biggest
+  overclaim risk.)
+- **Atlas grew 21 → 51**: added 30 real, individually authored crops across
+  fruits, vegetables, roots/tubers, legumes, and herbs/spices, each with a
+  record-specific safety note.
+- **Baseline scientific index** (`src/data/speciesIndex.ts`): ~200 more **real**
+  edible species (identity + family + category + signature), honestly labeled
+  `baseline`, **not plotted on the globe** (no invented origins). Total ≈ 255.
+  Added a `nut` category. New `ListEntry` model unifies both tiers for the
+  list/search; baseline records get a compact detail card.
+- **Importer** (`scripts/import-species.mjs` + `src/data/species.generated.ts`):
+  CSV → baseline rows, the path to the full Kew ~7,039-species checklist without
+  hand-authoring. Species databases (GBIF/Wikidata/Kew) are network-blocked in
+  this environment, so the full import needs the dataset supplied.
+- **Tests** now 16 (added baseline-index integrity: unique ids across tiers, no
+  atlas shadowing, valid categories). Builds + CI green.
+
+---
+
 ## Update — evidence-governance layer (toward "v33")
 
 In response to the *Comprehensive Implementation Audit*, this increment builds

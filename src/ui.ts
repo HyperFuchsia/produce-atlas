@@ -1,7 +1,8 @@
-import type { Crop, Claim } from "./types";
+import type { Crop, Claim, ListEntry, IndexSpecies } from "./types";
 import { renderSignature } from "./signature";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
+import { INDEX_SPECIES } from "./data/speciesIndex";
 import {
   SOURCES,
   SOURCE_BY_ID,
@@ -148,36 +149,87 @@ export function mountChrome(root: HTMLElement): UIRefs {
   };
 }
 
-/** Render the crop list for the current filtered set. */
+/** Render the list for the current filtered set (atlas + baseline index). */
 export function renderList(
   container: HTMLElement,
-  crops: Crop[],
+  entries: ListEntry[],
   activeId: string | null,
 ): void {
-  if (crops.length === 0) {
+  if (entries.length === 0) {
     container.innerHTML = `<div style="padding:24px 8px;color:var(--ink-faint);font-size:13px">No plants match these filters.</div>`;
     return;
   }
-  container.innerHTML = crops
-    .map((c, i) => {
-      const color = CATEGORY_COLOR[c.category];
-      const active = c.id === activeId ? " is-active" : "";
+  container.innerHTML = entries
+    .map((e, i) => {
+      const color = CATEGORY_COLOR[e.category];
+      const active = e.id === activeId ? " is-active" : "";
       const flag =
-        c.maturity === "flagship"
+        e.maturity === "flagship"
           ? `<span class="crop__flag" title="Flagship — carries a source-linked claim packet">◆</span>`
           : "";
+      // Atlas records show their emoji; baseline entries show a category dot.
+      const icon = e.glyph
+        ? `<div class="crop__glyph">${e.glyph}</div>`
+        : `<div class="crop__glyph crop__glyph--dot"><span style="background:${color}"></span></div>`;
+      const right = e.plotted
+        ? `<div class="crop__region">${esc(e.family)}</div>`
+        : `<div class="crop__region crop__region--muted">${esc(e.family)}</div>`;
       return `
-      <div class="crop${active}" role="option" tabindex="0" data-id="${c.id}"
-           style="--cat:${color};animation-delay:${Math.min(i * 22, 400)}ms">
-        <div class="crop__glyph">${c.glyph}</div>
+      <div class="crop${active}" role="option" tabindex="0" data-id="${e.id}"
+           style="--cat:${color};animation-delay:${Math.min(i * 12, 300)}ms">
+        ${icon}
         <div class="crop__body">
-          <div class="crop__name">${esc(c.name)} ${flag}</div>
-          <div class="crop__sci">${esc(c.scientificName)}</div>
+          <div class="crop__name">${esc(e.name)} ${flag}</div>
+          <div class="crop__sci">${esc(e.scientificName)}</div>
         </div>
-        <div class="crop__region">${esc(c.originRegion)}</div>
+        ${right}
       </div>`;
     })
     .join("");
+}
+
+/** Render a compact detail card for a baseline (index) species. */
+export function renderBaselineDetail(
+  container: HTMLElement,
+  sp: IndexSpecies,
+): void {
+  const color = CATEGORY_COLOR[sp.category];
+  const catLabel =
+    CATEGORIES.find((k) => k.id === sp.category)?.label ?? sp.category;
+
+  container.innerHTML = `
+    <div class="detail__topline">
+      <div class="detail__cat">
+        <span class="chip__dot" style="background:${color};box-shadow:0 0 8px ${color}"></span>
+        <span>${catLabel}</span>
+      </div>
+      ${maturityBadge(sp.maturity)}
+    </div>
+    <div class="detail__hero">
+      <canvas class="detail__sig" aria-hidden="true"></canvas>
+    </div>
+    <h1 class="detail__name">${esc(sp.name)}</h1>
+    <div class="detail__sci">${esc(sp.scientificName)}</div>
+    <div class="detail__family">Family · ${esc(sp.family)}</div>
+
+    <div class="section">
+      <span class="eyebrow">Baseline record</span>
+      <p>This is a catalog-baseline entry: a real edible species included for
+      breadth of coverage. It has <strong>not yet been individually researched</strong>
+      for its center of origin, domestication, or historical spread, so no origin
+      is plotted on the globe and no claims are asserted.</p>
+    </div>
+
+    <div class="section">
+      <span class="eyebrow">Specimen signature</span>
+      <p class="section__caption">A deterministic generative mark unique to this species — an interpretive signature, not a botanical reconstruction.</p>
+    </div>
+
+    <div class="detail__hint">Promote this to an authored record to add its origin, spread, and evidence.</div>
+  `;
+
+  const sig = container.querySelector<HTMLCanvasElement>(".detail__sig");
+  if (sig) renderSignature(sig, sp.id, { color, size: 132 });
 }
 
 function claimRow(claim: Claim): string {
@@ -325,6 +377,8 @@ export function renderDetail(container: HTMLElement, c: Crop): void {
 function methodologyOverlay(): string {
   const counts: Record<string, number> = {};
   for (const c of CROPS) counts[c.maturity] = (counts[c.maturity] ?? 0) + 1;
+  counts["baseline"] = (counts["baseline"] ?? 0) + INDEX_SPECIES.length;
+  const total = CROPS.length + INDEX_SPECIES.length;
   const totalClaims = CROPS.reduce((n, c) => n + (c.claims?.length ?? 0), 0);
   const approved = CROPS.reduce(
     (n, c) => n + (c.claims?.filter((cl) => cl.review === "approved").length ?? 0),
@@ -362,7 +416,7 @@ function methodologyOverlay(): string {
       </p>
 
       <div class="mstats">
-        <div class="mstat"><div class="mstat__v">${CROPS.length}</div><div class="mstat__k">Records</div></div>
+        <div class="mstat"><div class="mstat__v">${total}</div><div class="mstat__k">Records</div></div>
         <div class="mstat"><div class="mstat__v">${counts["flagship"] ?? 0}</div><div class="mstat__k">Flagship packets</div></div>
         <div class="mstat"><div class="mstat__v">${totalClaims}</div><div class="mstat__k">Source-linked claims</div></div>
         <div class="mstat"><div class="mstat__v">${approved}</div><div class="mstat__k">Expert-approved</div></div>

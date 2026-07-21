@@ -420,6 +420,17 @@ body {
   border: 1px solid var(--line);
   flex-shrink: 0;
 }
+.crop__glyph--dot span {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px currentColor;
+  opacity: 0.9;
+}
+.crop__region--muted {
+  opacity: 0.6;
+  font-style: italic;
+}
 .crop__body {
   min-width: 0;
   flex: 1;

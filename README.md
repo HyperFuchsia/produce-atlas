@@ -24,8 +24,14 @@ movements rather than every route.
 - **Premium 3-D globe** — a dark "data globe" with dotted landmasses, an
   atmospheric glow, graticules, and gentle auto-rotation (built on `globe.gl` /
   `three.js`).
-- **Curated crop library** — 21 major food plants across cereals, fruits,
-  vegetables, legumes, roots & tubers, beverages, oil/sugar, and herbs/spices.
+- **Two-tier catalog** — a curated **atlas** of 51 major food plants with full
+  origin/spread dossiers, plus a **baseline scientific index** of ~200 more real
+  edible species (searchable, honestly labeled, no invented origins). ~255 total,
+  across cereals, fruits, vegetables, legumes, roots & tubers, beverages,
+  oil/sugar, herbs/spices, and nuts/seeds.
+- **Specimen signatures** — every species gets a deterministic generative 2-D
+  mark (a golden-angle phyllotactic form in its category colour); scales to
+  thousands with no image assets.
 - **Origin + spread visualisation** — glowing origin markers, pulsing rings, and
   animated dispersal arcs colour-coded by category.
 - **Detail dossier** — glassmorphic panel with scientific identity,
@@ -74,15 +80,31 @@ src/
   main.ts               State + orchestration (filters, selection, events)
   globe.ts              globe.gl setup and the imperative globe controller
   ui.ts                 DOM chrome + list/detail/claims/methodology renderers
+  signature.ts          Procedural specimen-signature generator (canvas)
   data/
-    crops.ts            Curated food-plant dataset (+ maturity, safety, claims)
+    crops.ts            Curated atlas dossiers (+ maturity, safety, claims)
+    speciesIndex.ts     Baseline scientific index (real species, honestly labeled)
+    species.generated.ts  Importer output slot (empty until an import runs)
     categories.ts       Category metadata + colour palette
     sources.ts          Shared source registry + maturity metadata
     countries.json      Natural Earth countries (bundled at build time)
     data.test.ts        Schema + maturity-summary integrity tests
-  types.ts              Data model (crop, claim, source, maturity, safety)
+  types.ts              Data model (crop, claim, source, maturity, index, safety)
   styles.css            Premium design system + evidence layer
-.github/workflows/ci.yml  Typecheck · test · build · artifact build
+scripts/import-species.mjs  CSV → baseline index (path to the full Kew list)
+.github/workflows/ci.yml    Typecheck · test · build · artifact build
+```
+
+## Scaling the index
+
+The baseline index is designed to grow to the full Kew *World Checklist of
+Useful Plants* (~7,039 human-food species). Drop a CSV in and run the importer;
+every row becomes a baseline record with its own specimen signature — no
+hand-authoring, no invented origins:
+
+```bash
+node scripts/import-species.mjs path/to/species.csv --category vegetable
+# writes src/data/species.generated.ts, which the app merges into the index
 ```
 
 ## Data & accuracy

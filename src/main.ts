@@ -1,9 +1,16 @@
 import "./styles.css";
 import { CROPS } from "./data/crops";
+import { INDEX_SPECIES } from "./data/speciesIndex";
 import { CATEGORY_COLOR } from "./data/categories";
-import type { Crop, Category } from "./types";
+import type { Crop, Category, ListEntry } from "./types";
 import { createGlobe, type PointDatum } from "./globe";
-import { mountChrome, renderList, renderDetail, formatBP } from "./ui";
+import {
+  mountChrome,
+  renderList,
+  renderDetail,
+  renderBaselineDetail,
+  formatBP,
+} from "./ui";
 import countriesRaw from "./data/countries.json?raw";
 
 const countries = JSON.parse(countriesRaw) as { features?: any[] };
@@ -25,20 +32,64 @@ const state = {
   selectedId: null as string | null,
 };
 
-function visibleCrops(): Crop[] {
+// Unified lookup + entry model across both tiers.
+const CROP_BY_ID = new Map(CROPS.map((c) => [c.id, c]));
+const INDEX_BY_ID = new Map(INDEX_SPECIES.map((s) => [s.id, s]));
+
+const ENTRIES: ListEntry[] = [
+  ...CROPS.map(
+    (c): ListEntry => ({
+      id: c.id,
+      name: c.name,
+      scientificName: c.scientificName,
+      family: c.family,
+      category: c.category,
+      maturity: c.maturity,
+      glyph: c.glyph,
+      plotted: true,
+    }),
+  ),
+  ...INDEX_SPECIES.map(
+    (s): ListEntry => ({
+      id: s.id,
+      name: s.name,
+      scientificName: s.scientificName,
+      family: s.family,
+      category: s.category,
+      maturity: s.maturity,
+      plotted: false,
+    }),
+  ),
+];
+
+function entryMatchesTime(id: string): boolean {
+  // Baseline entries have no date, so the domestication horizon never hides
+  // them; atlas records honour it.
+  const crop = CROP_BY_ID.get(id);
+  return !crop || crop.domesticatedBP >= state.timeBP;
+}
+
+function visibleEntries(): ListEntry[] {
   const q = state.query.trim().toLowerCase();
-  return CROPS.filter((c) => {
-    if (!state.activeCategories.has(c.category)) return false;
-    if (c.domesticatedBP < state.timeBP) return false;
+  return ENTRIES.filter((e) => {
+    if (!state.activeCategories.has(e.category)) return false;
+    if (!entryMatchesTime(e.id)) return false;
     if (!q) return true;
     return (
-      c.name.toLowerCase().includes(q) ||
-      c.scientificName.toLowerCase().includes(q) ||
-      c.family.toLowerCase().includes(q) ||
-      c.originRegion.toLowerCase().includes(q) ||
-      c.originCenter.toLowerCase().includes(q)
+      e.name.toLowerCase().includes(q) ||
+      e.scientificName.toLowerCase().includes(q) ||
+      e.family.toLowerCase().includes(q)
     );
   }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function visiblePlottedCrops(entries: ListEntry[]): Crop[] {
+  const out: Crop[] = [];
+  for (const e of entries) {
+    const c = CROP_BY_ID.get(e.id);
+    if (c) out.push(c);
+  }
+  return out;
 }
 
 // -------------------------------------------------------------- globe
@@ -68,24 +119,33 @@ function pointsFor(crops: Crop[]): PointDatum[] {
 }
 
 function refresh(): void {
-  const crops = visibleCrops();
-  ui.count.textContent = `${crops.length} / ${CROPS.length}`;
-  renderList(ui.list, crops, state.selectedId);
-  controller.setPoints(pointsFor(crops));
-  // if the selected crop fell out of view, close the panel
-  if (state.selectedId && !crops.some((c) => c.id === state.selectedId)) {
+  const entries = visibleEntries();
+  ui.count.textContent = `${entries.length} / ${ENTRIES.length}`;
+  renderList(ui.list, entries, state.selectedId);
+  controller.setPoints(pointsFor(visiblePlottedCrops(entries)));
+  // if the selected record fell out of view, close the panel
+  if (state.selectedId && !entries.some((e) => e.id === state.selectedId)) {
     closeDetail();
   }
 }
 
 function select(id: string): void {
-  const crop = CROPS.find((c) => c.id === id);
-  if (!crop) return;
+  const crop = CROP_BY_ID.get(id);
+  const species = INDEX_BY_ID.get(id);
+  if (!crop && !species) return;
   state.selectedId = id;
-  renderList(ui.list, visibleCrops(), id);
-  renderDetail(ui.detailScroll, crop);
+  renderList(ui.list, visibleEntries(), id);
+
+  if (crop) {
+    renderDetail(ui.detailScroll, crop);
+    controller.focus(crop);
+  } else if (species) {
+    renderBaselineDetail(ui.detailScroll, species);
+    controller.focus(null); // no origin to fly to
+    controller.resume();
+  }
+  ui.detailScroll.scrollTop = 0;
   ui.detail.classList.add("is-open");
-  controller.focus(crop);
   ui.tip.classList.remove("is-on");
 }
 
@@ -94,7 +154,7 @@ function closeDetail(): void {
   ui.detail.classList.remove("is-open");
   controller.focus(null);
   controller.resume();
-  renderList(ui.list, visibleCrops(), null);
+  renderList(ui.list, visibleEntries(), null);
 }
 
 // -------------------------------------------------------------- events

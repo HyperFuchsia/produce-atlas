@@ -14,12 +14,25 @@ detail panel and summarized in the in-app **Methodology & evidence** panel.
 | Tier | Meaning | This edition |
 |------|---------|--------------|
 | **Flagship** | Carries a formal packet of individually source-linked claims. Expert review still pending. | 5 |
-| **Authored** | Bespoke, individually written record. No formal claim packet yet. | 16 |
-| **Baseline** | Structurally complete but expanded from shared templates. | 0 |
+| **Authored** | Bespoke atlas record with a full origin/domestication/spread dossier and a plotted globe origin. | 46 |
+| **Baseline** | A real edible species included for breadth: identity + family + specimen signature, but **not yet individually researched**. No origin is claimed, so it is not plotted on the globe. | ~200 |
 
 A flagship record is **not** "more true" than an authored one — it is more
 *traceable*. The tier communicates how far a record has been through the
 evidence pipeline, nothing more.
+
+### The two tiers, and why the globe stays honest
+
+The **atlas** (flagship + authored) carries real, individually researched
+origins and is plotted on the globe with dispersal arcs. The **baseline index**
+is a searchable list of real edible species with identity, family, and a
+generated specimen signature — but **no origin is asserted**, so those records
+never appear on the globe and never fabricate a domestication story. This keeps
+scale (breadth of species) strictly separate from research (depth), which is the
+central discipline the project's audit demands. The index scales toward the full
+Kew *World Checklist of Useful Plants* (~7,039 species) via
+`scripts/import-species.mjs`; new rows always enter as **baseline**, never as
+authored fact.
 
 ## Claim packets
 
