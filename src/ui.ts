@@ -1,4 +1,5 @@
 import type { Crop, Claim } from "./types";
+import { renderSignature } from "./signature";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
 import {
@@ -255,7 +256,10 @@ export function renderDetail(container: HTMLElement, c: Crop): void {
       </div>
       ${maturityBadge(c.maturity)}
     </div>
-    <div class="detail__glyph">${c.glyph}</div>
+    <div class="detail__hero">
+      <canvas class="detail__sig" aria-hidden="true"></canvas>
+      <div class="detail__glyph">${c.glyph}</div>
+    </div>
     <h1 class="detail__name">${esc(c.name)}</h1>
     <div class="detail__sci">${esc(c.scientificName)}</div>
     <div class="detail__family">Family · ${esc(c.family)}</div>
@@ -311,6 +315,10 @@ export function renderDetail(container: HTMLElement, c: Crop): void {
       </div>
     </div>
   `;
+
+  // Draw the procedural specimen signature into the hero canvas.
+  const sig = container.querySelector<HTMLCanvasElement>(".detail__sig");
+  if (sig) renderSignature(sig, c.id, { color, size: 132 });
 }
 
 /** The methodology / evidence overlay (governance made visible). */
