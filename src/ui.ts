@@ -1,6 +1,7 @@
 import type { Crop, Claim, ListEntry, IndexSpecies } from "./types";
 import { renderPlant } from "./plant";
-import { renderOriginMap } from "./atlasmap";
+import { renderJourneyMap } from "./atlasmap";
+import { buildChapters, productionFor } from "./journey";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
 import { INDEX_SPECIES } from "./data/speciesIndex";
@@ -188,6 +189,34 @@ function claimRow(claim: Claim): string {
     </div>`;
 }
 
+function journeyLegend(hasProduction: boolean): string {
+  const prod = hasProduction
+    ? `<span class="lg"><span class="lg__prod"></span> Present-day production</span>`
+    : "";
+  return `
+    <div class="legend" aria-label="Map layers">
+      <span class="lg"><span class="lg__halo"></span> Ancestral / earliest evidence</span>
+      <span class="lg"><span class="lg__dom"></span> Domestication</span>
+      <span class="lg"><span class="lg__route"></span> Movement <em>(solid documented · dashed modeled)</em></span>
+      ${prod}
+    </div>`;
+}
+
+function rideControls(): string {
+  return `
+    <div class="ride">
+      <div class="ride__ctrls">
+        <button id="pa-prev" class="ride__btn" aria-label="Previous stop">◀</button>
+        <button id="pa-play" class="ride__btn ride__btn--play" aria-label="Play journey">▶</button>
+        <button id="pa-next" class="ride__btn" aria-label="Next stop">▶</button>
+        <button id="pa-pace" class="ride__pace" aria-label="Playback speed">1×</button>
+        <span class="ride__hint">Trace the journey</span>
+      </div>
+      <div class="tl" id="pa-timeline" aria-label="Journey chronology"></div>
+      <div class="tl__cap">Chapters in chronological order — spacing simplified, not to scale.</div>
+    </div>`;
+}
+
 function plateBlock(id: string, name: string, sci: string, fam: string): string {
   return `
     <div>
@@ -232,7 +261,9 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
     ? `<div class="safety__row safety__row--warn"><span class="safety__k">Caution</span><span>${esc(c.safety.cautionParts)}</span></div>`
     : "";
 
-  const mapLegs = c.spread.map((l) => ({ coords: l.coords, to: l.to }));
+  const chapters = buildChapters(c);
+  const production = productionFor(c);
+  const rideable = chapters.length > 1;
 
   body.innerHTML = `
     <div class="sheet__grid">
@@ -246,8 +277,18 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
         <div class="sheet__sci">${esc(c.scientificName)}</div>
         <div class="sheet__fam">Family · ${esc(c.family)}</div>
 
-        ${renderOriginMap(c.origin, mapLegs, color)}
-        <div class="map-cap">Centre of origin (ringed) &amp; historical dispersal — representative, not exact</div>
+        <div class="journey">
+          ${journeyLegend(production.length > 0)}
+          <div class="jmap-wrap" id="pa-jmap">
+            ${renderJourneyMap(chapters, production, color)}
+            <div class="cap" id="pa-cap" role="status">
+              <button class="cap__close" id="pa-cap-close" aria-label="Close caption">✕</button>
+              <div id="pa-cap-body"></div>
+            </div>
+          </div>
+          ${rideable ? rideControls() : ""}
+          <div class="map-cap">Four layers, kept distinct — centre of origin ringed; routes representative, not exact.</div>
+        </div>
 
         <div class="stats">
           <div class="stat"><span class="label">Centre of origin</span><div class="stat__v">${esc(c.originCenter)}</div><div class="stat__note">${esc(c.originRegion)}</div></div>

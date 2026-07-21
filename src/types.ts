@@ -11,9 +11,26 @@ export type Category =
   | "spice"
   | "nut";
 
-/** A single leg of a crop's historical dispersal, drawn as a globe arc. */
+/** How well-supported a movement is — controls solid vs dashed routes. */
+export type MovementConfidence = "strong" | "modeled";
+
+/** The kind of historical event a chapter records. */
+export type EventType =
+  | "ancestry"
+  | "domestication"
+  | "cultivation"
+  | "transfer"
+  | "diversification"
+  | "production";
+
+/**
+ * A single leg of a crop's historical dispersal. Beyond geometry it can carry
+ * the "chapter" fields the visual handoff asks for: mechanism, confidence,
+ * event type, and a note on what happened. All optional so existing records
+ * degrade gracefully.
+ */
 export interface SpreadLeg {
-  /** Destination region label (e.g. "Mediterranean Basin"). */
+  /** Destination region label (historical region preferred). */
   to: string;
   /** [latitude, longitude] of the destination. */
   coords: [number, number];
@@ -21,6 +38,33 @@ export interface SpreadLeg {
   period: string;
   /** Draw order — lower legs animate/rank first. */
   order: number;
+  /**
+   * Index of the stop this leg departs from (0 = origin, 1 = first leg, …).
+   * Enables branching routes; defaults to the origin when omitted.
+   */
+  from?: number;
+  /** Movement mechanism: trade, migration, colonial transfer, exchange, … */
+  mechanism?: string;
+  /** Evidence strength; `modeled`/uncertain corridors render dashed. */
+  confidence?: MovementConfidence;
+  /** Event classification for the chapter label. */
+  eventType?: EventType;
+  /** Modern geographic reference (e.g. "modern Spain"). */
+  modernRef?: string;
+  /** What happened here and why the stop matters. */
+  note?: string;
+}
+
+/** A present-day production region (a distinct layer from historical routes). */
+export interface ProductionRegion {
+  region: string;
+  coords: [number, number];
+}
+
+export interface CategoryMeta {
+  id: Category;
+  label: string;
+  color: string;
 }
 
 export interface CategoryMeta {
@@ -150,4 +194,37 @@ export interface Crop {
   safety: Safety;
   /** Formal claim packet — present only for `flagship` records. */
   claims?: Claim[];
+
+  // ---- Journey layer (visual handoff) -------------------------------------
+  /**
+   * Ancestral range / earliest-evidence note, distinct from domestication.
+   * When present it seeds the ancestry chapter; otherwise `progenitor` is used.
+   */
+  ancestralNote?: string;
+  /** Precision qualifier for the domestication date (approximate/range/by …). */
+  datePrecision?: string;
+  /**
+   * Present-day production regions — a layer separate from historical routes.
+   * Representative points, not a production census.
+   */
+  production?: ProductionRegion[];
+}
+
+/**
+ * A resolved "chapter" in a crop's journey — the unit the ride and timeline
+ * step through. Built at runtime from the crop's origin + spread legs.
+ */
+export interface JourneyChapter {
+  index: number;
+  total: number;
+  title: string;
+  modernRef?: string;
+  period: string;
+  precision?: string;
+  eventType: EventType;
+  confidence: MovementConfidence;
+  mechanism?: string;
+  note: string;
+  coords: [number, number];
+  from: [number, number];
 }

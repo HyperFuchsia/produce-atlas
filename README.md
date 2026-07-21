@@ -28,9 +28,14 @@ dispersal legs summarise well-attested movements rather than every route.
   assets; scales to thousands; lazily drawn as cards scroll into view.
 - **Herbarium field-guide UI** — warm parchment, botanical serif, specimen
   gallery with accession numbers, and a specimen-sheet modal.
-- **Antique origins map** (`src/atlasmap.ts`) — a quiet equirectangular ink-on-
-  parchment plate (from Natural Earth coastlines) showing each authored crop's
-  centre of origin and dispersal arcs. Replaces the old 3-D globe.
+- **Journey mode & four-layer history** (`src/atlasmap.ts`, `src/ride.ts`,
+  `src/journey.ts`) — an antique flat map that keeps four layers *distinct*
+  (gold ancestral halo · amber domestication rings · movement routes, solid=
+  documented / dashed=modeled · green present-day production). A history "ride"
+  draws the route chapter-by-chapter with play/pause/prev/next/pace, a closable
+  chapter caption (closing it never stops the ride), a chronological timeline,
+  reduced-motion stepping, and `#crop-id/chapter` URL deep-links. Replaces the
+  old 3-D globe.
 - **Two-tier catalog** — a curated **atlas** of 51 fully-authored crops (with
   origins, spread, and dossiers) plus a **baseline scientific index** of ~200
   more real edible species (identity + family + plate, honestly labeled, no

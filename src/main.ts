@@ -9,6 +9,8 @@ import {
   renderCropSheet,
   renderSpeciesSheet,
 } from "./ui";
+import { buildChapters } from "./journey";
+import { Ride, type RideEls } from "./ride";
 
 const app = document.getElementById("app")!;
 const boot = document.getElementById("boot")!;
@@ -59,22 +61,77 @@ function refresh(): void {
   renderGallery(ui.gallery, entries);
 }
 
-// -------------------------------------------------------------- sheet
-function openSheet(id: string): void {
+// -------------------------------------------------------------- sheet + ride
+let ride: Ride | null = null;
+let openId: string | null = null;
+
+function rideEls(): RideEls | null {
+  const body = ui.sheetBody;
+  const svg = body.querySelector<SVGSVGElement>("#pa-jmap svg");
+  const caption = body.querySelector<HTMLElement>("#pa-cap");
+  const capBody = body.querySelector<HTMLElement>("#pa-cap-body");
+  const capClose = body.querySelector<HTMLButtonElement>("#pa-cap-close");
+  const timeline = body.querySelector<HTMLElement>("#pa-timeline");
+  const play = body.querySelector<HTMLButtonElement>("#pa-play");
+  const prev = body.querySelector<HTMLButtonElement>("#pa-prev");
+  const next = body.querySelector<HTMLButtonElement>("#pa-next");
+  const pace = body.querySelector<HTMLButtonElement>("#pa-pace");
+  if (!svg || !caption || !capBody || !capClose || !timeline || !play || !prev || !next || !pace)
+    return null;
+  return { svg, caption, capBody, capClose, timeline, play, prev, next, pace };
+}
+
+function openSheet(id: string, chapter = 0, updateHash = true): void {
   const crop = CROP_BY_ID.get(id);
   const species = INDEX_BY_ID.get(id);
-  if (crop) renderCropSheet(ui.sheetBody, crop);
-  else if (species) renderSpeciesSheet(ui.sheetBody, species);
-  else return;
+  ride?.destroy();
+  ride = null;
+
+  if (crop) {
+    renderCropSheet(ui.sheetBody, crop);
+    const chapters = buildChapters(crop);
+    const els = rideEls();
+    if (chapters.length > 1 && els) {
+      ride = new Ride(chapters, els, (i) => setHash(id, i));
+      if (chapter > 0) ride.seek(chapter);
+    }
+  } else if (species) {
+    renderSpeciesSheet(ui.sheetBody, species);
+  } else {
+    return;
+  }
+
+  openId = id;
   ui.sheetScrim.classList.add("is-open");
   ui.sheetBody.parentElement!.scrollTop = 0;
   ui.sheetClose.focus();
   document.body.style.overflow = "hidden";
+  if (updateHash) setHash(id, chapter);
 }
+
 function closeSheet(): void {
+  ride?.destroy();
+  ride = null;
+  openId = null;
   ui.sheetScrim.classList.remove("is-open");
   document.body.style.overflow = "";
+  history.replaceState(null, "", location.pathname + location.search);
 }
+
+// -------------------------------------------------------------- URL sync
+function setHash(id: string, chapter: number): void {
+  const h = chapter > 0 ? `#${id}/${chapter}` : `#${id}`;
+  if (location.hash !== h) history.replaceState(null, "", h);
+}
+function openFromHash(): void {
+  const raw = decodeURIComponent(location.hash.replace(/^#/, ""));
+  if (!raw) { if (openId) closeSheet(); return; }
+  const [id, ch] = raw.split("/");
+  if (CROP_BY_ID.has(id) || INDEX_BY_ID.has(id)) {
+    openSheet(id, Number(ch) || 0, false);
+  }
+}
+window.addEventListener("hashchange", openFromHash);
 
 // -------------------------------------------------------------- events
 ui.search.addEventListener("input", () => {
@@ -146,4 +203,5 @@ document.addEventListener("keydown", (e) => {
 
 // -------------------------------------------------------------- boot
 refresh();
+openFromHash(); // deep-link support (#crop-id or #crop-id/chapter)
 window.setTimeout(() => boot.classList.add("is-hidden"), 500);

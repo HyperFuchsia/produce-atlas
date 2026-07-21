@@ -2,6 +2,40 @@
 
 _Last updated: 2026-07-21_
 
+## Update — journey mode & four-layer history (visual handoff)
+
+Implemented the visual-handoff "functions and operations" **adapted to the
+botanical field-guide** (the handoff assumes a 3-D Earth; per the user we keep
+the herbarium UI, so the antique flat map is the journey surface).
+
+- **Four explicit layers, never collapsed** (`src/atlasmap.ts` + legend): gold
+  ancestral halo, amber domestication rings, ink movement routes (**solid =
+  documented, dashed = modeled**), and a separate green **present-day
+  production** layer.
+- **Journey / history ride** (`src/ride.ts`): routes draw on chapter-by-chapter
+  (the flat-map analogue of a camera tracking the arc), with play/pause,
+  prev/next, and a pace toggle. A small **closable chapter caption** — closing
+  it never stops the ride (handoff rule 4). Reduced-motion → discrete steps.
+- **Chapters** (`src/journey.ts`, `buildChapters`): origin (ancestry +
+  domestication) → each movement leg → a closing production chapter. Each shows
+  event type, historical region + modern reference, period + precision,
+  mechanism, confidence, and a note. Flagship crops carry authored chapter
+  detail + production regions (overlay); other authored crops derive chapters
+  from their spread legs. **Branching** supported via `SpreadLeg.from`.
+- **Continuous timeline** with chronological order (disclosed as "spacing
+  simplified, not to scale"); click a stop to seek.
+- **Historical-language discipline**: ancestral range / domestication centre /
+  documented movement — never "discovered".
+- **URL sync**: `#<crop-id>` and `#<crop-id>/<chapter>` deep-link and update on
+  navigation (replaceState, no history spam).
+- New types: `SpreadLeg.{from,mechanism,confidence,eventType,modernRef,note}`,
+  `Crop.{ancestralNote,datePrecision,production}`, `JourneyChapter`,
+  `ProductionRegion`, `EventType`, `MovementConfidence`.
+
+16 tests pass; both builds green; no console errors.
+
+---
+
 ## Update — botanical field-guide redesign (UI/UX rebuilt)
 
 The whole presentation was rebuilt from a dark 3-D "data globe" into a **botanical

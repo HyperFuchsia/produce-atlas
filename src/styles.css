@@ -390,3 +390,106 @@ body {
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
 }
+
+/* ============================ Journey / ride ============================ */
+.journey { margin: 16px 0 4px; }
+
+.legend {
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  font-family: var(--font-sans); font-size: 10.5px; color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+.legend em { color: var(--ink-mute); font-style: italic; }
+.lg { display: inline-flex; align-items: center; gap: 6px; }
+.lg__halo { width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle, rgba(169,129,44,0.9), rgba(169,129,44,0.15)); }
+.lg__dom { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--gold); }
+.lg__route { width: 16px; height: 0; border-top: 1.5px solid var(--green); }
+.lg__prod { width: 11px; height: 11px; border-radius: 50%; background: rgba(78,124,74,0.35); border: 1px solid rgba(78,124,74,0.6); }
+
+.jmap-wrap { position: relative; }
+.jmap {
+  width: 100%; height: auto; display: block;
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 3px;
+}
+.omap__land { fill: rgba(63, 92, 72, 0.16); stroke: rgba(44, 38, 32, 0.32); stroke-width: 0.22; }
+.omap__grat { fill: none; stroke: rgba(44, 38, 32, 0.08); stroke-width: 0.22; }
+
+/* Layer: production (toggled on at the production chapter) */
+.omap__prod { opacity: 0; transition: opacity 0.6s var(--ease); }
+.omap__prod.is-on { opacity: 1; }
+.omap__prod-r { fill: rgba(78, 124, 74, 0.28); stroke: rgba(78, 124, 74, 0.6); stroke-width: 0.3; }
+
+/* Layer: origin — ancestral halo (gold) + domestication rings (amber) */
+.omap__halo { fill: rgba(169, 129, 44, 0.16); stroke: rgba(169, 129, 44, 0.5); stroke-width: 0.3; }
+.omap__ring { fill: none; stroke: var(--gold); stroke-width: 0.4; opacity: 0.65; }
+
+/* Layer: movement — draw-on routes */
+.oleg {
+  fill: none; stroke-width: 0.8; stroke-linecap: round; opacity: 0.75;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  transition: stroke-dashoffset var(--ride, 1000ms) ease, opacity 0.3s ease;
+}
+.oleg.is-drawn { stroke-dashoffset: 0; }
+.oleg.is-current { stroke-width: 1.2; opacity: 1; }
+.oleg--modeled { stroke-dasharray: 3 3; }
+.oleg--modeled.is-drawn { stroke-dashoffset: 0; }
+.odest { opacity: 0; transition: opacity 0.4s ease; }
+.odest.is-on { opacity: 0.85; }
+.odest.is-current { opacity: 1; }
+.odest.is-current { r: 2.4; }
+
+/* Chapter caption — peripheral, bottom-left of the map, closable */
+.cap {
+  position: absolute; left: 10px; bottom: 10px; right: 10px; max-width: 340px;
+  background: rgba(247, 242, 232, 0.94);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+  border: 1px solid var(--rule); border-radius: 4px;
+  padding: 10px 12px 11px; box-shadow: 0 8px 24px -14px rgba(44, 38, 32, 0.5);
+}
+.cap[hidden] { display: none; }
+.cap__close {
+  position: absolute; top: 6px; right: 6px; width: 22px; height: 22px;
+  display: grid; place-items: center; border: none; background: transparent;
+  color: var(--ink-mute); cursor: pointer; font-size: 12px; border-radius: 50%;
+}
+.cap__close:hover { color: var(--ink); background: rgba(44,38,32,0.06); }
+.cap__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-right: 20px; }
+.cap__kind { font-family: var(--font-sans); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--terra); font-weight: 600; }
+.cap__n { font-family: var(--font-sans); font-size: 10px; color: var(--ink-mute); }
+.cap__title { font-size: 16px; font-weight: 600; margin-top: 3px; }
+.cap__modern { font-family: var(--font-sans); font-size: 10.5px; color: var(--ink-mute); font-weight: 400; }
+.cap__period { font-family: var(--font-sans); font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+.cap__prec { font-style: italic; color: var(--ink-mute); }
+.cap__conf[data-c="modeled"] { color: var(--terra); }
+.cap__conf[data-c="strong"] { color: var(--green-bright); }
+.cap__note { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: var(--ink); }
+
+/* Ride controls */
+.ride { margin-top: 12px; }
+.ride__ctrls { display: flex; align-items: center; gap: 8px; }
+.ride__btn {
+  width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule);
+  background: var(--paper); color: var(--ink); cursor: pointer;
+  display: grid; place-items: center; font-size: 12px; transition: all 0.18s var(--ease);
+}
+.ride__btn:hover { border-color: var(--ink-mute); }
+.ride__btn--play { width: 40px; height: 40px; background: var(--green); color: var(--paper-2); border-color: var(--green); font-size: 14px; }
+.ride__btn--play:hover { background: var(--green-bright); }
+.ride__pace {
+  font-family: var(--font-sans); font-size: 11px; font-weight: 600;
+  border: 1px solid var(--rule); border-radius: 99px; padding: 5px 10px;
+  background: var(--paper); color: var(--ink-soft); cursor: pointer;
+}
+.ride__pace:hover { border-color: var(--ink-mute); }
+.ride__hint { font-family: var(--font-sans); font-size: 11px; color: var(--ink-mute); letter-spacing: 0.04em; margin-left: 2px; }
+
+/* Timeline */
+.tl { position: relative; display: flex; justify-content: space-between; align-items: center; margin: 14px 4px 4px; }
+.tl::before { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 1px; background: var(--rule); }
+.tl__stop { position: relative; border: none; background: transparent; cursor: pointer; padding: 6px; }
+.tl__dot { display: block; width: 9px; height: 9px; border-radius: 50%; background: var(--paper); border: 1.5px solid var(--ink-mute); transition: all 0.2s var(--ease); }
+.tl__dot[data-event="domestication"] { border-color: var(--gold); }
+.tl__dot[data-event="production"] { border-color: var(--green-bright); }
+.tl__stop.is-past .tl__dot { background: var(--ink-mute); }
+.tl__stop.is-active .tl__dot { background: var(--terra); border-color: var(--terra); transform: scale(1.45); }
+.tl__cap { font-family: var(--font-sans); font-size: 9.5px; color: var(--ink-faint); text-align: center; font-style: italic; margin-top: 2px; }
