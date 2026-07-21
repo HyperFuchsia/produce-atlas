@@ -601,6 +601,13 @@ body { background-image: none; }
 .explore { width: min(1100px, 100%); background: var(--paper-2); border: 1px solid var(--paper-edge); border-radius: 8px; box-shadow: 0 30px 80px -30px rgba(0,0,0,0.8); padding: 26px 28px 32px; color: var(--ink); }
 .explore__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .explore__title { font-family: var(--font-serif); font-size: 24px; font-weight: 600; }
+.explore__coverage { font-family: var(--font-sans); font-size: 11px; letter-spacing: 0.02em; color: var(--ink-mute); margin-top: 3px; }
+
+/* Coverage bar (methodology) */
+.coverage__bar { height: 8px; border-radius: 99px; background: rgba(44,38,32,0.1); border: 1px solid var(--rule); overflow: hidden; }
+.coverage__bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--green-bright), var(--gold)); min-width: 4px; }
+.coverage__text { margin: 10px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink-soft); }
+.coverage__text strong { color: var(--ink); }
 .explore__tools { display: flex; align-items: center; gap: 10px; }
 .explore .pill--ghost { color: var(--ink-soft); border-color: var(--rule); background: transparent; }
 .explore .pill--ghost:hover { border-color: var(--ink-mute); }

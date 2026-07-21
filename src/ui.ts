@@ -4,8 +4,11 @@ import { cropIconSVG, hasIcon } from "./icons";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
 import { INDEX_SPECIES } from "./data/speciesIndex";
-import { SOURCES, SOURCE_BY_ID, MATURITY, MATURITY_BY_ID } from "./data/sources";
+import { SOURCES, SOURCE_BY_ID, MATURITY, MATURITY_BY_ID, HUMAN_FOOD_SPECIES } from "./data/sources";
 import { LAYER } from "./globeworld";
+
+const TOTAL_RECORDS = CROPS.length + INDEX_SPECIES.length;
+const COVERAGE_PCT = (TOTAL_RECORDS / HUMAN_FOOD_SPECIES) * 100;
 
 const INK = "#2c2620";
 
@@ -113,7 +116,10 @@ export function mountChrome(root: HTMLElement): UIRefs {
     <div class="explore-scrim" id="pa-explore-scrim" role="dialog" aria-modal="true" aria-label="Explore specimens">
       <div class="explore">
         <div class="explore__head">
-          <span class="explore__title">The Collection</span>
+          <div>
+            <span class="explore__title">The Collection</span>
+            <div class="explore__coverage">${TOTAL_RECORDS} records · of ~${HUMAN_FOOD_SPECIES.toLocaleString()} plant species documented as human food (Kew)</div>
+          </div>
           <div class="explore__tools">
             <button class="pill pill--ghost" id="pa-about">Methodology</button>
             <button class="explore__close" id="pa-explore-close" aria-label="Close">✕</button>
@@ -331,6 +337,12 @@ function methodologyOverlay(): string {
         <div class="mstat"><div class="mstat__v">${totalClaims}</div><div class="mstat__k">Source-linked claims</div></div>
         <div class="mstat"><div class="mstat__v">${approved}</div><div class="mstat__k">Expert-approved</div></div>
       </div>
+      <span class="label">Coverage of the edible-plant universe</span>
+      <div class="coverage">
+        <div class="coverage__bar"><span style="width:${Math.max(COVERAGE_PCT, 1.2).toFixed(1)}%"></span></div>
+        <p class="coverage__text"><strong>${total}</strong> of ~<strong>${HUMAN_FOOD_SPECIES.toLocaleString()}</strong> plant species documented as human food — about <strong>${COVERAGE_PCT.toFixed(1)}%</strong>. The universe figure is Kew's World Checklist of Useful Plants (Human Food use, 2020); this edition covers ${CROPS.length} with full origin dossiers plus ${INDEX_SPECIES.length} in the baseline index, and the importer scales the index toward the full list.</p>
+      </div>
+
       <span class="label">Research maturity</span>
       <div class="mtiers">${tiers}</div>
       <span class="label">What the globe does and does not claim</span>

@@ -1,12 +1,26 @@
 import type { Source, MaturityMeta } from "../types";
 
 /**
+ * The count of plant species documented as human food in Kew's World Checklist
+ * of Useful Plants (Diazgranados et al., 2020) — the reference "universe" the
+ * atlas measures its coverage against.
+ */
+export const HUMAN_FOOD_SPECIES = 7039;
+
+/**
  * Shared source registry. Claim packets reference these by id so every
  * flagship assertion is individually traceable. Citations are real, standard
  * references in archaeobotany, plant genetics, and food history; per-page
  * locators and expert review are still outstanding (see each claim's `review`).
  */
 export const SOURCES: Source[] = [
+  {
+    id: "wcups",
+    citation:
+      "Diazgranados, M. et al. (2020). World Checklist of Useful Plant Species. Royal Botanic Gardens, Kew. (≈7,039 species carry a Human Food use.)",
+    kind: "database",
+    year: 2020,
+  },
   {
     id: "zohary2012",
     citation:
