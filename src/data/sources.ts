@@ -116,22 +116,22 @@ export const MATURITY: MaturityMeta[] = [
     id: "flagship",
     label: "Flagship — claim packet",
     short: "Flagship",
-    color: "#5FB5B3",
+    color: "#3f7d74",
     note: "Carries a formal packet of individually source-linked claims. Expert review is still pending.",
   },
   {
     id: "authored",
     label: "Individually authored",
     short: "Authored",
-    color: "#E7B84B",
-    note: "Bespoke, individually written record. No formal claim packet or expert review yet.",
+    color: "#b0802b",
+    note: "Bespoke atlas record with a full origin, domestication, and spread dossier.",
   },
   {
     id: "baseline",
-    label: "Catalog baseline (template)",
+    label: "Baseline record",
     short: "Baseline",
-    color: "#8a8f9c",
-    note: "Structurally complete but expanded from shared templates. None present in this edition.",
+    color: "#8a8071",
+    note: "A real edible species included for breadth, not yet individually researched. No origin is claimed.",
   },
 ];
 

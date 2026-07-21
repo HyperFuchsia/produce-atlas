@@ -2,6 +2,33 @@
 
 _Last updated: 2026-07-21_
 
+## Update — botanical field-guide redesign (UI/UX rebuilt)
+
+The whole presentation was rebuilt from a dark 3-D "data globe" into a **botanical
+field-guide / herbarium visualizer**, at the user's request. Data, evidence
+layer, and species are unchanged; only the visual shell changed.
+
+- **Aesthetic**: warm parchment, botanical serif, ink line-work. Light theme.
+  New `src/styles.css`, `index.html`, boot screen.
+- **Generative botanical plates** (`src/plant.ts`): every species now grows a
+  unique deterministic ink plant — stem + phyllotactic leaves + a
+  category-specific inflorescence (spike/umbel/composite/blossom/berry/pod/
+  catkin). Canvas 2D. Replaces the old abstract phyllotaxis "signature".
+- **Specimen gallery + specimen sheet** (`src/ui.ts`, `src/main.ts`): a
+  herbarium card grid (accession numbers, corner ticks, lazily-drawn plates via
+  IntersectionObserver) and a modal specimen sheet (plate + label block beside
+  the dossier).
+- **Antique origins map** (`src/atlasmap.ts`): inline-SVG equirectangular
+  ink-on-parchment plate drawn from the coastline GeoJSON, with origin marker +
+  dispersal arcs. **The 3-D globe is gone** — deleted `src/globe.ts`,
+  `src/signature.ts`, and removed `three`, `globe.gl`, `@types/three`.
+- **Result**: zero runtime dependencies (pure TS + Canvas + SVG); bundle
+  ~1.9 MB → ~584 kB. 16 tests still pass; both builds green.
+- Category palette + maturity colours retuned for parchment. Domestication-time
+  scrubber dropped in the redesign (globe-era control).
+
+---
+
 ## Update — two-tier catalog, specimen signatures, scroll fix
 
 - **Scroll fix**: the detail dossier was clipping instead of scrolling

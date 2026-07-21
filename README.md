@@ -1,63 +1,60 @@
 # Produce Atlas
 
-An evidence-led interactive 3-D atlas tracing the scientific identity, origins,
-domestication, historical movement, and global availability of food plants.
+A botanical visualizer of the world's food plants — a herbarium-style field
+guide tracing each species' scientific identity, origin, domestication, and
+historical spread.
 
-![Produce Atlas — interactive 3-D globe of food-plant origins](docs/preview.png)
+![Produce Atlas — a botanical field guide of the world's food plants](docs/preview.png)
 
 ## What it is
 
-Produce Atlas renders the world's major food plants on an interactive globe.
-Each crop is anchored to its **center of origin** (the domestication hearth) and
-its **historical dispersal routes** are drawn as animated arcs. A detail panel
-presents the scientific name, botanical family, wild progenitor, approximate
-domestication date, the nature of the supporting evidence, and present-day
-availability.
+Produce Atlas is a **botanical field guide**. Every species is drawn as a
+**generative botanical plate** — a unique, deterministic ink-line plant (stem,
+leaves, and a category-appropriate inflorescence) rendered on warm parchment.
+Browse the specimen gallery, then open a **specimen sheet**: the plate and a
+herbarium label beside a dossier with scientific identity, wild progenitor,
+domestication, an **antique flat origins map** (centre of origin + dispersal
+arcs), evidence, and — for flagship crops — a source-linked claim packet.
 
-The dataset (`src/data/crops.ts`) follows the Vavilov centers-of-origin
-framework as refined by modern archaeobotany and genetics. Dates are given as
-approximate years before present (BP); dispersal legs summarise well-attested
-movements rather than every route.
+The dataset follows the Vavilov centers-of-origin framework as refined by modern
+archaeobotany and genetics. Dates are approximate years before present (BP);
+dispersal legs summarise well-attested movements rather than every route.
 
 ## Features
 
-- **Premium 3-D globe** — a dark "data globe" with dotted landmasses, an
-  atmospheric glow, graticules, and gentle auto-rotation (built on `globe.gl` /
-  `three.js`).
-- **Two-tier catalog** — a curated **atlas** of 51 major food plants with full
-  origin/spread dossiers, plus a **baseline scientific index** of ~200 more real
-  edible species (searchable, honestly labeled, no invented origins). ~255 total,
-  across cereals, fruits, vegetables, legumes, roots & tubers, beverages,
-  oil/sugar, herbs/spices, and nuts/seeds.
-- **Specimen signatures** — every species gets a deterministic generative 2-D
-  mark (a golden-angle phyllotactic form in its category colour); scales to
-  thousands with no image assets.
-- **Origin + spread visualisation** — glowing origin markers, pulsing rings, and
-  animated dispersal arcs colour-coded by category.
-- **Detail dossier** — glassmorphic panel with scientific identity,
-  domestication summary, wild progenitor, evidence note, a spread timeline, and
-  a present-day availability note.
+- **Generative botanical plates** — each species (`src/plant.ts`) grows a
+  deterministic ink-line plant with a category-specific inflorescence (grass
+  ear, umbel, composite disc, blossom, berry cluster, pod, or catkin). No image
+  assets; scales to thousands; lazily drawn as cards scroll into view.
+- **Herbarium field-guide UI** — warm parchment, botanical serif, specimen
+  gallery with accession numbers, and a specimen-sheet modal.
+- **Antique origins map** (`src/atlasmap.ts`) — a quiet equirectangular ink-on-
+  parchment plate (from Natural Earth coastlines) showing each authored crop's
+  centre of origin and dispersal arcs. Replaces the old 3-D globe.
+- **Two-tier catalog** — a curated **atlas** of 51 fully-authored crops (with
+  origins, spread, and dossiers) plus a **baseline scientific index** of ~200
+  more real edible species (identity + family + plate, honestly labeled, no
+  invented origins). ~255 total across nine categories including nuts & seeds.
 - **Evidence-governance layer** — every record labeled by research **maturity**
   (flagship / authored / baseline); the five flagship crops carry formal
   **claim packets** of source-linked statements with per-claim confidence and
-  review status, backed by a shared source registry. A **Methodology & evidence**
-  panel makes the limits visible (representative coordinates, corridors not
-  routes, approximate dates), and every record carries a record-specific
-  **safety note**. See [METHODOLOGY.md](METHODOLOGY.md).
-- **Filtering** — live search (name, family, region) and category chips.
-- **Domestication horizon** — a time scrubber that reveals crops as their
-  domestication date is reached.
-- **Tested & CI-enforced** — a `vitest` data-integrity suite guards the schema
-  and the disclosed maturity numbers; GitHub Actions runs typecheck, tests, and
-  both builds on every push.
-- **Responsive** and keyboard-accessible; respects `prefers-reduced-motion`.
+  review status, backed by a shared source registry. An **About & methodology**
+  panel makes the limits visible. Every crop carries a **safety note**. See
+  [METHODOLOGY.md](METHODOLOGY.md).
+- **Filtering** — live search (name, genus, family) and category chips (click a
+  category to isolate it).
+- **No runtime dependencies** — pure TypeScript + Canvas + SVG. ~584 kB bundle
+  (mostly the vendored coastline data), no CDN or network calls.
+- **Tested & CI-enforced** — a `vitest` data-integrity suite; GitHub Actions
+  runs typecheck, tests, and both builds on every push.
+- **Accessible** and keyboard-navigable; respects `prefers-reduced-motion`.
 
 ## Tech stack
 
 - [Vite](https://vitejs.dev/) + TypeScript (no framework — hand-rolled DOM)
-- [globe.gl](https://github.com/vasturiano/globe.gl) + [three.js](https://threejs.org/) for the WebGL globe
-- Self-contained: the countries GeoJSON is vendored under `public/data/`, so the
-  app has **no runtime CDN or network dependency**.
+- **No runtime dependencies** — botanical plates via Canvas 2D, the origins map
+  via inline SVG. Coastline data is vendored and inlined, so there is **no CDN
+  or network call**.
 
 ## Getting started
 
@@ -75,22 +72,22 @@ npx vite build --config vite.config.artifact.ts   # -> dist-artifact/index.html
 ## Project structure
 
 ```
-index.html              App shell + premium boot screen
+index.html              App shell + botanical boot screen
 src/
-  main.ts               State + orchestration (filters, selection, events)
-  globe.ts              globe.gl setup and the imperative globe controller
-  ui.ts                 DOM chrome + list/detail/claims/methodology renderers
-  signature.ts          Procedural specimen-signature generator (canvas)
+  main.ts               State + orchestration (gallery, sheet, filters)
+  ui.ts                 Herbarium chrome, specimen gallery, specimen sheet
+  plant.ts              Generative botanical plate generator (Canvas 2D)
+  atlasmap.ts           Antique equirectangular origins map (inline SVG)
   data/
     crops.ts            Curated atlas dossiers (+ maturity, safety, claims)
     speciesIndex.ts     Baseline scientific index (real species, honestly labeled)
     species.generated.ts  Importer output slot (empty until an import runs)
-    categories.ts       Category metadata + colour palette
+    categories.ts       Category metadata + botanical palette
     sources.ts          Shared source registry + maturity metadata
-    countries.json      Natural Earth countries (bundled at build time)
+    countries.json      Natural Earth coastlines (bundled at build time)
     data.test.ts        Schema + maturity-summary integrity tests
   types.ts              Data model (crop, claim, source, maturity, index, safety)
-  styles.css            Premium design system + evidence layer
+  styles.css            Botanical field-guide design system
 scripts/import-species.mjs  CSV → baseline index (path to the full Kew list)
 .github/workflows/ci.yml    Typecheck · test · build · artifact build
 ```
@@ -99,7 +96,7 @@ scripts/import-species.mjs  CSV → baseline index (path to the full Kew list)
 
 The baseline index is designed to grow to the full Kew *World Checklist of
 Useful Plants* (~7,039 human-food species). Drop a CSV in and run the importer;
-every row becomes a baseline record with its own specimen signature — no
+every row becomes a baseline record with its own botanical plate — no
 hand-authoring, no invented origins:
 
 ```bash

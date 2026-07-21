@@ -3,34 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light" />
     <meta
       name="description"
-      content="Produce Atlas — an evidence-led interactive 3-D atlas tracing the scientific identity, origins, domestication, and global spread of the world's food plants."
+      content="Produce Atlas — a botanical visualizer of the world's food plants: generative specimen illustrations, origins, and domestication history."
     />
-    <title>Produce Atlas — Origins & Spread of the World's Food Plants</title>
+    <title>Produce Atlas — A Botanical Visualizer of the World's Food Plants</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23090d16'/%3E%3Cpath d='M16 9a7 7 0 100 14 7 7 0 000-14z' fill='none' stroke='%23e7b84b' stroke-width='1.5' opacity='.5'/%3E%3Cpath d='M16 11c2 0 3.5 1.5 3.5 3.5S16 21 16 21s-3.5-4-3.5-6.5S14 11 16 11z' fill='%23e7b84b'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f2ece0'/%3E%3Cpath d='M16 25V11' stroke='%233f5c48' stroke-width='1.4'/%3E%3Cpath d='M16 15c-3 0-5-2-5-5 3 0 5 2 5 5zM16 18c3 0 5-2 5-5-3 0-5 2-5 5z' fill='%234e7c4a'/%3E%3C/svg%3E"
     />
   </head>
   <body>
-    <!-- Boot screen: painted from inline CSS so first frame is premium instantly -->
     <div id="boot" class="boot" aria-hidden="true">
-      <div class="boot__mark">
-        <span class="boot__ring"></span>
-        <span class="boot__seed"></span>
-      </div>
+      <div class="boot__sprout"></div>
       <div class="boot__wordmark">PRODUCE ATLAS</div>
-      <div class="boot__tagline">Origins &amp; spread of the world's food plants</div>
-      <div class="boot__bar"><span class="boot__bar-fill"></span></div>
-      <div class="boot__status" id="boot-status">Charting the globe…</div>
+      <div class="boot__tagline">A botanical visualizer of the world's food plants</div>
     </div>
 
-    <div id="app" class="app">
-      <div id="globe" class="globe-stage"></div>
-      <div class="vignette" aria-hidden="true"></div>
-    </div>
+    <main id="app" class="app"></main>
 
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -1,244 +1,178 @@
 import type { Crop, Claim, ListEntry, IndexSpecies } from "./types";
-import { renderSignature } from "./signature";
+import { renderPlant } from "./plant";
+import { renderOriginMap } from "./atlasmap";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
 import { INDEX_SPECIES } from "./data/speciesIndex";
-import {
-  SOURCES,
-  SOURCE_BY_ID,
-  MATURITY,
-  MATURITY_BY_ID,
-} from "./data/sources";
+import { SOURCES, SOURCE_BY_ID, MATURITY, MATURITY_BY_ID } from "./data/sources";
 
-/** Minimal HTML escaping for authored data rendered via innerHTML. */
+const INK = "#2c2620";
+
 function esc(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-/** Format years-before-present into a readable era label. */
 export function formatEra(bp: number): string {
-  const year = 1950 - bp; // BP is measured from 1950
+  const year = 1950 - bp;
   if (year < 0) {
     const bce = Math.round(-year / 100) * 100;
     return `c. ${bce.toLocaleString()} BCE`;
   }
-  const ce = Math.round(year / 50) * 50;
-  return `c. ${ce.toLocaleString()} CE`;
+  return `c. ${(Math.round(year / 50) * 50).toLocaleString()} CE`;
 }
-
 export function formatBP(bp: number): string {
   if (bp >= 1000) return `${(bp / 1000).toFixed(bp % 1000 === 0 ? 0 : 1)}k`;
   return String(bp);
 }
 
+/** Stable specimen accession number from an id. */
+function accession(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) >>> 0;
+  return "№ " + String(1000 + (h % 8999));
+}
+
 const svgSearch = `<svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>`;
 
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: "High confidence",
-  medium: "Medium confidence",
-  contested: "Contested",
-};
-const CLAIM_KIND_LABEL: Record<string, string> = {
-  identity: "Identity",
-  domestication: "Domestication",
-  spread: "Spread",
-  availability: "Availability",
-};
+const CONFIDENCE_LABEL: Record<string, string> = { high: "High confidence", medium: "Medium confidence", contested: "Contested" };
+const CLAIM_KIND_LABEL: Record<string, string> = { identity: "Identity", domestication: "Domestication", spread: "Spread", availability: "Availability" };
 
-/** A small maturity badge (used in list rows and the detail header). */
-function maturityBadge(m: string, opts: { compact?: boolean } = {}): string {
+function maturityBadge(m: string): string {
   const meta = MATURITY_BY_ID[m];
   if (!meta) return "";
-  const label = opts.compact ? meta.short : meta.label;
-  return `<span class="badge" data-maturity="${m}" style="--badge:${meta.color}" title="${esc(
-    meta.note,
-  )}"><span class="badge__dot"></span>${label}</span>`;
+  return `<span class="badge" style="--badge:${meta.color}" title="${esc(meta.note)}"><span class="badge__dot"></span>${meta.short}</span>`;
 }
 
 export interface UIRefs {
-  searchInput: HTMLInputElement;
+  search: HTMLInputElement;
   filters: HTMLElement;
-  list: HTMLElement;
   count: HTMLElement;
-  detail: HTMLElement;
-  detailScroll: HTMLElement;
-  detailClose: HTMLButtonElement;
-  timeRange: HTMLInputElement;
-  timeVal: HTMLElement;
-  resetBtn: HTMLButtonElement;
-  tip: HTMLElement;
-  methodBtn: HTMLButtonElement;
+  gallery: HTMLElement;
+  sheetScrim: HTMLElement;
+  sheetBody: HTMLElement;
+  sheetClose: HTMLButtonElement;
+  aboutBtn: HTMLButtonElement;
   methodPanel: HTMLElement;
   methodClose: HTMLButtonElement;
 }
 
-/** Build the entire chrome once and return element references. */
 export function mountChrome(root: HTMLElement): UIRefs {
   const chips = CATEGORIES.map(
-    (c) =>
-      `<button class="chip" data-cat="${c.id}" style="color:${c.color}">
-         <span class="chip__dot" style="background:${c.color}"></span>
-         <span style="color:var(--ink-soft)">${c.label}</span>
-       </button>`,
+    (c) => `<button class="chip" data-cat="${c.id}"><span class="chip__dot" style="background:${c.color}"></span>${c.label}</button>`,
   ).join("");
 
   root.insertAdjacentHTML(
     "beforeend",
     `
     <header class="masthead">
-      <div class="masthead__logo"><span></span></div>
-      <div>
-        <div class="masthead__title">PRODUCE ATLAS</div>
-        <div class="masthead__sub">Origins &amp; spread of the world's food plants</div>
-      </div>
+      <div class="masthead__rule"></div>
+      <div class="masthead__rule masthead__rule--thin"></div>
+      <h1 class="masthead__title">Produce&nbsp;<em>Atlas</em></h1>
+      <div class="masthead__sub">A Botanical Visualizer of the World's Food Plants</div>
+      <div class="masthead__rule masthead__rule--thin"></div>
+      <div class="masthead__rule"></div>
     </header>
 
-    <aside class="rail panel">
-      <div class="rail__head">
-        <span class="eyebrow">Food plants</span>
-        <span class="rail__count" id="pa-count"></span>
-      </div>
+    <div class="controls">
       <div class="search">
         ${svgSearch}
-        <input id="pa-search" type="search" placeholder="Search name, family, region…" autocomplete="off" spellcheck="false" />
+        <input id="pa-search" type="search" placeholder="Search name, genus, family…" autocomplete="off" spellcheck="false" />
       </div>
       <div class="filters" id="pa-filters">${chips}</div>
-      <div class="list" id="pa-list" role="listbox" aria-label="Food plants"></div>
-    </aside>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin:-12px 0 16px"><span class="count" id="pa-count"></span></div>
 
-    <section class="detail panel" id="pa-detail" aria-live="polite">
-      <button class="detail__close" id="pa-detail-close" aria-label="Close details">✕</button>
-      <div class="detail__scroll" id="pa-detail-scroll"></div>
-    </section>
+    <section class="gallery" id="pa-gallery" aria-label="Specimen gallery"></section>
 
-    <div class="timeaxis panel" id="pa-timeaxis">
-      <span class="timeaxis__label">Domestication horizon</span>
-      <input id="pa-time" type="range" min="0" max="11000" step="500" value="0" aria-label="Domestication horizon (years before present)" />
-      <span class="timeaxis__label">≥ <span class="timeaxis__val" id="pa-time-val">present</span></span>
-      <button class="ghost-btn" id="pa-reset">Reset</button>
+    <div class="footer">
+      <button class="about-btn" id="pa-about" aria-haspopup="dialog"><span class="about-btn__leaf"></span> About &amp; methodology</button>
     </div>
 
-    <button class="method-btn" id="pa-method-btn" aria-haspopup="dialog">
-      <span class="method-btn__dot"></span> Methodology &amp; evidence
-    </button>
+    <div class="sheet-scrim" id="pa-sheet-scrim" role="dialog" aria-modal="true" aria-label="Specimen sheet">
+      <article class="sheet">
+        <button class="sheet__close" id="pa-sheet-close" aria-label="Close">✕</button>
+        <div id="pa-sheet-body"></div>
+      </article>
+    </div>
 
     ${methodologyOverlay()}
-
-    <div class="tip" id="pa-tip"></div>
     `,
   );
 
   return {
-    searchInput: root.querySelector("#pa-search")!,
+    search: root.querySelector("#pa-search")!,
     filters: root.querySelector("#pa-filters")!,
-    list: root.querySelector("#pa-list")!,
     count: root.querySelector("#pa-count")!,
-    detail: root.querySelector("#pa-detail")!,
-    detailScroll: root.querySelector("#pa-detail-scroll")!,
-    detailClose: root.querySelector("#pa-detail-close")!,
-    timeRange: root.querySelector("#pa-time")!,
-    timeVal: root.querySelector("#pa-time-val")!,
-    resetBtn: root.querySelector("#pa-reset")!,
-    tip: root.querySelector("#pa-tip")!,
-    methodBtn: root.querySelector("#pa-method-btn")!,
+    gallery: root.querySelector("#pa-gallery")!,
+    sheetScrim: root.querySelector("#pa-sheet-scrim")!,
+    sheetBody: root.querySelector("#pa-sheet-body")!,
+    sheetClose: root.querySelector("#pa-sheet-close")!,
+    aboutBtn: root.querySelector("#pa-about")!,
     methodPanel: root.querySelector("#pa-method")!,
     methodClose: root.querySelector("#pa-method-close")!,
   };
 }
 
-/** Render the list for the current filtered set (atlas + baseline index). */
-export function renderList(
+// --- lazy plant drawing (only draw specimens as they scroll into view) -----
+let plantObserver: IntersectionObserver | null = null;
+
+function drawCanvas(cv: HTMLCanvasElement, size: number): void {
+  if (cv.dataset.drawn) return;
+  renderPlant(cv, cv.dataset.seed!, {
+    color: cv.dataset.color!,
+    category: cv.dataset.category!,
+    ink: INK,
+    size,
+  });
+  cv.dataset.drawn = "1";
+}
+
+export function renderGallery(
   container: HTMLElement,
   entries: ListEntry[],
-  activeId: string | null,
 ): void {
+  plantObserver?.disconnect();
   if (entries.length === 0) {
-    container.innerHTML = `<div style="padding:24px 8px;color:var(--ink-faint);font-size:13px">No plants match these filters.</div>`;
+    container.innerHTML = `<div class="gallery__empty">No specimens match these filters.</div>`;
     return;
   }
   container.innerHTML = entries
     .map((e, i) => {
       const color = CATEGORY_COLOR[e.category];
-      const active = e.id === activeId ? " is-active" : "";
-      const flag =
-        e.maturity === "flagship"
-          ? `<span class="crop__flag" title="Flagship — carries a source-linked claim packet">◆</span>`
-          : "";
-      // Atlas records show their emoji; baseline entries show a category dot.
-      const icon = e.glyph
-        ? `<div class="crop__glyph">${e.glyph}</div>`
-        : `<div class="crop__glyph crop__glyph--dot"><span style="background:${color}"></span></div>`;
-      const right = e.plotted
-        ? `<div class="crop__region">${esc(e.family)}</div>`
-        : `<div class="crop__region crop__region--muted">${esc(e.family)}</div>`;
       return `
-      <div class="crop${active}" role="option" tabindex="0" data-id="${e.id}"
-           style="--cat:${color};animation-delay:${Math.min(i * 12, 300)}ms">
-        ${icon}
-        <div class="crop__body">
-          <div class="crop__name">${esc(e.name)} ${flag}</div>
-          <div class="crop__sci">${esc(e.scientificName)}</div>
+      <div class="specimen" role="button" tabindex="0" data-id="${e.id}" style="animation-delay:${Math.min(i * 8, 240)}ms">
+        <span class="specimen__no">${accession(e.id)}</span>
+        <div class="specimen__plate">
+          <canvas data-seed="${e.id}" data-color="${color}" data-category="${e.category}" aria-hidden="true"></canvas>
         </div>
-        ${right}
+        <div class="specimen__name">${esc(e.name)}<span class="mdot" style="background:${MATURITY_BY_ID[e.maturity]?.color}"></span></div>
+        <div class="specimen__sci">${esc(e.scientificName)}</div>
+        <div class="specimen__fam">${esc(e.family)}</div>
       </div>`;
     })
     .join("");
+
+  plantObserver = new IntersectionObserver(
+    (rows) => {
+      for (const r of rows) {
+        if (r.isIntersecting) {
+          const cv = r.target.querySelector<HTMLCanvasElement>("canvas");
+          if (cv) drawCanvas(cv, 170);
+          plantObserver!.unobserve(r.target);
+        }
+      }
+    },
+    { rootMargin: "200px" },
+  );
+  container.querySelectorAll(".specimen").forEach((el) => plantObserver!.observe(el));
 }
 
-/** Render a compact detail card for a baseline (index) species. */
-export function renderBaselineDetail(
-  container: HTMLElement,
-  sp: IndexSpecies,
-): void {
-  const color = CATEGORY_COLOR[sp.category];
-  const catLabel =
-    CATEGORIES.find((k) => k.id === sp.category)?.label ?? sp.category;
-
-  container.innerHTML = `
-    <div class="detail__topline">
-      <div class="detail__cat">
-        <span class="chip__dot" style="background:${color};box-shadow:0 0 8px ${color}"></span>
-        <span>${catLabel}</span>
-      </div>
-      ${maturityBadge(sp.maturity)}
-    </div>
-    <div class="detail__hero">
-      <canvas class="detail__sig" aria-hidden="true"></canvas>
-    </div>
-    <h1 class="detail__name">${esc(sp.name)}</h1>
-    <div class="detail__sci">${esc(sp.scientificName)}</div>
-    <div class="detail__family">Family · ${esc(sp.family)}</div>
-
-    <div class="section">
-      <span class="eyebrow">Baseline record</span>
-      <p>This is a catalog-baseline entry: a real edible species included for
-      breadth of coverage. It has <strong>not yet been individually researched</strong>
-      for its center of origin, domestication, or historical spread, so no origin
-      is plotted on the globe and no claims are asserted.</p>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Specimen signature</span>
-      <p class="section__caption">A deterministic generative mark unique to this species — an interpretive signature, not a botanical reconstruction.</p>
-    </div>
-
-    <div class="detail__hint">Promote this to an authored record to add its origin, spread, and evidence.</div>
-  `;
-
-  const sig = container.querySelector<HTMLCanvasElement>(".detail__sig");
-  if (sig) renderSignature(sig, sp.id, { color, size: 132 });
-}
-
+// --- specimen sheet --------------------------------------------------------
 function claimRow(claim: Claim): string {
   const refs = claim.sourceIds
     .map((id) => {
       const idx = SOURCES.findIndex((s) => s.id === id);
-      return idx >= 0
-        ? `<span class="ref" title="${esc(SOURCE_BY_ID[id]?.citation ?? id)}">${idx + 1}</span>`
-        : "";
+      return idx >= 0 ? `<span class="ref" title="${esc(SOURCE_BY_ID[id]?.citation ?? id)}">${idx + 1}</span>` : "";
     })
     .join("");
   return `
@@ -247,194 +181,193 @@ function claimRow(claim: Claim): string {
         <span class="claim__kind">${CLAIM_KIND_LABEL[claim.kind] ?? claim.kind}</span>
         <span class="claim__meta">
           <span class="claim__conf" data-conf="${claim.confidence}">${CONFIDENCE_LABEL[claim.confidence] ?? claim.confidence}</span>
-          <span class="claim__review" data-review="${claim.review}">${claim.review === "pending" ? "Review pending" : claim.review}</span>
+          <span class="claim__review">${claim.review === "pending" ? "Review pending" : claim.review}</span>
         </span>
       </div>
       <p class="claim__text">${esc(claim.statement)} ${refs}</p>
     </div>`;
 }
 
-/** Render the detail panel content for a selected crop. */
-export function renderDetail(container: HTMLElement, c: Crop): void {
-  const color = CATEGORY_COLOR[c.category];
-  const catLabel =
-    CATEGORIES.find((k) => k.id === c.category)?.label ?? c.category;
-
-  const legs = c.spread
-    .slice()
-    .sort((a, b) => a.order - b.order)
-    .map(
-      (leg) => `
-      <div class="leg" style="--cat:${color}">
-        <span class="leg__dot"></span>
-        <div class="leg__to">${esc(leg.to)}</div>
-        <div class="leg__period">${esc(leg.period)}</div>
-      </div>`,
-    )
-    .join("");
-
-  // Claim packet (flagship only) + the sources it draws on.
-  let claimsSection = "";
-  if (c.claims && c.claims.length) {
-    const usedIds = [...new Set(c.claims.flatMap((cl) => cl.sourceIds))];
-    const refsList = usedIds
-      .map((id) => {
-        const idx = SOURCES.findIndex((s) => s.id === id);
-        return `<li><span class="ref">${idx + 1}</span> ${esc(SOURCE_BY_ID[id]?.citation ?? id)}</li>`;
-      })
-      .join("");
-    claimsSection = `
-    <div class="section">
-      <span class="eyebrow">Claim packet · ${c.claims.length} source-linked claims</span>
-      <div class="claims">${c.claims.map(claimRow).join("")}</div>
-      <div class="refs">
-        <div class="refs__title">References</div>
-        <ol class="refs__list">${refsList}</ol>
+function plateBlock(id: string, name: string, sci: string, fam: string): string {
+  return `
+    <div>
+      <div class="plate">
+        <div class="plate__frame"></div>
+        <canvas id="pa-plate" aria-hidden="true"></canvas>
+      </div>
+      <div class="label-block">
+        <div class="label-block__row"><span class="label">Herbarium</span><span class="label-block__no">${accession(id)}</span></div>
+        <div style="font-size:17px;font-weight:600;margin-top:4px">${esc(name)}</div>
+        <div class="sci" style="color:var(--green)">${esc(sci)}</div>
+        <div class="specimen__fam" style="margin-top:5px">${esc(fam)}</div>
       </div>
     </div>`;
+}
+
+/** Fill the sheet for a fully-authored atlas crop. */
+export function renderCropSheet(body: HTMLElement, c: Crop): void {
+  const color = CATEGORY_COLOR[c.category];
+  const catLabel = CATEGORIES.find((k) => k.id === c.category)?.label ?? c.category;
+
+  const legs = c.spread.slice().sort((a, b) => a.order - b.order)
+    .map((l) => `<div class="leg"><span class="leg__to">${esc(l.to)}</span><span class="leg__period">${esc(l.period)}</span></div>`)
+    .join("");
+
+  let claimsSection = "";
+  if (c.claims?.length) {
+    const usedIds = [...new Set(c.claims.flatMap((cl) => cl.sourceIds))];
+    const refsList = usedIds.map((id) => {
+      const idx = SOURCES.findIndex((s) => s.id === id);
+      return `<li><span class="ref">${idx + 1}</span> ${esc(SOURCE_BY_ID[id]?.citation ?? id)}</li>`;
+    }).join("");
+    claimsSection = `
+      <div class="section">
+        <span class="label">Claim packet · ${c.claims.length} source-linked claims</span>
+        <div class="claims">${c.claims.map(claimRow).join("")}</div>
+        <ul class="refs__list">${refsList}</ul>
+      </div>`;
   }
 
   const cautionRow = c.safety.cautionParts
-    ? `<div class="safety__row safety__row--warn"><span class="safety__k">Caution</span><span>${esc(
-        c.safety.cautionParts,
-      )}</span></div>`
+    ? `<div class="safety__row safety__row--warn"><span class="safety__k">Caution</span><span>${esc(c.safety.cautionParts)}</span></div>`
     : "";
 
-  container.innerHTML = `
-    <div class="detail__topline">
-      <div class="detail__cat">
-        <span class="chip__dot" style="background:${color};box-shadow:0 0 8px ${color}"></span>
-        <span>${catLabel}</span>
+  const mapLegs = c.spread.map((l) => ({ coords: l.coords, to: l.to }));
+
+  body.innerHTML = `
+    <div class="sheet__grid">
+      <div>${plateBlock(c.id, c.name, c.scientificName, c.family)}</div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding-right:36px">
+          <span class="sheet__cat"><span class="chip__dot" style="width:9px;height:9px;background:${color}"></span><span class="label">${catLabel}</span></span>
+          ${maturityBadge(c.maturity)}
+        </div>
+        <h2 class="sheet__name">${esc(c.name)}</h2>
+        <div class="sheet__sci">${esc(c.scientificName)}</div>
+        <div class="sheet__fam">Family · ${esc(c.family)}</div>
+
+        ${renderOriginMap(c.origin, mapLegs, color)}
+        <div class="map-cap">Centre of origin (ringed) &amp; historical dispersal — representative, not exact</div>
+
+        <div class="stats">
+          <div class="stat"><span class="label">Centre of origin</span><div class="stat__v">${esc(c.originCenter)}</div><div class="stat__note">${esc(c.originRegion)}</div></div>
+          <div class="stat"><span class="label">Domesticated</span><div class="stat__v"><em>~${formatBP(c.domesticatedBP)} BP</em></div><div class="stat__note">${formatEra(c.domesticatedBP)} · approximate</div></div>
+        </div>
+
+        <div class="section"><span class="label">Domestication</span><p>${esc(c.domestication)}</p></div>
+        <div class="section"><span class="label">Wild progenitor</span><p class="prog" style="color:var(--green)">${esc(c.progenitor)}</p></div>
+        <div class="section"><span class="label">Evidence</span><p class="evidence">${esc(c.evidence)}</p></div>
+        ${claimsSection}
+        <div class="section">
+          <span class="label">Historical spread</span>
+          <p class="caption">Corridors, not reconstructions of every route.</p>
+          <div class="spread">${legs}</div>
+        </div>
+        <div class="section"><span class="label">Today</span><p>${esc(c.availability)}</p></div>
+        <div class="section">
+          <span class="label">Edibility &amp; safety</span>
+          <div class="safety">
+            <div class="safety__row"><span class="safety__k">Eaten</span><span>${esc(c.safety.edibleParts)}</span></div>
+            ${cautionRow}
+            <p class="safety__note">${esc(c.safety.note)}</p>
+            <p class="safety__disc">General reference only — not food-safety or medical advice.</p>
+          </div>
+        </div>
       </div>
-      ${maturityBadge(c.maturity)}
-    </div>
-    <div class="detail__hero">
-      <canvas class="detail__sig" aria-hidden="true"></canvas>
-      <div class="detail__glyph">${c.glyph}</div>
-    </div>
-    <h1 class="detail__name">${esc(c.name)}</h1>
-    <div class="detail__sci">${esc(c.scientificName)}</div>
-    <div class="detail__family">Family · ${esc(c.family)}</div>
+    </div>`;
 
-    <div class="stats">
-      <div class="stat">
-        <div class="stat__k">Center of origin</div>
-        <div class="stat__v">${esc(c.originCenter)}</div>
-        <div class="stat__note">Representative point · not an exact discovery site</div>
-      </div>
-      <div class="stat">
-        <div class="stat__k">Domesticated</div>
-        <div class="stat__v"><em>~${formatBP(c.domesticatedBP)} BP</em></div>
-        <div class="stat__note">${formatEra(c.domesticatedBP)} · approximate</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Domestication</span>
-      <p class="lede">${esc(c.domestication)}</p>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Wild progenitor</span>
-      <p style="font-family:var(--font-serif);font-style:italic;color:var(--ink)">${esc(c.progenitor)}</p>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Evidence</span>
-      <p class="evidence">${esc(c.evidence)}</p>
-    </div>
-
-    ${claimsSection}
-
-    <div class="section">
-      <span class="eyebrow">Historical spread</span>
-      <p class="section__caption">Corridors, not reconstructions of every shipment.</p>
-      <div class="spread">${legs}</div>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Today</span>
-      <p>${esc(c.availability)}</p>
-    </div>
-
-    <div class="section">
-      <span class="eyebrow">Edibility &amp; safety</span>
-      <div class="safety">
-        <div class="safety__row"><span class="safety__k">Eaten</span><span>${esc(c.safety.edibleParts)}</span></div>
-        ${cautionRow}
-        <p class="safety__note">${esc(c.safety.note)}</p>
-        <p class="safety__disc">General reference only — not food-safety or medical advice.</p>
-      </div>
-    </div>
-  `;
-
-  // Draw the procedural specimen signature into the hero canvas.
-  const sig = container.querySelector<HTMLCanvasElement>(".detail__sig");
-  if (sig) renderSignature(sig, c.id, { color, size: 132 });
+  const plate = body.querySelector<HTMLCanvasElement>("#pa-plate");
+  if (plate) renderPlant(plate, c.id, { color, category: c.category, ink: INK, size: 300 });
 }
 
-/** The methodology / evidence overlay (governance made visible). */
+/** Fill the sheet for a baseline index species. */
+export function renderSpeciesSheet(body: HTMLElement, sp: IndexSpecies): void {
+  const color = CATEGORY_COLOR[sp.category];
+  const catLabel = CATEGORIES.find((k) => k.id === sp.category)?.label ?? sp.category;
+
+  body.innerHTML = `
+    <div class="sheet__grid">
+      <div>${plateBlock(sp.id, sp.name, sp.scientificName, sp.family)}</div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding-right:36px">
+          <span class="sheet__cat"><span class="chip__dot" style="width:9px;height:9px;background:${color}"></span><span class="label">${catLabel}</span></span>
+          ${maturityBadge(sp.maturity)}
+        </div>
+        <h2 class="sheet__name">${esc(sp.name)}</h2>
+        <div class="sheet__sci">${esc(sp.scientificName)}</div>
+        <div class="sheet__fam">Family · ${esc(sp.family)}</div>
+
+        <div class="section">
+          <span class="label">Baseline record</span>
+          <p class="baseline-note">A real edible species included for breadth of coverage. It has
+          <strong>not yet been individually researched</strong> for its centre of origin, domestication,
+          or historical spread — so no origin is mapped and no claims are made.</p>
+        </div>
+        <div class="section">
+          <span class="label">Specimen illustration</span>
+          <p class="caption">A deterministic generative plate unique to this species — an interpretive
+          botanical signature, not an exact reconstruction.</p>
+        </div>
+        <p class="sheet__hint">Promote to an authored record to add its origin, spread, and evidence.</p>
+      </div>
+    </div>`;
+
+  const plate = body.querySelector<HTMLCanvasElement>("#pa-plate");
+  if (plate) renderPlant(plate, sp.id, { color, category: sp.category, ink: INK, size: 300 });
+}
+
+// --- methodology overlay ---------------------------------------------------
 function methodologyOverlay(): string {
   const counts: Record<string, number> = {};
   for (const c of CROPS) counts[c.maturity] = (counts[c.maturity] ?? 0) + 1;
   counts["baseline"] = (counts["baseline"] ?? 0) + INDEX_SPECIES.length;
   const total = CROPS.length + INDEX_SPECIES.length;
   const totalClaims = CROPS.reduce((n, c) => n + (c.claims?.length ?? 0), 0);
-  const approved = CROPS.reduce(
-    (n, c) => n + (c.claims?.filter((cl) => cl.review === "approved").length ?? 0),
-    0,
-  );
+  const approved = CROPS.reduce((n, c) => n + (c.claims?.filter((cl) => cl.review === "approved").length ?? 0), 0);
 
   const tiers = MATURITY.map(
     (m) => `
     <div class="mtier" style="--badge:${m.color}">
-      <div class="mtier__head">
-        <span class="badge__dot"></span>
-        <span class="mtier__label">${m.label}</span>
-        <span class="mtier__count">${counts[m.id] ?? 0}</span>
-      </div>
+      <div class="mtier__head"><span class="badge__dot"></span><span class="mtier__label">${m.label}</span><span class="mtier__count">${counts[m.id] ?? 0}</span></div>
       <p class="mtier__note">${esc(m.note)}</p>
     </div>`,
   ).join("");
 
-  const sourceList = SOURCES.map(
-    (s, i) =>
-      `<li><span class="ref">${i + 1}</span> ${esc(s.citation)}</li>`,
-  ).join("");
+  const sourceList = SOURCES.map((s, i) => `<li><span class="ref">${i + 1}</span> ${esc(s.citation)}</li>`).join("");
 
   return `
-  <div class="methodology" id="pa-method" role="dialog" aria-modal="true" aria-label="Methodology and evidence" hidden>
+  <div class="methodology" id="pa-method" role="dialog" aria-modal="true" aria-label="About and methodology" hidden>
     <div class="methodology__scrim" data-close></div>
-    <div class="methodology__card panel">
-      <button class="detail__close" id="pa-method-close" aria-label="Close">✕</button>
-      <span class="eyebrow">How to read this atlas</span>
+    <div class="methodology__card">
+      <button class="sheet__close" id="pa-method-close" aria-label="Close">✕</button>
+      <span class="label">How to read this atlas</span>
       <h2 class="methodology__title">Evidence before spectacle</h2>
-      <p class="methodology__lede">
-        Structural completeness is not the same as researched depth. Every record has a full
-        set of fields, but only some are individually authored, and only a few carry a formal
-        packet of source-linked claims. This panel makes those limits visible.
-      </p>
+      <p class="methodology__lede">Every specimen is drawn as a generative botanical plate. But structural
+      completeness is not researched depth: only some records are individually authored, and only a few carry a
+      formal packet of source-linked claims. This atlas keeps those limits visible.</p>
 
+      <span class="label">The collection</span>
       <div class="mstats">
-        <div class="mstat"><div class="mstat__v">${total}</div><div class="mstat__k">Records</div></div>
+        <div class="mstat"><div class="mstat__v">${total}</div><div class="mstat__k">Specimens</div></div>
         <div class="mstat"><div class="mstat__v">${counts["flagship"] ?? 0}</div><div class="mstat__k">Flagship packets</div></div>
         <div class="mstat"><div class="mstat__v">${totalClaims}</div><div class="mstat__k">Source-linked claims</div></div>
         <div class="mstat"><div class="mstat__v">${approved}</div><div class="mstat__k">Expert-approved</div></div>
       </div>
 
-      <span class="eyebrow">Research maturity</span>
+      <span class="label">Research maturity</span>
       <div class="mtiers">${tiers}</div>
 
-      <span class="eyebrow">What the map does and does not claim</span>
+      <span class="label">What the plates and maps do and do not claim</span>
       <ul class="mdisclose">
-        <li>Origin markers are <strong>representative points</strong> for a center of origin, not exact discovery sites.</li>
-        <li>Spread arcs are <strong>historical corridors</strong>, not reconstructions of every route or shipment.</li>
-        <li>Dates are <strong>approximate</strong> years before present and are, for several crops, actively debated.</li>
+        <li>Botanical plates are <strong>generative signatures</strong>, not exact botanical reconstructions.</li>
+        <li>Origin markers are <strong>representative points</strong> for a centre of origin, not exact sites.</li>
+        <li>Spread arcs are <strong>historical corridors</strong>, not reconstructions of every route.</li>
+        <li>Dates are <strong>approximate</strong>, and for several crops actively debated.</li>
         <li>Edibility notes are <strong>general reference</strong>, never food-safety or medical advice.</li>
       </ul>
 
-      <span class="eyebrow">Source registry</span>
-      <ol class="refs__list refs__list--full">${sourceList}</ol>
+      <span class="label">Source registry</span>
+      <ul class="refs__list">${sourceList}</ul>
     </div>
   </div>`;
 }

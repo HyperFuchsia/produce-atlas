@@ -1,16 +1,19 @@
 import type { CategoryMeta } from "../types";
 
-/** Category palette — warm, editorial, botanical. Keyed to marker + arc color. */
+/**
+ * Category palette — botanical inks tuned to read on warm parchment
+ * (herbarium aesthetic). Used for the plant illustrations, labels, and map.
+ */
 export const CATEGORIES: CategoryMeta[] = [
-  { id: "cereal", label: "Cereals & Grains", color: "#E7B84B" },
-  { id: "fruit", label: "Fruits", color: "#EF6E7B" },
-  { id: "vegetable", label: "Vegetables", color: "#6FBF8B" },
-  { id: "legume", label: "Legumes", color: "#D9A441" },
-  { id: "tuber", label: "Roots & Tubers", color: "#D07B4E" },
-  { id: "beverage", label: "Beverage & Stimulant", color: "#B58BD6" },
-  { id: "oil", label: "Oil & Sugar", color: "#5FB5B3" },
-  { id: "spice", label: "Herbs & Spices", color: "#C98A5E" },
-  { id: "nut", label: "Nuts & Seeds", color: "#B08D57" },
+  { id: "cereal", label: "Cereals & Grains", color: "#b0802b" },
+  { id: "fruit", label: "Fruits", color: "#a83f2f" },
+  { id: "vegetable", label: "Vegetables", color: "#4e7c4a" },
+  { id: "legume", label: "Legumes", color: "#7c792f" },
+  { id: "tuber", label: "Roots & Tubers", color: "#96562f" },
+  { id: "beverage", label: "Beverage & Stimulant", color: "#6b4d80" },
+  { id: "oil", label: "Oil & Sugar", color: "#3f7d74" },
+  { id: "spice", label: "Herbs & Spices", color: "#b3671f" },
+  { id: "nut", label: "Nuts & Seeds", color: "#7a5636" },
 ];
 
 export const CATEGORY_COLOR: Record<string, string> = Object.fromEntries(
