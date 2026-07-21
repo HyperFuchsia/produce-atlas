@@ -164,8 +164,26 @@ ui.resetBtn.addEventListener("click", () => {
   refresh();
 });
 
+// Methodology overlay
+function openMethod(): void {
+  ui.methodPanel.hidden = false;
+  ui.tip.classList.remove("is-on");
+  ui.methodClose.focus();
+}
+function closeMethod(): void {
+  ui.methodPanel.hidden = true;
+  ui.methodBtn.focus();
+}
+ui.methodBtn.addEventListener("click", openMethod);
+ui.methodClose.addEventListener("click", closeMethod);
+ui.methodPanel.addEventListener("click", (e) => {
+  if ((e.target as HTMLElement).dataset.close !== undefined) closeMethod();
+});
+
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && state.selectedId) closeDetail();
+  if (e.key !== "Escape") return;
+  if (!ui.methodPanel.hidden) closeMethod();
+  else if (state.selectedId) closeDetail();
 });
 
 // -------------------------------------------------------------- boot out

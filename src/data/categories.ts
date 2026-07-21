@@ -9,6 +9,7 @@ export const CATEGORIES: CategoryMeta[] = [
   { id: "tuber", label: "Roots & Tubers", color: "#D07B4E" },
   { id: "beverage", label: "Beverage & Stimulant", color: "#B58BD6" },
   { id: "oil", label: "Oil & Sugar", color: "#5FB5B3" },
+  { id: "spice", label: "Herbs & Spices", color: "#C98A5E" },
 ];
 
 export const CATEGORY_COLOR: Record<string, string> = Object.fromEntries(

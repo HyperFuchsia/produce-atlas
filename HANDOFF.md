@@ -2,6 +2,43 @@
 
 _Last updated: 2026-07-21_
 
+## Update — evidence-governance layer (toward "v33")
+
+In response to the *Comprehensive Implementation Audit*, this increment builds
+toward the audited platform by implementing its top-priority (P0–P2) items on
+the real codebase — **without** inflating the record count (the audit's explicit
+warning). "Evidence before spectacle."
+
+- **Data model** extended (`src/types.ts`): `Maturity` tier, `Source`, `Claim`,
+  `Safety`, and `coordinatePrecision` on every `Crop`. Added a `spice` category.
+- **Source registry** (`src/data/sources.ts`): real archaeobotany / genetics /
+  food-history references + maturity metadata.
+- **Records**: every crop now labeled by maturity and given a record-specific
+  safety note. Added **Black Pepper** as the 5th flagship. The five flagship
+  crops (Apple, Banana, Potato, Tomato, Black Pepper) carry **claim packets** —
+  20 source-linked claims total, **all review-pending, 0 approvals** (matches the
+  audit's disclosed shape exactly).
+- **UI** (`src/ui.ts`, `src/styles.css`): maturity badges (list + detail),
+  flagship markers, a **claim packet** section with per-claim confidence, review
+  status, and numbered references; representative-coordinate + "corridors not
+  routes" disclosures; a safety section; and a **Methodology & evidence** overlay
+  ("Evidence before spectacle") with a 21/5/20/0 summary, maturity tiers, and the
+  full source registry.
+- **Tests + CI**: `src/data/data.test.ts` (12 vitest cases) validates schema,
+  coordinate ranges, claim-source resolution, and the disclosed maturity numbers
+  so docs can't drift from data. `.github/workflows/ci.yml` runs typecheck →
+  test → build → artifact build on every push (audit rated "no enforced CI" a
+  High risk).
+- **Docs**: added `METHODOLOGY.md`; updated README.
+- Artifact republished (same URL) with the evidence layer.
+
+_Not yet done (later audit priorities): expert review of claims, per-page source
+locators, Core-300/WCUPS-scale expansion, specimen 3-D pages, real-device perf
+matrix, observability. These remain deliberately open rather than faked._
+
+---
+
+
 ## Update — self-contained build + hosted artifact
 
 Follow-up work so the app can run with **zero external requests** and be embedded
