@@ -1,0 +1,83 @@
+# Produce Atlas — Handoff
+
+_Last updated: 2026-07-21_
+
+## Session summary
+
+The repository previously contained **only** a two-line `README.md` (no prior
+application code was present on any branch, despite the note about earlier Codex
+work). This session bootstrapped the full application and delivered an
+**extremely premium interactive 3-D atlas** of food-plant origins and spread.
+
+## What was completed this session
+
+### Project scaffold
+- Initialised a **Vite + TypeScript** project (no UI framework — hand-rolled DOM
+  for full control over the design).
+- Added `package.json` scripts (`dev`, `build`, `preview`), `tsconfig.json`
+  (strict), `vite.config.ts` (`base: "./"` for subpath hosting), `.gitignore`,
+  and `src/vite-env.d.ts`.
+- Dependencies: `three`, `globe.gl` (runtime); `typescript`, `vite`,
+  `@types/three` (dev). Playwright was used only for verification and was
+  **removed** from the manifest afterwards.
+
+### Data model (evidence-led)
+- `src/types.ts` — typed `Crop` / `SpreadLeg` / `Category` model.
+- `src/data/crops.ts` — **20 curated food plants** with scientific name, family,
+  center of origin (Vavilov framework), coordinates, domestication date (BP),
+  wild progenitor, an evidence note (macrofossils / starch grains / genomics),
+  present-day availability, and 3–5 historical dispersal legs each.
+- `src/data/categories.ts` — 7 categories with a warm botanical colour palette.
+
+### Premium UI / UX
+- `src/styles.css` — a complete dark, editorial, glassmorphic **design system**:
+  custom tokens, serif display + sans UI type, an animated boot/loading screen,
+  a cinematic vignette, glass panels, category chips, a crop list with reveal
+  animations, a detail dossier, a time scrubber, tooltips, focus states, full
+  responsive layout, and `prefers-reduced-motion` support.
+- `src/globe.ts` — `globe.gl` / `three.js` controller: dotted-land "data globe",
+  atmospheric glow, graticules, gentle auto-rotate, colour-coded origin points,
+  pulsing origin rings, animated dispersal arcs, and fly-to camera on select.
+- `src/ui.ts` — builds the DOM chrome and renders the list + detail panel;
+  includes BP→era formatting.
+- `src/main.ts` — state + orchestration: search, category filtering,
+  domestication-horizon time filter, selection, keyboard access, boot-out.
+- `index.html` — app shell, inline SVG favicon, premium first-paint boot screen.
+
+### Self-contained assets
+- Vendored the **Natural Earth countries GeoJSON** to `public/data/countries.geojson`
+  (from the installed `three-globe` example data) so the app has **no runtime
+  CDN/network dependency**.
+
+### Verification
+- `npm run build` passes (strict typecheck + Vite build, 0 errors).
+- Rendered the production build in headless Chromium and captured screenshots of
+  the overview, an active selection with spread arcs (Maize), and category
+  colour-coding (Coffee). No console errors. `docs/preview.png` is the hero shot.
+
+## How to run
+
+```bash
+npm install
+npm run dev      # http://localhost:5173
+npm run build    # typecheck + dist/
+npm run preview  # serve dist/
+```
+
+## Notes, caveats, and possible next steps
+
+- **Bundle size**: the JS bundle is ~1.9 MB (543 kB gzip) because `three.js` is
+  bundled. Acceptable for this app; could be trimmed with code-splitting or a
+  slimmer globe renderer if needed.
+- **Data accuracy**: origin centers/dates reflect mainstream scholarship but are
+  approximate and, for some crops, debated. Evidence notes describe the *kind*
+  of support rather than citing individual studies. Not a primary source.
+- **Ideas for future work**: expand the dataset (more crops, secondary centers,
+  per-leg citations); add a true chronological "play" animation of spread over
+  time; per-crop reference links; a light theme; unit tests for the filter
+  pipeline; clustering/labels when many origins overlap.
+
+## Not saved / out of scope
+- Nothing intended for the repo was left unsaved. Temporary verification files
+  (screenshot script, screenshots outside `docs/`) were scratch-only and were
+  **not** committed; `node_modules/` and `dist/` are intentionally gitignored.

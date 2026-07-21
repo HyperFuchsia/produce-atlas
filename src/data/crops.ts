@@ -1,0 +1,514 @@
+import type { Crop } from "../types";
+
+/**
+ * Curated, evidence-led dataset of food-plant origins.
+ *
+ * Centers of origin follow the Vavilov centers framework as refined by modern
+ * archaeobotany and genetics. Dates are given as approximate years before
+ * present (BP) for the onset of domestication and are necessarily ranges;
+ * dispersal legs summarise well-attested historical movements rather than
+ * every route. Evidence notes describe the *kind* of support (macrofossils,
+ * starch grains, genomics) behind each attribution.
+ */
+export const CROPS: Crop[] = [
+  {
+    id: "maize",
+    name: "Maize",
+    scientificName: "Zea mays",
+    family: "Poaceae",
+    category: "cereal",
+    glyph: "🌽",
+    originCenter: "Balsas River Valley",
+    originRegion: "Central Mexico",
+    origin: [17.9, -99.5],
+    domesticatedBP: 9000,
+    domestication:
+      "Domesticated from teosinte in the tropical lowlands of the Balsas basin; a handful of regulatory genes converted a branching grass into a single cob-bearing crop.",
+    progenitor: "Balsas teosinte (Zea mays ssp. parviglumis)",
+    evidence:
+      "Starch grains and phytoliths on grinding stones plus whole-genome data pinpoint a single Balsas domestication ~9,000 BP.",
+    availability:
+      "The world's largest cereal crop by volume; grown on every inhabited continent for food, feed, and industry.",
+    spread: [
+      { to: "Andes & Amazonia", coords: [-12, -77], period: "by ~6,000 BP", order: 1 },
+      { to: "Eastern North America", coords: [38, -90], period: "~2,000 BP", order: 2 },
+      { to: "Iberia & Europe", coords: [40, -4], period: "16th c. CE", order: 3 },
+      { to: "West Africa", coords: [9, 8], period: "16th–17th c. CE", order: 4 },
+      { to: "East & South Asia", coords: [28, 100], period: "16th–17th c. CE", order: 5 },
+    ],
+  },
+  {
+    id: "wheat",
+    name: "Bread Wheat",
+    scientificName: "Triticum aestivum",
+    family: "Poaceae",
+    category: "cereal",
+    glyph: "🌾",
+    originCenter: "Fertile Crescent (Karacadağ)",
+    originRegion: "Southeastern Anatolia",
+    origin: [37.7, 39.3],
+    domesticatedBP: 10000,
+    domestication:
+      "Emmer and einkorn were domesticated in the Fertile Crescent; hexaploid bread wheat arose later when cultivated emmer hybridised with a wild goatgrass.",
+    progenitor: "Wild emmer (T. dicoccoides) × Aegilops tauschii",
+    evidence:
+      "Charred grain and rachis fragments from early Neolithic villages, corroborated by the geography of wild progenitor DNA.",
+    availability:
+      "A staple for roughly a third of humanity; the dominant grain across temperate zones worldwide.",
+    spread: [
+      { to: "Nile Valley", coords: [26, 32], period: "~7,000 BP", order: 1 },
+      { to: "Europe", coords: [48, 10], period: "~7,000–5,000 BP", order: 2 },
+      { to: "Indus Valley", coords: [28, 70], period: "~7,000 BP", order: 3 },
+      { to: "North China", coords: [35, 110], period: "~4,500 BP", order: 4 },
+      { to: "Americas & Australia", coords: [39, -98], period: "16th–19th c. CE", order: 5 },
+    ],
+  },
+  {
+    id: "rice",
+    name: "Asian Rice",
+    scientificName: "Oryza sativa",
+    family: "Poaceae",
+    category: "cereal",
+    glyph: "🌾",
+    originCenter: "Middle & Lower Yangtze",
+    originRegion: "Southern China",
+    origin: [30.0, 112.0],
+    domesticatedBP: 9000,
+    domestication:
+      "Japonica rice was domesticated from wild rice along the Yangtze; the indica subspecies emerged as those alleles introgressed into South Asian wild populations.",
+    progenitor: "Wild rice (Oryza rufipogon)",
+    evidence:
+      "Waterlogged husks and phytoliths in Yangtze wetland sites, with genomics tracing the key non-shattering allele to a single origin.",
+    availability:
+      "Primary food for over half the world; overwhelmingly grown across monsoon and tropical Asia.",
+    spread: [
+      { to: "Southeast Asia", coords: [15, 105], period: "~5,000 BP", order: 1 },
+      { to: "South Asia", coords: [25, 82], period: "~4,000 BP", order: 2 },
+      { to: "Near East & Africa", coords: [15, 38], period: "1st millennium CE", order: 3 },
+      { to: "Mediterranean Europe", coords: [40, 0], period: "8th–15th c. CE", order: 4 },
+      { to: "The Americas", coords: [32, -90], period: "17th c. CE", order: 5 },
+    ],
+  },
+  {
+    id: "potato",
+    name: "Potato",
+    scientificName: "Solanum tuberosum",
+    family: "Solanaceae",
+    category: "tuber",
+    glyph: "🥔",
+    originCenter: "Lake Titicaca Basin",
+    originRegion: "Andean Peru & Bolivia",
+    origin: [-15.8, -69.3],
+    domesticatedBP: 8000,
+    domestication:
+      "Domesticated in the high Andes from a complex of wild tuber-bearing species; Andean farmers bred thousands of frost- and altitude-adapted landraces.",
+    progenitor: "Solanum brevicaule complex",
+    evidence:
+      "Preserved tubers and starch in highland sites, backed by genetics rooting cultivars in southern Peru.",
+    availability:
+      "The world's leading non-cereal food crop; a staple across Europe, Asia, and the Americas.",
+    spread: [
+      { to: "Spain & Europe", coords: [43, -3], period: "late 16th c. CE", order: 1 },
+      { to: "British Isles", coords: [53, -7], period: "17th c. CE", order: 2 },
+      { to: "South & East Asia", coords: [30, 90], period: "17th–19th c. CE", order: 3 },
+      { to: "North America", coords: [44, -72], period: "18th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "tomato",
+    name: "Tomato",
+    scientificName: "Solanum lycopersicum",
+    family: "Solanaceae",
+    category: "vegetable",
+    glyph: "🍅",
+    originCenter: "Mesoamerica (from Andean wild stock)",
+    originRegion: "Mexico",
+    origin: [19.4, -99.1],
+    domesticatedBP: 2500,
+    domestication:
+      "Wild cherry-sized tomatoes of western South America were carried north; full domestication into large-fruited forms took place in Mesoamerica.",
+    progenitor: "Solanum lycopersicum var. cerasiforme",
+    evidence:
+      "Linguistic and historical records plus population genomics showing a two-step South America → Mesoamerica pathway.",
+    availability:
+      "One of the most widely grown vegetables on Earth, in field and greenhouse across all temperate and tropical zones.",
+    spread: [
+      { to: "Spain & Italy", coords: [41, 12], period: "16th c. CE", order: 1 },
+      { to: "Wider Europe", coords: [50, 8], period: "17th–18th c. CE", order: 2 },
+      { to: "Middle East & Asia", coords: [30, 70], period: "18th–19th c. CE", order: 3 },
+    ],
+  },
+  {
+    id: "common-bean",
+    name: "Common Bean",
+    scientificName: "Phaseolus vulgaris",
+    family: "Fabaceae",
+    category: "legume",
+    glyph: "🫘",
+    originCenter: "Mesoamerican & Andean centers",
+    originRegion: "Mexico & the Andes",
+    origin: [19.5, -102.5],
+    domesticatedBP: 8000,
+    domestication:
+      "Independently domesticated twice — in Mesoamerica and the Andes — from the same wild species, producing two distinct gene pools.",
+    progenitor: "Wild Phaseolus vulgaris",
+    evidence:
+      "Ancient seed finds plus genomics showing two parallel domestications from a Mesoamerican wild ancestor.",
+    availability:
+      "The most important grain legume for direct human consumption worldwide.",
+    spread: [
+      { to: "Andean South America", coords: [-13, -73], period: "~8,000 BP", order: 1 },
+      { to: "Europe", coords: [45, 5], period: "16th c. CE", order: 2 },
+      { to: "Africa & Asia", coords: [5, 35], period: "16th–18th c. CE", order: 3 },
+    ],
+  },
+  {
+    id: "chili",
+    name: "Chili Pepper",
+    scientificName: "Capsicum annuum",
+    family: "Solanaceae",
+    category: "vegetable",
+    glyph: "🌶️",
+    originCenter: "East-Central Mexico",
+    originRegion: "Mexico",
+    origin: [20.5, -98.5],
+    domesticatedBP: 6000,
+    domestication:
+      "Domesticated in the highlands of Mexico; selection favoured non-deciduous, larger, and pungent fruits from small wild chiltepines.",
+    progenitor: "Wild Capsicum annuum (chiltepín)",
+    evidence:
+      "Starch microremains and macrofossils across Mesoamerica, with genomics centering origin in east-central Mexico.",
+    availability:
+      "Grown pantropically and in temperate summers; a foundation of cuisines across Asia, Africa, and the Americas.",
+    spread: [
+      { to: "Caribbean & South America", coords: [5, -65], period: "pre-1492", order: 1 },
+      { to: "Iberia & Europe", coords: [40, -4], period: "late 15th c. CE", order: 2 },
+      { to: "West & East Africa", coords: [6, 20], period: "16th c. CE", order: 3 },
+      { to: "South & East Asia", coords: [22, 88], period: "16th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "cacao",
+    name: "Cacao",
+    scientificName: "Theobroma cacao",
+    family: "Malvaceae",
+    category: "beverage",
+    glyph: "🍫",
+    originCenter: "Upper Amazon",
+    originRegion: "Ecuador / NW Amazonia",
+    origin: [-4.0, -78.6],
+    domesticatedBP: 5300,
+    domestication:
+      "Earliest use and likely first domestication lie in the Upper Amazon; cacao was later a prized cultivated and ceremonial crop in Mesoamerica.",
+    progenitor: "Wild Theobroma cacao",
+    evidence:
+      "Residues, starch, and ancient DNA on Upper Amazonian ceramics push domestication back to ~5,300 BP.",
+    availability:
+      "Now cultivated across the equatorial belt; West Africa supplies the majority of world cocoa.",
+    spread: [
+      { to: "Mesoamerica", coords: [16, -92], period: "~4,000 BP", order: 1 },
+      { to: "Europe (as chocolate)", coords: [40, -4], period: "16th–17th c. CE", order: 2 },
+      { to: "West Africa", coords: [6, -1], period: "19th c. CE", order: 3 },
+      { to: "Southeast Asia", coords: [1, 114], period: "19th–20th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "coffee",
+    name: "Arabica Coffee",
+    scientificName: "Coffea arabica",
+    family: "Rubiaceae",
+    category: "beverage",
+    glyph: "☕",
+    originCenter: "Southwestern Ethiopian Highlands",
+    originRegion: "Ethiopia",
+    origin: [7.3, 36.2],
+    domesticatedBP: 1000,
+    domestication:
+      "Arabica arose as a natural hybrid in the Ethiopian highlands and was taken into cultivation; systematic farming developed around the Red Sea.",
+    progenitor: "Coffea eugenioides × Coffea canephora",
+    evidence:
+      "Wild forests of Arabica in southwest Ethiopia plus genomics showing very low diversity from a narrow founding population.",
+    availability:
+      "One of the most traded commodities; grown across the tropical 'coffee belt' of the Americas, Africa, and Asia.",
+    spread: [
+      { to: "Yemen & Arabia", coords: [15, 44], period: "15th c. CE", order: 1 },
+      { to: "Ottoman world & Europe", coords: [41, 29], period: "16th–17th c. CE", order: 2 },
+      { to: "Java & South Asia", coords: [-7, 110], period: "17th–18th c. CE", order: 3 },
+      { to: "Caribbean & Brazil", coords: [-15, -47], period: "18th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "banana",
+    name: "Banana & Plantain",
+    scientificName: "Musa acuminata",
+    family: "Musaceae",
+    category: "fruit",
+    glyph: "🍌",
+    originCenter: "New Guinea Highlands",
+    originRegion: "New Guinea",
+    origin: [-5.8, 144.3],
+    domesticatedBP: 7000,
+    domestication:
+      "First cultivated in the New Guinea highlands; edible seedless bananas emerged through hybridisation and selection for parthenocarpy.",
+    progenitor: "Musa acuminata (with M. balbisiana in hybrids)",
+    evidence:
+      "Banana phytoliths in ancient wetland agriculture at Kuk Swamp document cultivation by ~7,000 BP.",
+    availability:
+      "The most exported fresh fruit worldwide and a starchy staple across the humid tropics.",
+    spread: [
+      { to: "Island Southeast Asia", coords: [0, 120], period: "by ~4,000 BP", order: 1 },
+      { to: "South Asia", coords: [12, 78], period: "~3,000 BP", order: 2 },
+      { to: "East Africa", coords: [-1, 34], period: "1st millennium CE", order: 3 },
+      { to: "The Americas", coords: [10, -75], period: "16th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "soybean",
+    name: "Soybean",
+    scientificName: "Glycine max",
+    family: "Fabaceae",
+    category: "legume",
+    glyph: "🫛",
+    originCenter: "Central & Northern China",
+    originRegion: "China",
+    origin: [34.5, 113.5],
+    domesticatedBP: 7000,
+    domestication:
+      "Domesticated from wild soybean in China; selection increased seed size, oil, and protein and reduced hard-seededness.",
+    progenitor: "Wild soybean (Glycine soja)",
+    evidence:
+      "Increasing seed size in Chinese archaeological assemblages, supported by genome-wide domestication signals.",
+    availability:
+      "The world's dominant oilseed and protein legume; leading producers are now in the Americas.",
+    spread: [
+      { to: "Korea & Japan", coords: [36, 128], period: "~2,000 BP", order: 1 },
+      { to: "Southeast & South Asia", coords: [20, 100], period: "1st millennium CE", order: 2 },
+      { to: "Europe", coords: [48, 12], period: "18th c. CE", order: 3 },
+      { to: "The Americas", coords: [-20, -50], period: "19th–20th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "sugarcane",
+    name: "Sugarcane",
+    scientificName: "Saccharum officinarum",
+    family: "Poaceae",
+    category: "oil",
+    glyph: "🎋",
+    originCenter: "New Guinea",
+    originRegion: "New Guinea",
+    origin: [-6.0, 143.5],
+    domesticatedBP: 8000,
+    domestication:
+      "The thick, sweet 'noble cane' was domesticated in New Guinea; later hybrids with wild canes produced the crop of the sugar industry.",
+    progenitor: "Saccharum robustum",
+    evidence:
+      "Ethnobotanical and genetic evidence places noble-cane origins in New Guinea, with dispersal along Austronesian routes.",
+    availability:
+      "Supplies most of the world's sugar and a large share of bioethanol; grown throughout the tropics and subtropics.",
+    spread: [
+      { to: "Island SE Asia", coords: [0, 120], period: "by ~4,000 BP", order: 1 },
+      { to: "India", coords: [22, 80], period: "~2,500 BP", order: 2 },
+      { to: "Mediterranean & Levant", coords: [33, 35], period: "1st millennium CE", order: 3 },
+      { to: "Caribbean & Americas", coords: [18, -70], period: "16th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "apple",
+    name: "Apple",
+    scientificName: "Malus domestica",
+    family: "Rosaceae",
+    category: "fruit",
+    glyph: "🍎",
+    originCenter: "Tian Shan Mountains",
+    originRegion: "Kazakhstan & Central Asia",
+    origin: [43.2, 76.9],
+    domesticatedBP: 4000,
+    domestication:
+      "The cultivated apple descends chiefly from a large-fruited wild apple of the Tian Shan, with later hybridisation along Silk Road trade.",
+    progenitor: "Malus sieversii (with M. sylvestris introgression)",
+    evidence:
+      "Genomics traces the domestic apple to Tian Shan wild stock, refined by grafting and Silk Road exchange.",
+    availability:
+      "Among the most widely grown temperate fruits; commercial orchards span both hemispheres.",
+    spread: [
+      { to: "Persia & the Near East", coords: [35, 52], period: "1st millennium BCE", order: 1 },
+      { to: "Greece & Rome", coords: [41, 15], period: "Classical antiquity", order: 2 },
+      { to: "Western Europe", coords: [48, 2], period: "Roman–medieval", order: 3 },
+      { to: "The Americas", coords: [42, -75], period: "17th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "grape",
+    name: "Grapevine",
+    scientificName: "Vitis vinifera",
+    family: "Vitaceae",
+    category: "fruit",
+    glyph: "🍇",
+    originCenter: "South Caucasus",
+    originRegion: "Georgia & Transcaucasia",
+    origin: [41.7, 45.0],
+    domesticatedBP: 8000,
+    domestication:
+      "The wine grape was domesticated in the South Caucasus and the Near East from wild vines, selected for larger, sweeter, hermaphroditic-flowered berries.",
+    progenitor: "Wild grape (Vitis vinifera ssp. sylvestris)",
+    evidence:
+      "Earliest wine residues in Georgian Neolithic jars, with a large genome study confirming Caucasian and Near Eastern domestications.",
+    availability:
+      "Grown for wine, table fruit, and raisins across every temperate wine region worldwide.",
+    spread: [
+      { to: "Levant & Egypt", coords: [31, 34], period: "~5,000 BP", order: 1 },
+      { to: "Greece & Rome", coords: [40, 16], period: "1st millennium BCE", order: 2 },
+      { to: "Western Europe", coords: [45, 2], period: "Roman era", order: 3 },
+      { to: "New World wine regions", coords: [-33, -70], period: "16th–19th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "sorghum",
+    name: "Sorghum",
+    scientificName: "Sorghum bicolor",
+    family: "Poaceae",
+    category: "cereal",
+    glyph: "🌾",
+    originCenter: "Eastern Sahel / Sudan",
+    originRegion: "Northeast Africa",
+    origin: [13.0, 30.0],
+    domesticatedBP: 6000,
+    domestication:
+      "Domesticated from wild sorghum in the savannas of northeastern Africa; drought tolerance made it a keystone of Sahelian farming.",
+    progenitor: "Sorghum bicolor ssp. verticilliflorum",
+    evidence:
+      "Impressions and grains across Sahelian sites plus genetic diversity centered on the Sudan region.",
+    availability:
+      "A leading dryland cereal; vital across Africa and South Asia and grown for grain and forage worldwide.",
+    spread: [
+      { to: "Sahel & West Africa", coords: [12, 0], period: "~4,000 BP", order: 1 },
+      { to: "Arabia & India", coords: [20, 74], period: "~4,000 BP", order: 2 },
+      { to: "East Asia", coords: [30, 110], period: "1st millennium CE", order: 3 },
+      { to: "The Americas", coords: [33, -97], period: "17th–19th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "sweet-potato",
+    name: "Sweet Potato",
+    scientificName: "Ipomoea batatas",
+    family: "Convolvulaceae",
+    category: "tuber",
+    glyph: "🍠",
+    originCenter: "Tropical Central & South America",
+    originRegion: "Central America / NW South America",
+    origin: [-8.0, -74.0],
+    domesticatedBP: 5000,
+    domestication:
+      "Domesticated in tropical America; remarkably, it reached Polynesia in pre-Columbian times, carried across the Pacific.",
+    progenitor: "Wild Ipomoea species (I. trifida complex)",
+    evidence:
+      "Ancient tubers in Peruvian sites and the Polynesian name 'kumara' point to early trans-Pacific contact.",
+    availability:
+      "A major tropical root crop; China is by far the largest producer today.",
+    spread: [
+      { to: "Polynesia", coords: [-17, -149], period: "pre-1000 CE", order: 1 },
+      { to: "Iberia & Europe", coords: [40, -4], period: "16th c. CE", order: 2 },
+      { to: "East & Southeast Asia", coords: [25, 115], period: "16th–17th c. CE", order: 3 },
+      { to: "Africa", coords: [0, 25], period: "16th–18th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "squash",
+    name: "Squash & Pumpkin",
+    scientificName: "Cucurbita pepo",
+    family: "Cucurbitaceae",
+    category: "vegetable",
+    glyph: "🎃",
+    originCenter: "Central & Southern Mexico",
+    originRegion: "Mexico",
+    origin: [18.5, -97.0],
+    domesticatedBP: 10000,
+    domestication:
+      "Among the earliest domesticates of the Americas; squashes were grown for seeds and flesh long before maize and beans joined the 'Three Sisters'.",
+    progenitor: "Wild Cucurbita pepo",
+    evidence:
+      "Domesticated squash seeds and rinds in Mexican caves date cultivation to ~10,000 BP.",
+    availability:
+      "Grown globally as vegetables, ornamental gourds, and seed crops across temperate and tropical zones.",
+    spread: [
+      { to: "Eastern North America", coords: [38, -88], period: "~5,000 BP", order: 1 },
+      { to: "South America", coords: [-15, -60], period: "pre-Columbian", order: 2 },
+      { to: "Europe & Old World", coords: [45, 10], period: "16th c. CE", order: 3 },
+    ],
+  },
+  {
+    id: "peanut",
+    name: "Peanut",
+    scientificName: "Arachis hypogaea",
+    family: "Fabaceae",
+    category: "legume",
+    glyph: "🥜",
+    originCenter: "Southern Bolivia / NW Argentina",
+    originRegion: "South-central South America",
+    origin: [-21.0, -63.5],
+    domesticatedBP: 7500,
+    domestication:
+      "The peanut arose as a hybrid between two wild species in the southern Andean foothills, combining their genomes into one cultivated crop.",
+    progenitor: "Arachis duranensis × A. ipaensis",
+    evidence:
+      "Ancient pods in coastal Peru and genome sequencing confirming the two wild parents and their hybrid origin.",
+    availability:
+      "A major oil and protein legume; leading producers are now in Asia and Africa.",
+    spread: [
+      { to: "Andes & Amazonia", coords: [-10, -70], period: "~5,000 BP", order: 1 },
+      { to: "Africa", coords: [8, 5], period: "16th c. CE", order: 2 },
+      { to: "Asia", coords: [25, 110], period: "16th–17th c. CE", order: 3 },
+      { to: "North America", coords: [33, -84], period: "18th–19th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "tea",
+    name: "Tea",
+    scientificName: "Camellia sinensis",
+    family: "Theaceae",
+    category: "beverage",
+    glyph: "🍵",
+    originCenter: "Yunnan & the Assam borderlands",
+    originRegion: "Southwest China / Upper Myanmar",
+    origin: [24.5, 100.5],
+    domesticatedBP: 3000,
+    domestication:
+      "Tea was domesticated in the montane forests where southwest China meets Southeast Asia; distinct China and Assam varieties were selected for leaf quality.",
+    progenitor: "Wild Camellia sinensis",
+    evidence:
+      "Historical records of tea use in China and genomics separating the China (sinensis) and Assam (assamica) lineages.",
+    availability:
+      "After water, the most consumed beverage worldwide; grown across humid highlands of Asia and Africa.",
+    spread: [
+      { to: "China heartland", coords: [30, 112], period: "1st millennium BCE–CE", order: 1 },
+      { to: "Japan & Korea", coords: [35, 136], period: "1st millennium CE", order: 2 },
+      { to: "Europe (trade)", coords: [52, 0], period: "17th c. CE", order: 3 },
+      { to: "India & Sri Lanka", coords: [12, 78], period: "19th c. CE", order: 4 },
+    ],
+  },
+  {
+    id: "olive",
+    name: "Olive",
+    scientificName: "Olea europaea",
+    family: "Oleaceae",
+    category: "oil",
+    glyph: "🫒",
+    originCenter: "Eastern Mediterranean / Levant",
+    originRegion: "Levant",
+    origin: [32.5, 35.2],
+    domesticatedBP: 6000,
+    domestication:
+      "The olive was domesticated in the eastern Mediterranean, where oleasters were selected and propagated by cuttings for oil-rich fruit.",
+    progenitor: "Wild olive / oleaster (Olea europaea var. sylvestris)",
+    evidence:
+      "Olive stones and wood at Levantine and Aegean sites, with genetics pointing to a primary eastern Mediterranean origin.",
+    availability:
+      "The defining oil crop of Mediterranean climates; now also grown in the Americas, South Africa, and Australia.",
+    spread: [
+      { to: "Aegean & Greece", coords: [38, 24], period: "~5,000 BP", order: 1 },
+      { to: "Italy & Iberia", coords: [40, 5], period: "1st millennium BCE", order: 2 },
+      { to: "North Africa", coords: [34, 5], period: "Classical antiquity", order: 3 },
+      { to: "New World Mediterranean zones", coords: [-33, -71], period: "16th–19th c. CE", order: 4 },
+    ],
+  },
+];
