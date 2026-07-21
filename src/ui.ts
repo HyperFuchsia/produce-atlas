@@ -1,5 +1,6 @@
 import type { Crop, Claim, ListEntry, IndexSpecies } from "./types";
 import { renderPlant } from "./plant";
+import { cropIconSVG, hasIcon } from "./icons";
 import { CATEGORIES, CATEGORY_COLOR } from "./data/categories";
 import { CROPS } from "./data/crops";
 import { INDEX_SPECIES } from "./data/speciesIndex";
@@ -180,7 +181,7 @@ export function renderGallery(container: HTMLElement, entries: ListEntry[]): voi
   container.innerHTML = entries
     .map((e, i) => {
       const color = CATEGORY_COLOR[e.category];
-      const glyph = e.glyph ? `<div class="specimen__glyph">${e.glyph}</div>` : "";
+      const glyph = hasIcon(e.id) ? `<div class="specimen__glyph">${cropIconSVG(e.id)}</div>` : "";
       return `
       <div class="specimen" role="button" tabindex="0" data-id="${e.id}" style="animation-delay:${Math.min(i * 6, 200)}ms">
         <span class="specimen__no">${accession(e.id)}</span>

@@ -2,6 +2,7 @@ import Globe, { type GlobeInstance } from "globe.gl";
 import * as THREE from "three";
 import type { Crop, JourneyChapter } from "./types";
 import { CATEGORY_COLOR } from "./data/categories";
+import { cropIconSVG } from "./icons";
 import countriesRaw from "./data/countries.json?raw";
 
 /** Layer colours, matching the concept art. */
@@ -227,7 +228,7 @@ function buildMarker(d: Marker, onSelect: (id: string) => void): HTMLElement {
     wrap.dataset.id = d.crop.id;
     wrap.style.setProperty("--cat", CATEGORY_COLOR[d.crop.category]);
     wrap.innerHTML = `
-      <div class="gpin__icon">${d.crop.glyph}</div>
+      <div class="gpin__icon">${cropIconSVG(d.crop.id)}</div>
       <div class="gpin__stem"></div>
       <div class="gpin__base"></div>`;
     wrap.title = `${d.crop.name} — ${d.crop.scientificName}`;
