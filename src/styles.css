@@ -499,7 +499,7 @@ body {
    Overrides the parchment ground for the globe view; parchment is retained
    inside the sheet, explore gallery, and methodology cards.
    ========================================================================= */
-html, body { background-color: #05060c; }
+html, body { background-color: #181712; }
 body { background-image: none; }
 
 .globe-stage { position: fixed; inset: 0; z-index: 0; }
@@ -511,7 +511,7 @@ body { background-image: none; }
 #app > * { pointer-events: auto; }
 
 /* Boot (dark) */
-.boot { background: #05060c; }
+.boot { background: #181712; }
 .boot__wordmark, .boot__tagline { color: #e8e6df; }
 .boot__tagline { color: #9aa3b2; }
 .boot__orbit { width: 54px; height: 54px; border-radius: 50%; border: 1px solid rgba(120,160,220,0.25); position: relative; animation: orbit 2.2s linear infinite; }

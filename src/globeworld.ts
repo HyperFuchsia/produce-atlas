@@ -1,10 +1,9 @@
 import Globe, { type GlobeInstance } from "globe.gl";
+import * as THREE from "three";
 import type { Crop, JourneyChapter } from "./types";
 import { CATEGORY_COLOR } from "./data/categories";
 import { renderPlant } from "./plant";
-import dayTex from "./assets/earth-day.jpg";
-import bumpTex from "./assets/earth-bump.png";
-import skyTex from "./assets/night-sky.png";
+import countriesRaw from "./data/countries.json?raw";
 
 /** Layer colours, matching the concept art. */
 export const LAYER = {
@@ -26,18 +25,86 @@ export interface GlobeWorld {
   endJourney(): void;
 }
 
+/**
+ * Draw an equirectangular BOTANICAL map texture — parchment ocean, soft sage
+ * illustrated continents, ink coastlines, and a faint graticule — the same
+ * herbarium aesthetic as the field guide, wrapped onto the 3-D sphere (no
+ * satellite imagery).
+ */
+function generateEarthTexture(): THREE.CanvasTexture {
+  const W = 2048, H = 1024;
+  const cv = document.createElement("canvas");
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext("2d")!;
+  const X = (lng: number) => ((lng + 180) / 360) * W;
+  const Y = (lat: number) => ((90 - lat) / 180) * H;
+
+  // Parchment ocean with a soft warm wash
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#efe6d2");
+  g.addColorStop(0.5, "#e9dfc9");
+  g.addColorStop(1, "#e4d8bf");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, W, H);
+
+  // Faint graticule (illustrated-map ruling)
+  ctx.strokeStyle = "rgba(74,64,48,0.10)";
+  ctx.lineWidth = 1;
+  for (let lng = -150; lng <= 150; lng += 30) { ctx.beginPath(); ctx.moveTo(X(lng), 0); ctx.lineTo(X(lng), H); ctx.stroke(); }
+  for (let lat = -60; lat <= 60; lat += 30) { ctx.beginPath(); ctx.moveTo(0, Y(lat)); ctx.lineTo(W, Y(lat)); ctx.stroke(); }
+
+  const geo = JSON.parse(countriesRaw) as { features?: any[] };
+  const drawRing = (coords: [number, number][], close: boolean) => {
+    for (let i = 0; i < coords.length; i++) {
+      const x = X(coords[i][0]); const y = Y(coords[i][1]);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    if (close) ctx.closePath();
+  };
+  const eachPolygon = (fn: (rings: [number, number][][]) => void) => {
+    for (const f of geo.features || []) {
+      const gm = f.geometry; if (!gm) continue;
+      if (gm.type === "Polygon") fn(gm.coordinates);
+      else if (gm.type === "MultiPolygon") for (const poly of gm.coordinates) fn(poly);
+    }
+  };
+
+  // Land fill (soft sage) — drawn per polygon so holes read acceptably
+  ctx.fillStyle = "#aeba98";
+  eachPolygon((rings) => { ctx.beginPath(); for (const r of rings) drawRing(r, true); ctx.fill("evenodd"); });
+  // A second, slightly deeper sage stipple for subtle relief
+  ctx.fillStyle = "rgba(122,140,104,0.16)";
+  eachPolygon((rings) => { ctx.beginPath(); drawRing(rings[0], true); ctx.fill(); });
+  // Ink coastlines
+  ctx.strokeStyle = "rgba(70,58,42,0.5)";
+  ctx.lineWidth = 1;
+  eachPolygon((rings) => { for (const r of rings) { ctx.beginPath(); drawRing(r, true); ctx.stroke(); } });
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
+}
+
 export function createGlobeWorld(
   el: HTMLElement,
   onSelect: (id: string) => void,
 ): GlobeWorld {
   const world: GlobeInstance = new Globe(el)
-    .globeImageUrl(dayTex)
-    .bumpImageUrl(bumpTex)
-    .backgroundImageUrl(skyTex)
+    .backgroundColor("#181712")
     .showAtmosphere(true)
-    .atmosphereColor("#8fb7ff")
-    .atmosphereAltitude(0.2)
+    .atmosphereColor("#d8cca4")
+    .atmosphereAltitude(0.16)
     .pointOfView({ lat: 24, lng: 24, altitude: 2.5 });
+
+  // Botanical illustrated globe surface (no satellite texture)
+  const mat = world.globeMaterial() as THREE.MeshPhongMaterial;
+  mat.map = generateEarthTexture();
+  mat.color = new THREE.Color(0xffffff);
+  mat.bumpScale = 0;
+  mat.shininess = 2;
+  mat.specular = new THREE.Color(0x0a0a08);
+  mat.needsUpdate = true;
 
   const controls = world.controls() as any;
   controls.autoRotate = true;
