@@ -1,5 +1,4 @@
 import type { JourneyChapter, EventType } from "./types";
-import { applyReveal } from "./atlasmap";
 
 const EVENT_LABEL: Record<EventType, string> = {
   ancestry: "Ancestral range",
@@ -18,7 +17,6 @@ function esc(s: string): string {
 }
 
 export interface RideEls {
-  svg: SVGSVGElement;
   caption: HTMLElement;
   capBody: HTMLElement;
   capClose: HTMLButtonElement;
@@ -29,10 +27,18 @@ export interface RideEls {
   pace: HTMLButtonElement;
 }
 
+export interface RideHooks {
+  /** Update the map/globe surface to reveal chapters up to `index`. */
+  onReveal: (index: number) => void;
+  /** Fired after each seek (for URL sync etc.). */
+  onSeek?: (index: number) => void;
+}
+
 /**
- * Drives a crop's journey across the flat map: reveals chapters, updates the
- * closable caption and the chronology timeline, and autoplays with easing.
- * Closing the caption never stops the ride (handoff rule 4).
+ * Surface-agnostic history-ride state machine: reveals chapters, updates the
+ * closable caption and the chronology timeline, autoplays with easing. The
+ * actual drawing is delegated to `hooks.onReveal` (globe or flat map).
+ * Closing the caption never stops the ride.
  */
 export class Ride {
   private i = 0;
@@ -44,7 +50,7 @@ export class Ride {
   constructor(
     private ch: JourneyChapter[],
     private els: RideEls,
-    private onSeek?: (index: number) => void,
+    private hooks: RideHooks,
   ) {
     this.buildTimeline();
     els.capClose.addEventListener("click", () => this.hideCaption());
@@ -59,26 +65,19 @@ export class Ride {
     this.seek(0, false);
   }
 
-  private dwell(): number {
-    return (prefersReduced() ? 1500 : 2600) / this.pace;
-  }
-  private drawMs(): number {
-    return prefersReduced() ? 1 : Math.min(this.dwell() * 0.62, 1500);
-  }
+  private dwell(): number { return (prefersReduced() ? 1600 : 3000) / this.pace; }
 
   seek(index: number, notify = true): void {
     this.i = Math.max(0, Math.min(this.ch.length - 1, index));
-    this.els.svg.style.setProperty("--ride", `${this.drawMs()}ms`);
-    applyReveal(this.els.svg, this.ch, this.i);
+    this.hooks.onReveal(this.i);
     this.renderCaption();
     this.updateTimeline();
-    if (notify) this.onSeek?.(this.i);
+    if (notify) this.hooks.onSeek?.(this.i);
   }
-
   step(d: number): void {
-    const next = this.i + d;
-    if (next < 0 || next > this.ch.length - 1) { this.pause(); return; }
-    this.seek(next);
+    const n = this.i + d;
+    if (n < 0 || n > this.ch.length - 1) { this.pause(); return; }
+    this.seek(n);
   }
 
   play(): void {
@@ -96,6 +95,7 @@ export class Ride {
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
   }
   toggle(): void { this.playing ? this.pause() : this.play(); }
+  get isPlaying(): boolean { return this.playing; }
 
   private schedule(): void {
     if (this.timer) clearTimeout(this.timer);
@@ -113,16 +113,17 @@ export class Ride {
     if (this.playing) this.schedule();
   }
 
-  private hideCaption(): void {
-    this.captionOpen = false;
-    this.els.caption.hidden = true; // ride keeps running
-  }
+  private hideCaption(): void { this.captionOpen = false; this.els.caption.hidden = true; }
 
   private renderCaption(): void {
     const c = this.ch[this.i];
     if (this.captionOpen) this.els.caption.hidden = false;
     const conf = c.confidence === "modeled" ? "modeled / uncertain" : "well-documented";
-    const mech = c.mechanism ? ` · ${esc(c.mechanism)}` : "";
+    const label = EVENT_LABEL[c.eventType];
+    const mech =
+      c.mechanism && c.mechanism.toLowerCase() !== label.toLowerCase()
+        ? ` · ${esc(c.mechanism)}`
+        : "";
     const modern = c.modernRef ? ` <span class="cap__modern">(${esc(c.modernRef)})</span>` : "";
     const precision = c.precision ? ` <span class="cap__prec">${esc(c.precision)}</span>` : "";
     this.els.capBody.innerHTML = `
@@ -137,11 +138,7 @@ export class Ride {
 
   private buildTimeline(): void {
     this.els.timeline.innerHTML = this.ch
-      .map(
-        (c, i) => `<button class="tl__stop" data-i="${i}" title="${esc(c.title)}" aria-label="${esc(c.title)}">
-          <span class="tl__dot" data-event="${c.eventType}"></span>
-        </button>`,
-      )
+      .map((c, i) => `<button class="tl__stop" data-i="${i}" title="${esc(c.title)}" aria-label="${esc(c.title)}"><span class="tl__dot" data-event="${c.eventType}"></span></button>`)
       .join("");
   }
   private updateTimeline(): void {
@@ -152,6 +149,7 @@ export class Ride {
     });
   }
 
+  showCaption(): void { this.captionOpen = true; this.renderCaption(); }
   get index(): number { return this.i; }
   destroy(): void { this.pause(); }
 }

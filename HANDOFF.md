@@ -2,6 +2,34 @@
 
 _Last updated: 2026-07-21_
 
+## Update — Origins World: cinematic 3-D Earth (matches concept art)
+
+Rebuilt the primary view as a **photorealistic 3-D globe** matching the uploaded
+concept mockups, keeping the journey system and the botanical detail sheets.
+
+- **Photorealistic Earth** (`src/globeworld.ts`, globe.gl/three.js): blue-marble
+  day imagery + topology bump + atmosphere + star field. Textures are **vendored
+  from the `three-globe` npm package** (`src/assets/`), so it stays fully
+  offline / self-contained.
+- **Produce icons** on glowing pedestals at each authored crop's origin —
+  emoji, so they read as the actual produce with zero image assets ("2-D image
+  that looks like the vegetable"). Click a pin to select.
+- **History Ride on the globe**: camera flies stop-to-stop, cyan/violet/gold/
+  green arcs draw in, numbered stop markers, a closable chapter card, timeline,
+  and play/pause/prev/next/pace — driven by the same `Ride` state machine
+  (refactored to be surface-agnostic via an `onReveal` hook) and `buildChapters`.
+- **Four layers** with the concept-art colours: wild origin (gold), domestication
+  (violet), historical spread (cyan), modern production (green) + legend.
+- **Explore** overlay opens the botanical specimen gallery (all 255); a crop
+  focuses it on the globe, a baseline species opens its herbarium sheet. "Full
+  details" on the chapter card opens the crop's reading sheet (botanical plate +
+  dossier + claim packet). Methodology panel retained.
+- Removed the flat map (`atlasmap.ts`) and vendored coastline JSON (globe uses
+  textures now). Re-added `three` + `globe.gl`. Self-contained build ~5.5 MB
+  (Earth textures inlined). 16 tests pass; both builds green.
+
+---
+
 ## Update — journey mode & four-layer history (visual handoff)
 
 Implemented the visual-handoff "functions and operations" **adapted to the

@@ -1,20 +1,25 @@
-# Produce Atlas
+# Produce Atlas — Origins World
 
-A botanical visualizer of the world's food plants — a herbarium-style field
-guide tracing each species' scientific identity, origin, domestication, and
-historical spread.
+A cinematic 3-D atlas of the world's food plants: a photorealistic Earth where
+each crop stands at its origin, and a play-through history journey traces how it
+moved across the world.
 
-![Produce Atlas — a botanical field guide of the world's food plants](docs/preview.png)
+![Produce Atlas — Origins World, a 3-D Earth of food-plant origins](docs/preview.png)
 
 ## What it is
 
-Produce Atlas is a **botanical field guide**. Every species is drawn as a
-**generative botanical plate** — a unique, deterministic ink-line plant (stem,
-leaves, and a category-appropriate inflorescence) rendered on warm parchment.
-Browse the specimen gallery, then open a **specimen sheet**: the plate and a
-herbarium label beside a dossier with scientific identity, wild progenitor,
-domestication, an **antique flat origins map** (centre of origin + dispersal
-arcs), evidence, and — for flagship crops — a source-linked claim packet.
+The landing view is **Origins World** — a photorealistic 3-D globe (blue-marble
+imagery, atmosphere, star field) with a **produce icon on a glowing pedestal**
+at each crop's centre of origin. Click one to fly there and play its **History
+Ride**: the camera glides stop-to-stop while four *distinct* layers draw in —
+wild origin, domestication, historical movement (solid documented / dashed
+modeled), and modern production — with a closable chapter card and a chronology
+timeline.
+
+**Explore** opens the full collection as a botanical field guide: every species
+is a **generative botanical plate** (a deterministic ink-line plant), and its
+**specimen sheet** carries scientific identity, wild progenitor, domestication,
+evidence, and — for flagship crops — a source-linked claim packet.
 
 The dataset follows the Vavilov centers-of-origin framework as refined by modern
 archaeobotany and genetics. Dates are approximate years before present (BP);
