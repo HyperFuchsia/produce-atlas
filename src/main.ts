@@ -4,6 +4,7 @@ import { INDEX_SPECIES } from "./data/speciesIndex";
 import { CATEGORY_COLOR } from "./data/categories";
 import type { Category, ListEntry } from "./types";
 import { createGlobeWorld } from "./globeworld";
+import { mountBackdrop } from "./backdrop";
 import { buildChapters } from "./journey";
 import { Ride } from "./ride";
 import {
@@ -26,6 +27,7 @@ const ENTRIES: ListEntry[] = [
 ];
 
 // -------------------------------------------------------------- globe
+mountBackdrop();
 const globe = createGlobeWorld(globeEl, (id) => selectCrop(id));
 globe.setCrops(CROPS);
 

@@ -89,8 +89,8 @@ export function createGlobeWorld(
   el: HTMLElement,
   onSelect: (id: string) => void,
 ): GlobeWorld {
-  const world: GlobeInstance = new Globe(el)
-    .backgroundColor("#181712")
+  const world: GlobeInstance = new Globe(el, { rendererConfig: { alpha: true } })
+    .backgroundColor("rgba(0,0,0,0)") // transparent — the botanical backdrop shows through
     .showAtmosphere(true)
     .atmosphereColor("#d8cca4")
     .atmosphereAltitude(0.16)

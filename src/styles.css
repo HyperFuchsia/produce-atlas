@@ -499,10 +499,12 @@ body {
    Overrides the parchment ground for the globe view; parchment is retained
    inside the sheet, explore gallery, and methodology cards.
    ========================================================================= */
-html, body { background-color: #181712; }
+html, body { background-color: #14140f; }
 body { background-image: none; }
 
-.globe-stage { position: fixed; inset: 0; z-index: 0; }
+/* Botanical backdrop (drawn canvas) sits behind the transparent globe */
+.backdrop { position: fixed; inset: 0; z-index: 0; display: block; }
+.globe-stage { position: fixed; inset: 0; z-index: 1; }
 .globe-stage canvas { display: block; outline: none; }
 
 /* #app becomes a transparent overlay host */
