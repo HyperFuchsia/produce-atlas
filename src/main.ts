@@ -4,6 +4,9 @@ import { CATEGORY_COLOR } from "./data/categories";
 import type { Crop, Category } from "./types";
 import { createGlobe, type PointDatum } from "./globe";
 import { mountChrome, renderList, renderDetail, formatBP } from "./ui";
+import countriesRaw from "./data/countries.json?raw";
+
+const countries = JSON.parse(countriesRaw) as { features?: any[] };
 
 const app = document.getElementById("app")!;
 const globeEl = document.getElementById("globe")!;
@@ -39,7 +42,7 @@ function visibleCrops(): Crop[] {
 }
 
 // -------------------------------------------------------------- globe
-const controller = await createGlobe(globeEl, import.meta.env.BASE_URL);
+const controller = createGlobe(globeEl, countries);
 
 controller.onHover((crop, x, y) => {
   if (!crop) {

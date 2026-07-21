@@ -42,10 +42,10 @@ export interface GlobeController {
 
 const hexColor = (v: number) => `rgba(120,140,170,${v})`;
 
-export async function createGlobe(
+export function createGlobe(
   el: HTMLElement,
-  baseUrl: string,
-): Promise<GlobeController> {
+  countries: { features?: any[] },
+): GlobeController {
   const world = new Globe(el)
     .backgroundColor("rgba(0,0,0,0)")
     .showGlobe(true)
@@ -68,22 +68,16 @@ export async function createGlobe(
   world.scene().add(rim);
 
   // Dotted land — premium "data globe" look.
-  try {
-    const res = await fetch(`${baseUrl}data/countries.geojson`);
-    const geo = await res.json();
-    const features = (geo.features || []).filter(
-      (f: any) => f.properties?.ISO_A2 !== "AQ", // drop Antarctica clutter
-    );
-    world
-      .hexPolygonsData(features)
-      .hexPolygonResolution(3)
-      .hexPolygonMargin(0.32)
-      .hexPolygonUseDots(true)
-      .hexPolygonColor(() => hexColor(0.55))
-      .hexPolygonAltitude(0.006);
-  } catch {
-    /* land layer is decorative; ignore fetch failures */
-  }
+  const features = (countries.features || []).filter(
+    (f: any) => f.properties?.ISO_A2 !== "AQ", // drop Antarctica clutter
+  );
+  world
+    .hexPolygonsData(features)
+    .hexPolygonResolution(3)
+    .hexPolygonMargin(0.32)
+    .hexPolygonUseDots(true)
+    .hexPolygonColor(() => hexColor(0.55))
+    .hexPolygonAltitude(0.006);
 
   // Controls: gentle auto-rotation until the user engages.
   const controls = world.controls() as any;

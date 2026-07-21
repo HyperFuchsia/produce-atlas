@@ -2,6 +2,28 @@
 
 _Last updated: 2026-07-21_
 
+## Update — self-contained build + hosted artifact
+
+Follow-up work so the app can run with **zero external requests** and be embedded
+as a standalone page:
+
+- Map data is now **bundled at build time** instead of fetched at runtime.
+  `src/data/countries.json` is imported via `?raw` and parsed in `main.ts`;
+  `createGlobe()` takes the parsed GeoJSON directly (no `fetch`, no
+  `import.meta.env`). Removed the old `public/data/` copy and the preload link.
+  Also removed the last top-level `await` so the app runs as a plain inline
+  script.
+- Added `vite.config.artifact.ts` (+ dev dep `vite-plugin-singlefile`) which
+  emits a single, fully-inlined `dist-artifact/index.html`
+  (`npx vite build --config vite.config.artifact.ts`).
+- Verified the single-file output renders from `file://` with **no external
+  requests and no console errors**, and works when wrapped in a bare document
+  (the embedding case).
+- Published it as an interactive Artifact the user can open directly.
+
+The normal multi-file build (`npm run build` → `dist/`) is unchanged and still
+the target for a normal static deploy.
+
 ## Session summary
 
 The repository previously contained **only** a two-line `README.md` (no prior
