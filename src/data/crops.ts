@@ -969,6 +969,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage roots and young leaves", cautionParts: "", note: "Both the roots and young leaves are eaten." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The sweet potato is Ipomoea batatas, and it is not a potato at all — it belongs to the morning glory family and is unrelated to the true potato of the nightshades. Its name is in fact the older one: the Taíno word batata first meant this plant, and only later did \"potato\" attach to the Andean tuber that overtook it in Europe.",
+          "The part eaten is a swollen storage root, not a stem tuber, and it comes in white, yellow, orange, and deep purple flesh; the young leaves are eaten as a green as well.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The sweet potato was domesticated in the tropical Americas — most likely Central America or northern South America — thousands of years ago, and was widely grown across the warm New World long before European contact. Hardy, productive on poor soils, and rich in energy and vitamins, it was a dependable staple.",
+          "After 1492 it was among the first American crops carried to the Old World, reaching Europe even before the common potato, then spreading rapidly to Africa and Asia, where it took especially firm root.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The Polynesian puzzle",
+        paragraphs: [
+          "The sweet potato holds one of the great mysteries of prehistory. Long before Columbus, it was already growing across the islands of Polynesia, thousands of miles from its American home — and the Polynesian name for it, kumara, strikingly resembles words for the plant in the Andes. How an American crop crossed the Pacific in pre-Columbian times is fiercely debated: it points either to direct contact between Polynesian voyagers and South America, or to a remarkable natural or human long-distance dispersal.",
+          "Either way, the humble sweet potato is a key piece of evidence that the Pacific and the Americas were not as sealed off from one another as once assumed.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The sweet potato is a major world food crop, and today China grows the vast majority of it, though it is a dietary mainstay across much of Africa and the Pacific too. It is prized in development work for its resilience and nutrition: orange-fleshed, vitamin-A-rich varieties have been promoted across sub-Saharan Africa to combat childhood vitamin A deficiency — an ancient American root enlisted against modern malnutrition.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "squash",
@@ -996,6 +1029,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit and seeds", cautionParts: "Rare intensely bitter fruit", note: "Unusually bitter squash can contain toxic cucurbitacins; do not eat it." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Squash\" is a shortening of the Narragansett word askutasquash, from the Indigenous peoples of the northeastern Americas — a rare everyday English word taken directly from a Native American language. The name covers several species of the genus Cucurbita, and among them an enormous range of fruits: pumpkins, zucchini, acorn and butternut squash, marrows, and many ornamental gourds.",
+          "All are New World plants, and all bear the gourd family's hard-rinded berry, the pepo. Wild squashes are bitter and toxic with cucurbitacins; the edible crop is the result of selecting the rare non-bitter mutants — which is why a stray bitter squash should still be taken seriously.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Among the first American crops",
+        paragraphs: [
+          "Squash is one of the oldest domesticated plants of the Americas. Remains from a cave in Oaxaca, Mexico, push the domestication of Cucurbita pepo back some 10,000 years — as early as, or earlier than, maize — and squash was domesticated more than once, independently in Mexico, eastern North America, and South America, from different wild species.",
+          "Its early value may have been as much the protein-rich seeds and the hard, hollowable rind (usable as a container or float) as the flesh, with sweeter, fleshier types selected over time.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The Three Sisters & vanished dispersers",
+        paragraphs: [
+          "Across the Americas squash was grown as one of the \"Three Sisters,\" interplanted with maize and beans in a mutually supporting trio: the maize gave the beans a pole, the beans fixed nitrogen, and the broad squash leaves shaded out weeds and held moisture. It was one of the world's great sustainable farming systems.",
+          "Like the avocado, wild squashes seem to have relied on the giant Ice Age mammals to eat their bitter fruit and spread the seeds; when that megafauna died out, the plants leaned increasingly on human cultivators, who had already begun to favour the sweeter, edible forms.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "After 1492 squashes and pumpkins spread across the Old World, taken up from Europe to Africa to Asia; the zucchini, for instance, is an Italian refinement of an American Cucurbita pepo developed only in the nineteenth century. Today the group is grown globally as food and ornament — summer squashes eaten young and tender, winter squashes and pumpkins stored hard-rinded for months, and the seeds eaten in their own right.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "peanut",
@@ -1372,6 +1438,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Bulb (and green leaves)", cautionParts: "Toxic to dogs and cats", note: "Alliums are toxic to many pets, though safe for people." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The onion's name comes from the Latin unio — \"a single one,\" or a large pearl — a nod to the single, self-contained bulb the plant makes of its own swollen leaf bases. That bulb is really a compressed underground bud, its concentric layers the reason a sliced onion falls into rings.",
+          "It also has a defence that everyone knows: cut the flesh and its enzymes release a volatile sulfur compound that drifts up and stings the eyes to tears. That same sulfur chemistry gives the onion its pungency raw and its deep sweetness when slowly cooked.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The onion is one of the oldest cultivated vegetables, but a slightly mysterious one: no wild Allium cepa is known to survive, so its exact wild ancestor and birthplace are uncertain, somewhere in the broad arc of Central and Southwest Asia. It was domesticated deep in prehistory and spread through the ancient Near East before written records.",
+          "Its success owed much to practicality. Onions are easy to grow, store for months, and travel well dried, making them a dependable source of flavour and nutrition through winters and long journeys alike.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "A sacred and universal flavouring",
+        paragraphs: [
+          "In ancient Egypt the onion was both food and symbol; its concentric layers were seen as an image of eternity, onions were placed in tombs and offered to the gods, and workers were fed them. From Mesopotamia and Egypt through Greece and Rome, the onion was a staple seasoning of the common table, and it became a base flavour in cuisines across the entire Old World.",
+          "Carried worldwide by Europeans — though the Americas had their own wild onions too — it is now foundational almost everywhere people cook.",
+        ],
+        sourceIds: ["kiple2000", "zohary2012"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The onion is among the most widely grown vegetables on the planet, led by China and India, and eaten in nearly every cuisine as the quiet foundation of countless dishes — sautéed, caramelised, raw, pickled, or dried. Few foods are so universal and so easy to overlook.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "garlic",
@@ -1399,6 +1498,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Bulb (cloves)", cautionParts: "Toxic to dogs and cats", note: "Alliums are toxic to many pets, though safe for people." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Garlic\" comes from the Old English gārlēac — \"spear-leek\" — for the spear-like leaves of this most pungent of the onion tribe. Each bulb is a cluster of cloves, and therein lies a peculiarity: cultivated garlic is effectively sterile, rarely setting viable seed, so it has been propagated for thousands of years by replanting its cloves. Every garlic plant is a clone.",
+          "Its ferocity is chemical and deliberately triggered. An intact clove is nearly odourless; only when the flesh is crushed or cut does an enzyme convert a stored compound into allicin, the sharp, biting molecule behind garlic's flavour and much of its reputed medicinal power.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "Garlic was domesticated in Central Asia from a wild ancestor in the same lineage, and like the onion it spread across the ancient Near East in deep prehistory. Its sterility means it could only have been maintained by deliberate human replanting from the very beginning — a crop wholly dependent on people.",
+          "It reached the Mediterranean, India, and China early and became embedded in their cooking and medicine alike.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "Food, medicine & folklore",
+        paragraphs: [
+          "Garlic has always been more than a flavouring. Egyptian records describe it being fed to the labourers who built the great monuments, and Greek and Roman soldiers and workers ate it for strength; across the world it has been used as a folk medicine against infection — a belief with some real basis, since allicin is genuinely antimicrobial. It also gathered a thick layer of superstition, from warding off the evil eye to repelling vampires.",
+          "That double life as seasoning and remedy carried garlic into nearly every cuisine of the Old World.",
+        ],
+        sourceIds: ["kiple2000", "zohary2012"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Garlic is grown around the world, but production is overwhelmingly dominated by China, which grows the great majority of the global crop. From a sterile Central Asian bulb, tended clove by clove for millennia, it has become one of the most universal and beloved flavours in cooking.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "carrot",
@@ -1426,6 +1558,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage root (and leaves)", cautionParts: "", note: "Roots are eaten raw and cooked; the leaves are also edible." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The carrot is the cultivated form of Daucus carota, whose wild version — the white-rooted, forked, faintly bitter \"Queen Anne's lace\" — still grows as a common wayside weed across the Northern Hemisphere. The edible carrot is that plant's taproot, bred long, straight, sweet, and tender.",
+          "Its most famous feature, the bright orange colour, is not original and not universal. Carrots come, and historically came, in purple, yellow, red, and white; the orange carrot is a comparatively recent human creation.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The carrot was domesticated relatively late, around a thousand years ago, in Central Asia — the region of modern Afghanistan and Persia — where the first cultivated roots were purple and yellow. From there it spread in two directions: eastward into Asia and westward into the Arab world and Mediterranean Europe by the medieval period.",
+          "These early carrots were prized as much for their aromatic leaves and seeds as for the root, and selection gradually turned a thin, tough, bitter taproot into a sweet, fleshy vegetable.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "How the carrot turned orange",
+        paragraphs: [
+          "The familiar orange carrot emerged in Europe, especially the Netherlands, around the sixteenth and seventeenth centuries, selected from yellow forms into a root rich in beta-carotene — the orange pigment the body converts to vitamin A. A popular tale holds that Dutch growers bred it orange to honour the royal House of Orange; it is a charming story but not well supported by evidence.",
+          "What is certain is that the orange carrot proved sweet, vividly coloured, and nutritious, and it displaced the older purples and yellows so completely that most people now assume it was always so.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The carrot is one of the world's major vegetables, grown across temperate regions with China the largest producer, eaten raw, cooked, juiced, and grated into everything from salads to cakes. Its reputation as a food for eyesight is real in part — the vitamin A matters — but was famously exaggerated by wartime British propaganda that credited carrots, rather than secret radar, for pilots' night vision.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "cucumber",
@@ -1453,6 +1618,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten raw and pickled." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The cucumber, Cucumis sativus, is a member of the gourd family, and — like the melon and squash it is related to — its edible part is botanically a fruit, a kind of berry with a firm rind called a pepo, even though it is used as a vegetable. Around ninety-five percent water, it is valued for crispness and cool more than for flavour or nourishment.",
+          "Wild and unimproved cucumbers can be intensely bitter from compounds called cucurbitacins; domestication and breeding largely bred that bitterness out, though it can still surface in stressed plants.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The cucumber was domesticated in South Asia, in the foothills of the Himalayas in India, from a bitter wild relative, and has been cultivated there for several thousand years. From India it travelled westward into Persia, the Near East, and the classical Mediterranean.",
+          "It reached Europe in antiquity and was carried by early European voyagers to the Americas, becoming one of the more widely dispersed of the Old World vegetables.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The emperor's greenhouse",
+        paragraphs: [
+          "The cucumber has a claim to one of the earliest greenhouses in history. The Roman emperor Tiberius was said to be so fond of it that his gardeners grew cucumbers year-round, moving the plants on wheeled beds into the sun and sheltering them under frames glazed with translucent stone — an ingenious forerunner of protected cultivation, devised two thousand years ago to satisfy a single ruler's daily craving.",
+          "Through the Middle Ages and beyond the cucumber remained a staple of gardens across Europe and Asia, eaten fresh and, crucially, pickled for keeping.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Cucumbers are grown worldwide, in open fields and in vast greenhouses, with China producing by far the most. The crop leads a double life: eaten fresh in salads as the slicing cucumber, and grown as small \"gherkin\" types destined for the pickle jar — one of humanity's oldest ways of preserving a vegetable.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "ginger",
@@ -2043,6 +2241,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (cooked)", cautionParts: "Foliage (glycoalkaloids)", note: "Like other nightshades the leaves contain glycoalkaloids; the cooked fruit is eaten." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "This one plant carries three different names across the English-speaking world, each a clue to its history. \"Eggplant\" recalls the small, white, egg-shaped fruits of some early cultivars; \"aubergine\" traces through French, Catalan, and Arabic al-bāḏinjān back to Persian and Sanskrit roots; and \"brinjal,\" used in South Asia and Africa, comes from the same source down another branch. The plant is Solanum melongena, a nightshade and thus a cousin of the tomato, potato, and chili.",
+          "Despite the archetype of a glossy purple teardrop, eggplants come in white, green, striped, orange, and every shape from tiny peas to long fingers — a diversity that reflects a long domestication in Asia.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The eggplant is one of the few major vegetables of Old World tropical origin, domesticated in South and Southeast Asia — across India, Myanmar, and China — from wild, often spiny and bitter Solanum relatives. It has been cultivated and diversified there for well over a thousand years, which is why Asia holds the crop's greatest variety.",
+          "From its Asian heartland the eggplant moved west through the medieval Islamic world, spread by Arab agriculture into the Mediterranean.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "A nightshade under suspicion",
+        paragraphs: [
+          "Medieval and early-modern Europeans met the eggplant with unease. As an obvious member of the nightshade family — many of whose wild relatives are poisonous — it was treated warily, and one old name, mala insana or \"mad apple,\" reflected a belief that eating it could cause madness. For a time it was grown more as a curiosity than a food north of the Mediterranean.",
+          "Southern Europe and the Islamic world had no such qualms, folding the eggplant into rich culinary traditions, and it eventually won acceptance across the continent and, with European expansion, around the world.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The eggplant is a staple vegetable across Asia, the Mediterranean, and beyond, with China and India together growing the overwhelming majority of the world's crop. Its dense, spongy flesh soaks up oil and flavour, making it central to dishes from baba ghanoush and moussaka to countless curries and stir-fries.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "cabbage",
@@ -2070,6 +2301,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves (and other cultivar parts)", cautionParts: "", note: "Eaten raw, cooked, and fermented." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Cabbage\" comes through Old French from the Latin caput, \"head,\" for the tight ball of leaves it forms. But the head cabbage is only one face of an astonishing plant: Brassica oleracea is a single species that human selection has sculpted into an entire vegetable aisle. Cabbage, kale, broccoli, cauliflower, Brussels sprouts, kohlrabi, and collards are all the same species — each one the result of breeding a different part of the plant to extremes.",
+          "Grow the terminal bud into a dense head and you have cabbage; the leaves alone, kale and collards; the side buds, Brussels sprouts; the flower clusters, broccoli and cauliflower; the swollen stem, kohlrabi. It is the textbook example of artificial selection, cited by Darwin himself.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "From sea cliff to garden",
+        paragraphs: [
+          "The wild ancestor is a tough, leafy \"sea cabbage\" that still clings to the coastal cliffs of the Atlantic and Mediterranean shores of Europe. Domestication began around the Mediterranean, where the Greeks and Romans grew loose, leafy kale-like forms and valued them as food and medicine.",
+          "The tightly headed cabbage we picture came later, developed in medieval Europe, while other lineages diverged elsewhere — cauliflower and sprouting broccoli refined in Italy, Brussels sprouts around the Low Countries — each region shaping the same pliant species to its own taste.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Kraut, keeping & the sea",
+        paragraphs: [
+          "Cabbage's great practical virtue is that it keeps. Whole heads store through winter, and shredded cabbage fermented in salt becomes sauerkraut, which lasts for months and — crucially — retains vitamin C. That made fermented cabbage a lifesaver at sea: long voyages that once lost crews to scurvy could be protected by a barrel of kraut, a link famously exploited on Captain Cook's Pacific expeditions.",
+          "Cheap, hardy, and nourishing, cabbage became a backbone of poorer diets across Europe and Asia, and fermented cabbage dishes remain central from German kraut to the wider family of pickled-vegetable traditions.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Cabbages and their kin are grown throughout the temperate world and increasingly beyond it, with China, India, and Russia among the largest producers. As a group, the Brassica oleracea vegetables are nutritional powerhouses and one of the clearest living demonstrations of how far selective breeding can push a single wild plant.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "lettuce",
@@ -2097,6 +2361,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves", cautionParts: "", note: "Eaten raw; wild relatives are bitter and not cultivated for food." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Lettuce\" comes from the Latin lactuca, from lac, \"milk,\" for the bitter white latex that seeps from a cut stem — a defence the plant inherited from its wild ancestor. That ancestor is prickly lettuce, Lactuca serriola, a bitter, spiny roadside weed; the crop is what happens when you breed the bitterness and prickles out and the tender leaf up.",
+          "Lettuce is grown for its leaves, is mostly water, and is one of the few major vegetables eaten almost entirely raw — a delicate salad plant selected out of an unpromising weed.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & the sacred Egyptian plant",
+        paragraphs: [
+          "Lettuce was domesticated in the eastern Mediterranean and Near East, and ancient Egypt gives us its earliest clear story. There, tall lettuce resembling modern romaine was a sacred plant of the fertility god Min, depicted in temple art and grown both for its leaves and for oil pressed from its seeds. The Egyptians associated its milky sap and upright form with fertility and regeneration.",
+          "Greeks and Romans took up lettuce as food and noted a curious effect: its latex, related to a mild sedative, gave the plant a reputation for encouraging sleep, and it was sometimes eaten at the end of a meal for that reason.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Spread & diversification",
+        paragraphs: [
+          "From the Mediterranean, lettuce spread through Europe, where growers selected the major types we know — loose leaf lettuces, the upright romaine or cos, the soft butterheads, and, much later, the dense crisphead or iceberg bred to survive long-distance shipping. Columbus and later voyagers carried it to the Americas, where it became a garden standard.",
+          "Each type is the same species pushed in a different direction, from open rosettes of loose leaves to tight, pale, travel-hardy balls.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Lettuce is one of the world's most important salad crops, grown intensively for fresh markets with China and the United States among the leading producers. Low in calories and eaten fresh, it anchors the modern salad — a long way from the bitter, milky weed on the roadside from which it was coaxed.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "cassava",
@@ -2124,6 +2421,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage roots (processed)", cautionParts: "Raw roots (cyanogenic)", note: "Raw cassava contains cyanogenic compounds; it must be peeled and cooked or soaked before eating." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "This one plant answers to many names — cassava, manioc, yuca, and, as a processed starch, tapioca. It is Manihot esculenta, a woody shrub of the spurge family grown for its large, starchy storage roots, and it is one of the most important sources of calories in the tropical world, feeding hundreds of millions.",
+          "Its great advantages are toughness and patience: cassava grows in poor soils and endures drought that would kill most crops, and its roots can be left in the ground for months as a living store, dug only when needed — a natural insurance against famine.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & the mastery of poison",
+        paragraphs: [
+          "Cassava was domesticated in the southern Amazon basin of Brazil, on the order of 8,000 to 10,000 years ago, from wild Manihot. But it came with a lethal catch: cassava roots, especially the \"bitter\" types, are laced with cyanogenic compounds that release cyanide, and eaten raw they can poison and kill.",
+          "Indigenous Amazonian peoples solved this with sophisticated processing — peeling, grating, and pressing the pulp (often in a woven tube press) to squeeze out the toxic juice, then washing, fermenting, and heating it. Only through this chain of steps does a poisonous root become safe flour, bread, and drink. It is one of humanity's most impressive feats of food technology.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "An American root feeds Africa",
+        paragraphs: [
+          "Portuguese traders carried cassava from Brazil to Africa in the sixteenth century, along with, in places, the knowledge of how to detoxify it. On a continent with challenging soils and rainfall, its drought-resistance and reliability made it a triumph, and it became a dominant staple across large parts of sub-Saharan Africa in forms such as gari and fufu.",
+          "Where the processing knowledge travelled incompletely, however, reliance on poorly detoxified cassava has caused real harm, including the paralysing disease konzo in times of hardship — a reminder that the crop and the craft of preparing it must go together.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Cassava is now grown across the tropics of Africa, Asia, and the Americas, and in a geographic turnabout Africa produces far more of it than its native continent, with Nigeria the world's largest grower. Beyond food, it is a major source of industrial starch and tapioca and a feedstock for biofuel — a resilient Amazonian root that has become one of the pillars of tropical food security.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "yam",
@@ -2151,6 +2481,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Tubers (cooked)", cautionParts: "Raw tubers of some species", note: "Some yams contain irritants or alkaloids when raw; cultivated yams are cooked before eating." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Yam\" comes from West African languages — words like nyami, meaning \"to eat\" — carried into English through Portuguese and Spanish. True yams are large starchy tubers of the genus Dioscorea, climbing vines quite unrelated to the sweet potato. This causes lasting confusion: the soft orange \"yams\" sold in North American shops are actually sweet potatoes, while real yams are a different plant altogether, central to the tropics of Africa and Asia.",
+          "Yam tubers can be enormous, sometimes weighing tens of kilograms, and some wild species are bitter or toxic raw, requiring cooking or processing before they are safe.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Domesticated on several continents",
+        paragraphs: [
+          "The yam is not one crop with one origin but several. West Africa independently domesticated its own species — notably the white and yellow Guinea yams — some 7,000 or more years ago, making yams one of Africa's foundational native crops. Separately, Southeast Asia and the Pacific domesticated the water yam, Dioscorea alata, and other species were taken up in the Americas.",
+          "This pattern of parallel domestication, continent by continent, marks the yam as a crop that many different peoples arrived at on their own, wherever the wild vines grew.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The cultural heart of the yam belt",
+        paragraphs: [
+          "In West Africa's \"yam belt\" — above all Nigeria — the yam is far more than food. Its cultivation is labour-intensive and prestigious, a marker of a good farmer and of wealth; yams feature in dowries and rites, and new-yam festivals mark the harvest with celebration and thanksgiving across many communities. Few crops are so deeply woven into social and ceremonial life.",
+          "African yams were later carried on the ships of the Atlantic slave trade to the Caribbean and the Americas, where they and their names took root in the cooking of the diaspora.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The great majority of the world's yams are grown in West Africa, with Nigeria alone accounting for a huge share of global production, complemented by the water yams of Asia and the Pacific. Pounded into stiff dough, boiled, fried, or roasted, the yam remains a staple and a cultural cornerstone for hundreds of millions of people — and a plant not to be confused with the sweet potato that borrowed its name.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "barley",
