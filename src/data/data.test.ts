@@ -198,4 +198,11 @@ describe("published maturity summary (guards against overclaim)", () => {
     const used = new Set(claims.flatMap((c) => c.sourceIds));
     for (const id of used) expect(ids).toContain(id);
   });
+
+  it("gives every source a valid https link to its official source", () => {
+    for (const s of SOURCES) {
+      expect(s.url, `${s.id} missing url`).toBeTruthy();
+      expect(s.url!, `${s.id} not https`).toMatch(/^https:\/\/\S+$/);
+    }
+  });
 });
