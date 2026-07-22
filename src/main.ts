@@ -85,20 +85,60 @@ ui.detailsBtn.addEventListener("click", () => {
   if (selectedId) openSheet(selectedId);
 });
 
-// -------------------------------------------------------------- sheet
-function openSheet(id: string): void {
+// -------------------------------------------------------------- sheet + produce-to-produce nav
+/** Shared ordering: flagship, then authored, then baseline; alphabetical within. */
+const bySort = (a: ListEntry, b: ListEntry): number => {
+  const rank = (m: string) => (m === "flagship" ? 0 : m === "authored" ? 1 : 2);
+  return rank(a.maturity) - rank(b.maturity) || a.name.localeCompare(b.name);
+};
+const ENTRIES_SORTED = [...ENTRIES].sort(bySort);
+let navContext: ListEntry[] = ENTRIES_SORTED;
+let navIndex = -1;
+
+function openSheet(id: string, resetNav = true): void {
   const crop = CROP_BY_ID.get(id);
   const species = INDEX_BY_ID.get(id);
   if (crop) renderCropSheet(ui.sheetBody, crop);
   else if (species) renderSpeciesSheet(ui.sheetBody, species);
   else return;
+  // Navigation context: flip within the current Explore filter when the record
+  // belongs to it, otherwise across the whole collection. Kept stable while
+  // stepping so prev/next don't jump around.
+  if (resetNav) {
+    const filtered = visibleEntries();
+    navContext = filtered.some((e) => e.id === id) ? filtered : ENTRIES_SORTED;
+  }
+  navIndex = navContext.findIndex((e) => e.id === id);
+  updateSheetNav();
   ui.sheetScrim.classList.add("is-open");
-  ui.sheetBody.parentElement!.scrollTop = 0;
+  ui.sheetScrim.scrollTop = 0;
   ui.sheetClose.focus();
+}
+function updateSheetNav(): void {
+  const total = navContext.length;
+  ui.sheetPos.textContent = navIndex >= 0 ? `${navIndex + 1} / ${total}` : "";
+  ui.sheetPrev.disabled = navIndex <= 0;
+  ui.sheetNext.disabled = navIndex < 0 || navIndex >= total - 1;
+}
+function sheetStep(d: number): void {
+  if (navIndex < 0) return;
+  const j = navIndex + d;
+  if (j < 0 || j >= navContext.length) return;
+  openSheet(navContext[j].id, false);
 }
 function closeSheet(): void { ui.sheetScrim.classList.remove("is-open"); }
 ui.sheetClose.addEventListener("click", closeSheet);
+ui.sheetPrev.addEventListener("click", () => sheetStep(-1));
+ui.sheetNext.addEventListener("click", () => sheetStep(1));
 ui.sheetScrim.addEventListener("click", (e) => { if (e.target === ui.sheetScrim) closeSheet(); });
+// Swipe left/right to flip between specimens on touch devices.
+let touchX = 0, touchY = 0;
+ui.sheetScrim.addEventListener("touchstart", (e) => { const t = e.changedTouches[0]; touchX = t.clientX; touchY = t.clientY; }, { passive: true });
+ui.sheetScrim.addEventListener("touchend", (e) => {
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchX, dy = t.clientY - touchY;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 2) sheetStep(dx < 0 ? 1 : -1);
+}, { passive: true });
 
 // -------------------------------------------------------------- explore gallery
 const filterState = { activeCategories: new Set<Category>(Object.keys(CATEGORY_COLOR) as Category[]), query: "" };
@@ -108,10 +148,7 @@ function visibleEntries(): ListEntry[] {
     if (!filterState.activeCategories.has(e.category)) return false;
     if (!q) return true;
     return e.name.toLowerCase().includes(q) || e.scientificName.toLowerCase().includes(q) || e.family.toLowerCase().includes(q);
-  }).sort((a, b) => {
-    const rank = (m: string) => (m === "flagship" ? 0 : m === "authored" ? 1 : 2);
-    return rank(a.maturity) - rank(b.maturity) || a.name.localeCompare(b.name);
-  });
+  }).sort(bySort);
 }
 function refreshGallery(): void {
   const entries = visibleEntries();
@@ -159,11 +196,18 @@ ui.methodPanel.addEventListener("click", (e) => { if ((e.target as HTMLElement).
 ui.homeBtn.addEventListener("click", () => { closeExplore(); closeSheet(); deselect(); });
 
 document.addEventListener("keydown", (e) => {
-  if (e.key !== "Escape") return;
-  if (!ui.methodPanel.hidden) ui.methodPanel.hidden = true;
-  else if (ui.sheetScrim.classList.contains("is-open")) closeSheet();
-  else if (ui.exploreScrim.classList.contains("is-open")) closeExplore();
-  else if (selectedId) deselect();
+  if (e.key === "Escape") {
+    if (!ui.methodPanel.hidden) ui.methodPanel.hidden = true;
+    else if (ui.sheetScrim.classList.contains("is-open")) closeSheet();
+    else if (ui.exploreScrim.classList.contains("is-open")) closeExplore();
+    else if (selectedId) deselect();
+    return;
+  }
+  // Arrow keys flip between specimens while the reading sheet is open.
+  if (ui.sheetScrim.classList.contains("is-open")) {
+    if (e.key === "ArrowLeft") { e.preventDefault(); sheetStep(-1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); sheetStep(1); }
+  }
 });
 
 // -------------------------------------------------------------- URL sync

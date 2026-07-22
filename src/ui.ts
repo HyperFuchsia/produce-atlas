@@ -98,6 +98,9 @@ export interface UIRefs {
   sheetScrim: HTMLElement;
   sheetBody: HTMLElement;
   sheetClose: HTMLButtonElement;
+  sheetPrev: HTMLButtonElement;
+  sheetNext: HTMLButtonElement;
+  sheetPos: HTMLElement;
   methodPanel: HTMLElement;
   methodClose: HTMLButtonElement;
 }
@@ -166,7 +169,12 @@ export function mountChrome(root: HTMLElement): UIRefs {
 
     <div class="sheet-scrim" id="pa-sheet-scrim" role="dialog" aria-modal="true" aria-label="Specimen sheet">
       <article class="sheet">
-        <button class="sheet__close" id="pa-sheet-close" aria-label="Close">✕</button>
+        <div class="sheet__nav">
+          <button class="sheet__navbtn" id="pa-sheet-prev" aria-label="Previous specimen"><span aria-hidden="true">‹</span>&nbsp;Prev</button>
+          <span class="sheet__pos" id="pa-sheet-pos"></span>
+          <button class="sheet__navbtn" id="pa-sheet-next" aria-label="Next specimen">Next&nbsp;<span aria-hidden="true">›</span></button>
+          <button class="sheet__close" id="pa-sheet-close" aria-label="Close">✕</button>
+        </div>
         <div id="pa-sheet-body"></div>
       </article>
     </div>
@@ -202,6 +210,9 @@ export function mountChrome(root: HTMLElement): UIRefs {
     sheetScrim: $("#pa-sheet-scrim"),
     sheetBody: $("#pa-sheet-body"),
     sheetClose: $("#pa-sheet-close"),
+    sheetPrev: $("#pa-sheet-prev"),
+    sheetNext: $("#pa-sheet-next"),
+    sheetPos: $("#pa-sheet-pos"),
     methodPanel: $("#pa-method"),
     methodClose: $("#pa-method-close"),
   };

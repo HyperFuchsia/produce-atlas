@@ -235,12 +235,37 @@ body {
   border: 1px solid var(--paper-edge);
   border-radius: 6px;
   box-shadow: 0 30px 80px -30px rgba(40, 32, 20, 0.6);
-  padding: 30px;
+  padding: 0;
   position: relative;
   transform: translateY(12px);
   transition: transform 0.35s var(--ease);
 }
 .sheet-scrim.is-open .sheet { transform: none; }
+#pa-sheet-body { padding: 26px 30px 32px; }
+
+/* Produce-to-produce navigation — sticky flip bar */
+.sheet__nav {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px 11px 18px;
+  background: var(--paper-2);
+  border-bottom: 1px solid var(--rule);
+  border-radius: 6px 6px 0 0;
+}
+.sheet__navbtn {
+  font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.02em;
+  color: var(--ink-soft); background: var(--paper);
+  border: 1px solid var(--rule); border-radius: 99px;
+  padding: 6px 14px; cursor: pointer; white-space: nowrap;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), opacity 0.18s var(--ease);
+}
+.sheet__navbtn:hover:not(:disabled) { border-color: var(--ink-mute); color: var(--ink); }
+.sheet__navbtn:disabled { opacity: 0.35; cursor: default; }
+.sheet__pos {
+  margin: 0 auto; font-family: var(--font-sans); font-size: 11px;
+  letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-mute);
+}
+.sheet__nav .sheet__close { position: static; top: auto; right: auto; width: 30px; height: 30px; flex-shrink: 0; }
 .sheet__close {
   position: absolute; top: 16px; right: 16px; z-index: 3;
   width: 32px; height: 32px; display: grid; place-items: center;
@@ -695,7 +720,9 @@ html, body { overflow: hidden; overscroll-behavior: none; height: 100%; }
   .search { flex-basis: 100%; max-width: none; }
   .filters { justify-content: flex-start; }
   .gallery { grid-template-columns: repeat(auto-fill, minmax(min(140px, 100%), 1fr)); gap: 12px; }
-  .sheet { padding: 22px 18px; }
+  #pa-sheet-body { padding: 20px 18px 26px; }
+  .sheet__nav { padding: 9px 10px 9px 14px; gap: 6px; }
+  .sheet__navbtn { padding: 6px 12px; font-size: 12px; }
   .sheet__grid { gap: 22px; }
   .sheet__name { font-size: 27px; }
   .methodology__card { padding: 22px 18px; }
