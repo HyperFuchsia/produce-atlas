@@ -129,6 +129,12 @@ export interface Source {
   /** Kind of source, for the reader's calibration. */
   kind: "book" | "journal" | "database" | "report";
   year: number;
+  /**
+   * Official link to the source — a DOI (https://doi.org/…) for papers, the
+   * portal for databases, or the publisher page for books. When present the
+   * citation renders as a hyperlink so readers can go straight to the source.
+   */
+  url?: string;
 }
 
 export type ClaimKind =

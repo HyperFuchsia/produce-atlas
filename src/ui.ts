@@ -50,6 +50,18 @@ const svgSearch = `<svg class="search__icon" viewBox="0 0 24 24" fill="none" str
 const CONFIDENCE_LABEL: Record<string, string> = { high: "High confidence", medium: "Medium confidence", contested: "Contested" };
 const CLAIM_KIND_LABEL: Record<string, string> = { identity: "Identity", domestication: "Domestication", spread: "Spread", availability: "Availability" };
 
+/**
+ * Renders a citation, hyperlinked to its official source (DOI / database /
+ * publisher) when the registry has a URL, with an external-link marker. Falls
+ * back to plain text when no link is known.
+ */
+function citationHTML(id: string): string {
+  const s = SOURCE_BY_ID[id];
+  const cite = esc(s?.citation ?? id);
+  if (!s?.url) return cite;
+  return `<a class="reflink" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${cite}<span class="reflink__ext" aria-hidden="true">↗</span></a>`;
+}
+
 function maturityBadge(m: string): string {
   const meta = MATURITY_BY_ID[m];
   if (!meta) return "";
@@ -302,7 +314,7 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
     ...(c.dossier?.flatMap((d) => d.sourceIds ?? []) ?? []),
   ])].sort((a, b) => SOURCES.findIndex((s) => s.id === a) - SOURCES.findIndex((s) => s.id === b));
   const referencesSection = citedIds.length
-    ? `<div class="section"><span class="label">References</span><ul class="refs__list">${citedIds.map((id) => `<li>${refChip(id)} ${esc(SOURCE_BY_ID[id]?.citation ?? id)}</li>`).join("")}</ul></div>`
+    ? `<div class="section"><span class="label">References</span><ul class="refs__list">${citedIds.map((id) => `<li>${refChip(id)} ${citationHTML(id)}</li>`).join("")}</ul></div>`
     : "";
 
   const cautionRow = c.safety.cautionParts
@@ -392,7 +404,7 @@ function methodologyOverlay(): string {
   const totalClaims = CROPS.reduce((n, c) => n + (c.claims?.length ?? 0), 0);
   const approved = CROPS.reduce((n, c) => n + (c.claims?.filter((cl) => cl.review === "approved").length ?? 0), 0);
   const tiers = MATURITY.map((m) => `<div class="mtier" style="--badge:${m.color}"><div class="mtier__head"><span class="badge__dot"></span><span class="mtier__label">${m.label}</span><span class="mtier__count">${counts[m.id] ?? 0}</span></div><p class="mtier__note">${esc(m.note)}</p></div>`).join("");
-  const sourceList = SOURCES.map((s, i) => `<li><span class="ref">${i + 1}</span> ${esc(s.citation)}</li>`).join("");
+  const sourceList = SOURCES.map((s, i) => `<li><span class="ref">${i + 1}</span> ${citationHTML(s.id)}</li>`).join("");
   return `
   <div class="methodology" id="pa-method" role="dialog" aria-modal="true" aria-label="About and methodology" hidden>
     <div class="methodology__scrim" data-close></div>
