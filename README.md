@@ -1,8 +1,8 @@
-# Malekind — Health · Integrity · Self-government
+# Virdignity — Male Dignity & Integrity Across the Lifespan
 
 **Male Integrity Sustains Human Civilization.**
 
-This repository contains the Malekind website: a long-form editorial platform on male
+This repository contains the Virdignity website: a long-form editorial platform on male
 dignity, whole-person integrity, and bounded self-government, consolidated from the
 project's two governing documents —
 
@@ -57,4 +57,4 @@ page and never gated behind membership, registration, or AI interaction.
 ---
 
 *Note: this repository previously carried a placeholder README for a "produce-atlas"
-project; it was repurposed for the Malekind website build on 2026-07-22.*
+project; it was repurposed for the Virdignity website build on 2026-07-22.*

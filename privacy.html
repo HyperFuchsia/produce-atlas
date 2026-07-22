@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Privacy &amp; Your Data — Malekind</title>
+<title>Privacy &amp; Your Data — Virdignity</title>
 <meta name="description" content="No accounts, no server-side storage of your answers, no trackers — plus an honest account of what the hosting layer still sees, the limits of browser storage, and what would change if accounts or AI ever launch.">
 <link rel="stylesheet" href="assets/style.css">
 <script>
@@ -19,8 +19,8 @@
 <header class="site-header">
   <div class="wrap masthead">
     <a class="brand" href="index.html">
-      <span class="brand-name">MALEKIND</span>
-      <span class="brand-line">Health · Integrity · Self-government</span>
+      <span class="brand-name">VIRDIGNITY</span>
+      <span class="brand-line">Male dignity &amp; integrity across the lifespan</span>
     </a>
     <nav class="site-nav" aria-label="Primary">
       <ul>
@@ -66,7 +66,7 @@
       </ol></div>
 
       <h2 id="plain-summary" class="anchor-offset"><span class="kicker">Read this if you read nothing else</span>The plain summary</h2>
-      <p class="statement">The current public check-in requires no account, and your answers are never uploaded to a Malekind server. This site sets no advertising trackers and sends no analytics. The AI reviewer is offline and cannot see visitor data.</p>
+      <p class="statement">The current public check-in requires no account, and your answers are never uploaded to a Virdignity server. This site sets no advertising trackers and sends no analytics. The AI reviewer is offline and cannot see visitor data.</p>
       <ul>
         <li>Everything you enter in the <a href="check-in.html">well-being check-in</a> stays in your browser. The <a href="reflect.html">reflection tools</a> go further: nothing is typed and nothing is stored at all.</li>
         <li>You choose separately whether to <em>participate</em> and whether to <em>store</em> anything. Saying yes to one is never treated as saying yes to the other.</li>
@@ -75,21 +75,21 @@
         <li>Crisis information is never gated by any of this. It requires no account, no consent, no disclosure — see <a href="care.html">Find Care &amp; Crisis</a>.</li>
       </ul>
       <div class="callout caution"><span class="label">Privacy is not monitoring</span>
-        <p>Because your answers remain in this browser and Malekind does not monitor them, nothing you enter here can trigger rescue or outreach. This site will never imply both complete privacy and active safety monitoring. If you may be in immediate danger or unable to stay safe, use the <a href="care.html#crisis-now">crisis options</a> now.</p>
+        <p>Because your answers remain in this browser and Virdignity does not monitor them, nothing you enter here can trigger rescue or outreach. This site will never imply both complete privacy and active safety monitoring. If you may be in immediate danger or unable to stay safe, use the <a href="care.html#crisis-now">crisis options</a> now.</p>
       </div>
 
       <h2 id="how-it-works" class="anchor-offset"><span class="kicker">Deliberately narrow by design</span>How the browser-only model works</h2>
-      <p>The adult check-in has a deliberately narrow data architecture. Answers remain in the visitor's browser; nothing is transmitted to, or stored on, a Malekind server. Within that model:</p>
+      <p>The adult check-in has a deliberately narrow data architecture. Answers remain in the visitor's browser; nothing is transmitted to, or stored on, a Virdignity server. Within that model:</p>
       <ul>
         <li><strong>Participation and storage are separate decisions.</strong> You see every question before consenting, select which topics to include, and can skip any question or stop entirely at any point.</li>
         <li><strong>Four storage choices.</strong> Store full answers, store a summary only, keep answers for this session only (cleared when the tab closes), or save nothing at all. The no-save path is always available.</li>
         <li><strong>Consent is stored separately from entries.</strong> Your storage preferences and your journal entries live under separate browser-storage keys, so erasing one never silently keeps the other.</li>
         <li><strong>Full journal control.</strong> Saved entries can be reviewed, edited, deleted one at a time, deleted by session, or deleted entirely; a separate control erases everything including consent records. Entries can be exported as a JSON file — with a clear warning that the exported file is unencrypted.</li>
-        <li><strong>Browser storage is not encrypted by Malekind</strong>, and this site will never call local data "encrypted" unless a real, audited encryption design with a comprehensible recovery model actually exists.</li>
+        <li><strong>Browser storage is not encrypted by Virdignity</strong>, and this site will never call local data "encrypted" unless a real, audited encryption design with a comprehensible recovery model actually exists.</li>
         <li><strong>Display preferences</strong> (dark theme, calm mode) are also stored only in your browser and contain nothing about you beyond those two settings.</li>
       </ul>
       <p>Two standing exclusions apply beyond the check-in. First, the AI reviewer is offline; the current version cannot see visitor data. Second, check-ins, journals, clinical messages, crisis disclosures, provider records, payments, and identity data are permanently excluded from any future editorial AI review — a rule anchored in the <a href="governance.html">governance standard</a>.</p>
-      <p class="small">Loss risks you should know: clearing browser data, using private browsing, switching devices, or switching browser profiles can permanently delete locally stored entries. Malekind holds no copy and cannot restore them.</p>
+      <p class="small">Loss risks you should know: clearing browser data, using private browsing, switching devices, or switching browser profiles can permanently delete locally stored entries. Virdignity holds no copy and cannot restore them.</p>
 
       <h2 id="no-account" class="anchor-offset"><span class="kicker">A correction this site applies to itself</span>"No-account, browser-only" — not "anonymous"</h2>
       <p>Earlier copy on this project sometimes described the check-in as "anonymous." That word is broader than what can be demonstrated, and it has been corrected. "No account required" and "answers remain in the browser" are supportable claims. "Anonymous" is not — because hosting providers, network infrastructure, bot protection, and server logs may still process IP addresses, request metadata, or cookies even when the application itself never receives your check-in answers.</p>
@@ -100,7 +100,7 @@
       <h2 id="infrastructure" class="anchor-offset"><span class="kicker">Honesty about the stack</span>What the hosting layer still sees</h2>
       <p>The public site is delivered through managed hosting and Cloudflare infrastructure, and a bot-management cookie has been observed on the live site. This does not contradict the claim that check-in answers remain browser-side — but honest privacy language has to distinguish five different things instead of blurring them together:</p>
       <ol>
-        <li><strong>Ordinary infrastructure request data</strong> — IP addresses, request metadata, and infrastructure cookies processed by hosting, network, and bot-protection layers as a condition of serving any website. Malekind does not control or eliminate this layer.</li>
+        <li><strong>Ordinary infrastructure request data</strong> — IP addresses, request metadata, and infrastructure cookies processed by hosting, network, and bot-protection layers as a condition of serving any website. Virdignity does not control or eliminate this layer.</li>
         <li><strong>Application analytics</strong> — none. This site sends no analytics events.</li>
         <li><strong>Advertising trackers</strong> — none, ever, on any page.</li>
         <li><strong>Browser-stored well-being answers</strong> — yours alone, in your browser, under the model described above.</li>
@@ -303,10 +303,10 @@
       </nav>
     </div>
     <div class="footer-legal">
-      <p><strong>Malekind</strong> is a live Open Access editorial beta: a complete long-form framework, public care and crisis navigation, optional adult browser-local reflection tools, transparent privacy controls, and a public owner-control governance standard. Its automated AI reviewer, paid subscriptions, billing, refunds, community, provider network, and clinical-care operations are <strong>not live</strong>.</p>
+      <p><strong>Virdignity</strong> is a live Open Access editorial beta: a complete long-form framework, public care and crisis navigation, optional adult browser-local reflection tools, transparent privacy controls, and a public owner-control governance standard. Its automated AI reviewer, paid subscriptions, billing, refunds, community, provider network, and clinical-care operations are <strong>not live</strong>.</p>
       <p>Educational publication only — not medical, psychological, legal, or clinical advice; not diagnosis; not emergency intervention; not a substitute for qualified professional care. Reading this site is not treatment.</p>
       <p>This site sets no advertising trackers and sends no analytics. Optional tools store data only in your own browser. <a href="privacy.html">How your data works →</a></p>
-      <p>© <span id="footer-year">2026</span> Malekind · Male Integrity Sustains Human Civilization · <a href="evidence.html#corrections">Corrections</a> · <a href="accessibility.html">Accessibility</a></p>
+      <p>© <span id="footer-year">2026</span> Virdignity · Male Integrity Sustains Human Civilization · <a href="evidence.html#corrections">Corrections</a> · <a href="accessibility.html">Accessibility</a></p>
     </div>
   </div>
 </footer>
