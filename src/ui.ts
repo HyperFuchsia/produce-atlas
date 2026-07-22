@@ -64,6 +64,7 @@ export interface UIRefs {
   // ride dock
   dock: HTMLElement;
   cap: HTMLElement;
+  capIdent: HTMLElement;
   capBody: HTMLElement;
   capClose: HTMLButtonElement;
   detailsBtn: HTMLButtonElement;
@@ -114,7 +115,8 @@ export function mountChrome(root: HTMLElement): UIRefs {
 
     <div class="dock" id="pa-dock" hidden>
       <div class="dock__card cap" id="pa-cap" role="status">
-        <button class="cap__close" id="pa-cap-close" aria-label="Close caption">✕</button>
+        <button class="cap__close" id="pa-cap-close" aria-label="Hide chapter text">✕</button>
+        <div class="cap__ident" id="pa-cap-ident"></div>
         <div id="pa-cap-body"></div>
         <button class="cap__details" id="pa-details">Full details ↗</button>
       </div>
@@ -168,6 +170,7 @@ export function mountChrome(root: HTMLElement): UIRefs {
     homeBtn: $("#pa-home"),
     dock: $("#pa-dock"),
     cap: $("#pa-cap"),
+    capIdent: $("#pa-cap-ident"),
     capBody: $("#pa-cap-body"),
     capClose: $("#pa-cap-close"),
     detailsBtn: $("#pa-details"),

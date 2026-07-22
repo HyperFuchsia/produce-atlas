@@ -48,6 +48,18 @@ function selectCrop(id: string, chapter = 0, updateHash = true): void {
     { caption: ui.cap, capBody: ui.capBody, capClose: ui.capClose, timeline: ui.timeline, play: ui.play, prev: ui.prev, next: ui.next, pace: ui.pace },
     { onReveal: (i) => globe.revealTo(chapters, i), onSeek: (i) => setHash(id, i) },
   );
+  // Persistent identity — the crop's name and scientific name stay visible for
+  // the whole journey, on every chapter and on mobile where the top bar title
+  // is hidden. Set via textContent so any name is safe to render.
+  ui.capIdent.innerHTML = "";
+  const cropName = document.createElement("div");
+  cropName.className = "cap__cropname";
+  cropName.textContent = crop.name;
+  const cropSci = document.createElement("div");
+  cropSci.className = "cap__cropsci";
+  cropSci.textContent = crop.scientificName;
+  ui.capIdent.append(cropName, cropSci);
+
   ui.cap.hidden = false;
   ride.showCaption();
   if (chapter > 0) ride.seek(chapter);

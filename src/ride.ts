@@ -113,11 +113,12 @@ export class Ride {
     if (this.playing) this.schedule();
   }
 
-  private hideCaption(): void { this.captionOpen = false; this.els.caption.hidden = true; }
+  // Dismiss only the chapter narration — the crop identity header stays put.
+  private hideCaption(): void { this.captionOpen = false; this.els.capBody.hidden = true; }
 
   private renderCaption(): void {
     const c = this.ch[this.i];
-    if (this.captionOpen) this.els.caption.hidden = false;
+    if (this.captionOpen) this.els.capBody.hidden = false;
     const conf = c.confidence === "modeled" ? "modeled / uncertain" : "well-documented";
     const label = EVENT_LABEL[c.eventType];
     const mech =

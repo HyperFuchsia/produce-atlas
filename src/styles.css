@@ -608,6 +608,11 @@ html, body { overflow: hidden; overscroll-behavior: none; height: 100%; }
 .dock__card[hidden] { display: none; }
 .cap__close { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; display: grid; place-items: center; border: none; background: transparent; color: #9aa3b2; cursor: pointer; border-radius: 50%; font-size: 12px; }
 .cap__close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+/* Persistent crop identity — always visible while a specimen is selected */
+.cap__ident { padding-right: 24px; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.cap__cropname { font-family: var(--font-serif); font-size: 19px; font-weight: 600; line-height: 1.1; color: #f3efe6; letter-spacing: 0.01em; }
+.cap__cropsci { font-family: var(--font-serif); font-style: italic; font-size: 13.5px; color: #a7c6a3; margin-top: 2px; }
+#pa-cap-body[hidden] { display: none; }
 .cap__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-right: 22px; }
 .cap__kind { font-family: var(--font-sans); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #f0a838; font-weight: 600; }
 .cap__n { font-family: var(--font-sans); font-size: 10px; color: #9aa3b2; }
