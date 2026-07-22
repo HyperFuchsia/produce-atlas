@@ -26,10 +26,65 @@ function esc(s: string): string {
  * Anything without markers renders exactly as before, so untouched records are
  * unaffected.
  */
+// Scientific binomials and genera, plus distinctive foreign/classical roots,
+// are auto-italicised wherever prose is rendered — so the botanical identity
+// and etymology always read as emphasis without hand-marking every record.
+// Genera that double as ordinary or proper words (Vanilla, Phoenix, Lens) are
+// deliberately omitted from the bare-genus list and only matched as binomials.
+const SCI_BINOMIALS = [
+  "Zea mays", "Triticum aestivum", "Triticum monococcum", "Triticum dicoccum", "Triticum durum",
+  "Aegilops tauschii", "Oryza sativa", "Oryza glaberrima", "Oryza rufipogon", "Solanum tuberosum",
+  "Solanum lycopersicum", "Solanum melongena", "Solanum brevicaule", "Solanum aethiopicum",
+  "Lycopersicon esculentum", "Phaseolus vulgaris", "Phaseolus lunatus", "Phaseolus coccineus",
+  "Phaseolus acutifolius", "Capsicum annuum", "Capsicum chinense", "Capsicum baccatum",
+  "Capsicum frutescens", "Capsicum pubescens", "Theobroma cacao", "Theobroma grandiflorum",
+  "Coffea arabica", "Coffea canephora", "Coffea eugenioides", "Musa acuminata", "Musa balbisiana",
+  "Glycine max", "Glycine soja", "Saccharum officinarum", "Saccharum spontaneum", "Sorghum bicolor",
+  "Ipomoea batatas", "Ipomoea aquatica", "Cucurbita pepo", "Cucurbita moschata", "Cucurbita maxima",
+  "Cucumis melo", "Cucumis sativus", "Citrullus lanatus", "Arachis hypogaea", "Camellia sinensis",
+  "Camellia japonica", "Camellia oleifera", "Piper nigrum", "Piper longum", "Piper cubeba",
+  "Piper betle", "Piper methysticum", "Olea europaea", "Mangifera indica", "Allium cepa",
+  "Allium sativum", "Allium ampeloprasum", "Daucus carota", "Zingiber officinale", "Curcuma longa",
+  "Curcuma amada", "Curcuma zedoaria", "Cinnamomum verum", "Cinnamomum cassia", "Persea americana",
+  "Phoenix dactylifera", "Ananas comosus", "Carica papaya", "Malus domestica", "Malus sieversii",
+  "Malus sylvestris", "Malus pumila", "Vitis vinifera", "Vitis rotundifolia", "Vitis labrusca",
+  "Ficus carica", "Punica granatum", "Manihot esculenta", "Dioscorea alata", "Dioscorea rotundata",
+  "Dioscorea bulbifera", "Dioscorea polystachya", "Hordeum vulgare", "Hordeum spontaneum",
+  "Lens culinaris", "Cicer arietinum", "Cicer reticulatum", "Ocimum basilicum", "Ocimum tenuiflorum",
+  "Coriandrum sativum", "Syzygium aromaticum", "Pimenta dioica", "Myristica fragrans",
+  "Vanilla planifolia", "Brassica oleracea", "Brassica rapa", "Lactuca sativa", "Lactuca serriola",
+];
+const SCI_GENERA = [
+  "Zea", "Triticum", "Aegilops", "Oryza", "Solanum", "Capsicum", "Theobroma", "Coffea", "Musa",
+  "Ensete", "Glycine", "Saccharum", "Sorghum", "Ipomoea", "Cucurbita", "Cucumis", "Citrullus",
+  "Arachis", "Camellia", "Piper", "Olea", "Mangifera", "Spondias", "Bouea", "Citrus", "Allium",
+  "Daucus", "Zingiber", "Curcuma", "Cinnamomum", "Persea", "Ananas", "Carica", "Vasconcellea",
+  "Malus", "Pyrus", "Cydonia", "Vitis", "Ficus", "Artocarpus", "Punica", "Prunus", "Manihot",
+  "Hevea", "Dioscorea", "Hordeum", "Cicer", "Ocimum", "Coriandrum", "Syzygium", "Pimenta",
+  "Myristica", "Brassica", "Lactuca", "Vigna", "Tillandsia",
+];
+const FOREIGN_ROOTS = [
+  "cacahuatl", "xocolatl", "qahwa", "kahve", "mahiz", "śarkarā", "sukkar", "khaṇḍa", "unio",
+  "gārlēac", "śṛṅgavera", "basilikon", "koriannon", "clavus", "vainilla", "nanas", "āhuacatl",
+  "aguacate", "nyami", "shoyu", "daktylos", "elaia", "laymun", "caput", "caboche",
+];
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function emphasizeTerms(html: string): string {
+  const wrap = (h: string, term: string): string =>
+    h.replace(new RegExp(`(?<![\\w*>])(${escapeRe(term)})(?![\\w*<])`, "g"), "<em>$1</em>");
+  for (const t of SCI_BINOMIALS) html = wrap(html, t);
+  for (const t of SCI_GENERA) html = wrap(html, t);
+  for (const t of FOREIGN_ROOTS) html = wrap(html, t);
+  return html;
+}
+
 function fmt(s: string): string {
-  return esc(s)
+  const marked = esc(s)
     .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+  return emphasizeTerms(marked);
 }
 export function formatEra(bp: number): string {
   const year = 1950 - bp;

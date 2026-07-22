@@ -39,6 +39,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Kernels (grain)", cautionParts: "", note: "Eaten as grain, fresh vegetable, and flour." },
+    field: {
+      seeds: "Each cob is a mass of **hundreds of seeds** — the kernels themselves, borne on one ear. Grown from seed; modern hybrids are re-bought yearly, as saved seed won't stay true.",
+      season: "A warm-season annual — sown in spring, picked in **late summer** as sweet corn, or left to dry on the stalk for grain.",
+      relatives: [
+        { name: "Teosinte", note: "its wild ancestor (*Zea mays* ssp. *parviglumis*)" },
+        { name: "Sorghum & sugarcane", note: "close C4 grasses" },
+        { name: "Wheat, rice, barley", note: "the grass family (Poaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -110,6 +119,16 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain (caryopsis)", cautionParts: "", note: "Contains gluten; unsuitable for coeliac diets." },
+    field: {
+      seeds: "The grain **is** the seed — one caryopsis per floret, packed along the ear. Sown from seed; bread wheat self-pollinates.",
+      season: "Winter wheat is sown in autumn for an **early-summer** harvest; spring wheat is sown in spring for a **late-summer** one.",
+      relatives: [
+        { name: "Einkorn & emmer", note: "ancestral wheats (*Triticum* spp.)" },
+        { name: "Durum & spelt", note: "sister wheats" },
+        { name: "Goatgrass", note: "*Aegilops tauschii* — donor of bread wheat's D genome" },
+        { name: "Barley, rye, oats", note: "other temperate cereals" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -181,6 +200,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "", note: "Staple cereal, in polished and wholegrain forms." },
+    field: {
+      seeds: "The grain is the seed, one per floret in a drooping panicle. Grown from seed — usually raised as seedlings and transplanted into flooded paddies.",
+      season: "A warm-season crop of the monsoon — sown with the rains, harvested in **autumn**; irrigated systems crop two or three times a year.",
+      relatives: [
+        { name: "African rice", note: "*Oryza glaberrima*, separately domesticated" },
+        { name: "Wild rice (*Oryza rufipogon*)", note: "its wild ancestor" },
+        { name: "Wild rice (*Zizania*)", note: "an unrelated North American grain of the same name" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -437,6 +465,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds and pods (cooked)", cautionParts: "Raw or undercooked seeds", note: "Raw beans contain phytohaemagglutinin; boil thoroughly before eating." },
+    field: {
+      seeds: "The **seeds are the crop** — kidney, pinto, black, navy — held in a pod. Grown from seed; open-pollinated types come true.",
+      season: "A warm-season annual — green (snap) beans picked through **summer**, dry beans left to mature into **autumn**.",
+      relatives: [
+        { name: "Lima & runner beans", note: "same genus (*Phaseolus*)" },
+        { name: "Cowpea, mung, adzuki", note: "*Vigna* beans" },
+        { name: "Pea, lentil, chickpea, soybean", note: "the legume family (Fabaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -498,6 +535,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Capsaicin is a strong irritant to eyes and skin." },
+    field: {
+      seeds: "Flat pale seeds cluster on the inner core (the *placenta*), which also carries most of the **heat**. Grown from seed; comes fairly true.",
+      season: "A warm-season annual (perennial in the tropics); fruit ripens from **summer into autumn**, picked green or left to redden.",
+      relatives: [
+        { name: "Habanero, ají, rocoto", note: "other domesticated *Capsicum* species" },
+        { name: "Bell pepper", note: "sweet *Capsicum annuum*" },
+        { name: "Tomato, potato, eggplant", note: "nightshade family (Solanaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -568,6 +614,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fermented, roasted seeds", cautionParts: "", note: "Contains theobromine, which is toxic to many pets though not to people at food levels." },
+    field: {
+      seeds: "The **beans are the seeds** — 30–50 per pod, cushioned in sweet pulp; they must be *fermented* and dried to become chocolate. Grown from seed and by grafting.",
+      season: "In the wet tropics it flowers and fruits **almost year-round**, with two main peaks; pods grow straight from the trunk (*cauliflory*).",
+      relatives: [
+        { name: "Cupuaçu", note: "*Theobroma grandiflorum*, same genus" },
+        { name: "Kola nut", note: "another stimulant Malvaceae" },
+        { name: "Durian, baobab, okra, cotton", note: "the mallow family (Malvaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -638,6 +693,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Roasted seeds (brewed)", cautionParts: "", note: "Beverage crop; the seeds contain caffeine." },
+    field: {
+      seeds: "Each red 'cherry' holds **two seeds** — the coffee beans; roasting transforms them. Arabica self-pollinates and is grown from seed.",
+      season: "Flowers after rains; the cherries ripen unevenly over months, picked mainly in a **once-a-year harvest** (timing varies by hemisphere and altitude).",
+      relatives: [
+        { name: "Robusta", note: "*Coffea canephora* — hardier, and an arabica parent" },
+        { name: "*Coffea eugenioides*", note: "arabica's other parent" },
+        { name: "Cinchona, gardenia", note: "the madder family (Rubiaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -708,6 +772,15 @@ export const CROPS: Crop[] = [
     maturity: "flagship",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Plantains are cooked; dessert bananas are eaten raw." },
+    field: {
+      seeds: "Edible bananas are **seedless and sterile** — the brown specks are aborted seeds; wild ones are full of hard seeds. Propagated only from *suckers*, so every plant is a clone.",
+      season: "In the wet tropics the plant fruits **year-round**, roughly a year from sucker to bunch — there is no single season.",
+      relatives: [
+        { name: "Plantain", note: "starchy cooking banana, same *Musa* complex" },
+        { name: "*Musa balbisiana*", note: "wild source of the 'B' genome" },
+        { name: "Ensete (false banana)", note: "an Ethiopian staple relative" },
+      ],
+    },
     claims: [
       { id: "banana-identity", kind: "identity", statement: "Cultivated bananas and plantains derive mainly from Musa acuminata (A genome), often hybridised with M. balbisiana (B genome); family Musaceae.", sourceIds: ["perrier2011", "powo"], confidence: "high", review: "pending" },
       { id: "banana-domestication", kind: "domestication", statement: "Cultivation began in the New Guinea highlands, where wetland agriculture and selection for seedless (parthenocarpic) fruit are documented by about 7,000 BP.", sourceIds: ["denham2003", "perrier2011"], confidence: "high", review: "pending" },
@@ -792,6 +865,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (processed or cooked)", cautionParts: "Raw beans", note: "Raw soybeans contain trypsin inhibitors and lectins and require processing or cooking." },
+    field: {
+      seeds: "The **seeds (beans)** are the crop — several per fuzzy pod; eaten green as edamame or dried. Grown from seed; self-pollinating.",
+      season: "A warm-season annual — sown late spring, harvested in **autumn** when the pods dry; edamame picked earlier while green.",
+      relatives: [
+        { name: "Wild soybean", note: "*Glycine soja*, its ancestor" },
+        { name: "Common bean, pea, lentil", note: "the legume family (Fabaceae)" },
+        { name: "Peanut", note: "an oil-rich legume cousin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -853,6 +935,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Stem juice (sugar)", cautionParts: "", note: "Grown for sucrose and ethanol rather than direct eating." },
+    field: {
+      seeds: "Rarely grown from seed — it is propagated from **stem cuttings** (setts), each node sprouting a new cane; its feathery flower seed is used only for breeding.",
+      season: "A tall perennial grass cut **12–18 months** after planting, then *ratooned* (re-cut) for several more crops.",
+      relatives: [
+        { name: "Sorghum & maize", note: "sugar-storing C4 grasses" },
+        { name: "Wild canes", note: "*Saccharum spontaneum* & kin, used in breeding" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1081,6 +1171,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "Fresh or stressed foliage", note: "Fresh sorghum foliage can accumulate cyanogenic compounds (a fodder caution)." },
+    field: {
+      seeds: "The grain is the seed, borne in a dense head; grown from seed. Sweet-stemmed types are pressed for syrup instead.",
+      season: "A drought-hardy warm-season annual — sown with the rains, harvested **late summer to autumn**.",
+      relatives: [
+        { name: "Maize & sugarcane", note: "close C4 grasses" },
+        { name: "Pearl & finger millet", note: "other African dryland cereals" },
+        { name: "Johnson grass", note: "a wild *Sorghum* relative" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1142,6 +1241,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage roots and young leaves", cautionParts: "", note: "Both the roots and young leaves are eaten." },
+    field: {
+      seeds: "Grown from **vine cuttings** or root sprouts ('slips'), not seed; the storage roots are the crop, and the young leaves are eaten too.",
+      season: "A frost-tender warm-season crop — slips planted in spring, roots lifted in **autumn** before cold.",
+      relatives: [
+        { name: "Morning glory", note: "same genus (*Ipomoea*) — ornamental cousins" },
+        { name: "Water spinach", note: "edible *Ipomoea aquatica*" },
+        { name: "True potato", note: "**unrelated** — a nightshade, despite the name" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1202,6 +1310,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit and seeds", cautionParts: "Rare intensely bitter fruit", note: "Unusually bitter squash can contain toxic cucurbitacins; do not eat it." },
+    field: {
+      seeds: "Flat seeds fill the central cavity, **eaten in their own right** (pepitas). Grown from seed; it cross-pollinates freely, so saved seed may not come true.",
+      season: "Warm-season annuals — summer squash (zucchini) picked young in **summer**; winter squash and pumpkins ripened hard-rinded into **autumn** for storage.",
+      relatives: [
+        { name: "Pumpkin & zucchini", note: "forms of *Cucurbita* squash" },
+        { name: "Cucumber, melon, watermelon", note: "the gourd family (Cucurbitaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1263,6 +1379,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds", cautionParts: "Common allergen", note: "A major food allergen; poorly stored nuts may carry aflatoxin." },
+    field: {
+      seeds: "The **seeds (nuts) ripen underground** — the flower stalk buries itself after pollination (*geocarpy*). Grown from seed (the raw kernels).",
+      season: "A warm-season annual — sown late spring, the whole plant lifted in **autumn** to dig the pods.",
+      relatives: [
+        { name: "Wild *Arachis*", note: "the two wild species behind cultivated peanut" },
+        { name: "Soybean, bean, pea, lentil", note: "the legume family (Fabaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1325,6 +1449,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves (infused)", cautionParts: "", note: "Beverage crop; the leaves contain caffeine." },
+    field: {
+      seeds: "Grown from seed or, for named clones, from cuttings; only the young **leaves and buds** are picked, never the seed.",
+      season: "An evergreen shrub plucked in repeated *flushes* through the **growing season (spring–autumn)**, the first spring flush most prized.",
+      relatives: [
+        { name: "Camellia (ornamental)", note: "*Camellia japonica* & kin, same genus" },
+        { name: "Tea-oil camellia", note: "*Camellia oleifera*, grown for seed oil" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1455,6 +1587,15 @@ export const CROPS: Crop[] = [
     maturity: "flagship",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Dried fruit (peppercorns)", cautionParts: "", note: "Culinary spice; piperine gives its pungency." },
+    field: {
+      seeds: "Each peppercorn is a **single-seeded drupe**; black, white, and green pepper are the same berry at different stages. Propagated from *cuttings* of the vine.",
+      season: "A perennial vine trained up supports; the berry spikes are picked **once a year** — still green for black pepper, fully ripe for white.",
+      relatives: [
+        { name: "Long pepper & cubeb", note: "spice-bearing *Piper* vines" },
+        { name: "Betel & kava", note: "other *Piper* species" },
+        { name: "Chili 'pepper'", note: "**unrelated** — a *Capsicum*, named by mistake" },
+      ],
+    },
     claims: [
       { id: "black-pepper-identity", kind: "identity", statement: "Black pepper is Piper nigrum, family Piperaceae.", sourceIds: ["powo", "ravindran2000"], confidence: "high", review: "pending" },
       { id: "black-pepper-domestication", kind: "domestication", statement: "It was domesticated from wild vines in the Western Ghats of southwest India and cultivated on the Malabar Coast.", sourceIds: ["ravindran2000", "hajibabaei2014"], confidence: "medium", review: "pending" },
@@ -1673,6 +1814,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Bulb (and green leaves)", cautionParts: "Toxic to dogs and cats", note: "Alliums are toxic to many pets, though safe for people." },
+    field: {
+      seeds: "Grown from seed, from small 'sets' (immature bulbs), or from transplants; the papery **bulb** is the crop. It sets black seed in a globe of flowers in year two.",
+      season: "A biennial grown as an annual — planted in spring, bulbs lifted and cured in **late summer** for winter storage.",
+      relatives: [
+        { name: "Garlic, leek, shallot", note: "same genus (*Allium*)" },
+        { name: "Chives & spring onion", note: "*Allium* kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1733,6 +1882,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Bulb (cloves)", cautionParts: "Toxic to dogs and cats", note: "Alliums are toxic to many pets, though safe for people." },
+    field: {
+      seeds: "**Sterile** — it rarely sets true seed, so it is grown by replanting individual *cloves* (each a bud). Hardneck types also give edible flower stalks (scapes).",
+      season: "Planted in **autumn**, it overwinters and the bulb is lifted the following **early-mid summer**, then cured.",
+      relatives: [
+        { name: "Onion, leek, shallot", note: "same genus (*Allium*)" },
+        { name: "Elephant garlic", note: "actually a leek (*Allium ampeloprasum*)" },
+        { name: "Wild garlic / ramsons", note: "foraged *Allium* kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1793,6 +1951,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage root (and leaves)", cautionParts: "", note: "Roots are eaten raw and cooked; the leaves are also edible." },
+    field: {
+      seeds: "A biennial grown from seed; the **taproot** is pulled in year one, before it flowers into the lacy 'Queen Anne's lace' umbel that sets seed in year two.",
+      season: "A cool-season crop — sown spring to midsummer, roots pulled from **summer through autumn**; stores well into winter.",
+      relatives: [
+        { name: "Parsnip", note: "the pale root cousin" },
+        { name: "Celery, fennel, parsley, dill", note: "the carrot family (Apiaceae)" },
+        { name: "Coriander, cumin, caraway", note: "umbellifer spices" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1923,6 +2090,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Rhizome", cautionParts: "", note: "Used fresh, dried, and ground." },
+    field: {
+      seeds: "A near-**sterile cultigen** grown by dividing its knobbly *rhizome* (the 'root'); it seldom flowers or sets seed.",
+      season: "A tropical perennial — rhizomes planted in spring, dug **8–10 months later**; tender young 'stem ginger' is lifted earlier.",
+      relatives: [
+        { name: "Turmeric", note: "*Curcuma longa*, same family" },
+        { name: "Galangal & cardamom", note: "aromatic ginger-family rhizomes and pods" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1983,6 +2158,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Rhizome", cautionParts: "", note: "Used fresh and as a dried powder; also a natural dye." },
+    field: {
+      seeds: "A **sterile triploid** propagated only by its *rhizome*; it does not set seed.",
+      season: "A tropical perennial like ginger — planted in spring, the orange rhizomes dug **7–9 months later**, then boiled and dried.",
+      relatives: [
+        { name: "Ginger", note: "*Zingiber officinale*, same family" },
+        { name: "Mango-ginger & zedoary", note: "other *Curcuma* rhizomes" },
+        { name: "Cardamom & galangal", note: "the ginger family (Zingiberaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2043,6 +2227,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Inner bark", cautionParts: "", note: "Ceylon cinnamon; cassia is a related, coumarin-richer substitute." },
+    field: {
+      seeds: "Grown from seed or coppiced cuttings; the spice is the **inner bark**, peeled from young shoots — not a seed.",
+      season: "An evergreen tree cut back (*coppiced*) so bark can be stripped from the new shoots, usually after the **rainy season**.",
+      relatives: [
+        { name: "Cassia", note: "*Cinnamomum cassia* — the cheaper 'cinnamon'" },
+        { name: "Bay laurel & camphor", note: "the laurel family (Lauraceae)" },
+        { name: "Avocado", note: "a surprising Lauraceae cousin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2103,6 +2296,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit flesh", cautionParts: "Leaves and pit", note: "Foliage and the seed contain persin, which is toxic to some animals; the flesh is safe for people." },
+    field: {
+      seeds: "A **single large seed** (the pit). Grown by grafting — seedlings vary — though the pit sprouts readily; the famous *Hass* is one grafted clone.",
+      season: "Evergreen, with flowering and fruiting overlapping; fruit can **hang on the tree for months**, ripening only after picking, so harvest windows are long.",
+      relatives: [
+        { name: "Bay laurel & cinnamon", note: "the laurel family (Lauraceae)" },
+        { name: "Camphor & sassafras", note: "aromatic Lauraceae trees" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2233,6 +2434,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten fresh and dried; very high in sugars." },
+    field: {
+      seeds: "Each date has **one hard seed** (the stone); grown from seed, or from *offshoots* to keep a variety true. It is *dioecious* — separate male and female trees — so growers hand-pollinate.",
+      season: "Flowers in spring (hand-pollinated); fruit ripens in the **late-summer/autumn** heat through the khalal, rutab, and tamar stages.",
+      relatives: [
+        { name: "Other *Phoenix* palms", note: "wild and Canary date palms" },
+        { name: "Coconut & oil palm", note: "the palm family (Arecaceae)" },
+        { name: "Açaí & peach palm", note: "other fruit-bearing palms" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2501,6 +2711,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "Unripe fruit and stem enzymes", note: "Unripe fruit and bromelain can irritate the mouth; ripe fruit is safe." },
+    field: {
+      seeds: "Commercial pineapples are **seedless**. Propagated vegetatively — from the leafy *crown*, side slips, or suckers — so each is a clone.",
+      season: "A tropical perennial; a plant gives its first fruit about **18 months** after planting, then a smaller 'ratoon' fruit later — harvested year-round in the tropics.",
+      relatives: [
+        { name: "Bromeliads", note: "ornamental cousins (Bromeliaceae)" },
+        { name: "Spanish moss", note: "an air-plant *Tillandsia* relative" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2561,6 +2779,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Ripe fruit", cautionParts: "Unripe fruit and latex", note: "Unripe-fruit latex can irritate and is traditionally avoided in pregnancy; ripe fruit is safe." },
+    field: {
+      seeds: "A central cavity of **many round black seeds** (peppery, edible); grown from seed. Plants are male, female, or hermaphrodite, which governs fruit set.",
+      season: "A fast, short-lived giant herb — it can flower and fruit **within a year and almost continuously** in the tropics.",
+      relatives: [
+        { name: "Mountain papaya", note: "*Vasconcellea* — hardy highland relatives" },
+        { name: "Few close kin", note: "the small family Caricaceae" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2621,6 +2847,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (cooked)", cautionParts: "Foliage (glycoalkaloids)", note: "Like other nightshades the leaves contain glycoalkaloids; the cooked fruit is eaten." },
+    field: {
+      seeds: "Small soft seeds run through the flesh, eaten with it; grown from seed. A warm-season perennial usually raised as an annual.",
+      season: "Sown under warmth in spring; fruit ripens from **midsummer into autumn**, picked glossy before the seeds harden.",
+      relatives: [
+        { name: "Tomato & potato", note: "same genus (*Solanum*)" },
+        { name: "African eggplants", note: "*Solanum aethiopicum* & *macrocarpon*" },
+        { name: "Chili & tomatillo", note: "nightshade family (Solanaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2681,6 +2916,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves (and other cultivar parts)", cautionParts: "", note: "Eaten raw, cooked, and fermented." },
+    field: {
+      seeds: "A biennial grown from seed; the **leafy head** is cut in year one, long before it would bolt to a yellow flower and set seed pods in year two.",
+      season: "A cool-season crop — spring and autumn/winter harvests; hardy types stand through **frost**, which sweetens them.",
+      relatives: [
+        { name: "Kale, broccoli, cauliflower", note: "**the same species**, *Brassica oleracea*" },
+        { name: "Brussels sprouts, kohlrabi", note: "more *B. oleracea* forms" },
+        { name: "Turnip, mustard, radish, rocket", note: "the cabbage family (Brassicaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2741,6 +2985,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves", cautionParts: "", note: "Eaten raw; wild relatives are bitter and not cultivated for food." },
+    field: {
+      seeds: "Grown from seed; harvested as **leaves** long before it bolts upward, turns bitter, and floats its seeds away on dandelion-like parachutes.",
+      season: "A cool-season crop — sown spring and late summer for **spring and autumn** cutting; it bolts and turns bitter in summer heat.",
+      relatives: [
+        { name: "Chicory, endive, radicchio", note: "bitter leaf cousins" },
+        { name: "Wild lettuce (*Lactuca serriola*)", note: "its weedy ancestor" },
+        { name: "Sunflower, artichoke, dandelion", note: "the daisy family (Asteraceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2801,6 +3054,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Storage roots (processed)", cautionParts: "Raw roots (cyanogenic)", note: "Raw cassava contains cyanogenic compounds; it must be peeled and cooked or soaked before eating." },
+    field: {
+      seeds: "Grown from **stem cuttings**, not seed — a length of woody stem sprouts new plants; the swollen roots are the crop and must be processed to remove cyanide.",
+      season: "A perennial shrub whose roots can be **left in the ground 8–24 months** and lifted as needed — a living store against famine.",
+      relatives: [
+        { name: "Rubber tree", note: "*Hevea* — a Euphorbiaceae cousin" },
+        { name: "Castor & poinsettia", note: "toxic, latex-bearing spurge kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2861,6 +3122,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Tubers (cooked)", cautionParts: "Raw tubers of some species", note: "Some yams contain irritants or alkaloids when raw; cultivated yams are cooked before eating." },
+    field: {
+      seeds: "Grown from pieces of **tuber** or small aerial 'bulbils'; the large starchy tuber is the crop. Climbing vines; some species set true seed too.",
+      season: "A vine of the wet tropics — planted with the rains, tubers dug **after the vines die back**, often 8–11 months later.",
+      relatives: [
+        { name: "Water & white yam", note: "*Dioscorea alata* & *rotundata*" },
+        { name: "Air potato & Chinese yam", note: "other *Dioscorea* species" },
+        { name: "US 'yam'", note: "**actually a sweet potato**, unrelated" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2921,6 +3191,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "", note: "Used for food and malt; contains gluten-related proteins." },
+    field: {
+      seeds: "The grain is the seed, in a bristly (awned) head; grown from seed. Two-row and six-row types differ in how many seeds set per node.",
+      season: "Sown as winter or spring barley; harvested **early-mid summer** — often the first cereal off the field.",
+      relatives: [
+        { name: "Wild barley", note: "*Hordeum spontaneum*, its ancestor" },
+        { name: "Wheat, rye, oats", note: "the temperate cereals (Poaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2981,6 +3259,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (cooked)", cautionParts: "", note: "Cooked before eating; a rich source of plant protein." },
+    field: {
+      seeds: "The **lens-shaped seeds** — two per short pod — are the crop; quick to cook, grown from seed. A self-pollinating annual.",
+      season: "A cool-season annual — sown late winter/spring, harvested **early-mid summer** as the pods dry.",
+      relatives: [
+        { name: "Pea & chickpea", note: "founder-crop pulses" },
+        { name: "Faba bean & vetch", note: "close *Vicia*/*Lens* legume kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3041,6 +3327,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (cooked)", cautionParts: "", note: "Cooked before eating; the basis of hummus and many dishes." },
+    field: {
+      seeds: "One or two **ram's-head-shaped seeds** per inflated pod; grown from seed. Desi (small, dark) and kabuli (large, pale) are the two seed types.",
+      season: "A cool-season, drought-tolerant annual — sown after the rains, harvested in **early summer** as pods dry.",
+      relatives: [
+        { name: "Wild chickpea", note: "*Cicer reticulatum*, its ancestor" },
+        { name: "Lentil, pea, faba bean", note: "Fertile-Crescent pulses (Fabaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3101,6 +3395,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves", cautionParts: "", note: "Used fresh and dried as a culinary herb." },
+    field: {
+      seeds: "Grown from seed (the tiny seeds gel in water); pinch off the flower spikes to keep the **leaves** coming. A tender annual.",
+      season: "A warm-season herb — sown after frost, leaves picked all **summer**; it dies at the first cold.",
+      relatives: [
+        { name: "Holy basil (tulsi)", note: "*Ocimum tenuiflorum*, sacred cousin" },
+        { name: "Mint, oregano, thyme, sage", note: "the mint family (Lamiaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3161,6 +3463,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves and seeds", cautionParts: "", note: "Both the fresh leaves and dried seeds are used." },
+    field: {
+      seeds: "Doubly useful — the fresh **leaves** (cilantro) and the dried **seeds** (a spice) come from one plant. Grown from seed; bolts quickly in heat.",
+      season: "A cool-season annual — leaf crops in **spring and autumn**; left to flower, it yields seed by **midsummer**.",
+      relatives: [
+        { name: "Cumin, caraway, dill", note: "umbellifer spice seeds" },
+        { name: "Parsley, fennel, carrot", note: "the carrot family (Apiaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3221,6 +3531,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Dried flower buds", cautionParts: "Concentrated clove oil", note: "The spice is safe in culinary amounts; concentrated clove oil (eugenol) can irritate." },
+    field: {
+      seeds: "The spice is a **dried unopened flower bud**, picked before it blooms; grown from seed (the 'mother-of-clove' fruit). Left alone, buds open to flowers and berries.",
+      season: "An evergreen tropical tree; buds are hand-picked at the **pink, unopened stage**, in a season that varies by region.",
+      relatives: [
+        { name: "Allspice", note: "*Pimenta dioica*, a myrtle-family spice" },
+        { name: "Guava, jamun, rose apple", note: "edible *Syzygium*/Myrtaceae fruit" },
+        { name: "Eucalyptus", note: "an aromatic Myrtaceae cousin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3281,6 +3600,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seed (and mace aril)", cautionParts: "Large doses (myristicin)", note: "Culinary amounts are safe; large doses of nutmeg are toxic and psychoactive." },
+    field: {
+      seeds: "One tree, **two spices**: nutmeg is the *seed*, mace the red lacy *aril* around it. *Dioecious* — only female trees fruit — and grown from seed.",
+      season: "An evergreen tropical tree fruiting **much of the year** once mature; the fruit splits to reveal the mace-wrapped seed.",
+      relatives: [
+        { name: "Wild nutmegs", note: "other *Myristica* species" },
+        { name: "Few food kin", note: "the small tropical family Myristicaceae" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -3341,6 +3668,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Cured seed pods", cautionParts: "", note: "The cured pods and their extract flavour foods; the fresh plant is not eaten." },
+    field: {
+      seeds: "The pod holds **thousands of dust-like seeds** (the black specks in vanilla). The **only orchid grown for food** — *hand-pollinated* and propagated from stem cuttings.",
+      season: "A climbing orchid whose flowers open for one day and are hand-pollinated; the green pods take **8–9 months** to mature, then months of curing.",
+      relatives: [
+        { name: "Other *Vanilla* species", note: "e.g. Tahitian vanilla" },
+        { name: "Orchids", note: "the huge family Orchidaceae — otherwise almost all ornamental" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
