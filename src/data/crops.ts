@@ -417,6 +417,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds and pods (cooked)", cautionParts: "Raw or undercooked seeds", note: "Raw beans contain phytohaemagglutinin; boil thoroughly before eating." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The common bean, Phaseolus vulgaris, is a single species that hides behind a wall of names: kidney, pinto, black, navy, cannellini, borlotti, and haricot beans are all its dried seeds, while green beans and string beans are the same plant's unripe pods. It is a legume, and — like its relatives — it enriches the soil by hosting bacteria that fix nitrogen from the air.",
+          "Its dried seeds are a cheap, storable, protein-rich food, but they carry a real hazard raw: raw and undercooked beans contain phytohaemagglutinin, a toxin destroyed only by thorough boiling, which is why beans must always be properly cooked.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Domesticated twice in the Americas",
+        paragraphs: [
+          "The common bean is a New World crop with a doubled origin. Farmers domesticated it independently in two places — in Mesoamerica and in the Andes of South America — from a wild bean whose range stretched between them, producing two distinct genetic pools that plant scientists can still tell apart today.",
+          "This parallel domestication, two peoples taming the same wild plant on their own, makes the bean a favourite case study in how agriculture arose more than once from shared raw material.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The protein of the Three Sisters",
+        paragraphs: [
+          "Across the Americas the bean was grown as one of the \"Three Sisters,\" climbing the maize stalks while shading squash sprawled below. The partnership was nutritional as well as agricultural: maize is short of certain amino acids that beans supply, so eaten together the two form a far more complete protein than either alone — the dietary backbone of many American civilisations.",
+          "After 1492 the common bean spread through the Columbian exchange to Europe, Africa, and Asia, where it joined or displaced older Old World pulses and settled into cuisines from Italian minestrone to the bean dishes of Africa and India.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The common bean is the world's most important food legume for direct human consumption, grown across the Americas, Africa, and Asia — India, Brazil, and Myanmar among the leading producers — and eaten both as dried pulses and as fresh green beans. Inexpensive, nourishing, and endlessly various, it remains a cornerstone of plant-based protein worldwide.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "chili",
@@ -739,6 +772,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (processed or cooked)", cautionParts: "Raw beans", note: "Raw soybeans contain trypsin inhibitors and lectins and require processing or cooking." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The soybean, Glycine max, is an East Asian legume whose very name in European languages comes from soy sauce — through the Japanese shoyu and Dutch traders — rather than from the bean itself. Nutritionally it is remarkable: unusually high in both protein and oil, it is one of the few plant foods that can stand in for meat, which is why it underpins so much of the world's food and feed.",
+          "Raw soybeans, however, are not good food; they contain compounds that block digestion, and the bean only becomes wholesome after cooking or, more ingeniously, fermentation and processing.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Domestication in China",
+        paragraphs: [
+          "The soybean was domesticated in East Asia, in China, several thousand years ago from a wild vining ancestor, and it became one of the revered staple grains of ancient Chinese agriculture. Chinese, and later Japanese, Korean, and Southeast Asian, cooks developed a whole technology to unlock it — coagulating its milk into tofu, and fermenting it into soy sauce, miso, tempeh, and natto.",
+          "This transformation of an indigestible bean into a family of nourishing, keepable foods ranks among the great achievements of traditional food science, and made the soybean central to East Asian diets long before the West knew it.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "From Asian food to global commodity",
+        paragraphs: [
+          "The soybean reached Europe and the Americas only late — as a curiosity in the eighteenth century, and as a serious crop in the twentieth. Then it exploded. Bred and industrialised, above all in the United States and later Brazil and Argentina, it became one of the pillars of modern agriculture, grown less for tofu than for oil and for high-protein meal to feed livestock.",
+          "That scale has a shadow: soybean expansion is a leading driver of deforestation in the Amazon and the South American Cerrado, making this ancient Chinese food-plant a flashpoint in debates over the environmental cost of the modern food system.",
+        ],
+        sourceIds: ["sauer1993", "faostat"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The soybean is now one of the most-produced crops on Earth and by far the world's most important oilseed and protein meal, dominated by the United States, Brazil, and Argentina. Most of the harvest becomes cooking oil and animal feed, with a growing share going into plant-based foods — a single bean that quietly stands behind meat, eggs, and much of the processed diet.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "sugarcane",
@@ -767,6 +833,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Stem juice (sugar)", cautionParts: "", note: "Grown for sucrose and ethanol rather than direct eating." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Sugar itself is named down a long chain of trade: from the Sanskrit śarkarā through Persian and Arabic sukkar into the European languages. The plant behind it, Saccharum officinarum, is a giant tropical grass whose thick canes store sucrose in their juicy pith — the single largest source of the world's sugar.",
+          "In its oldest form the crop needed no factory at all: people simply chewed the sweet cane and sucked out the juice. Turning that juice into crystalline sugar was a later and momentous invention.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "From New Guinea to sugar",
+        paragraphs: [
+          "Sugarcane was domesticated in New Guinea some 8,000 or more years ago — the same early cradle of agriculture that gave us the banana — and spread through island Southeast Asia as a chewing cane. The decisive step came in India, where, in the first millennium, people learned to boil and crystallise cane juice into solid sugar; the word \"candy\" itself descends from the Sanskrit khaṇḍa for a piece of that crystallised sugar.",
+          "From India the knowledge of sugar-making spread to Persia, and then Arab agriculture carried both the cane and the craft across the medieval Mediterranean and North Africa, where Europeans first encountered this costly luxury.",
+        ],
+        sourceIds: ["denham2003", "sauer1993"],
+      },
+      {
+        heading: "Sugar and slavery",
+        paragraphs: [
+          "Sugar's history then turns very dark. Europeans planted cane on the Atlantic islands and, from the sixteenth century, on vast plantations in Brazil and the Caribbean, where its brutal, relentless labour was met by enslaving people on an enormous scale. The demand for sugar became one of the chief engines of the Atlantic slave trade, and millions of enslaved Africans were forced to grow and process it under lethal conditions.",
+          "The wealth of the \"sugar islands\" and the human catastrophe that produced it are inseparable: few crops have been so entangled with slavery and empire, and the sweetness on European tables carried a terrible cost.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Sugarcane is now one of the most-produced crops in the world by weight, supplying the majority of global sugar, with Brazil and India the dominant growers. Beyond the sugar bowl it has become an energy crop: Brazil in particular ferments a large share of its cane into ethanol fuel, so that a grass first chewed in New Guinea now helps power cars.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "apple",
@@ -941,6 +1040,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "Fresh or stressed foliage", note: "Fresh sorghum foliage can accumulate cyanogenic compounds (a fodder caution)." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Sorghum, Sorghum bicolor, goes by many names around the world — great millet, guinea corn, durra, jowar, milo — a sign of how widely it is grown and how many peoples rely on it. It is a tall grass, and like maize it uses the efficient C4 form of photosynthesis, but its real distinction is toughness: sorghum shrugs off heat and drought that would destroy most cereals.",
+          "That resilience is why it feeds hundreds of millions in some of the world's hottest, driest farmland. A note of caution travels with the plant, though: its fresh or stressed leaves can build up cyanogenic compounds, a hazard for grazing animals rather than for the grain.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "An African grain",
+        paragraphs: [
+          "Sorghum is native to Africa, domesticated in the northeastern part of the continent — the region of Sudan and Ethiopia — several thousand years ago from wild grasses of the savanna. It became, and remains, one of the great staple grains of the African Sahel and dry tropics, ground into porridges and flatbreads and brewed into beer.",
+          "From Africa it travelled early across the Indian Ocean to India and on to China, and much later, through the Atlantic slave trade, to the Americas.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "A grain for hard places",
+        paragraphs: [
+          "Sorghum's value has always been its ability to yield where other crops fail. In the semi-arid belts of Africa and South Asia it is a crop of food security — dependable in drought years, storable, and versatile, feeding people directly as grain and their animals as fodder, with sweet-stemmed types tapped for syrup.",
+          "In an era of warming climates and spreading drylands, that ancient drought-hardiness has made sorghum a crop of growing interest well beyond its traditional range.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Sorghum is among the world's most important cereals by production, a dietary staple for perhaps half a billion people across Africa and Asia and, in wealthier countries such as the United States, chiefly a livestock feed and increasingly a source of biofuel and naturally gluten-free food. Nigeria, the United States, Ethiopia, India, and Sudan are among the leading growers of this hardy African grain.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "sweet-potato",
@@ -2541,6 +2673,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "", note: "Used for food and malt; contains gluten-related proteins." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Barley, Hordeum vulgare, is one of the oldest grains humans grow, and its English name is ancient enough to survive in \"barn,\" originally a barley-house. It is a hardy cereal that tolerates cold, drought, poor soil, and salt better than wheat, which let it feed people at the margins — high mountains, dry steppes, and the edges of the farmed world.",
+          "Though eaten as bread and porridge for millennia, barley's other destiny is liquid: it is the classic grain for malting, and thus the foundation of beer and much whisky.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "A founder crop of farming",
+        paragraphs: [
+          "Barley was domesticated in the Fertile Crescent around 10,000 years ago from wild barley, which still grows across the Near East. It stands among the small handful of \"founder crops\" — with emmer and einkorn wheat, lentils, peas, and a few others — whose taming launched Neolithic agriculture and, with it, settled civilisation.",
+          "As with wheat, the key change was a non-shattering seed head that held the grain for harvest, turning a self-scattering wild grass into a reliable crop.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "Bread, beer & wages",
+        paragraphs: [
+          "In the ancient Near East barley was money as much as food. Sumerian workers were paid rations of barley and barley beer; in Egypt it fed the labourers who raised the monuments and brewed the everyday drink of the Nile. Some of the earliest evidence of beer anywhere is barley-based, making this grain a parent of one of humanity's oldest crafted beverages.",
+          "Barley carried the Neolithic package across Europe and Asia and adapted to extremes — the roasted-barley tsampa of the Tibetan plateau, the barley of Ethiopian highlands — wherever gentler grains would not grow.",
+        ],
+        sourceIds: ["kiple2000", "zohary2012"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Barley remains one of the world's major cereals, though most of the crop now goes to animal feed and to malting for the brewing and distilling industries rather than directly onto the plate. Russia, the European Union, and other temperate producers lead its cultivation — a grain that helped begin agriculture and still fills the beer glass.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "lentil",
@@ -2568,6 +2733,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (cooked)", cautionParts: "", note: "Cooked before eating; a rich source of plant protein." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The lentil gave its shape to a word we use every day: the optical \"lens\" is named after this little disc-shaped seed, through the Latin lens, the lentil's own name. Lens culinaris is a small, quick-cooking legume — one of the few pulses that needs no soaking — and a dense source of plant protein that has fed people for as long as farming has existed.",
+          "It comes in a spectrum of colours, from green and brown to red, black, and yellow, some holding their shape when cooked and others collapsing into the soft base of a soup or dal.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Among the very first crops",
+        paragraphs: [
+          "The lentil is one of the eight \"founder crops\" of Neolithic agriculture, domesticated in the Fertile Crescent around 10,000 years ago from a wild ancestor of the Near Eastern hills. It was there almost from the beginning, paired with the first wheat and barley — the pulse whose protein rounded out a cereal diet.",
+          "That pairing of grain and legume, present at the dawn of farming, is one of the oldest and most nutritionally sound patterns in human food, and the lentil is one of its founding partners.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "An ancient everyday food",
+        paragraphs: [
+          "The lentil runs deep through the culture of the Old World. In the Book of Genesis it is lentil stew for which Esau sells his birthright — a sign of how ordinary and satisfying the dish already was in the ancient Near East. From there the lentil spread with early farming into Europe, across the Mediterranean, into Ethiopia, and above all into South Asia, where it became the dal at the heart of countless meals.",
+          "Cheap, filling, and keepable, it has always been especially a food of everyday life rather than of feasts.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The lentil is a major global pulse, with India as the largest consumer and Canada now a leading grower and exporter alongside India and other South Asian and Mediterranean producers. Nutritious, fast to cook, and central to vegetarian traditions, this founder crop of agriculture remains a staple protein for a large share of humanity.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "chickpea",
@@ -2595,6 +2793,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds (cooked)", cautionParts: "", note: "Cooked before eating; the basis of hummus and many dishes." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The chickpea, Cicer arietinum, hides a small joke in its scientific name: arietinum means \"ram-like,\" for the seed's resemblance to a ram's head, complete with a little beak. In the kitchen it wears different names too — garbanzo in the Spanish-speaking world, chana or Bengal gram in South Asia — reflecting how far this ancient pulse has travelled.",
+          "It comes in two broad forms: the small, dark, angular desi type common in South Asia, and the larger, pale, round kabuli type familiar around the Mediterranean. Both are protein-rich, storable, and the basis of some of the world's oldest everyday dishes.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "A founder crop of the Fertile Crescent",
+        paragraphs: [
+          "The chickpea was domesticated in the Fertile Crescent — around southeastern Anatolia — roughly 10,000 years ago, from a wild ancestor with a very restricted range, and it belongs to the founding set of Neolithic crops that launched agriculture in the Near East. Grown alongside the first wheat and barley, it supplied the protein and pulse to complement those cereals.",
+          "From that heartland it spread early into the Mediterranean, South Asia, and the Horn of Africa, embedding itself in each region's cooking.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "A pulse across three cuisines",
+        paragraphs: [
+          "Few foods anchor so many traditions at once. Around the Levant and Mediterranean the chickpea becomes hummus, falafel, and the chickpea-flour pancakes of the region; across South Asia it is chana in a hundred forms and the flour (besan) for countless snacks and breads. It is a quiet everyday staple wherever it grows.",
+          "Spanish and Portuguese voyagers carried the chickpea to the Americas, where the garbanzo joined the pantry of the colonial and post-colonial world.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The chickpea is one of the world's most important pulses, and India grows and eats by far the most, followed by other South Asian, Mediterranean, and now Australian and North American producers. Drought-tolerant and nourishing, and lately fashionable as a plant protein in the West, it is a Neolithic legume enjoying a very modern revival.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "basil",
