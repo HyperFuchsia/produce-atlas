@@ -251,6 +251,15 @@ export const CROPS: Crop[] = [
     maturity: "flagship",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Tubers (cooked)", cautionParts: "Green skin, sprouts, and foliage", note: "Green and sprouted parts accumulate solanine glycoalkaloids; discard them." },
+    field: {
+      seeds: "Grown from **seed potatoes** — tubers that are clones of the parent, not botanical seed. It does set true seed in small green berries, but these are **toxic** and used only for breeding.",
+      season: "A cool-season crop: planted in spring, tubers lifted **summer into autumn**, then stored through winter.",
+      relatives: [
+        { name: "Tomato", note: "same genus, *Solanum*" },
+        { name: "Eggplant", note: "*Solanum melongena*" },
+        { name: "Pepper & tomatillo", note: "nightshade kin (Solanaceae)" },
+      ],
+    },
     claims: [
       { id: "potato-identity", kind: "identity", statement: "The potato is Solanum tuberosum, family Solanaceae.", sourceIds: ["powo", "spooner2005"], confidence: "high", review: "pending" },
       { id: "potato-domestication", kind: "domestication", statement: "It was domesticated in the Andes; multilocus genotyping supports a single origin from the northern Solanum brevicaule complex in southern Peru.", sourceIds: ["spooner2005", "hawkes1990"], confidence: "high", review: "pending" },
@@ -334,6 +343,17 @@ export const CROPS: Crop[] = [
     maturity: "flagship",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Ripe fruit", cautionParts: "Leaves and stems", note: "Foliage contains glycoalkaloids; only the fruit is eaten." },
+    field: {
+      seeds: "Many small seeds in a jelly; open-pollinated heirlooms **come true from seed**, while F1 hybrids do not. Grown from seed each year.",
+      season: "A warm-season annual, ripening **summer into autumn** (Jul–Oct, N. Hemisphere) and year-round under glass.",
+      relatives: [
+        { name: "Potato", note: "same genus, *Solanum* — the two can even be grafted (the 'pomato')" },
+        { name: "Eggplant", note: "*Solanum melongena*" },
+        { name: "Chili & bell pepper", note: "*Capsicum*, nightshade kin" },
+        { name: "Tomatillo & cape gooseberry", note: "*Physalis* nightshades" },
+        { name: "Deadly nightshade, tobacco", note: "toxic wild cousins (Solanaceae)" },
+      ],
+    },
     claims: [
       { id: "tomato-identity", kind: "identity", statement: "The tomato is Solanum lycopersicum, family Solanaceae.", sourceIds: ["powo", "blanca2015"], confidence: "high", review: "pending" },
       { id: "tomato-domestication", kind: "domestication", statement: "Genomic evidence indicates a multi-step history: cherry-type wild and weedy populations in South America gave rise to intermediate forms, with full domestication in Mesoamerica.", sourceIds: ["razifard2020", "blanca2015"], confidence: "medium", review: "pending" },
@@ -894,6 +914,17 @@ export const CROPS: Crop[] = [
     maturity: "flagship",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit flesh", cautionParts: "Seeds in quantity", note: "Seeds contain cyanogenic amygdalin; incidental swallowing is harmless." },
+    field: {
+      seeds: "A core of small brown *pips*. Apples are **not grown from seed** — seedlings never resemble the parent, so every variety is a *grafted* clone on a chosen rootstock. Pips serve only to breed new varieties or raise rootstocks.",
+      season: "Blossoms in spring; fruit ripens **late summer to autumn** (roughly Aug–Nov in the Northern Hemisphere), with early and late varieties. Controlled-atmosphere storage keeps apples on sale year-round.",
+      relatives: [
+        { name: "Pear", note: "the other great *pome* fruit (*Pyrus*), same family" },
+        { name: "Quince", note: "pome fruit, *Cydonia*" },
+        { name: "Medlar & loquat", note: "pome fruits of the rose family" },
+        { name: "Hawthorn, rowan, serviceberry", note: "wild pome-bearing kin" },
+        { name: "Stone fruits (*Prunus*)", note: "Rosaceae cousins — cherry, plum, apricot, peach, almond, and hybrids like the *plumcot*" },
+      ],
+    },
     claims: [
       { id: "apple-identity", kind: "identity", statement: "The cultivated apple is Malus domestica, family Rosaceae.", sourceIds: ["powo", "cornille2014"], confidence: "high", review: "pending" },
       { id: "apple-domestication", kind: "domestication", statement: "Its principal wild ancestor is Malus sieversii from the Tian Shan of Central Asia, with later hybridisation, notably with the European crab apple (M. sylvestris).", sourceIds: ["cornille2014", "duan2017"], confidence: "high", review: "pending" },
@@ -970,6 +1001,16 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten fresh, dried as raisins, and fermented as wine." },
+    field: {
+      seeds: "Berries carry up to four seeds, but many table and raisin grapes are bred **seedless**. Vines grow from cuttings (clones) and, since phylloxera, on resistant *American rootstocks*; seeds serve only for breeding.",
+      season: "Buds in spring; fruit ripens **late summer to autumn** (Aug–Oct, N. Hemisphere) — the timing of the *vintage* is decisive for wine.",
+      relatives: [
+        { name: "Table, wine & raisin grapes", note: "all one species, *Vitis vinifera*" },
+        { name: "Muscadine grape", note: "American *Vitis rotundifolia*" },
+        { name: "Concord & fox grapes", note: "American *Vitis labrusca*" },
+        { name: "American rootstock vines", note: "phylloxera-resistant *Vitis* species" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1345,6 +1386,13 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (cured) and oil", cautionParts: "Raw fresh fruit", note: "Raw olives are intensely bitter and are cured before eating." },
+    field: {
+      seeds: "A single hard *pit* (stone) around the seed. Grown from cuttings and *grafting* — prized clones are centuries old; seeds germinate poorly and don't come true.",
+      season: "Flowers in late spring; fruit ripens **autumn into early winter** (Oct–Jan, N. Hemisphere) — green olives picked earlier, black when fully ripe.",
+      relatives: [
+        { name: "Ash, lilac, jasmine, privet", note: "same family (Oleaceae) — mostly ornamental; the olive is its lone culinary staple" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1482,6 +1530,16 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Ripe fruit", cautionParts: "Skin and sap", note: "The peel and sap contain urushiol-related compounds that can irritate sensitive skin; the flesh is safe." },
+    field: {
+      seeds: "One large flat *stone* — a woody husk around a single seed. Some types are *polyembryonic* and breed partly true, but prized varieties are **grafted** to stay true.",
+      season: "Flowers in the dry season; fruit ripens **late spring into summer** in the tropics and subtropics, varying widely by region and variety.",
+      relatives: [
+        { name: "Cashew", note: "same family (Anacardiaceae)" },
+        { name: "Pistachio", note: "Anacardiaceae kin" },
+        { name: "Mombins & gandaria", note: "tropical *Spondias* and *Bouea* relatives" },
+        { name: "Poison ivy & sumac", note: "wild cousins — hence the skin's irritant *urushiol*" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1542,6 +1600,18 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (flesh and juice)", cautionParts: "", note: "The peel yields aromatic oils; the flesh is eaten fresh and juiced." },
+    field: {
+      seeds: "Segments hold a few pale seeds, though prized types like the navel are **seedless**. Grown by *grafting* — seeds rarely come true and are used mainly for rootstocks.",
+      season: "Flowers in spring; most oranges ripen **winter into spring** (Nov–Apr, Northern Hemisphere), with Valencias carrying into summer.",
+      relatives: [
+        { name: "Mandarin", note: "a *parent* of the sweet orange" },
+        { name: "Pomelo", note: "the other parent — sweet orange = *mandarin × pomelo*" },
+        { name: "Grapefruit", note: "*pomelo × sweet orange* hybrid" },
+        { name: "Lemon & lime", note: "citrus hybrids of citron and sour orange" },
+        { name: "Tangelo, clementine", note: "further mandarin hybrids" },
+        { name: "Citron, kumquat, bergamot", note: "citrus kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -1783,6 +1853,15 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten raw and pickled." },
+    field: {
+      seeds: "Pale, edible seeds run through the core; 'seedless' greenhouse (*parthenocarpic*) types set fruit without pollination. Grown from seed each year.",
+      season: "A warm-season annual, harvested through **summer** (Jun–Sep, N. Hemisphere) and earlier under glass.",
+      relatives: [
+        { name: "Melon & watermelon", note: "gourd-family fruits" },
+        { name: "Squash, pumpkin, zucchini", note: "*Cucurbita*" },
+        { name: "Gourds, bitter melon, chayote", note: "Cucurbitaceae kin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2084,6 +2163,16 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (flesh, seeds, and rind)", cautionParts: "", note: "The flesh, seeds, and rind are all edible." },
+    field: {
+      seeds: "Many flat black-and-brown seeds set through the flesh — themselves roasted as a snack across Africa and Asia — though **seedless (triploid)** melons are now common. Raised from seed each year.",
+      season: "A warm-season annual; fruit ripens in **high summer** (Jun–Sep, N. Hemisphere).",
+      relatives: [
+        { name: "Melon / muskmelon", note: "*Cucumis melo* — cantaloupe, honeydew" },
+        { name: "Cucumber", note: "*Cucumis sativus*" },
+        { name: "Squash & pumpkin", note: "*Cucurbita*" },
+        { name: "Bottle gourd, bitter melon, chayote", note: "the gourd family (Cucurbitaceae)" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2204,6 +2293,17 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (juice and zest)", cautionParts: "", note: "Peel oils and juice are widely used; the fruit is very acidic." },
+    field: {
+      seeds: "A few white seeds in juicy segments. Propagated by *grafting* and cuttings; as a *citron × sour orange* hybrid it does not breed true from seed.",
+      season: "Ever-bearing in mild climates — flowering and fruiting much of the year — with main flushes in **winter and mid-year** by variety (Eureka, Lisbon).",
+      relatives: [
+        { name: "Citron", note: "a *parent* of the lemon" },
+        { name: "Sour (bitter) orange", note: "the other parent" },
+        { name: "Lime", note: "close hybrid kin" },
+        { name: "Sweet orange & grapefruit", note: "citrus hybrids" },
+        { name: "Bergamot", note: "aromatic citrus cousin" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2264,6 +2364,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (syconium)", cautionParts: "Milky latex", note: "The plant's latex can irritate skin; ripe fruit is safe." },
+    field: {
+      seeds: "The soft interior is packed with tiny crunchy true seeds (each a spent flower); common orchard figs are *parthenocarpic*, fruiting without pollination. Propagated by cuttings.",
+      season: "Often **two crops** — an early *breba* crop on old wood in early summer and a main crop **late summer to autumn** (Aug–Oct, N. Hemisphere).",
+      relatives: [
+        { name: "Mulberry", note: "same family (Moraceae)" },
+        { name: "Breadfruit & jackfruit", note: "*Artocarpus* — Moraceae multiple fruits" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",
@@ -2324,6 +2432,14 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds and arils", cautionParts: "", note: "The juicy arils are eaten; the rind and bark are not foods." },
+    field: {
+      seeds: "The whole edible interior **is** seeds — hundreds of *arils*, each a seed cased in a jewel of juicy pulp. Grown from cuttings, and comes fairly true from seed.",
+      season: "Flowers in late spring and summer; fruit ripens in **autumn** (Sep–Dec, N. Hemisphere) and stores for months.",
+      relatives: [
+        { name: "Crape myrtle", note: "ornamental cousin in the loosestrife family (Lythraceae)" },
+        { name: "Few edible kin", note: "a culinary near-one-off, with no close food relatives" },
+      ],
+    },
     dossier: [
       {
         heading: "Name & identity",

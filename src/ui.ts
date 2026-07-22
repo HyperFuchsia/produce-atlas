@@ -312,6 +312,22 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
         <div class="section"><span class="label">Evidence</span><p class="evidence">${esc(c.evidence)}</p></div>`;
   const todaySection = hasDossier ? "" : `<div class="section"><span class="label">Today</span><p>${esc(c.availability)}</p></div>`;
 
+  let fieldBlock = "";
+  if (c.field) {
+    const f = c.field;
+    const kin = f.relatives?.length
+      ? `<div class="section"><span class="label">Botanical kin &amp; hybrids</span><div class="kin">${f.relatives
+          .map((r) => `<span class="kin__item"><span class="kin__name">${fmt(r.name)}</span>${r.note ? `<span class="kin__note">${fmt(r.note)}</span>` : ""}</span>`)
+          .join("")}</div></div>`
+      : "";
+    fieldBlock = `
+        <div class="fieldgrid">
+          <div class="fieldgrid__cell"><span class="label">Seeds &amp; propagation</span><p>${fmt(f.seeds)}</p></div>
+          <div class="fieldgrid__cell"><span class="label">Season</span><p>${fmt(f.season)}</p></div>
+        </div>
+        ${kin}`;
+  }
+
   body.innerHTML = `
     <div class="sheet__grid">
       <div>${plateBlock(c.id, c.name, c.scientificName, c.family)}</div>
@@ -328,6 +344,7 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
           <div class="stat"><span class="label">Domesticated</span><div class="stat__v"><em>~${formatBP(c.domesticatedBP)} BP</em></div><div class="stat__note">${formatEra(c.domesticatedBP)} · approximate</div></div>
         </div>
         <div class="section"><span class="label">Wild progenitor</span><p class="prog" style="color:var(--green)">${esc(c.progenitor)}</p></div>
+        ${fieldBlock}
         ${summaryFields}
         ${dossierBlock}
         ${claimsSection}

@@ -333,6 +333,22 @@ body {
 .refs__list li { font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); display: flex; gap: 8px; }
 .refs__list .ref { flex-shrink: 0; margin-top: 1px; }
 
+/* Field profile — seeds, season & botanical kin */
+.fieldgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.fieldgrid__cell { border: 1px solid var(--rule); border-radius: 3px; padding: 10px 12px; background: var(--paper); }
+.fieldgrid__cell > .label { display: block; }
+.fieldgrid__cell p { margin: 6px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--ink); }
+@media (max-width: 720px) { .fieldgrid { grid-template-columns: 1fr; } }
+.kin { display: flex; flex-wrap: wrap; gap: 7px; }
+.kin__item {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  border: 1px solid var(--rule); border-radius: 99px;
+  padding: 5px 12px; background: var(--paper);
+}
+.kin__name { font-size: 13px; font-weight: 600; color: var(--ink); }
+.kin__note { font-family: var(--font-sans); font-size: 10.5px; color: var(--ink-mute); font-style: italic; }
+.kin__note em { color: var(--green); font-style: italic; }
+
 /* Dossier — the unabridged long-form history */
 .dossier__sec { margin-top: 18px; }
 .dossier__sec:first-of-type { margin-top: 8px; }

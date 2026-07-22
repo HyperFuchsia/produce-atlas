@@ -132,6 +132,25 @@ describe("dossier — unabridged history layer", () => {
   });
 });
 
+describe("field profile — seeds, season & kin", () => {
+  const withField = CROPS.filter((c) => c.field);
+
+  it("gives every field profile non-empty seeds and season text", () => {
+    for (const c of withField) {
+      expect(c.field!.seeds.trim().length, `${c.id} seeds`).toBeGreaterThan(0);
+      expect(c.field!.season.trim().length, `${c.id} season`).toBeGreaterThan(0);
+    }
+  });
+
+  it("gives every listed relative a non-empty name", () => {
+    for (const c of withField) {
+      for (const r of c.field!.relatives ?? []) {
+        expect(r.name.trim().length, `${c.id} relative name`).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
 describe("baseline species index", () => {
   it("gives every index species the required fields and a valid category", () => {
     for (const s of INDEX_SPECIES) {

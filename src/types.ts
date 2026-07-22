@@ -179,6 +179,30 @@ export interface Safety {
   note: string;
 }
 
+/** A botanical relative or notable hybrid — the crop's "family counterparts". */
+export interface Relative {
+  /** Common name, e.g. "Plum" or "Plumcot". */
+  name: string;
+  /** Relationship in a few words, e.g. "same genus (Prunus)" or "apricot × plum hybrid". */
+  note?: string;
+}
+
+/**
+ * Horticultural profile — the practical, garden-and-market facts that sit
+ * beside the history: how the plant seeds and is propagated, when it grows and
+ * is harvested, and its botanical kin (siblings in the same genus/family and
+ * the hybrids between them). All fields are plain reference data; the season is
+ * given as a general guide and necessarily varies by climate and hemisphere.
+ */
+export interface FieldProfile {
+  /** Seeds & propagation: seed type/number, and how the crop is grown. */
+  seeds: string;
+  /** Growing / harvest season (with hemisphere/climate caveat where relevant). */
+  season: string;
+  /** Botanical kin and notable hybrids — the "family counterparts". */
+  relatives?: Relative[];
+}
+
 export interface Crop {
   id: string;
   name: string;
@@ -215,6 +239,11 @@ export interface Crop {
    * the terse structured fields.
    */
   dossier?: DossierSection[];
+  /**
+   * Horticultural profile — seeds & propagation, growing season, and
+   * botanical kin. Practical reference data alongside the history.
+   */
+  field?: FieldProfile;
 
   // ---- Journey layer (visual handoff) -------------------------------------
   /**
