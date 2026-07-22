@@ -636,10 +636,15 @@ html, body { overflow: hidden; overscroll-behavior: none; height: 100%; }
 .dock__card[hidden] { display: none; }
 .cap__close { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; display: grid; place-items: center; border: none; background: transparent; color: #9aa3b2; cursor: pointer; border-radius: 50%; font-size: 12px; }
 .cap__close:hover { background: rgba(255,255,255,0.08); color: #fff; }
-/* Persistent crop identity — always visible while a specimen is selected */
-.cap__ident { padding-right: 24px; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+/* Persistent crop identity + prev/next-specimen controls */
+.cap__head { display: flex; align-items: flex-start; gap: 10px; padding-bottom: 9px; margin-bottom: 9px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+.cap__idtext { flex: 1; min-width: 0; }
 .cap__cropname { font-family: var(--font-serif); font-size: 19px; font-weight: 600; line-height: 1.1; color: #f3efe6; letter-spacing: 0.01em; }
 .cap__cropsci { font-family: var(--font-serif); font-style: italic; font-size: 13.5px; color: #a7c6a3; margin-top: 2px; }
+.cap__tools { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.cap__step { width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: #eceadf; cursor: pointer; border-radius: 50%; font-size: 16px; line-height: 1; transition: border-color 0.18s var(--ease), background 0.18s var(--ease); }
+.cap__step:hover { border-color: rgba(255,255,255,0.45); background: rgba(255,255,255,0.12); }
+.cap__tools .cap__close { position: static; top: auto; right: auto; }
 #pa-cap-body[hidden] { display: none; }
 .cap__top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-right: 22px; }
 .cap__kind { font-family: var(--font-sans); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; color: #f0a838; font-weight: 600; }

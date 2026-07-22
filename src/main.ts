@@ -85,6 +85,24 @@ ui.detailsBtn.addEventListener("click", () => {
   if (selectedId) openSheet(selectedId);
 });
 
+// Order of the plotted specimens for prev/next-produce navigation on the globe.
+const CROP_ORDER = [...CROPS]
+  .sort((a, b) => {
+    const rank = (m: string) => (m === "flagship" ? 0 : m === "authored" ? 1 : 2);
+    return rank(a.maturity) - rank(b.maturity) || a.name.localeCompare(b.name);
+  })
+  .map((c) => c.id);
+
+/** Jump straight to the previous/next produce on the globe (wraps around). */
+function stepCrop(d: number): void {
+  const i = selectedId ? CROP_ORDER.indexOf(selectedId) : -1;
+  const base = i < 0 ? 0 : i;
+  const j = (base + d + CROP_ORDER.length) % CROP_ORDER.length;
+  selectCrop(CROP_ORDER[j]);
+}
+ui.capPrevCrop.addEventListener("click", () => stepCrop(-1));
+ui.capNextCrop.addEventListener("click", () => stepCrop(1));
+
 // -------------------------------------------------------------- sheet + produce-to-produce nav
 /** Shared ordering: flagship, then authored, then baseline; alphabetical within. */
 const bySort = (a: ListEntry, b: ListEntry): number => {

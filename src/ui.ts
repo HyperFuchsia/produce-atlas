@@ -77,6 +77,8 @@ export interface UIRefs {
   dock: HTMLElement;
   cap: HTMLElement;
   capIdent: HTMLElement;
+  capPrevCrop: HTMLButtonElement;
+  capNextCrop: HTMLButtonElement;
   capBody: HTMLElement;
   capClose: HTMLButtonElement;
   detailsBtn: HTMLButtonElement;
@@ -130,8 +132,14 @@ export function mountChrome(root: HTMLElement): UIRefs {
 
     <div class="dock" id="pa-dock" hidden>
       <div class="dock__card cap" id="pa-cap" role="status">
-        <button class="cap__close" id="pa-cap-close" aria-label="Hide chapter text">✕</button>
-        <div class="cap__ident" id="pa-cap-ident"></div>
+        <div class="cap__head">
+          <div class="cap__idtext" id="pa-cap-ident"></div>
+          <div class="cap__tools">
+            <button class="cap__step" id="pa-cap-prev" aria-label="Previous specimen" title="Previous specimen">‹</button>
+            <button class="cap__step" id="pa-cap-next" aria-label="Next specimen" title="Next specimen">›</button>
+            <button class="cap__close" id="pa-cap-close" aria-label="Hide chapter text" title="Hide chapter text">✕</button>
+          </div>
+        </div>
         <div id="pa-cap-body"></div>
         <button class="cap__details" id="pa-details">Full details ↗</button>
       </div>
@@ -191,6 +199,8 @@ export function mountChrome(root: HTMLElement): UIRefs {
     dock: $("#pa-dock"),
     cap: $("#pa-cap"),
     capIdent: $("#pa-cap-ident"),
+    capPrevCrop: $("#pa-cap-prev"),
+    capNextCrop: $("#pa-cap-next"),
     capBody: $("#pa-cap-body"),
     capClose: $("#pa-cap-close"),
     detailsBtn: $("#pa-details"),
