@@ -66,6 +66,8 @@ function selectCrop(id: string, chapter = 0, updateHash = true): void {
 
   ui.dock.hidden = false;
   ui.hint.hidden = true;
+  ui.allProduceBtn.hidden = false;
+  ui.title.hidden = true;
   ui.title.textContent = `${crop.name} — Historical Lineage`;
   if (updateHash) setHash(id, chapter);
 }
@@ -77,9 +79,14 @@ function deselect(): void {
   globe.endJourney();
   ui.dock.hidden = true;
   ui.hint.hidden = false;
+  ui.allProduceBtn.hidden = true;
+  ui.title.hidden = false;
   ui.title.textContent = "Origins World";
   history.replaceState(null, "", location.pathname + location.search);
 }
+// Clear ways back to the full map of selectable produce.
+ui.allProduceBtn.addEventListener("click", deselect);
+ui.capClose.addEventListener("click", deselect);
 
 ui.detailsBtn.addEventListener("click", () => {
   if (selectedId) openSheet(selectedId);

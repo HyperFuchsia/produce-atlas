@@ -593,7 +593,12 @@ html, body { overflow: hidden; overscroll-behavior: none; height: 100%; }
 /* Top bar */
 .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; padding: 18px 26px; }
 .brand { font-family: var(--font-sans); font-weight: 600; letter-spacing: 0.24em; font-size: 13px; color: #eceadf; background: none; border: none; cursor: pointer; padding: 0; }
+.topbar__center { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .topbar__title { font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: #9aa3b2; }
+.topbar__title[hidden] { display: none; }
+.pill--back { display: inline-flex; align-items: center; gap: 6px; background: rgba(240,168,56,0.14); border-color: rgba(240,168,56,0.4); color: #f3d9a8; font-weight: 600; }
+.pill--back:hover { background: rgba(240,168,56,0.24); border-color: rgba(240,168,56,0.6); }
+.pill--back[hidden] { display: none; }
 .pill { font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.06em; color: #dfe3ea; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.16); border-radius: 99px; padding: 8px 16px; cursor: pointer; backdrop-filter: blur(6px); transition: all 0.2s var(--ease); }
 .pill:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); }
 .pill--ghost { background: transparent; }

@@ -53,7 +53,6 @@ export class Ride {
     private hooks: RideHooks,
   ) {
     this.buildTimeline();
-    els.capClose.addEventListener("click", () => this.hideCaption());
     els.prev.addEventListener("click", () => { this.pause(); this.step(-1); });
     els.next.addEventListener("click", () => { this.pause(); this.step(1); });
     els.play.addEventListener("click", () => this.toggle());
@@ -112,9 +111,6 @@ export class Ride {
     this.els.pace.textContent = `${this.pace}×`;
     if (this.playing) this.schedule();
   }
-
-  // Dismiss only the chapter narration — the crop identity header stays put.
-  private hideCaption(): void { this.captionOpen = false; this.els.capBody.hidden = true; }
 
   private renderCaption(): void {
     const c = this.ch[this.i];

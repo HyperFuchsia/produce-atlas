@@ -128,6 +128,7 @@ export interface UIRefs {
   title: HTMLElement;
   exploreBtn: HTMLButtonElement;
   homeBtn: HTMLButtonElement;
+  allProduceBtn: HTMLButtonElement;
   // ride dock
   dock: HTMLElement;
   cap: HTMLElement;
@@ -172,7 +173,10 @@ export function mountChrome(root: HTMLElement): UIRefs {
     `
     <header class="topbar">
       <button class="brand" id="pa-home">PRODUCE ATLAS</button>
-      <div class="topbar__title" id="pa-title">Origins World</div>
+      <div class="topbar__center">
+        <button class="pill pill--back" id="pa-allproduce" hidden>← All produce</button>
+        <div class="topbar__title" id="pa-title">Origins World</div>
+      </div>
       <button class="pill" id="pa-explore">Explore</button>
     </header>
 
@@ -192,7 +196,7 @@ export function mountChrome(root: HTMLElement): UIRefs {
           <div class="cap__tools">
             <button class="cap__step" id="pa-cap-prev" aria-label="Previous specimen" title="Previous specimen">‹</button>
             <button class="cap__step" id="pa-cap-next" aria-label="Next specimen" title="Next specimen">›</button>
-            <button class="cap__close" id="pa-cap-close" aria-label="Hide chapter text" title="Hide chapter text">✕</button>
+            <button class="cap__close" id="pa-cap-close" aria-label="Back to all produce" title="Back to all produce">✕</button>
           </div>
         </div>
         <div id="pa-cap-body"></div>
@@ -251,6 +255,7 @@ export function mountChrome(root: HTMLElement): UIRefs {
     title: $("#pa-title"),
     exploreBtn: $("#pa-explore"),
     homeBtn: $("#pa-home"),
+    allProduceBtn: $("#pa-allproduce"),
     dock: $("#pa-dock"),
     cap: $("#pa-cap"),
     capIdent: $("#pa-cap-ident"),
