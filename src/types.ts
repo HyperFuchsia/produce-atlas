@@ -156,6 +156,21 @@ export interface Claim {
   review: ReviewStatus;
 }
 
+/**
+ * One section of a crop's long-form dossier — the "unabridged" narrative layer
+ * that sits alongside the terse structured fields. Sections are rendered in
+ * order and can carry their own source references so the deep history stays
+ * accountable, not anecdotal.
+ */
+export interface DossierSection {
+  /** Section heading, e.g. "The wild ancestor". */
+  heading: string;
+  /** Long-form paragraphs, rendered in order. */
+  paragraphs: string[];
+  /** Optional source-registry ids supporting this section. */
+  sourceIds?: string[];
+}
+
 /** Record-specific edibility / safety note (never medical advice). */
 export interface Safety {
   edibleParts: string;
@@ -194,6 +209,12 @@ export interface Crop {
   safety: Safety;
   /** Formal claim packet — present only for `flagship` records. */
   claims?: Claim[];
+  /**
+   * Long-form, unabridged history — the deep narrative layer. Present on
+   * records that have been researched in depth; absent records fall back to
+   * the terse structured fields.
+   */
+  dossier?: DossierSection[];
 
   // ---- Journey layer (visual handoff) -------------------------------------
   /**

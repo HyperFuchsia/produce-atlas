@@ -100,6 +100,38 @@ describe("evidence-governance layer", () => {
   });
 });
 
+describe("dossier — unabridged history layer", () => {
+  const withDossier = CROPS.filter((c) => c.dossier?.length);
+
+  it("attaches a full dossier to every flagship record", () => {
+    for (const c of CROPS) {
+      if (c.maturity === "flagship") {
+        expect(c.dossier && c.dossier.length, `${c.id} missing dossier`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("gives every dossier section a heading and non-empty paragraphs", () => {
+    for (const c of withDossier) {
+      for (const sec of c.dossier!) {
+        expect(sec.heading.trim().length).toBeGreaterThan(0);
+        expect(sec.paragraphs.length).toBeGreaterThan(0);
+        for (const p of sec.paragraphs) expect(p.trim().length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("resolves every dossier source id against the registry", () => {
+    for (const c of withDossier) {
+      for (const sec of c.dossier!) {
+        for (const sid of sec.sourceIds ?? []) {
+          expect(SOURCE_BY_ID[sid], `${c.id}: unknown source ${sid}`).toBeTruthy();
+        }
+      }
+    }
+  });
+});
+
 describe("baseline species index", () => {
   it("gives every index species the required fields and a valid category", () => {
     for (const s of INDEX_SPECIES) {

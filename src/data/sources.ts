@@ -119,6 +119,55 @@ export const SOURCES: Source[] = [
     kind: "book",
     year: 2011,
   },
+  {
+    id: "sauer1993",
+    citation:
+      "Sauer, J. D. (1993). Historical Geography of Crop Plants: A Select Roster. CRC Press.",
+    kind: "book",
+    year: 1993,
+  },
+  {
+    id: "kiple2000",
+    citation:
+      "Kiple, K. F. & Ornelas, K. C. (eds.) (2000). The Cambridge World History of Food. Cambridge University Press.",
+    kind: "book",
+    year: 2000,
+  },
+  {
+    id: "reader2009",
+    citation:
+      "Reader, J. (2009). Potato: A History of the Propitious Esculent. Yale University Press.",
+    kind: "book",
+    year: 2009,
+  },
+  {
+    id: "smith1994",
+    citation:
+      "Smith, A. F. (1994). The Tomato in America: Early History, Culture, and Cookery. University of South Carolina Press.",
+    kind: "book",
+    year: 1994,
+  },
+  {
+    id: "juniper2006",
+    citation:
+      "Juniper, B. E. & Mabberley, D. J. (2006). The Story of the Apple. Timber Press.",
+    kind: "book",
+    year: 2006,
+  },
+  {
+    id: "koeppel2008",
+    citation:
+      "Koeppel, D. (2008). Banana: The Fate of the Fruit That Changed the World. Hudson Street Press.",
+    kind: "book",
+    year: 2008,
+  },
+  {
+    id: "dalby2000",
+    citation:
+      "Dalby, A. (2000). Dangerous Tastes: The Story of Spices. University of California Press.",
+    kind: "book",
+    year: 2000,
+  },
 ];
 
 export const SOURCE_BY_ID: Record<string, Source> = Object.fromEntries(

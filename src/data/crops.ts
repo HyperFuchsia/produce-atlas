@@ -131,6 +131,56 @@ export const CROPS: Crop[] = [
       { id: "potato-spread", kind: "spread", statement: "Introduced to Europe in the later 16th century, the potato spread across Europe, Asia, and North America to become a global staple.", sourceIds: ["hawkes1990", "zohary2012"], confidence: "medium", review: "pending" },
       { id: "potato-availability", kind: "availability", statement: "The potato is the world's leading non-cereal food crop by production.", sourceIds: ["faostat"], confidence: "high", review: "pending" },
     ],
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "In the Andean homeland the plant is papa, its Quechua name, and papa remains the word across most of Spanish-speaking South America. The English \"potato\" is a colonial accident: Spanish patata blended the Taíno batata (the sweet potato, an unrelated plant) with Quechua papa, and the muddle was carried into English, French pomme de terre (\"apple of the earth\"), and the German, Dutch, and Slavic terms built on the same idea of an earth-fruit.",
+          "Botanically it is Solanum tuberosum, a member of the nightshade family alongside the tomato, aubergine, chili, and tobacco. The part we eat is not a root but a stem tuber — a swollen underground stem whose \"eyes\" are buds, which is why a potato left in a cupboard sprouts. The cultivated potato is usually tetraploid (four chromosome sets), a genetic richness that helped Andean farmers generate extraordinary diversity.",
+        ],
+        sourceIds: ["powo", "reader2009"],
+      },
+      {
+        heading: "The wild ancestor",
+        paragraphs: [
+          "Wild potatoes belong to the Solanum brevicaule complex, a swarm of closely related tuber-bearing species scattered through the Andes from Venezuela to Argentina. Their tubers are small, knobbly, and often intensely bitter with glycoalkaloids — chemical defenses that can sicken or kill. That toxicity was a design problem the first cultivators had to solve.",
+          "They solved it twice over: by selecting milder plants, and by inventing processing that removed the poison. Andean communities learned to leach and detoxify bitter tubers, and famously to make chuño — potatoes trodden and left out over successive Altiplano nights so that hard frost and daytime sun freeze-dried them into a light, storable food that keeps for years. Bitter, frost-hardy potatoes that no one could eat raw thus became a foundation of high-altitude life above 3,800 metres, where little else grows.",
+        ],
+        sourceIds: ["spooner2005", "reader2009"],
+      },
+      {
+        heading: "Domestication in the high Andes",
+        paragraphs: [
+          "Domestication centered on the highlands around Lake Titicaca in what is now southern Peru and Bolivia, beginning perhaps 8,000–10,000 years ago. Multilocus genetic studies point to a single principal origin from the northern members of the brevicaule complex, from which the whole cultivated lineage radiated.",
+          "What Andean farmers did next has few parallels in agriculture: rather than narrowing the crop to one ideal type, they multiplied it. Thousands of landraces were bred for specific altitudes, soils, frost regimes, and uses — waxy and floury, yellow, purple, red, and blue-fleshed, some for boiling, some only for chuño. A single mountain community might tend dozens of named varieties in one field as insurance against frost, drought, and disease, an indigenous strategy of diversity that modern breeders now study as a model of resilience.",
+        ],
+        sourceIds: ["spooner2005", "hawkes1990"],
+      },
+      {
+        heading: "Crossing to the Old World",
+        paragraphs: [
+          "Spanish ships carried the potato back across the Atlantic in the later sixteenth century, likely reaching Spain and the Canary Islands in the 1560s–1570s and spreading from there. Europe was in no hurry to eat it. It appeared in no scripture, grew from unsettling underground tubers, belonged to the suspect nightshade family, and was blamed for everything from leprosy to immorality. For decades it was grown as a botanical curiosity and animal fodder.",
+          "There was also a hidden agronomic obstacle: Andean potatoes were adapted to the short, equal days of the tropics and tuberized late in Europe's long summer days. Generations of selection produced long-day-adapted varieties that filled out before autumn. Adoption was then pushed by advocates and rulers — Antoine-Augustin Parmentier championing it in France, Frederick the Great ordering its planting in Prussia — until the potato's sheer productivity won. Acre for acre it yielded more calories, faster, than grain, and historians credit it with helping fuel the population growth behind northern Europe's industrial rise.",
+        ],
+        sourceIds: ["reader2009", "hawkes1990"],
+      },
+      {
+        heading: "The Great Famine & the danger of sameness",
+        paragraphs: [
+          "The potato's rise carried a warning that the Andes never forgot but Europe ignored. The European crop descended from a narrow founding stock, and in Ireland especially, the rural poor came to depend on a single high-yielding variety, the \"Lumper,\" grown as a near-monoculture that fed millions on tiny plots.",
+          "When the water mould Phytophthora infestans — late blight — arrived from the Americas in 1845, it swept through those genetically uniform fields and rotted the harvest in the ground. The resulting Great Famine of 1845–1852 killed roughly a million people and drove a million or more to emigrate, permanently reshaping Ireland and the Irish diaspora. It remains the textbook case for why genetic diversity in a food crop is not a luxury but a safeguard — the very lesson embodied in the Andean fields the crop came from.",
+        ],
+        sourceIds: ["reader2009", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The potato is now the world's leading non-cereal food crop and the third most important food crop for direct human consumption after rice and wheat. Once an American plant, it is today grown most heavily in Asia and Europe; China is the single largest producer, followed by India.",
+          "Its Andean birthplace still guards the crop's future. The International Potato Center (CIP) in Lima maintains a living gene bank of thousands of native varieties and wild relatives — the raw material breeders draw on to fight new strains of blight and to adapt the potato to heat and drought. From a bitter mountain tuber that had to be detoxified to be eaten, it has become one of the four crops that feed the world.",
+        ],
+        sourceIds: ["faostat", "reader2009"],
+      },
+    ],
   },
   {
     id: "tomato",
@@ -163,6 +213,56 @@ export const CROPS: Crop[] = [
       { id: "tomato-domestication", kind: "domestication", statement: "Genomic evidence indicates a multi-step history: cherry-type wild and weedy populations in South America gave rise to intermediate forms, with full domestication in Mesoamerica.", sourceIds: ["razifard2020", "blanca2015"], confidence: "medium", review: "pending" },
       { id: "tomato-spread", kind: "spread", statement: "Carried to Europe in the 16th century, the tomato spread through the Mediterranean and then globally as a major culinary vegetable.", sourceIds: ["blanca2015"], confidence: "medium", review: "pending" },
       { id: "tomato-availability", kind: "availability", statement: "The tomato is among the most widely grown vegetables worldwide, in open field and protected cultivation.", sourceIds: ["faostat"], confidence: "high", review: "pending" },
+    ],
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The word comes from the Nahuatl of the Aztecs. They called the fruit tomatl, and the large red one xitomatl; Spanish shortened it to tomate, which English borrowed and then reshaped into \"tomato\" by analogy with \"potato.\" Early Italian gardeners called it pomo d'oro, the golden apple — a hint that some of the first tomatoes Europe saw were yellow — and the name survives in the modern Italian pomodoro.",
+          "For two centuries botanists filed it under its own genus as Lycopersicon esculentum, \"the edible wolf-peach.\" Genetic work has since folded it back into the nightshade genus Solanum, vindicating Linnaeus's original placement, so its correct name is Solanum lycopersicum. Despite the US Supreme Court's 1893 ruling in Nix v. Hedden — which classed it a vegetable so it could be taxed as one — the tomato is botanically a berry, a true fruit.",
+        ],
+        sourceIds: ["blanca2015", "smith1994"],
+      },
+      {
+        heading: "The wild ancestor",
+        paragraphs: [
+          "The tomato's wild relatives are a group of small-fruited species clinging to the dry western slopes of the Andes, in coastal Peru, Ecuador, and northern Chile. Their fruits are tiny — pea- to cherry-sized — and the group as a whole is the crop's centre of genetic diversity, even though the plant was not fully domesticated there.",
+          "The immediate progenitor is the cherry tomato, Solanum lycopersicum var. cerasiforme, a weedy, semi-wild form that grew readily on disturbed ground and around early settlements. Being a camp-follower plant that thrived where people lived, it was well placed to be picked up, carried, and gradually improved as populations moved northward out of South America.",
+        ],
+        sourceIds: ["razifard2020", "blanca2015"],
+      },
+      {
+        heading: "A two-step domestication",
+        paragraphs: [
+          "The tomato's origin has an unusual geography: its wild diversity is Andean, but its domestication was Mesoamerican. Recent population genomics reconstructs a stepwise journey — wild Ecuadorian cherry tomatoes gave rise to intermediate weedy populations, which were carried north into Mexico, where selection produced the large, fleshy, multi-chambered fruit we recognise. It was in Mesoamerica, among the peoples the Spanish later encountered, that the tomato became a true crop and a kitchen staple.",
+          "The details are still actively debated. Some genomic signals suggest the intermediate forms were already partly domesticated before moving north, and possibly even a partial \"re-wilding\" along the way, so the confidence attached to the exact sequence is deliberately moderate rather than settled.",
+        ],
+        sourceIds: ["razifard2020", "blanca2015"],
+      },
+      {
+        heading: "Feared, then embraced, in Europe",
+        paragraphs: [
+          "Spanish contact carried the tomato to Europe in the sixteenth century; the physician Pietro Andrea Mattioli described it in Italy by 1544. Northern Europe kept it at arm's length for generations. As an obvious nightshade it was assumed poisonous, grown mainly as an ornamental \"love apple,\" and there is a persuasive material reason for its deadly reputation: the acidic fruit, eaten off the pewter plates of the wealthy, leached lead from the alloy, so tomato-eating could genuinely cause sickness that had nothing to do with the fruit itself.",
+          "Southern Europe had no such fears. In the kitchens of Naples, Spain, and the wider Mediterranean the tomato was cooked, stewed, and dried, and by the eighteenth and nineteenth centuries it had become inseparable from the region's food. The tomato–pasta pairing and the Neapolitan pizza are entirely post-Columbian inventions — a reminder that many \"timeless\" national cuisines were reshaped by American crops only a few centuries ago.",
+        ],
+        sourceIds: ["smith1994", "kiple2000"],
+      },
+      {
+        heading: "Around the world & into the modern kitchen",
+        paragraphs: [
+          "From the Mediterranean the tomato spread outward along trade and colonial routes — into the Middle East, South and East Asia, and, somewhat later and reluctantly, back into North America, where it was still being defended as safe to eat in the early nineteenth century. Everywhere it landed it was absorbed into local cooking, from Indian and Middle Eastern sauces to West African stews.",
+          "Its most industrial descendant is ketchup. The name traces to a Southeast Asian fermented-fish sauce (kê-tsiap in Hokkien); English cooks made \"ketchups\" of mushrooms and walnuts long before Americans in the nineteenth century fixed the word to the sweet, tomato-based condiment now sold worldwide.",
+        ],
+        sourceIds: ["smith1994", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The tomato is now one of the most widely grown and economically important vegetables on Earth, cultivated in open fields and in vast climate-controlled greenhouses from the Netherlands to Almería to China, which is the largest producer. A parallel processing industry turns millions of tonnes into paste, sauce, and canned tomatoes.",
+          "Modern breeding brought uniform ripening, shipping durability, and disease resistance — and, notoriously, sometimes traded away flavour, prompting a counter-movement to recover heirloom varieties and the genes of those Andean wild relatives that still hold traits, from sweetness to stress tolerance, missing from the commercial crop.",
+        ],
+        sourceIds: ["faostat", "blanca2015"],
+      },
     ],
   },
   {
@@ -309,6 +409,56 @@ export const CROPS: Crop[] = [
       { id: "banana-spread", kind: "spread", statement: "Bananas dispersed through Island Southeast Asia and South Asia, reached East Africa in the first millennium CE, and the Americas in the 16th century.", sourceIds: ["perrier2011", "zohary2012"], confidence: "medium", review: "pending" },
       { id: "banana-availability", kind: "availability", statement: "Bananas are the most exported fresh fruit worldwide and a starchy staple across the humid tropics.", sourceIds: ["faostat"], confidence: "high", review: "pending" },
     ],
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The name \"banana\" reached Europe through Portuguese and Spanish traders on the West African coast, who borrowed a word from a language of the Wolof or wider Mande region; it displaced the older European term, which derived from the \"fig of India\" of classical writers. English keeps a rough split between the sweet dessert banana and the starchy \"plantain,\" but the two are not distinct species — they are different uses of the same intertwined family of cultivars, and most of the world simply calls them all bananas.",
+          "The plant itself defies expectations. It is not a tree but the world's largest herb: its \"trunk\" is a pseudostem of tightly rolled leaf bases, and it dies back after fruiting. And the fruit is, botanically, a berry. The banana you buy is also, genetically, a curiosity — most edible types are triploid, seedless, and sterile, unable to reproduce without human hands.",
+        ],
+        sourceIds: ["powo", "koeppel2008"],
+      },
+      {
+        heading: "The wild ancestor",
+        paragraphs: [
+          "Cultivated bananas descend chiefly from two wild Southeast Asian species: Musa acuminata, which contributes the \"A\" genome, and the hardier Musa balbisiana, source of the \"B\" genome. Wild bananas look nothing like the supermarket fruit — they are short, angular, and packed with hard, bullet-like black seeds set in only a little flesh.",
+          "The transformation that made them food was the fixing of parthenocarpy: fruit that develops sweet, seedless pulp without fertilisation. Early cultivators selected these rare seedless mutants and, because such plants could not set seed, propagated them vegetatively from suckers and cuttings — the beginning of a crop that has been cloned by hand ever since.",
+        ],
+        sourceIds: ["perrier2011", "denham2003"],
+      },
+      {
+        heading: "Domestication in New Guinea & island Asia",
+        paragraphs: [
+          "The banana was one of the first plants humans farmed. At Kuk Swamp in the highlands of New Guinea, archaeologists have found evidence of banana cultivation reaching back some 7,000 years and probably earlier, making the region one of the world's independent cradles of agriculture. Selection for seedless, parthenocarpic fruit was underway across island Southeast Asia and New Guinea in deep prehistory.",
+          "As people carried these plants between islands and regions, the two wild genomes were repeatedly hybridised and the chromosome sets doubled and trebled, producing the sterile triploids — AAA dessert types, AAB and ABB cooking types — that dominate today. The modern banana is therefore not a single domestication but a long, mobile process of human-guided hybridisation.",
+        ],
+        sourceIds: ["denham2003", "perrier2011"],
+      },
+      {
+        heading: "Across the oceans",
+        paragraphs: [
+          "Being sterile clones, bananas travelled only as living plants, and their spread traces some of history's great migrations. Austronesian voyagers moved them through the Pacific; along the Indian Ocean they reached East Africa well over a thousand years ago, where highland farmers bred a distinct group of East African cooking bananas — the matoke that anchors diets in Uganda and the Great Lakes region to this day.",
+          "The Atlantic leg came with European empire: Portuguese traders carried bananas from West Africa to the Canary Islands, and from there to the Caribbean and the Americas in the sixteenth century. Only in the late nineteenth century, with steamships and railways, did the banana become a cheap, everyday fruit in temperate cities far from where it grows.",
+        ],
+        sourceIds: ["sauer1993", "koeppel2008"],
+      },
+      {
+        heading: "One clone, and its peril",
+        paragraphs: [
+          "The global banana trade is built on genetic uniformity that would alarm any Andean potato farmer. For the first half of the twentieth century the export fruit was a single cultivar, \"Gros Michel.\" Because every plant was an identical clone, the soil fungus that causes Panama disease (Fusarium wilt) spread through the plantations unchecked and, by the 1950s–60s, destroyed Gros Michel as a commercial crop.",
+          "The industry replaced it with another single clone, the \"Cavendish,\" which resisted that strain and now accounts for essentially all bananas in world trade. History is repeating: a new race of the fungus, Tropical Race 4, is lethal to Cavendish and is spreading across continents. A fruit that reproduces only by cloning has almost no way to evolve its own defence — the export banana's greatest strength and its greatest vulnerability are the same fact.",
+        ],
+        sourceIds: ["koeppel2008", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Bananas and plantains are among the most important food crops on the planet — the most exported fresh fruit by volume, and, far more significantly, a starchy staple that feeds hundreds of millions in the humid tropics of Africa, Asia, and Latin America, where cooking bananas are a daily source of calories rather than a snack.",
+          "The trade also carries a heavy history. The twentieth-century dominance of companies like the United Fruit Company over Central American economies and politics gave the world the phrase \"banana republic,\" a reminder that this cheap, cheerful fruit sits atop one of the more fraught stories in the history of global agriculture.",
+        ],
+        sourceIds: ["faostat", "koeppel2008"],
+      },
+    ],
   },
   {
     id: "soybean",
@@ -398,6 +548,48 @@ export const CROPS: Crop[] = [
       { id: "apple-domestication", kind: "domestication", statement: "Its principal wild ancestor is Malus sieversii from the Tian Shan of Central Asia, with later hybridisation, notably with the European crab apple (M. sylvestris).", sourceIds: ["cornille2014", "duan2017"], confidence: "high", review: "pending" },
       { id: "apple-spread", kind: "spread", statement: "The apple diversified along Silk Road trade through Persia and the Greco-Roman world into Europe, reaching the Americas in the 17th century.", sourceIds: ["cornille2014", "zohary2012"], confidence: "medium", review: "pending" },
       { id: "apple-availability", kind: "availability", statement: "Apples are among the most widely produced temperate fruits, grown commercially across both hemispheres.", sourceIds: ["faostat"], confidence: "high", review: "pending" },
+    ],
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Apple\" is one of the oldest fruit words in English, and for much of its history it was almost generic: in Old English æppel could mean fruit in general, which is why exotic novelties arrived as the \"apple\" of somewhere else — the pineapple, the pomegranate (\"seeded apple\"), and the tomato as pomme d'amour. The fruit's shadow even falls on the Garden of Eden, though no apple is named in the text; medieval European artists simply painted the fruit they knew.",
+          "The cultivated apple is Malus domestica (also written Malus pumila), a member of the rose family alongside pears, cherries, and almonds. Its defining trait as a crop is genetic: apples are extraordinarily heterozygous and largely self-incompatible, so a seed almost never grows into a tree resembling its parent. Every named variety — every Gala, Bramley, or Cox — is therefore a single original seedling perpetuated by grafting, a living clone that may be centuries old.",
+        ],
+        sourceIds: ["powo", "juniper2006"],
+      },
+      {
+        heading: "The wild ancestor",
+        paragraphs: [
+          "The domestic apple's principal wild ancestor is Malus sieversii, which still forms wild fruit forests in the Tian Shan mountains of Central Asia, on the borders of Kazakhstan and China. The former capital, Almaty, takes its name from the apple; the region is, quite literally, the fruit's cradle. Remarkably, some wild Tian Shan trees already bear large, sweet, apple-sized fruit — unusual among wild relatives, most of which are sour crabs.",
+          "Genetic studies explain that head start. Large fruit evolved first to attract large animals — bears and horses — that ate the apples and dispersed the seeds, favouring ever-bigger, sweeter fruit long before humans were involved. When people entered the story they inherited a wild tree already primed for the orchard.",
+        ],
+        sourceIds: ["cornille2014", "duan2017"],
+      },
+      {
+        heading: "Grafting, the Silk Road, and a second parent",
+        paragraphs: [
+          "Because apples will not come true from seed, the domestic apple could not exist without grafting — splicing a shoot of a desirable tree onto a rootstock so the fruit is reproduced exactly. Grafting was developed in the ancient Near East and China, and it is the true engine of apple domestication: it let growers freeze a lucky seedling into a permanent variety.",
+          "The apple then travelled the Silk Road in both directions, and in doing so acquired a second parent. Genomic work shows that as Tian Shan apples moved west they hybridised extensively with the European wild crab, Malus sylvestris, contributing much of the modern apple's genome and giving it firmness and flavour. The result is a two-stage story: fruit enlargement first in the wild by animal dispersal, then a second transformation through Silk Road hybridisation and human selection.",
+        ],
+        sourceIds: ["duan2017", "cornille2014"],
+      },
+      {
+        heading: "Greece, Rome & the medieval orchard",
+        paragraphs: [
+          "Classical Greece and Rome turned the apple into a cultivated art. Roman writers on agriculture described grafting in detail and listed dozens of named varieties, and Roman orchards and techniques spread the fruit across the empire, including to Britain. After Rome's fall, European monasteries preserved and extended this pomological knowledge, maintaining varieties and cider-making through the medieval centuries.",
+          "Apples reached the Americas with European colonists. Most early colonial apples were not eaten but pressed: in a world of unsafe water, hard cider was a daily drink. The folk hero John Chapman — \"Johnny Appleseed\" — really did plant orchards across the American frontier, but from seed, not grafts, meaning he was chiefly producing sour cider apples, not the dessert fruit of legend.",
+        ],
+        sourceIds: ["juniper2006", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Thousands of apple varieties exist — well over 7,500 named cultivars — yet global commerce rests on a few dozen, and supermarket shelves on fewer still, a narrowing that heirloom growers and gene banks work to counter. Orchards themselves have been reinvented: modern trees are grafted onto dwarfing rootstocks that keep them small and quick to fruit, planted in dense, trellised rows more like a vineyard than the spreading orchards of the past.",
+          "The apple is now one of the most widely grown temperate fruits on Earth, produced across both hemispheres, with China by far the largest grower. Controlled-atmosphere storage — chilled, low-oxygen rooms that halt ripening — means the \"fresh\" apple has become a year-round fruit, some sold months after harvest.",
+        ],
+        sourceIds: ["faostat", "juniper2006"],
+      },
     ],
   },
   {
@@ -627,6 +819,48 @@ export const CROPS: Crop[] = [
       { id: "black-pepper-domestication", kind: "domestication", statement: "It was domesticated from wild vines in the Western Ghats of southwest India and cultivated on the Malabar Coast.", sourceIds: ["ravindran2000", "hajibabaei2014"], confidence: "medium", review: "pending" },
       { id: "black-pepper-spread", kind: "spread", statement: "Pepper was the dominant spice of ancient Indian Ocean and Roman trade and of medieval European commerce, and was later planted across the tropics.", sourceIds: ["ravindran2000"], confidence: "medium", review: "pending" },
       { id: "black-pepper-availability", kind: "availability", statement: "Black pepper is the most traded spice in the world; Vietnam, India, Brazil, and Indonesia lead production.", sourceIds: ["faostat", "hajibabaei2014"], confidence: "high", review: "pending" },
+    ],
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The English \"pepper\" descends through Latin piper and Greek peperi from the Sanskrit pippali — which, confusingly, named long pepper, a related but different spice that Europe prized before black pepper eclipsed it. The name later travelled sideways onto an unrelated New World plant: when Columbus sought the pepper of the Indies and found the pungent fruits of Capsicum instead, he called them \"peppers\" too, and the borrowed name stuck to chilies forever.",
+          "True pepper is Piper nigrum, a tropical woody climbing vine, and the source of black, white, and green peppercorns alike. Its heat is not from capsaicin but from an alkaloid called piperine. Black pepper is the whole unripe berry, briefly cooked and sun-dried until the skin blackens and wrinkles; white pepper is the same berry ripened and hulled; green pepper is the unripe fruit preserved before it can dry.",
+        ],
+        sourceIds: ["ravindran2000", "dalby2000"],
+      },
+      {
+        heading: "Home in the Western Ghats",
+        paragraphs: [
+          "Pepper is a child of the monsoon forests of the Western Ghats along India's Malabar Coast — modern Kerala — where the wild vine climbs forest trees in the humid, shaded understorey. It was gathered and then cultivated there in deep antiquity, trained up living trees and posts in exactly the way it still is.",
+          "For most of history the Malabar Coast was the world's pepper, and control of that narrow strip of Indian shore shaped the fortunes of traders and empires far beyond it. The vine's specific demands — heat, heavy rain, and something to climb — long kept its cultivation tied to a handful of tropical regions.",
+        ],
+        sourceIds: ["ravindran2000", "hajibabaei2014"],
+      },
+      {
+        heading: "The spice that moved the ancient world",
+        paragraphs: [
+          "Pepper was among the most valuable commodities of antiquity. Roman ships rode the monsoon winds from Egypt to the Malabar port of Muziris to load it, and Rome's appetite was vast enough that the naturalist Pliny the Elder grumbled about the fortune in silver draining east to pay for it. Pepper filled Rome's spice warehouses and seasoned the recipes of the Roman cookbook attributed to Apicius.",
+          "Its prestige is captured in a famous episode: when the Visigoth king Alaric besieged Rome in 408 CE, the ransom he demanded reportedly included three thousand pounds of pepper alongside the gold and silver. Through the Middle Ages pepper remained so precious in Europe that it was counted out by the corn, used to pay rents and taxes, and traded by a specialist guild of \"pepperers\" — the ancestors, in London, of the Grocers' Company.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The spice that moved the modern world",
+        paragraphs: [
+          "The hunger for pepper helped launch the age of European exploration. The overland and Middle Eastern routes were long controlled by Arab and Venetian middlemen, and the dream of reaching the source directly drove the Portuguese around Africa: Vasco da Gama's arrival at Calicut on the Malabar Coast in 1498 opened a sea road to the pepper lands and broke the old monopolies.",
+          "What followed was centuries of contest over the spice. The Portuguese, then the Dutch East India Company (VOC) and the English, fought to command pepper production and its trade across India and the Indonesian archipelago. Pepper — more than gold, more than any single luxury — was among the commodities that built the first global trading empires.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Pepper cultivation long ago spread beyond India to Indonesia, Malaysia, and Madagascar, and across the Atlantic to Brazil. In a historical reversal, the largest producer and exporter today is Vietnam, which became a pepper powerhouse only in recent decades, though India, Brazil, and Indonesia remain major growers.",
+          "Still called the \"king of spices,\" black pepper is the most heavily traded spice in the world and a fixture on tables everywhere. The commodity that once ransomed a city and lured fleets around a continent is now so cheap and universal that its extraordinary history is easy to forget.",
+        ],
+        sourceIds: ["faostat", "dalby2000"],
+      },
     ],
   },
   {

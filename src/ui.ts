@@ -254,17 +254,47 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
   const legs = c.spread.slice().sort((a, b) => a.order - b.order)
     .map((l) => `<div class="leg"><span class="leg__to">${esc(l.to)}</span><span class="leg__period">${esc(l.period)}</span></div>`).join("");
 
-  let claimsSection = "";
-  if (c.claims?.length) {
-    const usedIds = [...new Set(c.claims.flatMap((cl) => cl.sourceIds))];
-    const refsList = usedIds.map((id) => {
-      const idx = SOURCES.findIndex((s) => s.id === id);
-      return `<li><span class="ref">${idx + 1}</span> ${esc(SOURCE_BY_ID[id]?.citation ?? id)}</li>`;
+  const refChip = (id: string): string => {
+    const idx = SOURCES.findIndex((s) => s.id === id);
+    return idx >= 0 ? `<span class="ref" title="${esc(SOURCE_BY_ID[id]?.citation ?? id)}">${idx + 1}</span>` : "";
+  };
+
+  const hasDossier = !!c.dossier?.length;
+
+  const claimsSection = c.claims?.length
+    ? `<div class="section"><span class="label">Key claims · source-linked</span><div class="claims">${c.claims.map(claimRow).join("")}</div></div>`
+    : "";
+
+  let dossierBlock = "";
+  if (hasDossier) {
+    const secs = c.dossier!.map((d) => {
+      const paras = d.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("");
+      const src = d.sourceIds?.length ? `<div class="dossier__src">${d.sourceIds.map(refChip).join("")}</div>` : "";
+      return `<section class="dossier__sec"><h3 class="dossier__h">${esc(d.heading)}</h3>${paras}${src}</section>`;
     }).join("");
-    claimsSection = `<div class="section"><span class="label">Claim packet · ${c.claims.length} source-linked claims</span><div class="claims">${c.claims.map(claimRow).join("")}</div><ul class="refs__list">${refsList}</ul></div>`;
+    dossierBlock = `<div class="section dossier"><span class="label">The full history</span>${secs}</div>`;
   }
+
+  // Unified reference list from every source cited by the claims and dossier,
+  // numbered by the shared registry so the same source always carries the
+  // same number wherever it appears on the sheet.
+  const citedIds = [...new Set([
+    ...(c.claims?.flatMap((cl) => cl.sourceIds) ?? []),
+    ...(c.dossier?.flatMap((d) => d.sourceIds ?? []) ?? []),
+  ])].sort((a, b) => SOURCES.findIndex((s) => s.id === a) - SOURCES.findIndex((s) => s.id === b));
+  const referencesSection = citedIds.length
+    ? `<div class="section"><span class="label">References</span><ul class="refs__list">${citedIds.map((id) => `<li>${refChip(id)} ${esc(SOURCE_BY_ID[id]?.citation ?? id)}</li>`).join("")}</ul></div>`
+    : "";
+
   const cautionRow = c.safety.cautionParts
     ? `<div class="safety__row safety__row--warn"><span class="safety__k">Caution</span><span>${esc(c.safety.cautionParts)}</span></div>` : "";
+
+  // When a full dossier is present it covers these in depth, so the terse
+  // one-line summaries are dropped to avoid redundancy.
+  const summaryFields = hasDossier ? "" : `
+        <div class="section"><span class="label">Domestication</span><p>${esc(c.domestication)}</p></div>
+        <div class="section"><span class="label">Evidence</span><p class="evidence">${esc(c.evidence)}</p></div>`;
+  const todaySection = hasDossier ? "" : `<div class="section"><span class="label">Today</span><p>${esc(c.availability)}</p></div>`;
 
   body.innerHTML = `
     <div class="sheet__grid">
@@ -281,13 +311,14 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
           <div class="stat"><span class="label">Centre of origin</span><div class="stat__v">${esc(c.originCenter)}</div><div class="stat__note">${esc(c.originRegion)} · representative</div></div>
           <div class="stat"><span class="label">Domesticated</span><div class="stat__v"><em>~${formatBP(c.domesticatedBP)} BP</em></div><div class="stat__note">${formatEra(c.domesticatedBP)} · approximate</div></div>
         </div>
-        <div class="section"><span class="label">Domestication</span><p>${esc(c.domestication)}</p></div>
         <div class="section"><span class="label">Wild progenitor</span><p class="prog" style="color:var(--green)">${esc(c.progenitor)}</p></div>
-        <div class="section"><span class="label">Evidence</span><p class="evidence">${esc(c.evidence)}</p></div>
+        ${summaryFields}
+        ${dossierBlock}
         ${claimsSection}
         <div class="section"><span class="label">Historical spread</span><p class="caption">Corridors, not reconstructions of every route.</p><div class="spread">${legs}</div></div>
-        <div class="section"><span class="label">Today</span><p>${esc(c.availability)}</p></div>
+        ${todaySection}
         <div class="section"><span class="label">Edibility &amp; safety</span><div class="safety"><div class="safety__row"><span class="safety__k">Eaten</span><span>${esc(c.safety.edibleParts)}</span></div>${cautionRow}<p class="safety__note">${esc(c.safety.note)}</p><p class="safety__disc">General reference only — not food-safety or medical advice.</p></div></div>
+        ${referencesSection}
       </div>
     </div>`;
   const plate = body.querySelector<HTMLCanvasElement>("#pa-plate");

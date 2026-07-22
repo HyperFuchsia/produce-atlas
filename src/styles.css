@@ -333,6 +333,18 @@ body {
 .refs__list li { font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); display: flex; gap: 8px; }
 .refs__list .ref { flex-shrink: 0; margin-top: 1px; }
 
+/* Dossier — the unabridged long-form history */
+.dossier__sec { margin-top: 18px; }
+.dossier__sec:first-of-type { margin-top: 8px; }
+.dossier__h {
+  font-family: var(--font-serif); font-size: 17px; font-weight: 600;
+  color: var(--ink); margin: 0 0 7px; letter-spacing: 0.01em;
+  padding-bottom: 5px; border-bottom: 1px solid var(--rule-soft);
+}
+.dossier__sec p { margin: 0 0 10px; font-size: 15px; line-height: 1.72; color: var(--ink); }
+.dossier__sec p:last-of-type { margin-bottom: 0; }
+.dossier__src { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
+
 /* Safety */
 .safety { border: 1px solid var(--rule); border-radius: 3px; padding: 11px 13px; background: var(--paper); }
 .safety__row { display: flex; gap: 10px; font-size: 13.5px; padding: 3px 0; }
