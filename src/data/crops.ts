@@ -1024,6 +1024,40 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds", cautionParts: "Common allergen", note: "A major food allergen; poorly stored nuts may carry aflatoxin." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The peanut is not a true nut but a legume — a bean whose relatives are peas and lentils — and its other name, \"groundnut,\" is the more honest one. A third name, \"goober,\" comes from nguba in the Kongo language of Central Africa, a word carried to the American South by enslaved Africans and a small linguistic monument to the crop's Atlantic journey.",
+          "Its botanical name, Arachis hypogaea, means \"under the earth,\" describing the plant's most extraordinary trick: after its flowers are pollinated above ground, the stalks bend down and push the developing pods into the soil to ripen underground. This habit, called geocarpy, is why we dig for peanuts.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "A South American origin",
+        paragraphs: [
+          "The peanut was domesticated in South America, in the foothills of the Andes around southern Bolivia and northern Argentina, where its wild relatives grow. The cultivated peanut is a natural hybrid of two wild species whose chromosomes combined and doubled, giving the crop we grow.",
+          "From that heartland, Indigenous farmers spread the peanut widely across South America well before European contact, and it was a familiar food from the Andes to the Caribbean by the time the Spanish and Portuguese arrived.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "An Atlantic and Pacific crossing",
+        paragraphs: [
+          "Portuguese and Spanish traders carried the peanut out of the Americas in the sixteenth century, and it thrived especially in West Africa and, via the Pacific trade, in China and Southeast Asia. In Africa it slotted into local farming and cooking so thoroughly that it became a staple — and then, through the transatlantic slave trade, African peanuts and African culinary knowledge of them returned across the ocean to North America.",
+          "In the United States the peanut long carried that history and a lowly reputation until, in the early twentieth century, the scientist George Washington Carver promoted it as a soil-restoring rotation crop for the cotton South and publicised hundreds of uses, helping cement it in American agriculture and diet.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The peanut is a major world crop, grown across the warm regions of Asia, Africa, and the Americas, with China and India the largest producers. It is eaten roasted, ground into peanut butter and into the rich sauces of West African and Southeast Asian cooking, and pressed for one of the world's important cooking oils.",
+          "Two cautions travel with it: peanuts are among the most serious food allergens, and when poorly stored they can develop aflatoxin, a mould toxin — reasons the crop is closely monitored for safety.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "tea",
@@ -1080,6 +1114,40 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (cured) and oil", cautionParts: "Raw fresh fruit", note: "Raw olives are intensely bitter and are cured before eating." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The olive gave its name to oil itself: Greek elaia and Latin oliva are the root of \"oil\" in the European languages, because for the ancient Mediterranean, oil simply meant olive oil. The tree is Olea europaea, an evergreen that can live for many centuries — some groves hold trees more than a thousand years old, still fruiting.",
+          "A raw olive is inedible, mouth-puckeringly bitter with a compound called oleuropein, and must be cured in brine, salt, or lye before eating — or crushed for its oil. That double life, as both table fruit and the Mediterranean's great source of fat and lamp-light, made it one of the most valuable trees of the ancient world.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "The wild ancestor & domestication",
+        paragraphs: [
+          "The cultivated olive was tamed from the oleaster, the wild Olea europaea that still grows as a scrubby, small-fruited shrub around the Mediterranean and the Levant. Domestication — chiefly the selection of larger, oilier fruit and the propagation of good trees by cuttings and grafting rather than seed — took place in the eastern Mediterranean roughly 6,000 years ago.",
+          "Because favoured trees were cloned, prized varieties could be fixed and carried anywhere, and the same lineage kept for millennia. Olive cultivation and the pressing of oil became a defining technology of Bronze Age and classical Mediterranean economies.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "The sacred tree of the Mediterranean",
+        paragraphs: [
+          "Few plants carry so much symbolism. Greek myth had Athena win Athens by giving the olive; Olympic victors were crowned with its leaves; its oil lit lamps, anointed athletes and kings, and consecrated the sacred. The very word \"Christ\" means \"the anointed one,\" anointed with oil. The olive branch remains a universal emblem of peace.",
+          "Phoenician, Greek, and Roman traders and settlers carried the tree across the whole Mediterranean basin, planting the groves of Iberia, Italy, North Africa, and the Levant that still define the region's landscape and cooking.",
+        ],
+        sourceIds: ["zohary2012", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Spanish missionaries carried the olive to the Americas, and it later reached California, Australia, and Argentina, but production remains overwhelmingly Mediterranean — Spain alone grows a large share of the world's olives, followed by Italy, Greece, and the countries of North Africa and the Levant.",
+          "Olive oil is now a global commodity and the emblematic fat of the much-studied \"Mediterranean diet,\" carrying an ancient tree's produce onto tables far from any grove.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "black-pepper",
@@ -1183,6 +1251,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Ripe fruit", cautionParts: "Skin and sap", note: "The peel and sap contain urushiol-related compounds that can irritate sensitive skin; the flesh is safe." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Mango\" reached English through Portuguese manga, itself borrowed from Tamil and Malayalam words for the fruit on India's southwest coast, where Portuguese traders first met it. The tree is Mangifera indica, and its species name — \"of India\" — reflects the country that domesticated it and remains its heartland.",
+          "Surprisingly, the mango belongs to the same family as cashews and poison ivy, and its skin and sap carry urushiol-related compounds that can irritate sensitive skin — though the ripe flesh is one of the world's most beloved fruits, so central to South Asia that it is often called the king of fruits.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The mango was domesticated in South Asia — the region spanning eastern India, Bangladesh, and Myanmar — where its wild relatives grow in the monsoon forests. It has been cultivated there for several thousand years, and Indian growers long ago learned to graft it, fixing hundreds of named varieties from the fibrous wild fruit into the smooth, aromatic types prized today.",
+          "That deep history left the mango woven into Indian culture: it appears in Hindu and Buddhist symbolism, its leaves mark auspicious occasions, and it is the national fruit of India.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "Across the tropics",
+        paragraphs: [
+          "From India the mango spread with traders and monks into Southeast Asia and, carried by Persian and Arab merchants and then Portuguese ships, on to East Africa, Brazil, and the wider tropics from the sixteenth century onward. Warm, frost-free climates everywhere took it up.",
+          "Different regions fixed their own famous cultivars — India's Alphonso and Kesar, Southeast Asia's fragrant types, the fibreless Tommy Atkins and Kent grown for export — each a grafted clone of a single lucky seedling.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The mango is one of the most important fruits of the tropical world, grown across Asia, the Americas, and Africa, with India by far the largest producer and consumer — though much of its crop is eaten at home rather than exported. It is eaten ripe and fresh, dried, juiced, and, when green and unripe, cooked and pickled into chutneys and relishes.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "orange",
@@ -1210,6 +1311,40 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (flesh and juice)", cautionParts: "", note: "The peel yields aromatic oils; the flesh is eaten fresh and juiced." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The word \"orange\" travelled the length of Eurasia: from the Sanskrit nāraṅga through Persian and Arabic nāranj to Spanish naranja and onward. The colour is named after the fruit, not the other way round — before oranges reached Europe, English had no single word for that shade. In several languages the sweet orange is still called \"the Portugal fruit,\" after the traders who introduced it.",
+          "The sweet orange, Citrus × sinensis, is not a pure wild species at all but a hybrid. Almost all cultivated citrus descends from crosses among a few wild ancestors — mandarin, pomelo, citron, and a wild papeda — and the orange is essentially a mandarin–pomelo cross, refined in China.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "A Chinese fruit comes west",
+        paragraphs: [
+          "The sweet orange was developed in China and Southeast Asia, where citrus had been cultivated and hybridised for a very long time. Its bitter cousin, the sour orange, reached the Mediterranean earlier, carried by Arab traders through the medieval Islamic world; the sweet orange followed later, spread into Europe by Genoese and especially Portuguese merchants around the sixteenth century.",
+          "Prized and delicate, oranges became luxuries of the wealthy, grown in the heated \"orangeries\" of European palaces long before they were everyday fruit.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Citrus crosses the Atlantic",
+        paragraphs: [
+          "Spanish and Portuguese voyagers carried citrus to the Americas from the very first crossings, and oranges took hold in the warm zones of the New World, eventually building the great citrus industries of Florida, Brazil, and California. Two mutations shaped the modern fruit: the seedless navel orange, which arose as a single bud mutation in Brazil and is propagated entirely by grafting, and the juice-perfect Valencia.",
+          "Because every orange variety is maintained by grafting, a navel orange today is, in effect, a cutting of that one original Brazilian tree — every one a clone.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The orange is the world's most widely grown citrus fruit, with Brazil and the United States long dominating the vast market for orange juice, and China and the Mediterranean supplying much of the fresh fruit. Its high vitamin C once made citrus a cure for the scurvy that plagued sailors.",
+          "That global crop now faces a serious threat in citrus greening (Huanglongbing), a bacterial disease spread by an insect that has devastated orchards, above all in Florida, and against which growers and researchers are still struggling.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "onion",
@@ -1427,6 +1562,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit flesh", cautionParts: "Leaves and pit", note: "Foliage and the seed contain persin, which is toxic to some animals; the flesh is safe for people." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Avocado\" is a softened Spanish rendering of the Nahuatl āhuacatl; English speakers who found even aguacate awkward once called it the \"alligator pear,\" for its bumpy skin and shape. The plant, Persea americana, is a member of the laurel family, and its fruit is a large berry with a single enormous seed and flesh that is unusually rich in oil rather than sugar.",
+          "That high fat content sets the avocado apart from almost every other fruit and underlies both its buttery texture and its modern popularity as a savoury food rather than a sweet one.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "A fruit built for vanished giants",
+        paragraphs: [
+          "The avocado poses an evolutionary riddle: why grow a fruit around a seed too big for any living animal to swallow and disperse? The likely answer is that the avocado evolved for animals that no longer exist — the giant ground sloths and other megafauna of the Americas, which could gulp the fruit whole and carry the seed away. When they went extinct, the avocado was left an \"evolutionary anachronism,\" a fruit whose natural gardeners had vanished.",
+          "It survived because humans stepped into the megafauna's role, and had likely been doing so for thousands of years by the time it was domesticated.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Domestication & the Hass tree",
+        paragraphs: [
+          "The avocado was domesticated in south-central Mexico and Central America, where three distinct races — Mexican, Guatemalan, and West Indian — were cultivated for several thousand years. Spanish colonists spread it, but its global rise is a twentieth-century story.",
+          "Nearly every avocado in world trade today is a single variety, the Hass, and every Hass tree traces to one seedling grown by a mail carrier named Rudolph Hass in California in the 1920s. He patented it in 1935; because avocados are propagated by grafting, the billions of Hass avocados sold since are all clones of that one original tree, which stood until the early 2000s.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Once a regional fruit, the avocado has become a global commodity on the back of a remarkable boom in demand, with Mexico as the dominant producer. That success has a cost: the crop is thirsty, its expansion has driven deforestation and water stress in growing regions, and in parts of Mexico its value has drawn organised crime — hard modern questions attached to a fruit once dispersed by ground sloths.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "watermelon",
@@ -1454,6 +1622,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (flesh, seeds, and rind)", cautionParts: "", note: "The flesh, seeds, and rind are all edible." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The watermelon wears its nature in its name: Citrullus lanatus is a fruit that is roughly ninety percent water, a sweet, cool reservoir on a vine. It belongs to the gourd family alongside cucumbers, melons, and squashes, and — like them — is technically a kind of berry with a hard rind, a pepo.",
+          "Every part is usable: the familiar red flesh, the seeds (roasted and eaten across Africa, the Middle East, and Asia), and even the rind, pickled or cooked. But the sweet, deep-red flesh we take for granted is itself a product of long human selection.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "An African origin",
+        paragraphs: [
+          "The watermelon is an African fruit. Its domestication centred on northeastern Africa, and genetic work points to a wild relative from the Kordofan region of Sudan — a non-bitter, pale-fleshed melon — as the closest ancestor of the cultivated crop, rather than the bitter desert gourds once assumed.",
+          "Wild and early melons were watery but pale, hard, and often bitter; generations of selection turned them sweet, tender, and red. The fruit's original value in dry country may have been as much its water as its taste — a living canteen that could be stored for weeks.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "From the Nile to the world",
+        paragraphs: [
+          "Watermelons were grown in ancient Egypt, where seeds and paintings survive and fruits were even placed in tombs as provisions for the afterlife — a sign the sweet, storable types were already valued more than four thousand years ago. From the Nile the crop spread through the Mediterranean and the Near East.",
+          "It travelled east to India and China — where it is now grown and eaten more than anywhere else — and moved into Europe, while the Atlantic slave trade carried African watermelon knowledge and seed to the Americas.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The watermelon is one of the most widely grown fruits on Earth, a fixture of hot-weather eating across every warm continent, with China producing and consuming by far the most. Modern breeding has added seedless (triploid) types and a rainbow of flesh colours, but the appeal is unchanged since the Nile: cold, sweet water in a rind.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "date-palm",
@@ -1481,6 +1682,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten fresh and dried; very high in sugars." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The date takes its English name from the Greek daktylos, \"finger,\" for the shape of the fruit, while its botanical name Phoenix dactylifera again nods to the Phoenicians who traded it. It is the fruit of a tall desert palm, borne in enormous hanging clusters that a single tree can yield for a century.",
+          "Dates are among the sweetest of all fruits, and when dried they become almost pure, storable sugar — a concentrated, transportable energy source that could sustain people and caravans across the driest places on Earth. In the desert, the date palm was less a fruit tree than the foundation of life.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Domestication in the desert",
+        paragraphs: [
+          "The date palm was domesticated around the head of the Persian Gulf and across Mesopotamia, Arabia, and North Africa some 7,000 years ago — one of the oldest fruit crops of the Old World. It is dioecious, with separate male and female trees, so growers learned very early to hand-pollinate, dusting the female flowers with pollen from selected males, a practice depicted in ancient Mesopotamian and Egyptian art.",
+          "Choice trees were then cloned from offshoots at the base of the trunk, fixing named varieties that have been grown for thousands of years. This mastery of pollination and propagation is some of humanity's earliest sophisticated horticulture.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "The tree of the oasis",
+        paragraphs: [
+          "The date palm made oasis civilisation possible. Its high canopy shaded the crops beneath it, its fruit fed people and animals, and its trunks and fronds built and roofed their homes and wove their baskets and ropes — every part put to use. It stands at the centre of Mesopotamian, ancient Egyptian, and Arabian life and scripture, a recurring emblem of sustenance and paradise.",
+          "Along desert trade routes the date was the traveller's ration, and the palm groves of oases were wealth worth fighting for.",
+        ],
+        sourceIds: ["zohary2012", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Date growing remains centred on its ancient homeland — Egypt, Saudi Arabia, Iran, and the wider Middle East and North Africa are the leading producers — with newer industries in California's Coachella Valley, built in the twentieth century from Middle Eastern offshoots. Eaten fresh or dried, pressed into syrup, or fermented, the date is still the sweetness of the desert.",
+        ],
+        sourceIds: ["faostat", "sauer1993"],
+      },
+    ],
   },
   {
     id: "lemon",
@@ -1508,6 +1742,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (juice and zest)", cautionParts: "", note: "Peel oils and juice are widely used; the fruit is very acidic." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Lemon\" comes through Arabic and Persian līmūn, a general word for citrus that European languages narrowed to this one sharp yellow fruit. Like the orange, the lemon (Citrus × limon) is a hybrid rather than a wild species — a cross between the bitter orange and the citron, one of citrus's ancient founding species.",
+          "Its defining quality is acidity: a lemon is too sour to eat like other fruit, and its value lies in juice and aromatic peel that brighten food, preserve it, and clean and scent the home. It also happens to bear fruit through much of the year, an unusually generous habit.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & westward spread",
+        paragraphs: [
+          "The lemon arose in the citrus homelands of northeastern India, Myanmar, and China, and moved west through Persia to the Mediterranean. Arab agriculture spread it across the medieval Islamic world and into Spain and Sicily by around the tenth to twelfth centuries, at first as much an ornamental and medicinal curiosity as a food.",
+          "By the Renaissance the lemon was established in Mediterranean gardens and kitchens, and Spanish and Portuguese voyagers — including Columbus — carried citrus seeds to the Americas, where lemons and limes spread through the warm New World.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The sailor's fruit",
+        paragraphs: [
+          "The lemon's most famous role was medical. Scurvy — caused by vitamin C deficiency — killed more sailors on long voyages than storms or battle, and by the eighteenth century the British navy had learned that lemons and limes prevented it. Issuing citrus juice to crews transformed sea power, and left a lasting nickname: British sailors became \"limeys.\"",
+          "Neither the sailors nor their surgeons knew why it worked — vitamin C would not be identified for another century and a half — but the humble lemon quietly reshaped the reach of empires.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Lemons and their close relative the lime are grown across the warm temperate and tropical world, with India, Mexico, and the Mediterranean among the leading producers. Indispensable in cooking, drinks, preserves, and cleaning, the fruit is a year-round kitchen staple far from the Himalayan foothills where its parentage began.",
+        ],
+        sourceIds: ["faostat", "powo"],
+      },
+    ],
   },
   {
     id: "fig",
@@ -1535,6 +1802,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit (syconium)", cautionParts: "Milky latex", note: "The plant's latex can irritate skin; ripe fruit is safe." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The fig is Ficus carica, and its \"fruit\" is one of nature's great illusions. What we eat is a syconium — a fleshy, hollow receptacle lined on the inside with hundreds of tiny flowers turned outside-in. Botanically the fig is not a single fruit but an entire inflorescence enclosing itself, which is why a ripe fig is full of soft, crunchy \"seeds.\"",
+          "This strange architecture depends, in the wild, on an equally strange partnership: fig trees and fig wasps are locked in an obligate mutualism, each unable to reproduce without the other, the wasp entering the closed fig to pollinate it. The common eating figs of the orchard sidestep all this — they are parthenocarpic, ripening sweet fruit without any wasp or pollination at all.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Perhaps the first domesticated tree",
+        paragraphs: [
+          "The fig may be the oldest domesticated fruit tree known. At an early Neolithic site in the Jordan Valley, archaeologists found preserved figs of a parthenocarpic type — figs that cannot reproduce on their own and must be propagated by human cuttings — dating back roughly 11,400 years, older than the first domesticated cereals at the same sites.",
+          "That makes the fig a candidate for the very first plant humans deliberately propagated, snapping off and replanting branches of a favoured, seedless tree long before agriculture as we usually picture it had begun.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "Fruit of the ancient world",
+        paragraphs: [
+          "Fresh and, above all, dried, figs were a staple sweet and a portable, storable food across the ancient Near East and Mediterranean. They thread through its cultures and scriptures — the fig leaf of Eden, the barren fig tree of parable, the fig trees under which philosophers and prophets sat — and were prized by Greeks and Romans alike.",
+          "The tree spread with Mediterranean civilisation and later with European empire to the Americas and beyond, though its heart remained the hot, dry lands where it was first tamed.",
+        ],
+        sourceIds: ["zohary2012", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Figs are grown around the Mediterranean and in similar climates worldwide, eaten fresh where they can be picked ripe and, more widely, sold dried — a form in which they keep for months and travel well. Türkiye is the leading producer, heir to one of the world's oldest fruit traditions.",
+        ],
+        sourceIds: ["faostat", "sauer1993"],
+      },
+    ],
   },
   {
     id: "pomegranate",
@@ -1562,6 +1862,40 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seeds and arils", cautionParts: "", note: "The juicy arils are eaten; the rind and bark are not foods." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Pomegranate\" means, literally, \"seeded apple\" — from the Latin pomum granatum — a fair description of a leathery globe packed with hundreds of juicy, jewel-like arils, each wrapped around a seed. Its botanical name, Punica granatum, carries a second history: Punica points to the Phoenicians (the Punic people), through whom Rome first knew the fruit.",
+          "Unusually, the pomegranate is eaten seed and all — the sweet-tart aril is the edible part, and the whole crimson interior is the point of the fruit. Its thick rind lets it store and travel remarkably well, a trait that helped carry it across the ancient world.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "Origin & domestication",
+        paragraphs: [
+          "The pomegranate was domesticated in the arid belt running from Iran and the Caucasus through Central Asia to northern India, and was already an established crop by the Bronze Age. Remains and depictions appear across the ancient Near East, in Mesopotamia, and in Egypt, where the fruit was placed in tombs.",
+          "Like the olive, fig, and grape, it was one of the classic long-lived orchard and garden plants of the Old World's dry lands, propagated from cuttings and prized as much for beauty as for food.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "A fruit heavy with meaning",
+        paragraphs: [
+          "Few foods carry such a load of symbolism, nearly always of fertility, abundance, and life-and-death. In Greek myth it is the pomegranate that binds Persephone to the underworld for part of each year, giving the world its seasons. Jewish tradition links its many seeds to the commandments; it recurs in Islamic and Zoroastrian imagery and in Christian art as a sign of resurrection.",
+          "The city of Granada and the French word for the grenade both echo the fruit's clustered, seed-packed form — the pomegranate's shape lodged deep in language.",
+        ],
+        sourceIds: ["kiple2000", "zohary2012"],
+      },
+      {
+        heading: "Spread & the crop today",
+        paragraphs: [
+          "Carried west across the Mediterranean and east along the Silk Road to China, and later by the Spanish to the Americas, the pomegranate settled into warm, dry regions everywhere. Iran and India remain major growers, alongside the Mediterranean and, more recently, California.",
+          "In the twenty-first century the fruit had a second life as pomegranate juice, marketed hard for its antioxidant content — an ancient symbol of health repackaged for the modern wellness market.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "pineapple",
@@ -1589,6 +1923,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "Unripe fruit and stem enzymes", note: "Unripe fruit and bromelain can irritate the mouth; ripe fruit is safe." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Europeans called it \"pine-apple\" because it looked like a pine cone; most other languages use ananas, from the Tupi–Guaraní nanas, said to mean \"excellent fruit.\" Its botanical name, Ananas comosus, keeps that Indigenous word. The plant is a bromeliad, a relative of the spiky air plants, and what looks like one fruit is actually dozens of small fruits fused around a central core — a multiple fruit.",
+          "The pineapple carries bromelain, a protein-digesting enzyme so active that eating a lot of raw fruit can leave the mouth tingling, and that makes green pineapple a traditional meat tenderiser. Because good cultivars are seedless, the plant is grown from crowns and offshoots — clones of the parent.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "A South American fruit",
+        paragraphs: [
+          "The pineapple was domesticated by Indigenous peoples of South America, in the region of the Paraná–Paraguay river basins and southern Brazil, and long before Europeans arrived it had been carried by Native cultivators across tropical South and Central America and into the Caribbean.",
+          "By the time Columbus reached Guadeloupe in 1493 and became the first European to record the fruit, the pineapple was already a well-travelled, fully domesticated crop of the American tropics.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "The fruit of kings",
+        paragraphs: [
+          "Europe was captivated. Sweet, dramatic, and almost impossible to ship before it rotted, the pineapple became a symbol of wealth and hospitality; the rich competed to grow single fruits in heated glass \"pineries,\" a feat that could take years and cost a fortune, so that a pineapple on the table announced status more than appetite. Its crowned silhouette still tops gateposts and decorates architecture as an emblem of welcome.",
+          "Spanish and Portuguese ships spread the hardy, easily transported crop across the tropics — to Africa, India, Southeast Asia, and the Pacific — far faster than the fragile fruit itself could travel.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Twentieth-century canning, famously centred on Hawaii, turned the pineapple from a rare luxury into an everyday fruit, and improved shipping later restored the fresh fruit to markets worldwide. Today Costa Rica, the Philippines, and other tropical nations lead a large global trade in fresh pineapples, juice, and canned fruit — the one-time fruit of kings now stacked on every supermarket shelf.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "papaya",
@@ -1616,6 +1983,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Ripe fruit", cautionParts: "Unripe fruit and latex", note: "Unripe-fruit latex can irritate and is traditionally avoided in pregnancy; ripe fruit is safe." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Papaya\" comes from a Carib or Arawak word of the Caribbean, picked up by the Spanish and spread worldwide — though in parts of the tropics it is the \"pawpaw\" or, in southern Africa and Australia, the \"papaw.\" The plant, Carica papaya, is not really a tree but a fast-growing giant herb with a soft, hollow stem, able to fruit within a year of sprouting and rarely living long.",
+          "Its most remarkable substance is papain, an enzyme in the milky latex of the unripe fruit and stem that breaks down protein. It is extracted as a meat tenderiser and used in traditional medicine, and it is why green papaya is treated with more caution than the sweet, harmless ripe flesh.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Origin & rapid spread",
+        paragraphs: [
+          "The papaya was domesticated in the lowland tropics of southern Mexico and Central America. After 1492 it proved one of the fastest-travelling of all American crops: Spanish and Portuguese ships carried it to the Caribbean, then across the Pacific to the Philippines on the Manila galleons, and on into India, Southeast Asia, and Africa, all within little more than a century.",
+          "Its speed of spread owed everything to its biology — quick to grow, quick to fruit, and easy to raise from seed — so that a plant unknown outside the Americas in 1500 was a tropical dooryard staple around the world by 1700.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Two fruits in one plant",
+        paragraphs: [
+          "The papaya leads a double culinary life. Ripe, it is a soft, sweet, orange-fleshed breakfast fruit. Unripe and green, it is treated as a vegetable — shredded raw into the fiery Southeast Asian salad som tam, or cooked in curries and stews across the tropics — its enzymes also serving to tenderise tough meat.",
+          "Most papaya plants are dioecious or of mixed sex, which historically made reliable orchards a challenge, and selecting dependable, self-fruiting types has been part of the crop's improvement.",
+        ],
+        sourceIds: ["kiple2000", "powo"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The papaya is grown throughout the tropics, with India the largest producer by far, and it is a case study in modern crop science: when ringspot virus threatened to wipe out Hawaii's papaya industry in the 1990s, a genetically engineered virus-resistant papaya was developed that rescued the crop — one of the first successful transgenic fruit and still one of the most cited.",
+        ],
+        sourceIds: ["faostat", "sauer1993"],
+      },
+    ],
   },
   {
     id: "eggplant",
