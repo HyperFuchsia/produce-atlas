@@ -114,10 +114,10 @@
         <p class="entry-meta" data-role="meta">8 prompts · Nothing typed · Nothing saved</p>
         <p data-role="prompt" aria-live="polite">Bring one specific interaction to mind. When you are ready, press Begin. Answer each prompt only in your own mind, or on paper that only you control.</p>
         <div class="entry-actions">
-          <button type="button" class="btn-small" data-role="begin">Begin</button>
-          <button type="button" class="btn-small" data-role="back" hidden>Back</button>
-          <button type="button" class="btn-small" data-role="next" hidden>Next prompt</button>
-          <button type="button" class="btn-small danger" data-role="stop" hidden>Stop &amp; reset</button>
+          <button type="button" class="btn-small" data-role="begin" aria-label="Begin: Examine an interaction">Begin</button>
+          <button type="button" class="btn-small" data-role="back" hidden aria-label="Back: Examine an interaction">Back</button>
+          <button type="button" class="btn-small" data-role="next" hidden aria-label="Next prompt: Examine an interaction">Next prompt</button>
+          <button type="button" class="btn-small danger" data-role="stop" hidden aria-label="Stop &amp; reset: Examine an interaction">Stop &amp; reset</button>
         </div>
       </div>
 
@@ -144,10 +144,10 @@
         <p class="entry-meta" data-role="meta">8 prompts · Nothing typed · Nothing saved</p>
         <p data-role="prompt" aria-live="polite">Bring to mind one judgment that has stuck to you — from someone else's mouth or your own internal voice. Press Begin when ready.</p>
         <div class="entry-actions">
-          <button type="button" class="btn-small" data-role="begin">Begin</button>
-          <button type="button" class="btn-small" data-role="back" hidden>Back</button>
-          <button type="button" class="btn-small" data-role="next" hidden>Next prompt</button>
-          <button type="button" class="btn-small danger" data-role="stop" hidden>Stop &amp; reset</button>
+          <button type="button" class="btn-small" data-role="begin" aria-label="Begin: Identify a failure code">Begin</button>
+          <button type="button" class="btn-small" data-role="back" hidden aria-label="Back: Identify a failure code">Back</button>
+          <button type="button" class="btn-small" data-role="next" hidden aria-label="Next prompt: Identify a failure code">Next prompt</button>
+          <button type="button" class="btn-small danger" data-role="stop" hidden aria-label="Stop &amp; reset: Identify a failure code">Stop &amp; reset</button>
         </div>
       </div>
 
@@ -174,10 +174,10 @@
         <p class="entry-meta" data-role="meta">8 prompts · Nothing typed · Nothing saved</p>
         <p data-role="prompt" aria-live="polite">Pick one expectation you feel measured by. Press Begin when ready.</p>
         <div class="entry-actions">
-          <button type="button" class="btn-small" data-role="begin">Begin</button>
-          <button type="button" class="btn-small" data-role="back" hidden>Back</button>
-          <button type="button" class="btn-small" data-role="next" hidden>Next prompt</button>
-          <button type="button" class="btn-small danger" data-role="stop" hidden>Stop &amp; reset</button>
+          <button type="button" class="btn-small" data-role="begin" aria-label="Begin: Review a masculine expectation">Begin</button>
+          <button type="button" class="btn-small" data-role="back" hidden aria-label="Back: Review a masculine expectation">Back</button>
+          <button type="button" class="btn-small" data-role="next" hidden aria-label="Next prompt: Review a masculine expectation">Next prompt</button>
+          <button type="button" class="btn-small danger" data-role="stop" hidden aria-label="Stop &amp; reset: Review a masculine expectation">Stop &amp; reset</button>
         </div>
       </div>
 
@@ -204,10 +204,10 @@
         <p class="entry-meta" data-role="meta">8 prompts · Nothing typed · Nothing saved</p>
         <p data-role="prompt" aria-live="polite">Choose one recent action of yours to examine. Press Begin when ready.</p>
         <div class="entry-actions">
-          <button type="button" class="btn-small" data-role="begin">Begin</button>
-          <button type="button" class="btn-small" data-role="back" hidden>Back</button>
-          <button type="button" class="btn-small" data-role="next" hidden>Next prompt</button>
-          <button type="button" class="btn-small danger" data-role="stop" hidden>Stop &amp; reset</button>
+          <button type="button" class="btn-small" data-role="begin" aria-label="Begin: Reconnect conduct with character">Begin</button>
+          <button type="button" class="btn-small" data-role="back" hidden aria-label="Back: Reconnect conduct with character">Back</button>
+          <button type="button" class="btn-small" data-role="next" hidden aria-label="Next prompt: Reconnect conduct with character">Next prompt</button>
+          <button type="button" class="btn-small danger" data-role="stop" hidden aria-label="Stop &amp; reset: Reconnect conduct with character">Stop &amp; reset</button>
         </div>
       </div>
 
@@ -411,6 +411,7 @@
 
   var TOOLS = {
     interaction: {
+      name: "Examine an interaction",
       intro: "Bring one specific interaction to mind. When you are ready, press Begin. Answer each prompt only in your own mind, or on paper that only you control.",
       done: "Path complete. Nothing you brought to mind was recorded — there is no record to save or delete. Take what was useful; leave the rest. If the interaction involved threat, coercion, or ongoing harm, the Find Care page lists free, independent routes to real help.",
       prompts: [
@@ -425,6 +426,7 @@
       ]
     },
     code: {
+      name: "Identify a failure code",
       intro: "Bring to mind one judgment that has stuck to you — from someone else's mouth or your own internal voice. Press Begin when ready.",
       done: "Path complete. Nothing was recorded. A mistake is not an identity. A limitation is not a moral defect. Vulnerability is not failed manhood.",
       prompts: [
@@ -439,6 +441,7 @@
       ]
     },
     expectation: {
+      name: "Review a masculine expectation",
       intro: "Pick one expectation you feel measured by. Press Begin when ready.",
       done: "Path complete. Nothing was recorded. Participate in society without allowing its reward systems to own the definition of the male self.",
       prompts: [
@@ -453,6 +456,7 @@
       ]
     },
     character: {
+      name: "Reconnect conduct with character",
       intro: "Choose one recent action of yours to examine. Press Begin when ready.",
       done: "Path complete. Nothing was recorded. Character is not the absence of failure; it is sustained answerability to truth.",
       prompts: [
@@ -487,6 +491,7 @@
       prompt.textContent = message;
       meta.textContent = metaText;
       beginBtn.textContent = beginLabel;
+      beginBtn.setAttribute("aria-label", beginLabel + ": " + data.name);
       beginBtn.hidden = false;
       backBtn.hidden = true;
       nextBtn.hidden = true;
@@ -501,6 +506,7 @@
       backBtn.disabled = (idx === 0);
       nextBtn.hidden = false;
       nextBtn.textContent = (idx === total - 1) ? "Finish" : "Next prompt";
+      nextBtn.setAttribute("aria-label", nextBtn.textContent + ": " + data.name);
       stopBtn.hidden = false;
     }
 
