@@ -74,9 +74,18 @@
       </dl>
       <p>Where a term’s home page treats it at length, the entry links there. The glossary is a map, not the territory.</p>
 
-      <h2 id="distinctions" class="anchor-offset"><span class="kicker">July 2026 — canonical</span>Decisive distinctions — governing meanings</h2>
-      <p>These are the current canonical one-line meanings of the framework’s decisive terms, from the July 22, 2026 dossier. Where any older or broader formulation elsewhere appears to conflict with these, <strong>these govern</strong>.</p>
-      <div class="table-scroll wide-block"><table class="matrix">
+      <div class="tool-panel" role="search" aria-label="Glossary search" id="glossary-search" hidden>
+        <h3>Search this glossary</h3>
+        <label for="glossary-filter">Type to filter both term lists below — matches against each term, its status, and its definition</label>
+        <input type="text" id="glossary-filter" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <p class="small" id="glossary-count" aria-live="polite" aria-atomic="true">Showing all terms.</p>
+        <p class="notice" id="glossary-empty" hidden>No terms match that search. Try a shorter fragment of the word, or clear the search to bring every term back.</p>
+        <p><button type="button" class="btn-small" id="glossary-clear">Clear search</button></p>
+      </div>
+
+      <h2 id="distinctions" class="anchor-offset" data-glossary-group="distinctions"><span class="kicker">July 2026 — canonical</span>Decisive distinctions — governing meanings</h2>
+      <p data-glossary-group="distinctions">These are the current canonical one-line meanings of the framework’s decisive terms, from the July 22, 2026 dossier. Where any older or broader formulation elsewhere appears to conflict with these, <strong>these govern</strong>.</p>
+      <div class="table-scroll wide-block" data-glossary-group="distinctions"><table class="matrix">
         <caption>Glossary of decisive distinctions</caption>
         <thead><tr><th scope="col">Term</th><th scope="col">Governing meaning</th></tr></thead>
         <tbody>
@@ -101,13 +110,13 @@
           <tr id="d-whole-person-integrity"><td>Whole-person integrity</td><td>Dynamic, person-specific coherence and sustainable functioning across embodied, psychological, relational, ethical, and agentic life; not perfection or worth. See the <a href="framework-architecture.html">integrity architecture</a>.</td></tr>
         </tbody>
       </table></div>
-      <div class="callout"><span class="label">Non-negotiable distinctions</span>
+      <div class="callout" data-glossary-group="distinctions"><span class="label">Non-negotiable distinctions</span>
         <p>Do not confuse a person’s existence with his conduct. Do not confuse dignity with immunity. Do not confuse sovereignty with unilateral authority. Do not confuse calmness with truth.</p>
       </div>
 
-      <h2 id="lexicon" class="anchor-offset"><span class="kicker">Complete &amp; alphabetized</span>The master lexicon, A–Z</h2>
-      <p>The complete merged lexicon: the framework’s master lexicon, its expanded terminology-governance glossary, and the Part II core concepts, with duplicates merged into the strongest current formulation.</p>
-      <div class="table-scroll wide-block"><table class="matrix">
+      <h2 id="lexicon" class="anchor-offset" data-glossary-group="lexicon"><span class="kicker">Complete &amp; alphabetized</span>The master lexicon, A–Z</h2>
+      <p data-glossary-group="lexicon">The complete merged lexicon: the framework’s master lexicon, its expanded terminology-governance glossary, and the Part II core concepts, with duplicates merged into the strongest current formulation.</p>
+      <div class="table-scroll wide-block" data-glossary-group="lexicon"><table class="matrix">
         <caption>Master lexicon — term, status, and definition</caption>
         <thead><tr><th scope="col">Term</th><th scope="col">Status</th><th scope="col">Definition</th></tr></thead>
         <tbody>
@@ -193,7 +202,7 @@
           <tr id="t-whole-male-integrity"><td>Whole-male integrity</td><td>Framework term</td><td>Integrated preservation of the male person across biological, psychological, ethical, relational, developmental, social, and sovereign dimensions. See the <a href="framework-architecture.html">integrity architecture</a>.</td></tr>
         </tbody>
       </table></div>
-      <p class="small">Framework terms are original synthesis. Any of them may be revised, narrowed, or retired when evidence or serious criticism demands it — the standing question <a href="evidence.html#open-questions">kept open on the evidence page</a>.</p>
+      <p class="small" data-glossary-group="lexicon">Framework terms are original synthesis. Any of them may be revised, narrowed, or retired when evidence or serious criticism demands it — the standing question <a href="evidence.html#open-questions">kept open on the evidence page</a>.</p>
 
       <nav class="pager" aria-label="Sequence">
         <a href="accessibility.html"><span class="dir">Previous</span>Accessibility Standard</a>
@@ -278,5 +287,68 @@
 </div>
 
 <script src="assets/site.js"></script>
+<script>
+/* Glossary search — client-side filter over both term tables. No network, no storage.
+   With JavaScript off this script never runs, the search panel stays hidden, and
+   every term remains visible exactly as before. */
+(function () {
+  "use strict";
+  var panel = document.getElementById("glossary-search");
+  var input = document.getElementById("glossary-filter");
+  var count = document.getElementById("glossary-count");
+  var emptyMsg = document.getElementById("glossary-empty");
+  var clearBtn = document.getElementById("glossary-clear");
+  if (!panel || !input || !count || !emptyMsg || !clearBtn) { return; }
+
+  /* Each group = one term table plus its heading, intro, and trailing note. */
+  var groups = ["distinctions", "lexicon"].map(function (name) {
+    var blocks = Array.prototype.slice.call(
+      document.querySelectorAll('[data-glossary-group="' + name + '"]')
+    );
+    var rows = [];
+    blocks.forEach(function (el) {
+      Array.prototype.forEach.call(el.querySelectorAll("tbody tr"), function (row) {
+        rows.push({ row: row, text: row.textContent.replace(/\s+/g, " ").toLowerCase() });
+      });
+    });
+    return { blocks: blocks, rows: rows };
+  });
+  var total = groups.reduce(function (n, g) { return n + g.rows.length; }, 0);
+  if (total === 0) { return; }
+
+  function apply() {
+    var q = input.value.trim().toLowerCase();
+    var shown = 0;
+    groups.forEach(function (g) {
+      var visible = 0;
+      g.rows.forEach(function (entry) {
+        var match = q === "" || entry.text.indexOf(q) !== -1;
+        entry.row.hidden = !match;
+        if (match) { visible += 1; }
+      });
+      var hideGroup = q !== "" && visible === 0;
+      g.blocks.forEach(function (el) { el.hidden = hideGroup; });
+      shown += visible;
+    });
+    count.textContent = (q === "")
+      ? "Showing all " + total + " terms."
+      : "Showing " + shown + " of " + total + " terms.";
+    emptyMsg.hidden = (shown !== 0);
+  }
+
+  function clearSearch() {
+    if (input.value !== "") { input.value = ""; apply(); }
+  }
+
+  input.addEventListener("input", apply);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { clearSearch(); }
+  });
+  clearBtn.addEventListener("click", function () { clearSearch(); input.focus(); });
+
+  panel.hidden = false;
+  apply();
+})();
+</script>
 </body>
 </html>
