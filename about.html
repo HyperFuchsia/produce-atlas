@@ -59,6 +59,7 @@
         <li><a href="#identity">Identity and naming history</a></li>
         <li><a href="#mission">Mission evolution and the thesis</a></li>
         <li><a href="#current-state">Current verified state — July 22, 2026</a></li>
+        <li><a href="#live-verification">Live-interaction verification and hardening evidence</a></li>
         <li><a href="#institution">The institution and its publication</a></li>
         <li><a href="#architecture">Site architecture and editorial voice</a></li>
         <li><a href="#foundation">Technical foundation: plan versus reality</a></li>
@@ -102,6 +103,7 @@
         </tbody>
       </table></div>
       <div class="callout caution"><span class="label">Limits of the audit</span><p>The review inspected live server output, production metadata, shipped client assets, public routing behavior, and prior source materials. It did <strong>not</strong> complete a credentialed owner session, a wrong-owner session, a formal penetration test, a full assistive-technology audit, a multi-browser device lab, a professional legal opinion, a clinical validation study, or a production payment test. The absence of those tests is recorded here as a gap rather than hidden behind broad language such as &ldquo;fully functional.&rdquo;</p></div>
+      <p><strong>When this record must change next.</strong> The dossier binds itself to a re-audit schedule rather than an open-ended shelf life. Its next mandatory update occurs after Version-12 source recovery, after owner and non-owner authentication testing, after the <a href="#roadmap">P0 corrections</a> are completed, or upon any change to AI, data, payment, community, or professional-care status. Until one of those events occurs, the July&nbsp;22, 2026 record on this page stands as the current statement.</p>
 
       <h2 id="identity" class="anchor-offset"><span class="kicker">Three names, one project</span>Identity and naming history</h2>
       <p>The live public brand is <strong>Whole Man</strong>, with the service line <em>Health · Integrity · Self-government</em> and the central thesis <em><a href="framework-thesis.html">Male Integrity Sustains Human Civilization</a></em>. The site operates as an active, publicly accessible hosted deployment at the production address recorded in the audit&rsquo;s canonical record. The project reached this identity through two earlier names, and it documents that history rather than erasing it:</p>
@@ -184,6 +186,40 @@
 
       <h3>Security-header observation</h3>
       <p>One direct response from the live deployment included <code>Permissions-Policy</code>, <code>Referrer-Policy</code>, and <code>X-Content-Type-Options</code> headers. The same response did not expose a Content Security Policy, <code>frame-ancestors</code>/<code>X-Frame-Options</code>, or Strict Transport Security header. This is an observation, not a completed security finding — hosting layers can vary by route and response — but it justifies a formal header review, particularly before accounts, payments, or sensitive server-side health data exist. It is tracked in the <a href="#roadmap">roadmap</a> and the <a href="governance.html#gates">privacy-and-security launch gate</a>.</p>
+
+      <h2 id="live-verification" class="anchor-offset"><span class="kicker">The second look</span>Live-interaction verification and hardening evidence</h2>
+      <p>On July&nbsp;22, 2026, a separate read-only audit exercised the current public release in a live browser, and a second independent product and technical audit added material detail. Together they strengthen several earlier code-inspection findings, narrow the remaining uncertainty, and add new items to the <a href="#roadmap">roadmap</a>. This section records both.</p>
+
+      <h3>What live interaction confirmed</h3>
+      <p>Beyond the sampled check-in, journal, and reflection paths already recorded in the <a href="#current-state">route and function matrix</a>, the interactive audit verified:</p>
+      <ul>
+        <li>All nineteen homepage fragment links pointed to existing targets.</li>
+        <li>The mobile-navigation control opened an eleven-link menu and restored its expanded state on closure in the tested desktop browser.</li>
+        <li>Monthly and annual membership prices toggled exactly as published.</li>
+        <li>No Whole Man-origin console errors were observed in the tested flows.</li>
+        <li>No public route had horizontal overflow at a 1,348-pixel desktop viewport.</li>
+      </ul>
+      <p class="small">These are the live-interaction results that justify the &ldquo;verified live&rdquo; labels above. Export was present and enabled but the download itself was not triggered, and three of the four no-answer reflection tools were not completed individually — those remain partially verified.</p>
+
+      <h3>Measured length: why wayfinding is an accessibility requirement</h3>
+      <p>The rendered homepage measured approximately <strong>57,388 pixels high</strong> at a 936-pixel-high test viewport — roughly sixty-one viewport heights. The membership page measured approximately <strong>33,486 pixels</strong>. This proves that wayfinding is not a cosmetic concern: a framework summary, a table of contents, chapter progress, and intent-based shortcuts must be treated as accessibility and product requirements.</p>
+      <p>The same audit measured approximately 37,000 characters of visible homepage text before script content and identified three product risks in that density: <strong>orientation loss</strong> (a visitor may not know whether they are still in the opening argument, the deeper foundation, the practical tools, or health education); <strong>mobile fatigue</strong> (even excellent prose becomes difficult when every section feels equally important on a narrow screen); and <strong>conversion ambiguity</strong> (a visitor seeking a definition, a check-in, urgent support, or a specific health topic may have to traverse too much philosophy). That measurement is the audit context this rebuild&rsquo;s layered navigation answers — the <a href="index.html">&ldquo;you are here&rdquo; chapter labels, three-minute thesis path, and reading-time estimates on the opening argument</a>, the <a href="framework.html">framework hub</a>, the <a href="glossary.html">searchable glossary</a>, and the per-page tables of contents.</p>
+      <div class="callout caution"><span class="label">Mobile is implementation-verified, not runtime-verified</span><p>Responsive CSS and mobile behavior definitions are present at multiple breakpoints, but the audit environment did not provide a true mobile viewport. Earlier project claims that mobile layouts &ldquo;passed&rdquo; must not be repeated as new proof without current iOS and Android testing — tracked as a <a href="#roadmap">P0 roadmap item</a>.</p></div>
+
+      <h3>Health-copy verification record</h3>
+      <p>The audit compared the site&rsquo;s current high-level health wording against current official sources. The published adult sleep, activity, colorectal-screening, prostate-screening decision, men&rsquo;s mental-health symptom, and 988-access statements were <strong>verified consistent with the official sources reviewed on July&nbsp;22, 2026</strong> (see the <a href="care.html#health-foundations">health foundations on the care page</a>). This is time-bounded verification: it does not remove the need for published review dates and a scheduled re-review.</p>
+
+      <h3 id="archive-evidence" class="anchor-offset">Deployment archive and rollback evidence</h3>
+      <p>The Version-12 platform record reports an archive digest, recorded in the audit record, covering <strong>fifty-seven archived files</strong> in an archive of approximately <strong>5.25&nbsp;MB</strong>, and the twelve platform versions provide a real rollback history. This makes the source recovery required by the <a href="#roadmap">roadmap</a> feasible. It does not replace what is still missing: an accessible repository, a lockfile, CI history, a reproducible build, and a documented restore drill.</p>
+
+      <h3>Route accuracy</h3>
+      <p>On the audited live release, requests to <code>/care</code>, <code>/framework</code>, and <code>/evidence</code> returned 404. The valid care route was <code>/resources</code>; framework and evidence material were homepage anchors. The lesson is procedural: documentation and future communications must not create nonexistent links, and the project should either add deliberate redirects or provide a branded 404 page with recovery links. The audited routes, mapped to this site, are listed in the <a href="#canonical">canonical record</a> below.</p>
+
+      <h3>Owner-gate hardening evidence</h3>
+      <p>The unauthenticated response from the owner governance route used private, no-store caching and search-engine noindex directives, and a basic attempt to spoof an incoming authenticated-email header did not bypass the gate — the platform edge ignored or stripped the untrusted value. These are positive signals. They still do not prove correct post-authentication email allowlisting, secure sessions, CSRF resistance, rate limits, durable note storage, or portal-action authorization — the owner and wrong-owner tests the <a href="governance.html#credentials">credential and access-control standard</a> requires remain outstanding.</p>
+
+      <h3>Search discovery</h3>
+      <p>The five audited public routes have distinct titles, descriptions, and first-level headings, but no canonical link was observed, an exact-domain search produced no indexed results, and robots and sitemap behavior were not established in the audit environment. Required search-readiness work: add one canonical URL per public route; generate and verify a sitemap; verify robots directives; add suitable social-preview metadata; register and inspect the property in relevant search consoles when available; and avoid claiming discoverability until indexing is observed.</p>
 
       <h2 id="institution" class="anchor-offset"><span class="kicker">Structure</span>The institution and its publication</h2>
       <p>Whole Man launched as one integrated institutional website rather than a separate corporate site and an unrelated blog. The framework, evidence center, glossary, tools, care pathways, accessibility system, and editorial publication share one governance structure and one source of truth. <strong>The Whole Man Review</strong> is the editorial division — evidence reviews, foundational essays, cultural analysis, practical guides, clinical perspectives, lived-experience narratives, framework development, and commentary — while permanent institutional statements are never dated blog posts that disappear beneath a chronological feed.</p>
@@ -278,6 +314,22 @@
         <li>Run current mobile tests on iOS Safari and Android Chrome.</li>
         <li>Execute export, delete-all, storage-unavailable, corrupted-data, and session-interruption tests.</li>
       </ol>
+      <details class="fold"><summary>The minimum Version-12 recovery procedure (ten steps)</summary><div class="fold-body">
+        <p>Step&nbsp;1 above is not complete until each of the following is done and evidenced. No substantive release should begin before then, because a change made from the stale handoff could deploy successfully while silently removing later functionality.</p>
+        <ol>
+          <li>Retrieve the exact current source archive or repository for Version&nbsp;12.</li>
+          <li>Verify its commit and build metadata against the platform record.</li>
+          <li>Build it in a clean environment.</li>
+          <li>Compare the generated routes and assets with production.</li>
+          <li>Run tests and record the outputs.</li>
+          <li>Place the source under a durable, access-controlled Git repository.</li>
+          <li>Tag the current production baseline.</li>
+          <li>Create a protected release branch with a review requirement.</li>
+          <li>Store deployment and rollback instructions.</li>
+          <li>Produce a new handoff that explicitly supersedes the July&nbsp;15 artifact.</li>
+        </ol>
+        <p class="small">The platform&rsquo;s twelve-version rollback history and the recorded archive digest make this recovery feasible — see the <a href="#archive-evidence">archive and rollback evidence</a> above.</p>
+      </div></details>
       <h3>P1 — Make the editorial framework authoritative enough to maintain</h3>
       <ol>
         <li>Publish the <a href="glossary.html">definitions and glossary</a>.</li>
@@ -293,6 +345,26 @@
         <li>Document crisis-resource verification and geographic scope.</li>
         <li>Create a new technical and editorial handoff.</li>
       </ol>
+      <h3>The technical hardening backlog</h3>
+      <p>The supplemental product audit recorded a specific hardening backlog inside P1&rsquo;s formal security and platform review. The following were not observed in the tested public response or routes and require hosting-layer confirmation or remediation:</p>
+      <ul>
+        <li>A Content Security Policy, including framing control, and Strict Transport Security on the observed response (the <a href="#current-state">security-header observation</a> above).</li>
+        <li><code>robots.txt</code>, <code>sitemap.xml</code>, and a <code>.well-known/security.txt</code> disclosure file.</li>
+        <li>Canonical, Open Graph, Twitter-card, and structured metadata (the <a href="#live-verification">search-discovery finding</a> above).</li>
+        <li>A branded 404 page with recovery links (the route-accuracy finding above).</li>
+        <li>Dependency, SBOM, vulnerability, and source-secret evidence.</li>
+      </ul>
+      <p>Implementation defects recorded for correction:</p>
+      <ul>
+        <li>Production HTML included a development-preview meta marker that should be removed.</li>
+        <li>The hero image was served as a generic binary content type rather than its correct image type.</li>
+        <li>Hashed static assets were revalidated on each request instead of receiving efficient immutable caching.</li>
+        <li>The extremely large DOM and page payload require low-end mobile and Core Web Vitals testing.</li>
+        <li>Image license, likeness and model-release, and generation-provenance documentation should be created.</li>
+        <li>Brand and trademark clearance for &ldquo;Whole Man&rdquo; remains unrecorded (see the <a href="#identity">naming history</a>).</li>
+      </ul>
+      <p class="small">These findings do not make the current public beta unusable. They define the difference between a polished release and a hardened, durable service.</p>
+      <p>One further recommendation from the audit&rsquo;s long-form density review remains open: <strong>print and PDF versions of major statements</strong>. This site ships print styles, so pages print cleanly, but dedicated PDF editions of the major institutional statements remain to be produced.</p>
       <h3>P2 — Activate owner-controlled AI review</h3>
       <p>This phase begins only after source, claim, and governance systems exist:</p>
       <ol>
