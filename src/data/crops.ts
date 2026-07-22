@@ -39,6 +39,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Kernels (grain)", cautionParts: "", note: "Eaten as grain, fresh vegetable, and flour." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The plant the world grows as Zea mays is called \"maize\" almost everywhere except the United States, Canada, and Australia, where it is \"corn.\" That split is a linguistic trap: in older English \"corn\" simply meant the leading grain of a place — wheat in England, oats in Scotland — so American colonists naturally called their staple \"Indian corn,\" later shortened to corn. The international name comes from mahiz, the word Taíno people of the Caribbean gave the Spanish, who wrote it maíz.",
+          "Maize is a giant grass, and a botanical oddity: male flowers form the tassel at the top, female flowers the cob lower down, each silk a thread leading to one future kernel. It is one of the most productive plants on Earth partly because it runs the efficient C4 form of photosynthesis, thriving in heat and strong sun.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "The teosinte puzzle",
+        paragraphs: [
+          "For a long time maize had no obvious wild ancestor, because its ancestor looks almost nothing like it. That ancestor is teosinte, a scrubby Mexican grass whose \"ear\" is a handful of hard, stony seeds locked in shells, borne on many branches. How such a plant became a single fat cob of soft, naked kernels was one of botany's great mysteries, argued over for most of the twentieth century.",
+          "The answer, from genetics pioneered by George Beadle and others, is that a surprisingly small number of control genes account for the transformation — regulators such as tb1, which suppresses branching into one main stalk, and tga1, which unwrapped the kernels from their hard cases. A few mutations, seized on by early farmers, turned a wild grass into the world's most productive cereal.",
+        ],
+        sourceIds: ["purugganan2009", "sauer1993"],
+      },
+      {
+        heading: "Domestication in the Balsas",
+        paragraphs: [
+          "The cradle was the tropical lowlands of the Balsas River valley in south-central Mexico, where the specific wild grass involved, Balsas teosinte (Zea mays ssp. parviglumis), still grows. Starch grains and phytoliths recovered from ancient grinding stones at rock shelters there push maize use back to roughly 9,000 years ago, and genome-wide data point to a single domestication from that Balsas population.",
+          "From that one origin, Indigenous farmers across the Americas bred maize into thousands of landraces suited to deserts, highlands, and rainforests, in every colour from white and yellow to red, blue, and black — a diversity that still underpins the crop's breeding today.",
+        ],
+        sourceIds: ["purugganan2009", "sauer1993"],
+      },
+      {
+        heading: "Nixtamal — the knowledge that made maize safe",
+        paragraphs: [
+          "Maize carries a hidden nutritional flaw: its niacin (vitamin B3) is chemically bound and largely unavailable, and it is low in certain amino acids. Mesoamerican peoples solved this with nixtamalization — soaking and cooking the grain in an alkaline solution of lime or wood ash. The process frees the niacin, improves the protein, loosens the hulls, and lets the dough bind into tortillas, tamales, and hominy.",
+          "This was culinary chemistry of the first order, and its absence proved deadly. When maize spread to Europe, Africa, and the American South as a cheap staple without the accompanying nixtamal knowledge, populations that lived on it suffered epidemics of pellagra — the niacin-deficiency disease of \"the four Ds\": dermatitis, diarrhoea, dementia, and death. The crop travelled the world; the wisdom that made it wholesome often did not.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "Around the world & into industry",
+        paragraphs: [
+          "After 1492 maize spread with astonishing speed. It became a field staple in southern Europe, a major food across sub-Saharan Africa, and a fixture in China and South Asia within a couple of centuries, valued for high yields on marginal land. In much of Africa today maize is the single most important food crop.",
+          "In the twentieth century maize was transformed again — this time by science and industry. The discovery of hybrid vigour produced hybrid corn from the 1930s, multiplying yields; maize now feeds livestock far more than people directly, and flows into ethanol fuel, corn starch, oils, and the high-fructose corn syrup woven through the modern processed diet. By sheer tonnage it is the largest cereal crop grown anywhere on Earth.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "wheat",
@@ -68,6 +110,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain (caryopsis)", cautionParts: "", note: "Contains gluten; unsuitable for coeliac diets." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The English \"wheat\" comes from an old Germanic root meaning \"white,\" for the pale flour it yields — the same instinct that named it in many European tongues after its bread or its colour. The bread wheat that dominates world trade is Triticum aestivum, but \"wheat\" covers a family of related grains, from ancient einkorn and emmer to hard durum, the pasta and semolina wheat.",
+          "Genetically, bread wheat is a marvel of accidental engineering: it is hexaploid, carrying three complete ancestral genomes stacked together (labelled A, B, and D). That triple genome is the reason wheat flour, uniquely among grains, forms strong, stretchy gluten — the protein network that traps gas and makes a risen loaf possible.",
+        ],
+        sourceIds: ["powo", "zohary2012"],
+      },
+      {
+        heading: "The wild ancestors",
+        paragraphs: [
+          "Wheat begins with wild grasses of the Fertile Crescent: wild einkorn and wild emmer (Triticum dicoccoides), which still grow across the hills of the Near East, with a likely heartland around the Karacadağ mountains of southeastern Anatolia. Their seed heads shatter when ripe, scattering grain to reseed — excellent for a wild plant, useless for a farmer.",
+          "The pivotal domestication trait was a mutation for a tough, non-shattering rachis: seed heads that hold together until harvest, so the whole crop can be reaped and threshed. Selecting those non-shattering, plump-grained plants — knowingly or not — is the essence of how wheat became a crop, and the same principle underlies the domestication of nearly every cereal.",
+        ],
+        sourceIds: ["zohary2012", "purugganan2009"],
+      },
+      {
+        heading: "How bread wheat was born",
+        paragraphs: [
+          "Domestication came in stages. Diploid einkorn and tetraploid emmer were among the founder crops of Neolithic farming more than 10,000 years ago. Bread wheat itself did not yet exist — it arose only after farming had begun, when cultivated emmer chanced to hybridise with a wild goatgrass, Aegilops tauschii, somewhere near the southern Caspian.",
+          "That hybridisation added the third, \"D,\" genome, and with it cold-hardiness, adaptability, and superior breadmaking gluten. In other words the world's most important bread grain is a hybrid that could only have appeared inside human fields — a crop that domestication created rather than merely tamed.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "The grain of civilisations",
+        paragraphs: [
+          "Wheat spread outward from the Fertile Crescent as the backbone of the Neolithic farming package, reaching Egypt and the Balkans, then temperate Europe by around 7,000 years ago, the Indus Valley, and eventually northern China. Wherever it took hold it supported dense, settled populations; the granaries, bread, and beer of Mesopotamia, Egypt, Greece, and Rome all rest on it.",
+          "Carried by European colonists into the Americas, southern Africa, and Australia from the sixteenth century onward, wheat became a truly global grain, and today feeds roughly a third of humanity across the temperate world.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The Green Revolution & today",
+        paragraphs: [
+          "Wheat sits at the centre of the twentieth century's Green Revolution. Working in Mexico, the agronomist Norman Borlaug bred semi-dwarf wheats that put their energy into grain rather than tall stalks and responded to fertiliser without toppling. Spread across South Asia in the 1960s, these varieties dramatically raised yields and are credited with averting mass famine, work for which Borlaug received the Nobel Peace Prize.",
+          "That productivity made wheat a pillar of global food security, though it also concentrated the crop's genetics and its thirst for inputs. Wheat's very ubiquity keeps it under scrutiny today — from coeliac disease and gluten sensitivity to the race to breed varieties that withstand heat, drought, and new strains of rust.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "rice",
@@ -97,6 +181,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Grain", cautionParts: "", note: "Staple cereal, in polished and wholegrain forms." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The word \"rice\" travelled west along the trade routes it rode as a grain — through Greek oryza, itself borrowed from an eastern source, into Latin and the Romance and Germanic languages. The crop that feeds more people than any other is Oryza sativa, Asian rice, which comes in two great subspecies: japonica, the shorter, stickier temperate and tropical rice, and indica, the long-grained rice of the tropics.",
+          "There is also a second, separate rice. In the inland delta of the Niger in West Africa, farmers independently domesticated African rice, Oryza glaberrima, from a different wild ancestor — a reminder that rice-growing was invented more than once.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "The wild ancestor",
+        paragraphs: [
+          "Asian rice descends from the wild perennial Oryza rufipogon, a plant of monsoon wetlands and swamp margins. Like wild wheat, wild rice shatters, dropping its grain to survive; and like wheat, its domestication turned on selecting a mutation — here the sh4 gene — that keeps the grain attached for harvest.",
+          "Rice's genius as a crop is its love of standing water. Grown in flooded paddies, it out-competes weeds, draws nutrients from the water, and can be cultivated on the same land year after year — the agronomic basis for some of the densest rural populations the world has ever known.",
+        ],
+        sourceIds: ["purugganan2009", "sauer1993"],
+      },
+      {
+        heading: "Two subspecies, one origin",
+        paragraphs: [
+          "The core domestication of japonica rice took place along China's Yangtze River, where waterlogged sites such as those of the Hemudu and Shangshan cultures preserve husks and phytoliths reaching back some 9,000 years. Genetics traces the key non-shattering allele to a single origin in that japonica lineage.",
+          "The tropical indica rice of South Asia then arose in a more complex way: as the domestication genes from Chinese japonica spread and introgressed into local South Asian wild rice populations, combining the domestic traits with regionally adapted stock. Rice's story is thus one origin of the crucial mutations, elaborated across a continent.",
+        ],
+        sourceIds: ["purugganan2009", "sauer1993"],
+      },
+      {
+        heading: "Across Asia and beyond",
+        paragraphs: [
+          "From its Yangtze and South Asian heartlands rice spread through Southeast Asia, became the ritual and dietary centre of civilisations from India to Japan, and moved west into the Near East, Africa, and — through Moorish Spain and the Po Valley — Mediterranean Europe. Terraced hillsides and elaborate irrigation across monsoon Asia are monuments to it.",
+          "Rice reached the Americas in the seventeenth century, and its history there is inseparable from slavery: the lucrative \"Carolina Gold\" rice plantations depended on the agricultural expertise of enslaved West Africans, who already knew how to grow the grain their captors did not. It is one of the clearest cases of the Atlantic slave trade moving not just people but their knowledge.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Feeding half the world",
+        paragraphs: [
+          "Rice is the daily staple for more than half of humanity, overwhelmingly grown and eaten across Asia, where it supplies the bulk of calories for billions of people. No other single crop feeds so many mouths directly.",
+          "That dependence made rice a second front of the Green Revolution: the semi-dwarf variety IR8, released from the International Rice Research Institute in the Philippines in the 1960s, roughly doubled yields and helped stave off famine in Asia. Today rice breeders work on flood- and drought-tolerance, on reducing the methane that flooded paddies emit, and on biofortified types such as vitamin-A \"golden\" rice.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "potato",
@@ -319,6 +445,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Capsaicin is a strong irritant to eyes and skin." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Chili\" comes straight from chīlli, the word in Nahuatl, the language of the Aztecs. The confusing alternative name — \"pepper\" — is Columbus's mistake: sent to find the black pepper of the Indies, he met the burning fruits of a completely unrelated American plant and called them pimiento, \"pepper,\" and the misnomer stuck across many languages.",
+          "Botanically these are the fruits of the genus Capsicum, in the nightshade family. Crucially, \"chili\" is not one plant but at least five separately domesticated species — Capsicum annuum (from bell peppers to jalapeños and cayenne), C. chinense (the fiery habaneros and Scotch bonnets), C. baccatum (the South American ajíes), C. frutescens (tabasco), and C. pubescens (the Andean rocoto).",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Why chilies burn",
+        paragraphs: [
+          "The heat is a chemical called capsaicin, and its purpose is an evolutionary tale. Capsaicin binds to the same receptor that senses actual heat, which is why the mouth feels \"burned\" though nothing is hot. Wild chilies load it into their fruit as a targeted deterrent: mammals, whose teeth would destroy the seeds, feel the pain and stay away, while birds, which are insensitive to capsaicin and pass the seeds intact, eat freely and disperse them.",
+          "Humans are the great exception — a species that sought out the very defence meant to repel it. The intensity is measured on the Scoville scale, from the mild bell pepper at zero to super-hot cultivars bred past a million units, a range that plant breeders keep pushing to extremes.",
+        ],
+        sourceIds: ["kiple2000", "powo"],
+      },
+      {
+        heading: "Domestication across the Americas",
+        paragraphs: [
+          "Chilies were among the earliest plants cultivated in the Americas, with the widespread Capsicum annuum domesticated in Mexico several thousand years ago and the other species taken up independently in the Amazon, the Andes, and lowland South America. They were central to Mesoamerican and South American cooking, medicine, and ritual long before European contact.",
+          "That deep, multi-region history is why chilies are so varied: different peoples in different places tamed different wild Capsicums, each lineage carrying its own flavours, shapes, and heat.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "The fastest conquest in food history",
+        paragraphs: [
+          "No American crop went global faster. Within decades of 1492, Portuguese and Spanish ships had carried chilies to Africa, India, Southeast Asia, and China, and Portuguese trade around the Indian Ocean was especially important in spreading them. They were easy to grow, easy to dry, and packed more pungency into less space than the costly Asian spices.",
+          "The result reshaped the world's kitchens so thoroughly that the chili now seems native to them. Indian curries, Thai and Sichuan cooking, Korean gochujang, Hungarian paprika, and the fiery stews of West Africa are all, in their modern form, less than five centuries old — built on a fruit from the Americas.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Chilies are now grown throughout the warm regions of the world, as fresh vegetables, dried spices, powders, pastes, and sauces, and as the mild sweet peppers eaten by the kilogram. They range from a market staple to a global subculture obsessed with record-breaking heat.",
+          "Beyond the plate, capsaicin has found uses from pain-relief creams to pepper spray — the plant's ancient chemical defence turned to new human purposes, just as its burn was long ago turned into pleasure.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "cacao",
@@ -347,6 +515,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fermented, roasted seeds", cautionParts: "", note: "Contains theobromine, which is toxic to many pets though not to people at food levels." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Both key words are Mesoamerican. \"Cacao\" descends from cacahuatl and \"chocolate\" from xocolatl, terms from Nahuatl and neighbouring languages. When Linnaeus formally named the tree he reached for Greek and called it Theobroma cacao — \"food of the gods\" — a rare case of a botanist matching the reverence a plant had long been given.",
+          "The tree itself is strange and tropical. Its flowers and heavy pods sprout directly from the trunk and oldest branches, a habit called cauliflory, and each pod holds seeds — cacao \"beans\" — cushioned in sweet white pulp. Those seeds are bitter and, on their own, taste nothing like chocolate.",
+        ],
+        sourceIds: ["powo", "kiple2000"],
+      },
+      {
+        heading: "An Amazonian origin",
+        paragraphs: [
+          "Cacao's wild home is the humid lowland forest of the upper Amazon, on the eastern slopes of the Andes, where its greatest genetic diversity survives. Long thought to have been first used in Mesoamerica, the tree is now known to have been domesticated far earlier in South America: residues on pottery from sites such as Santa Ana-La Florida in Ecuador show people were using cacao more than 5,000 years ago.",
+          "From that South American beginning the plant and the knowledge of it travelled north into Mesoamerica, where it became a cultural obsession.",
+        ],
+        sourceIds: ["sauer1993", "powo"],
+      },
+      {
+        heading: "Money that grew on trees",
+        paragraphs: [
+          "For the Olmec, Maya, and Aztec, cacao was wealth, ritual, and drink all at once. The beans were literally currency — you could buy goods with them, and counterfeiters faked them with clay — and the ground seeds were whisked with water, chili, maize, and spices into a bitter, frothy beverage reserved largely for elites, warriors, and ceremony. There was no sugar in it; sweet chocolate is a European invention.",
+          "The fermentation and roasting that unlock chocolate's flavour were already understood: the pulp-covered beans must be fermented and dried before the familiar aromas can even form. This was sophisticated food technology, not a lucky accident.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "Europe sweetens the gods' food",
+        paragraphs: [
+          "Spanish colonists carried cacao back across the Atlantic in the sixteenth and seventeenth centuries, and Europe's decisive change was to sweeten it with sugar and warm it into a fashionable drink; chocolate houses spread through the cities much as coffee houses did. For three centuries chocolate was something you drank.",
+          "The nineteenth century turned it into something you eat. A Dutch process for pressing out cocoa butter and making smooth cocoa powder (1828), the first solid eating chocolate (1847), and the Swiss invention of milk chocolate (1870s) between them created the modern confection — and, with it, a mass-market industry.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "In a striking geographic reversal, most of the world's cacao no longer comes from the Americas at all. Colonial powers spread the tree to West Africa, and today Côte d'Ivoire and Ghana grow the majority of the global crop, mostly on smallholdings, with more from Indonesia and Latin America.",
+          "That trade carries hard realities alongside the pleasure: cacao farmers often earn very little, and the sector has struggled with poverty and child labour, driving fair-trade and traceability efforts. A fruit once used as money still sits at the centre of questions about who is paid what.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "coffee",
@@ -375,6 +585,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Roasted seeds (brewed)", cautionParts: "", note: "Beverage crop; the seeds contain caffeine." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Coffee\" reached European languages through Turkish kahve, from the Arabic qahwa — a word that once named wine and was transferred to the dark, stimulating drink that, in the Islamic world, took wine's social place. The port of Mocha in Yemen lent its name to the coffee it shipped, and later to the coffee-and-chocolate flavour.",
+          "The plant is a tropical shrub of the genus Coffea. Two species carry world trade: prized Coffea arabica, mild and aromatic, and hardier, more bitter, more caffeinated Coffea canephora, or robusta. What we call a coffee \"bean\" is the seed — usually two per fruit — of a small red \"cherry.\"",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "Born in the Ethiopian highlands",
+        paragraphs: [
+          "Arabica coffee is native to the montane forests of southwestern Ethiopia, where it still grows wild in the shade of the highland canopy. Genetically it is a natural hybrid, an allotetraploid that arose from the crossing of robusta with another wild species, Coffea eugenioides — which is why arabica is so distinct from its parents.",
+          "Ethiopian tradition tells of Kaldi, a goatherd who noticed his flock grow lively after eating the bright cherries. The legend is charming but late; what is clear is that the wild plant and its stimulating berries belong, first, to the Horn of Africa.",
+        ],
+        sourceIds: ["powo", "kiple2000"],
+      },
+      {
+        heading: "Cultivated in Arabia",
+        paragraphs: [
+          "Coffee as a roasted, brewed drink took shape not in Ethiopia but across the Red Sea in Yemen, where by the fifteenth century Sufi communities were using it to stay awake through night-long devotions. Yemeni farmers cultivated the shrub on mountain terraces, and the drink spread through the holy cities and then the great centres of the Islamic world — Mecca, Cairo, Istanbul — where the coffee house was born as a place of talk, music, and sometimes suspicion from authorities.",
+          "For a long time Yemen guarded its monopoly, even reportedly treating exported beans so they could not be germinated elsewhere. The world's coffee habit began as an Arabian one.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+      {
+        heading: "The plant that circled the globe",
+        paragraphs: [
+          "Coffee reached Europe in the seventeenth century, and the coffee house followed — the London establishments nicknamed \"penny universities\" for the conversation a cheap cup bought, and where enterprises such as Lloyd's of London grew out of the clientele. Demand soon outran Yemen.",
+          "The Dutch broke the monopoly by carrying live plants to Java; the French took a seedling to the Caribbean; and from a small number of such plants sprang the vast plantations of the colonial tropics. Coffee-growing spread across a \"bean belt\" around the equator, above all to Brazil, which became — and remains — by far the largest producer. Much of this expansion was built on colonial plantations and enslaved or coerced labour.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Coffee is one of the most valuable agricultural commodities in world trade and the livelihood of many millions of smallholder farmers across Latin America, Africa, and Asia. Arabica supplies most of the quality market; robusta fills instant coffee and blends and is rising as it withstands heat and disease better.",
+          "That difference now matters urgently. Arabica is finicky about temperature, and climate change threatens the cool highland conditions it needs, pushing growers upslope and driving efforts to breed and rediscover more resilient varieties — including from the wild coffee forests of Ethiopia where the crop began.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "banana",
@@ -619,6 +871,48 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Fruit", cautionParts: "", note: "Eaten fresh, dried as raisins, and fermented as wine." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Grape\" comes from an Old French word for a bunch or hook (the tool used to pick it), while the deeper vocabulary of the plant — vine, vineyard, viticulture, and wine itself — descends from Latin vitis and vinum. The domesticated grape is Vitis vinifera, \"the wine-bearing vine,\" and a single species accounts for almost all the world's wine, table grapes, and raisins.",
+          "That one species has been split by millennia of selection into thousands of named cultivars — Cabernet, Chardonnay, Thompson Seedless, and the rest — each maintained not from seed but by cuttings, so that a variety is effectively one ancient plant reproduced endlessly. Some famous wine grapes are clones that have been propagated, unchanged, for centuries.",
+        ],
+        sourceIds: ["powo", "sauer1993"],
+      },
+      {
+        heading: "The wild vine & a crucial change of sex",
+        paragraphs: [
+          "The ancestor is the wild grape, Vitis vinifera subsp. sylvestris, a forest climber of the Near East and Mediterranean. Wild grapevines are mostly dioecious — individual plants are either male or female — which makes reliable fruiting a gamble.",
+          "The key domestication trait was a shift to hermaphroditic vines, bearing flowers with both male and female parts that can pollinate themselves. Selecting these self-fertile plants gave dependable, heavy crops of larger, sweeter berries, and turned an unpredictable wild climber into the foundation of an industry.",
+        ],
+        sourceIds: ["zohary2012", "powo"],
+      },
+      {
+        heading: "Domestication & the birth of wine",
+        paragraphs: [
+          "Grapes were domesticated in the South Caucasus and the northern Near East roughly 8,000 years ago, and their history is inseparable from wine. Some of the earliest chemical evidence of winemaking anywhere comes from Neolithic sites in Georgia, where residues in large clay jars date back some 8,000 years, with comparably ancient traces from the Zagros Mountains of Iran.",
+          "Wine gave the grape a value far beyond food: a storable, tradable, intoxicating, ritually charged drink. That is why the vine spread as a cultural force, carried by peoples who prized what its fermented juice could do.",
+        ],
+        sourceIds: ["zohary2012", "sauer1993"],
+      },
+      {
+        heading: "Around the Mediterranean & the world",
+        paragraphs: [
+          "From the Near East, viticulture moved to Egypt and then out across the Mediterranean with the Phoenicians and Greeks, who planted vines wherever they settled. Rome carried the vine and winemaking deep into Europe — Gaul, Iberia, the Rhine and Danube — laying down many of the classic wine regions, and medieval monasteries later preserved and refined the craft, developing the fine attention to place now called terroir.",
+          "European colonists then took the vine worldwide, establishing the wine industries of the Americas, South Africa, and Australia. Table grapes and raisins spread along the same routes, so that a Near Eastern vine now fruits on every temperate continent.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "Phylloxera & the crop today",
+        paragraphs: [
+          "In the late nineteenth century the European vine nearly died. Phylloxera, a tiny sap-sucking insect accidentally imported from North America, attacked the roots of Vitis vinifera, which had no defence, and devastated vineyards across France and beyond. The rescue was botanical: growers grafted their vinifera vines onto the resistant roots of American grape species, and virtually all of the world's wine grapes still grow on American rootstocks to this day.",
+          "The grape remains one of the most widely planted fruit crops on Earth, its harvest split between wine, fresh table grapes, and raisins. Few crops carry so much culture in their berries — or wear their history, from Georgian jars to grafted American roots, so plainly.",
+        ],
+        sourceIds: ["kiple2000", "sauer1993"],
+      },
+    ],
   },
   {
     id: "sorghum",
