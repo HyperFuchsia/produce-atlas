@@ -261,8 +261,8 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "In the Andean homeland the plant is papa, its Quechua name, and papa remains the word across most of Spanish-speaking South America. The English \"potato\" is a colonial accident: Spanish patata blended the Taíno batata (the sweet potato, an unrelated plant) with Quechua papa, and the muddle was carried into English, French pomme de terre (\"apple of the earth\"), and the German, Dutch, and Slavic terms built on the same idea of an earth-fruit.",
-          "Botanically it is Solanum tuberosum, a member of the nightshade family alongside the tomato, aubergine, chili, and tobacco. The part we eat is not a root but a stem tuber — a swollen underground stem whose \"eyes\" are buds, which is why a potato left in a cupboard sprouts. The cultivated potato is usually tetraploid (four chromosome sets), a genetic richness that helped Andean farmers generate extraordinary diversity.",
+          "In the Andean homeland the plant is *papa*, its Quechua name, and *papa* remains the word across most of Spanish-speaking South America. The English \"potato\" is a colonial accident: Spanish *patata* blended the Taíno *batata* (the sweet potato, an unrelated plant) with Quechua *papa*, and the muddle was carried into English, French *pomme de terre* (\"apple of the earth\"), and the German, Dutch, and Slavic terms built on the same idea of an earth-fruit.",
+          "Botanically it is *Solanum tuberosum*, a member of the nightshade family alongside the tomato, aubergine, chili, and tobacco. The part we eat is **not a root but a stem tuber** — a swollen underground stem whose \"eyes\" are buds, which is why a potato left in a cupboard sprouts. The cultivated potato is usually **tetraploid** (four chromosome sets), a genetic richness that helped Andean farmers generate extraordinary diversity.",
         ],
         sourceIds: ["powo", "reader2009"],
       },
@@ -344,8 +344,8 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "The word comes from the Nahuatl of the Aztecs. They called the fruit tomatl, and the large red one xitomatl; Spanish shortened it to tomate, which English borrowed and then reshaped into \"tomato\" by analogy with \"potato.\" Early Italian gardeners called it pomo d'oro, the golden apple — a hint that some of the first tomatoes Europe saw were yellow — and the name survives in the modern Italian pomodoro.",
-          "For two centuries botanists filed it under its own genus as Lycopersicon esculentum, \"the edible wolf-peach.\" Genetic work has since folded it back into the nightshade genus Solanum, vindicating Linnaeus's original placement, so its correct name is Solanum lycopersicum. Despite the US Supreme Court's 1893 ruling in Nix v. Hedden — which classed it a vegetable so it could be taxed as one — the tomato is botanically a berry, a true fruit.",
+          "The word comes from the Nahuatl of the Aztecs. They called the fruit *tomatl*, and the large red one *xitomatl*; Spanish shortened it to *tomate*, which English borrowed and then reshaped into \"tomato\" by analogy with \"potato.\" Early Italian gardeners called it *pomo d'oro*, the golden apple — a hint that some of the first tomatoes Europe saw were yellow — and the name survives in the modern Italian *pomodoro*.",
+          "For two centuries botanists filed it under its own genus as *Lycopersicon esculentum*, \"the edible wolf-peach.\" Genetic work has since folded it back into the nightshade genus *Solanum*, vindicating Linnaeus's original placement, so its correct name is *Solanum lycopersicum*. Despite the US Supreme Court's 1893 ruling in *Nix v. Hedden* — which classed it a vegetable so it could be taxed as one — the tomato is **botanically a berry, a true fruit**.",
         ],
         sourceIds: ["blanca2015", "smith1994"],
       },
@@ -698,8 +698,8 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "The name \"banana\" reached Europe through Portuguese and Spanish traders on the West African coast, who borrowed a word from a language of the Wolof or wider Mande region; it displaced the older European term, which derived from the \"fig of India\" of classical writers. English keeps a rough split between the sweet dessert banana and the starchy \"plantain,\" but the two are not distinct species — they are different uses of the same intertwined family of cultivars, and most of the world simply calls them all bananas.",
-          "The plant itself defies expectations. It is not a tree but the world's largest herb: its \"trunk\" is a pseudostem of tightly rolled leaf bases, and it dies back after fruiting. And the fruit is, botanically, a berry. The banana you buy is also, genetically, a curiosity — most edible types are triploid, seedless, and sterile, unable to reproduce without human hands.",
+          "The name \"banana\" reached Europe through Portuguese and Spanish traders on the West African coast, who borrowed a word from a language of the Wolof or wider Mande region; it displaced the older European term, which derived from the \"fig of India\" of classical writers. English keeps a rough split between the sweet dessert banana and the starchy \"plantain,\" but **the two are not distinct species** — they are different uses of the same intertwined family of cultivars, and most of the world simply calls them all bananas.",
+          "The plant itself defies expectations. It is **not a tree but the world's largest herb**: its \"trunk\" is a pseudostem of tightly rolled leaf bases, and it dies back after fruiting. And the fruit is, botanically, **a berry**. The banana you buy is also, genetically, a curiosity — most edible types are **triploid, seedless, and sterile**, unable to reproduce without human hands.",
         ],
         sourceIds: ["powo", "koeppel2008"],
       },
@@ -904,8 +904,8 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "\"Apple\" is one of the oldest fruit words in English, and for much of its history it was almost generic: in Old English æppel could mean fruit in general, which is why exotic novelties arrived as the \"apple\" of somewhere else — the pineapple, the pomegranate (\"seeded apple\"), and the tomato as pomme d'amour. The fruit's shadow even falls on the Garden of Eden, though no apple is named in the text; medieval European artists simply painted the fruit they knew.",
-          "The cultivated apple is Malus domestica (also written Malus pumila), a member of the rose family alongside pears, cherries, and almonds. Its defining trait as a crop is genetic: apples are extraordinarily heterozygous and largely self-incompatible, so a seed almost never grows into a tree resembling its parent. Every named variety — every Gala, Bramley, or Cox — is therefore a single original seedling perpetuated by grafting, a living clone that may be centuries old.",
+          "\"Apple\" is one of the oldest fruit words in English, and for much of its history it was almost generic: in Old English *æppel* could mean fruit in general, which is why exotic novelties arrived as the \"apple\" of somewhere else — the pineapple, the pomegranate (\"seeded apple\"), and the tomato as *pomme d'amour*. The fruit's shadow even falls on the Garden of Eden, though no apple is named in the text; medieval European artists simply painted the fruit they knew.",
+          "The cultivated apple is *Malus domestica* (also written *Malus pumila*), a member of the rose family alongside pears, cherries, and almonds. Its defining trait as a crop is genetic: apples are extraordinarily heterozygous and largely self-incompatible, so **a seed almost never grows into a tree resembling its parent**. Every named variety — every Gala, Bramley, or Cox — is therefore a single original seedling perpetuated by grafting, **a living clone** that may be centuries old.",
         ],
         sourceIds: ["powo", "juniper2006"],
       },
@@ -1417,8 +1417,8 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "The English \"pepper\" descends through Latin piper and Greek peperi from the Sanskrit pippali — which, confusingly, named long pepper, a related but different spice that Europe prized before black pepper eclipsed it. The name later travelled sideways onto an unrelated New World plant: when Columbus sought the pepper of the Indies and found the pungent fruits of Capsicum instead, he called them \"peppers\" too, and the borrowed name stuck to chilies forever.",
-          "True pepper is Piper nigrum, a tropical woody climbing vine, and the source of black, white, and green peppercorns alike. Its heat is not from capsaicin but from an alkaloid called piperine. Black pepper is the whole unripe berry, briefly cooked and sun-dried until the skin blackens and wrinkles; white pepper is the same berry ripened and hulled; green pepper is the unripe fruit preserved before it can dry.",
+          "The English \"pepper\" descends through Latin *piper* and Greek *peperi* from the Sanskrit *pippali* — which, confusingly, named long pepper, a related but different spice that Europe prized before black pepper eclipsed it. The name later travelled sideways onto an unrelated New World plant: when Columbus sought the pepper of the Indies and found the pungent fruits of *Capsicum* instead, he called them \"peppers\" too, and the borrowed name stuck to chilies forever.",
+          "True pepper is *Piper nigrum*, a tropical woody climbing vine, and the source of black, white, and green peppercorns alike. Its heat is **not from capsaicin** but from an alkaloid called *piperine*. Black pepper is the whole unripe berry, briefly cooked and sun-dried until the skin blackens and wrinkles; white pepper is the same berry ripened and hulled; green pepper is the unripe fruit preserved before it can dry.",
         ],
         sourceIds: ["ravindran2000", "dalby2000"],
       },
@@ -2629,15 +2629,15 @@ export const CROPS: Crop[] = [
       {
         heading: "Name & identity",
         paragraphs: [
-          "\"Lettuce\" comes from the Latin lactuca, from lac, \"milk,\" for the bitter white latex that seeps from a cut stem — a defence the plant inherited from its wild ancestor. That ancestor is prickly lettuce, Lactuca serriola, a bitter, spiny roadside weed; the crop is what happens when you breed the bitterness and prickles out and the tender leaf up.",
-          "Lettuce is grown for its leaves, is mostly water, and is one of the few major vegetables eaten almost entirely raw — a delicate salad plant selected out of an unpromising weed.",
+          "\"Lettuce\" comes from the Latin *lactuca*, from *lac*, \"milk,\" for the bitter white latex that seeps from a cut stem — a defence the plant inherited from its wild ancestor. That ancestor is prickly lettuce, *Lactuca serriola*, a bitter, spiny roadside weed; the crop is what happens when you breed the bitterness and prickles out and the tender leaf up.",
+          "Lettuce is grown for its leaves, is mostly water, and is **one of the few major vegetables eaten almost entirely raw** — a delicate salad plant selected out of an unpromising weed.",
         ],
         sourceIds: ["powo", "sauer1993"],
       },
       {
         heading: "Origin & the sacred Egyptian plant",
         paragraphs: [
-          "Lettuce was domesticated in the eastern Mediterranean and Near East, and ancient Egypt gives us its earliest clear story. There, tall lettuce resembling modern romaine was a sacred plant of the fertility god Min, depicted in temple art and grown both for its leaves and for oil pressed from its seeds. The Egyptians associated its milky sap and upright form with fertility and regeneration.",
+          "Lettuce was domesticated in the eastern Mediterranean and Near East, and ancient Egypt gives us its earliest clear story. There, tall lettuce resembling modern romaine was **a sacred plant of the fertility god Min**, depicted in temple art and grown both for its leaves and for oil pressed from its seeds. The Egyptians associated its milky sap and upright form with fertility and regeneration.",
           "Greeks and Romans took up lettuce as food and noted a curious effect: its latex, related to a mild sedative, gave the plant a reputation for encouraging sleep, and it was sometimes eaten at the end of a meal for that reason.",
         ],
         sourceIds: ["sauer1993", "kiple2000"],

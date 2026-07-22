@@ -15,6 +15,22 @@ const INK = "#2c2620";
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+/**
+ * Inline emphasis for long-form prose. Escapes HTML first (so the source data
+ * can never inject markup), then renders a deliberately tiny markup vocabulary
+ * so key text is visually distinguished from the body:
+ *   *term*    -> <em>      italic — foreign / classical roots, transliterations,
+ *                          and scientific names (e.g. the Latin *lac*, "milk")
+ *   **fact**  -> <strong>  a standout, differentiating fact worth flagging
+ * Anything without markers renders exactly as before, so untouched records are
+ * unaffected.
+ */
+function fmt(s: string): string {
+  return esc(s)
+    .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+?)\*/g, "<em>$1</em>");
+}
 export function formatEra(bp: number): string {
   const year = 1950 - bp;
   if (year < 0) return `c. ${(Math.round(-year / 100) * 100).toLocaleString()} BCE`;
@@ -268,7 +284,7 @@ export function renderCropSheet(body: HTMLElement, c: Crop): void {
   let dossierBlock = "";
   if (hasDossier) {
     const secs = c.dossier!.map((d) => {
-      const paras = d.paragraphs.map((p) => `<p>${esc(p)}</p>`).join("");
+      const paras = d.paragraphs.map((p) => `<p>${fmt(p)}</p>`).join("");
       const src = d.sourceIds?.length ? `<div class="dossier__src">${d.sourceIds.map(refChip).join("")}</div>` : "";
       return `<section class="dossier__sec"><h3 class="dossier__h">${esc(d.heading)}</h3>${paras}${src}</section>`;
     }).join("");

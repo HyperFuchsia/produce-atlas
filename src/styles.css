@@ -343,6 +343,10 @@ body {
 }
 .dossier__sec p { margin: 0 0 10px; font-size: 15px; line-height: 1.72; color: var(--ink); }
 .dossier__sec p:last-of-type { margin-bottom: 0; }
+/* Foreign / classical roots, transliterations, scientific names */
+.dossier__sec em { font-style: italic; color: var(--green); }
+/* Standout, differentiating facts */
+.dossier__sec strong { font-weight: 700; color: var(--ink); }
 .dossier__src { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
 
 /* Safety */
