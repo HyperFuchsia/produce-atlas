@@ -1195,7 +1195,7 @@
       ("0" + (d.getMonth() + 1)).slice(-2) + "-" +
       ("0" + d.getDate()).slice(-2);
     a.href = url;
-    a.download = "whole-man-checkin-export-" + stamp + ".json";
+    a.download = "malekind-checkin-export-" + stamp + ".json";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
