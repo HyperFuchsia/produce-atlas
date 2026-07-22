@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessibility &amp; Language Access — Whole Man</title>
+<meta name="description" content="Whole Man's accessibility standard: WCAG 2.2 AA as the minimum baseline, the access-domain commitments, the formal test matrix still required, ambient-motion controls, cognitive accessibility, localization rules, and the non-negotiables — stated with honest current status.">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+/* apply saved theme before first paint to avoid flash */
+(function(){try{var t=localStorage.getItem("wm-theme");if(t==="dark"||(t===null&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.setAttribute("data-theme","dark");}if(localStorage.getItem("wm-calm")==="on"){document.documentElement.setAttribute("data-calm","on");}}catch(e){}})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="progress" aria-hidden="true"></div>
+
+<div class="shell">
+<header class="site-header">
+  <div class="wrap masthead">
+    <a class="brand" href="index.html">
+      <span class="brand-name">WHOLE&nbsp;MAN</span>
+      <span class="brand-line">Health · Integrity · Self-government</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <ul>
+        <li><a href="index.html">Start Here</a></li>
+        <li><a href="framework.html">Framework</a></li>
+        <li><a href="scenarios.html">Apply</a></li>
+        <li><a href="check-in.html">Check-In</a></li>
+        <li><a href="care.html">Find Care</a></li>
+        <li><a href="evidence.html">Evidence</a></li>
+        <li><a href="membership.html">Membership</a></li>
+        <li><a href="governance.html">Governance</a></li>
+      </ul>
+    </nav>
+    <div class="header-tools">
+      <button type="button" class="tool-btn" id="calm-toggle" aria-pressed="false" title="Turn off the moving background words">Calm mode</button>
+      <button type="button" class="tool-btn" id="theme-toggle" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <header class="page-title">
+      <p class="eyebrow">Standard</p>
+      <h1>Accessibility &amp; Language Access</h1>
+      <p class="lede">Accessibility here is architectural, not decorative. This site is designed to WCAG&nbsp;2.2 Level&nbsp;AA as a minimum baseline, an independent conformance audit has not yet been completed, and access features are never — under any future business model — a premium upgrade. This page states the full standard and the honest distance between the standard and what has been verified.</p>
+    </header>
+
+    <article class="prose">
+
+      <div class="local-toc"><strong>On this page</strong><ol>
+        <li><a href="#dignity">Accessibility as observable dignity</a></li>
+        <li><a href="#baseline">The technical baseline: WCAG 2.2 AA</a></li>
+        <li><a href="#domains">Access domains and required behavior</a></li>
+        <li><a href="#current">What this site does today — honest status</a></li>
+        <li><a href="#test-matrix">The formal test matrix still required</a></li>
+        <li><a href="#motion">Ambient motion and the calm-mode control</a></li>
+        <li><a href="#cognitive">Reading burden and cognitive accessibility</a></li>
+        <li><a href="#language">Language, literacy, and localization</a></li>
+        <li><a href="#non-negotiables">The accessibility non-negotiables</a></li>
+      </ol></div>
+
+      <h2 id="dignity" class="anchor-offset"><span class="kicker">Why this page exists</span>Accessibility as observable dignity</h2>
+      <p>This framework claims that every male person — and every person — holds <a href="framework-dignity.html">dignity</a> that is not earned by health, independence, or performance. A website can say that, or it can demonstrate it. Accessibility is where the claim becomes observable: either a blind visitor, a Deaf visitor, a visitor with tremor, a visitor in cognitive overload, or a visitor reading in a second language can actually use the framework, the <a href="care.html">care and crisis pathways</a>, and the <a href="check-in.html">reflection tools</a> — or the dignity language was decoration.</p>
+      <p class="statement">The person is not an interruption to the design. Accessibility is one of the ways dignity becomes observable.</p>
+      <div class="callout principle"><span class="label">Never a premium feature</span><p>Accessibility features must never be a premium upgrade. No one should ever need a higher membership tier to understand the service, use safety information, communicate, cancel, request a refund, or protect their privacy. Accessibility features, cancellation, refunds, safety information, privacy controls, and crisis pathways must never be premium features — a rule that binds every current page and every future paid service on <a href="membership.html">the membership model</a>.</p></div>
+      <p>This commitment tightened over the project&rsquo;s own <a href="evidence.html#corrections">correction process</a>: earlier accessibility commitments were broad statements of intent. The governing formulation is now specific — WCAG&nbsp;2.2 Level&nbsp;AA as the minimum technical baseline, manual testing, disabled-user governance, multilingual architecture, and no paywall on access features.</p>
+
+      <h2 id="baseline" class="anchor-offset"><span class="kicker">The standard</span>The technical baseline: WCAG 2.2 Level AA</h2>
+      <p>WCAG&nbsp;2.2 Level&nbsp;AA is the minimum technical baseline for every part of this platform — public pages today, and accounts, subscriptions, journals, check-ins, video, community, payment, cancellation, refund, and professional-care systems if and when those launch (none of the account, payment, community, or clinical systems is currently live; the baseline is a precondition of their launch, enforced through <a href="governance.html#gates">launch Gate&nbsp;C</a>). In October 2025, WCAG&nbsp;2.2 was approved as ISO/IEC&nbsp;40500:2025, strengthening its international institutional standing. <a class="src" href="evidence.html#r20">[R20]</a></p>
+      <p>WCAG&nbsp;2.2 addresses blindness, low vision, deafness, hearing loss, limited movement, speech disabilities, photosensitivity, combinations of disabilities, and some cognitive and learning needs — while acknowledging that no standard covers every user need. <a class="src" href="evidence.html#r20">[R20]</a> Compliance is therefore a baseline, not proof that every person can use the service. Conformance testing must be combined with manual testing and <strong>paid</strong> evaluation by disabled users throughout research, design, development, launch, and ongoing review: W3C&rsquo;s own guidance emphasizes that real users identify barriers that technical conformance checks alone do not discover. <a class="src" href="evidence.html#r20">[R20]</a></p>
+      <p>The populations this platform must support, by explicit commitment: blind and low-vision users, Deaf and hard-of-hearing users, DeafBlind users, people with motor and speech disabilities, people with cognitive and learning access needs, neurodivergent people, people with psychiatric disability, people with photosensitivity, people with vestibular conditions, aging users, and multilingual participants. On why disability never diminishes dignity or defines a person, see <a href="framework-disability.html">Disability &amp; capacity</a>.</p>
+
+      <h2 id="domains" class="anchor-offset"><span class="kicker">Commitments</span>Access domains and required product behavior</h2>
+      <p>The standard is stated per access domain, as required product behavior rather than aspiration:</p>
+      <div class="table-scroll wide-block"><table class="matrix">
+        <caption>Access domains and the product behavior each requires</caption>
+        <thead><tr><th scope="col">Access domain</th><th scope="col">Required product behavior</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Blind and low-vision access</th><td>Semantic structure, screen-reader support, meaningful alt text, long descriptions for diagrams, keyboard navigation, zoom and reflow, high contrast, audio description, text equivalents for infographics.</td></tr>
+          <tr><th scope="row">Deaf and hard-of-hearing access</th><td>Accurate captions, transcripts, live captioning, visual alerts, text support, qualified sign-language interpretation where appropriate, no audio-only essential information.</td></tr>
+          <tr><th scope="row">DeafBlind access</th><td>Refreshable Braille compatibility, tactile and qualified communication support, accessible text, no dependence on audio or vision alone.</td></tr>
+          <tr><th scope="row">Motor access</th><td>Keyboard, switch control, speech input, large targets, no drag-only tasks, saved progress, flexible time, alternatives to biometrics and handwriting.</td></tr>
+          <tr><th scope="row">Speech and communication access</th><td>Text, secure messaging, relay, AAC, speech-to-speech support, additional time, and direct communication with the man himself rather than only with a companion.</td></tr>
+          <tr><th scope="row">Cognitive and neurological access</th><td>Predictable navigation, plain-language summaries, low-stimulation mode, clear steps, visible progress, saved state, extended time, consistent terminology, and recovery from errors.</td></tr>
+          <tr><th scope="row">Psychological and emotional access</th><td>Content notes, pause controls, no shame-based streaks, no forced disclosure, no surprise alarms, topic controls, reduced notifications, and easy access to support.</td></tr>
+          <tr><th scope="row">Multilingual access</th><td>Internationalized architecture, correct language tags, right-to-left support, localized dates and currency, human-reviewed critical translations, and equivalent functionality across languages.</td></tr>
+        </tbody>
+      </table></div>
+      <p>How to meet a particular person&rsquo;s need is not decided by category. <a href="evidence.html">ADA effective-communication guidance</a> emphasizes that the appropriate aid depends on the nature, length, complexity, and context of the communication and the person&rsquo;s normal method of communicating — and may include qualified interpreters, captioning, accessible electronic material, screen readers, speech-to-speech support, and additional time. The person, not the platform, is the authority on what works; the same principle that gives each man control of his own <a href="framework-disability.html">disability terminology</a>.</p>
+
+      <h2 id="current" class="anchor-offset"><span class="kicker">Honest status</span>What this site does today</h2>
+      <div class="callout"><span class="label">Current conformance status, stated plainly</span><p>This site is <strong>designed to WCAG&nbsp;2.2 Level&nbsp;AA</strong>. An <strong>independent accessibility audit has not yet been completed</strong>, and the project&rsquo;s July&nbsp;22, 2026 dossier lists a full assistive-technology audit among the formal tests still outstanding. What follows are implementation strengths, not a complete conformance determination — and <a href="governance.html#gates">launch Gate&nbsp;C</a> blocks any claim of conformance until the full test matrix below has been passed and an accessibility statement reports scope, contact, and known limitations honestly.</p></div>
+      <p>The current shipped experience demonstrates deliberate accessibility intent:</p>
+      <ul>
+        <li>a skip-to-content link on every page;</li>
+        <li>visible focus treatments on interactive controls;</li>
+        <li>a single first-level heading on each page, with a generally logical second- and third-level heading structure;</li>
+        <li>keyboard-operable dialog tabs and controls in the <a href="check-in.html">well-being check-in</a>;</li>
+        <li>focus containment within open dialogs, Escape-key closure, and focus restoration when a dialog closes;</li>
+        <li>dark-mode styling with a persistent user toggle;</li>
+        <li>responsive breakpoints for desktop, tablet, and narrow mobile widths;</li>
+        <li>a reduced-motion mode honoring the operating-system preference, plus a higher-contrast media preference;</li>
+        <li>ambient background motion that is noninteractive, does not intercept pointer input, and is coded for exclusion from the accessibility tree (with a caveat described <a href="#motion">below</a>);</li>
+        <li>an explicit on-site <strong>Calm mode</strong> control, available in the header of every page, that turns the moving background words off entirely and remembers the choice locally;</li>
+        <li>and plain-language <a href="privacy.html">privacy disclosures</a>.</li>
+      </ul>
+      <p>One caution from the project&rsquo;s own audit is preserved here deliberately: code intended to exclude the animated ambient words from the accessibility tree produced conflicting accessibility-snapshot evidence on the audited release, so effective hiding from screen readers requires manual verification with real assistive technology, not inference from source code.</p>
+
+      <h2 id="test-matrix" class="anchor-offset"><span class="kicker">Verification</span>The formal test matrix still required</h2>
+      <p>Before WCAG&nbsp;2.2&nbsp;AA conformance may be claimed, the following must be tested at minimum:</p>
+      <div class="table-scroll wide-block"><table class="matrix">
+        <caption>Required formal accessibility test matrix</caption>
+        <thead><tr><th scope="col">Dimension</th><th scope="col">Required coverage</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Keyboard</th><td>Every route and modal using Tab, Shift+Tab, Enter, Space, arrow keys where applicable, and Escape; no keyboard trap except intentional modal containment.</td></tr>
+          <tr><th scope="row">Screen readers</th><td>VoiceOver with Safari, NVDA with Firefox or Chrome, and at least one mobile screen reader. Confirm names, roles, states, errors, results, and reading order.</td></tr>
+          <tr><th scope="row">Magnification</th><td>200% and 400% browser zoom; text-spacing overrides; no loss of content or available action.</td></tr>
+          <tr><th scope="row">Reflow</th><td>320 CSS-pixel width and landscape mobile; no necessary two-dimensional scrolling except for suitable content such as data tables.</td></tr>
+          <tr><th scope="row">Contrast</th><td>Text, icons, controls, focus rings, disabled states, ambient words, dark mode, and every content surface.</td></tr>
+          <tr><th scope="row">Motion</th><td>Operating-system reduced motion honored; no essential information conveyed only by movement; optional user-level pause where useful.</td></tr>
+          <tr><th scope="row">Color</th><td>No distinction communicated only through hue; status and severity always carry text or icon labels.</td></tr>
+          <tr><th scope="row">Cognition</th><td>Plain-language instructions, predictable controls, review before commitment, correction options, session-timeout behavior, and no shame-based error messages.</td></tr>
+          <tr><th scope="row">Touch</th><td>Adequate target size and spacing; controls remain usable under zoom and with motor variability.</td></tr>
+          <tr><th scope="row">Forms</th><td>Persistent labels, descriptive errors, grouped questions, progress context, skip and stop availability, and no forced answer.</td></tr>
+          <tr><th scope="row">Exports</th><td>Export warnings are announced to assistive technology, and the resulting file is understandable without visual styling.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout caution"><span class="label">Limit</span><p>Testing must include the entire consent and deletion flow of the <a href="check-in.html">check-in</a>, not just static pages. A keyboard-accessible button does not prove that consent is comprehensible or that destructive actions are safely reversible.</p></div>
+
+      <h2 id="motion" class="anchor-offset"><span class="kicker">A specific scrutiny</span>Ambient motion and the calm-mode control</h2>
+      <p>The oversized drifting &ldquo;Dignity&nbsp;/ Integrity&nbsp;/ Sovereignty&rdquo; background language gives the site a living editorial atmosphere. It is marked hidden from assistive technology, pointer-inert, slow, responsive, and static or disabled under reduced motion — yet a separate accessibility snapshot of the audited release nevertheless exposed the repeated words, so the effective assistive-technology result remains unresolved until verified with real screen readers.</p>
+      <p>The remaining risks are recorded rather than minimized:</p>
+      <ul>
+        <li>outline text may cross behind body copy differently on devices not represented in the original screenshots;</li>
+        <li>dark-mode opacity and compositing may reduce local contrast;</li>
+        <li>long-duration movement can distract people who have not set an operating-system reduced-motion preference;</li>
+        <li>users with attention or vestibular sensitivities may prefer an explicit on-site pause;</li>
+        <li>and the animation may increase GPU or battery use on low-power mobile devices.</li>
+      </ul>
+      <p>The required control set: central opacity and stroke tokens tested against every surface; an optional &ldquo;pause background motion&rdquo; control stored locally; no vertical parallax or rapid acceleration; pausing when the document is hidden; a mobile performance budget; and screenshot and contrast regression tests in both themes. The locally stored pause control exists on this site today: the <strong>Calm mode</strong> button in the header of every page turns the moving background words off and keeps them off across visits on the same browser.</p>
+
+      <h2 id="cognitive" class="anchor-offset"><span class="kicker">Comprehension is access</span>Reading burden and cognitive accessibility</h2>
+      <p>This site is intentionally a long argument. That depth is philosophically appropriate — and density can still become an accessibility barrier for visitors who are distressed, fatigued, cognitively overloaded, on a phone, or looking for one immediate action. The solution is layered entry, not deletion of substance:</p>
+      <ul>
+        <li>a concise <a href="index.html">start page</a> stating the thesis with direct actions;</li>
+        <li>a <a href="framework.html#propositions">six-proposition framework summary</a> readable in minutes;</li>
+        <li>a compact <a href="framework.html#map">map of the framework</a> with estimated reading time;</li>
+        <li>&ldquo;read the full argument&rdquo; chapters for those who want the complete case;</li>
+        <li>direct routes to the <a href="check-in.html">check-in</a>, <a href="care.html">care resources</a>, <a href="privacy.html">privacy</a>, <a href="evidence.html">evidence</a>, and <a href="governance.html">governance</a>;</li>
+        <li>and a <a href="framework.html#three-minutes">plain-language summary</a> maintained alongside the full doctrine.</li>
+      </ul>
+      <div class="callout principle"><span class="label">Core standard</span><p>No essential crisis, privacy, consent, or access information may ever be reachable only through the long-form argument. Crisis resources appear on every page of this site, outside the prose, with no reading prerequisite.</p></div>
+
+      <h2 id="language" class="anchor-offset"><span class="kicker">Localization</span>Language, literacy, and localization</h2>
+      <p>Multilingual access is part of the accessibility standard, not a marketing expansion. Future language expansion must not use machine translation as an unreviewed substitute for professional localization — above all for crisis, clinical, consent, and legal content. A localization release requires:</p>
+      <ul>
+        <li>a defined locale and jurisdiction;</li>
+        <li>qualified translation or qualified review;</li>
+        <li>cultural adaptation rather than word substitution;</li>
+        <li>translated privacy and consent language at equivalent readability;</li>
+        <li>local emergency and care resources;</li>
+        <li>screen-reader and layout testing in the target language;</li>
+        <li>and a visible last-reviewed date.</li>
+      </ul>
+      <p>Until localized resources are verified, the current United&nbsp;States focus of the <a href="care.html">crisis and care pathways</a> remains explicit rather than implied. Telling a visitor honestly that resources are U.S.-scoped is an access feature; letting them assume otherwise is not.</p>
+
+      <h2 id="non-negotiables" class="anchor-offset"><span class="kicker">The checklist</span>The accessibility non-negotiables</h2>
+      <p>These conditions are pre-launch non-negotiables for the platform as a whole. They are commitments to be verified, not achievements being claimed:</p>
+      <ul>
+        <li>WCAG&nbsp;2.2 Level&nbsp;AA minimum. <a class="src" href="evidence.html#r20">[R20]</a></li>
+        <li>Manual screen-reader, keyboard, zoom, captions, transcripts, contrast, reduced-motion, and cognitive-access testing.</li>
+        <li>Paid disabled-user advisory participation across research, design, development, launch, and ongoing review.</li>
+        <li>Accessible billing, cancellation, refund, privacy, and crisis pathways.</li>
+        <li>Human-reviewed safety, consent, clinical, privacy, and billing translations.</li>
+        <li>Right-to-left support, language metadata, and text expansion.</li>
+        <li>No accessibility paywall — ever.</li>
+        <li>A barrier-reporting and alternative-format pathway, so that anyone who cannot use part of the service can say so and receive an equivalent.</li>
+      </ul>
+      <p class="small">Accessibility conformance does not eliminate the need for user testing and individual accommodation. Progress against these commitments is governed by <a href="governance.html#gates">launch Gate&nbsp;C</a>, and any correction to this standard is recorded in the public <a href="evidence.html#corrections">corrections log</a>.</p>
+
+      <nav class="pager" aria-label="Sequence">
+        <a href="membership.html"><span class="dir">Previous</span>Membership &amp; Services</a>
+        <a href="glossary.html" style="text-align:right"><span class="dir">Next</span>Glossary</a>
+      </nav>
+    </article>
+  </div>
+</main>
+
+<div class="crisis-strip" role="region" aria-label="Crisis resources">
+  <div class="wrap">
+    <strong>In crisis or thinking about suicide?</strong>
+    In the United States, call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline — call, text, or <a href="https://988lifeline.org/chat/">chat</a>, with Deaf and hard-of-hearing access). In immediate danger, call <a href="tel:911">911</a>. Free, 24/7, and never behind membership, payment, or sign-in. <a href="care.html">More care resources →</a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <nav aria-labelledby="fg-start">
+        <h2 id="fg-start">Start here</h2>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About &amp; current state</a></li>
+          <li><a href="membership.html">Membership &amp; services</a></li>
+          <li><a href="glossary.html">Glossary</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-understand">
+        <h2 id="fg-understand">Understand</h2>
+        <ul>
+          <li><a href="framework.html">Framework overview</a></li>
+          <li><a href="framework-thesis.html">The civilizational thesis</a></li>
+          <li><a href="framework-purpose.html">Not a problem to solve</a></li>
+          <li><a href="framework-architecture.html">Integrity architecture</a></li>
+          <li><a href="framework-dignity.html">Dignity &amp; sovereignty</a></li>
+          <li><a href="framework-biology.html">Biological integrity</a></li>
+          <li><a href="framework-lenses.html">Three credibility lenses</a></li>
+          <li><a href="framework-proportionality.html">Moral proportionality</a></li>
+          <li><a href="framework-social-authority.html">Social authority &amp; extraction</a></li>
+          <li><a href="framework-disability.html">Disability &amp; capacity</a></li>
+          <li><a href="framework-relationships.html">Relationships &amp; repair</a></li>
+          <li><a href="framework-life.html">Masculinity in service of life</a></li>
+          <li><a href="framework-variation.html">Many male lives</a></li>
+          <li><a href="framework-environment.html">Environment &amp; reciprocity</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-apply">
+        <h2 id="fg-apply">Apply &amp; tools</h2>
+        <ul>
+          <li><a href="scenarios.html">Scenario library</a></li>
+          <li><a href="reflect.html">Private reflection tools</a></li>
+          <li><a href="check-in.html">Well-being check-in</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-care">
+        <h2 id="fg-care">Care &amp; safety</h2>
+        <ul>
+          <li><a href="care.html">Find care &amp; crisis</a></li>
+          <li><a href="care.html#protecting-male-life">Protecting male life</a></li>
+          <li><a href="accessibility.html">Accessibility standard</a></li>
+          <li><a href="privacy.html">Privacy &amp; your data</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-institution">
+        <h2 id="fg-institution">Institution</h2>
+        <ul>
+          <li><a href="evidence.html">Evidence &amp; corrections</a></li>
+          <li><a href="governance.html">Governance standard</a></li>
+          <li><a href="about.html#roadmap">Roadmap &amp; launch gates</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p><strong>Whole Man</strong> is a live Open Access editorial beta: a complete long-form framework, public care and crisis navigation, optional adult browser-local reflection tools, transparent privacy controls, and a public owner-control governance standard. Its automated AI reviewer, paid subscriptions, billing, refunds, community, provider network, and clinical-care operations are <strong>not live</strong>.</p>
+      <p>Educational publication only — not medical, psychological, legal, or clinical advice; not diagnosis; not emergency intervention; not a substitute for qualified professional care. Reading this site is not treatment.</p>
+      <p>This site sets no advertising trackers and sends no analytics. Optional tools store data only in your own browser. <a href="privacy.html">How your data works →</a></p>
+      <p>© <span id="footer-year">2026</span> Whole Man · Male Integrity Sustains Human Civilization · <a href="evidence.html#corrections">Corrections</a> · <a href="accessibility.html">Accessibility</a></p>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

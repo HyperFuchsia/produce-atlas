@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy &amp; Your Data — Whole Man</title>
+<meta name="description" content="No accounts, no server-side storage of your answers, no trackers — plus an honest account of what the hosting layer still sees, the limits of browser storage, and what would change if accounts or AI ever launch.">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+/* apply saved theme before first paint to avoid flash */
+(function(){try{var t=localStorage.getItem("wm-theme");if(t==="dark"||(t===null&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.setAttribute("data-theme","dark");}if(localStorage.getItem("wm-calm")==="on"){document.documentElement.setAttribute("data-calm","on");}}catch(e){}})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="progress" aria-hidden="true"></div>
+
+<div class="shell">
+<header class="site-header">
+  <div class="wrap masthead">
+    <a class="brand" href="index.html">
+      <span class="brand-name">WHOLE&nbsp;MAN</span>
+      <span class="brand-line">Health · Integrity · Self-government</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <ul>
+        <li><a href="index.html">Start Here</a></li>
+        <li><a href="framework.html">Framework</a></li>
+        <li><a href="scenarios.html">Apply</a></li>
+        <li><a href="check-in.html">Check-In</a></li>
+        <li><a href="care.html">Find Care</a></li>
+        <li><a href="evidence.html">Evidence</a></li>
+        <li><a href="membership.html">Membership</a></li>
+        <li><a href="governance.html">Governance</a></li>
+      </ul>
+    </nav>
+    <div class="header-tools">
+      <button type="button" class="tool-btn" id="calm-toggle" aria-pressed="false" title="Turn off the moving background words">Calm mode</button>
+      <button type="button" class="tool-btn" id="theme-toggle" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <header class="page-title">
+      <p class="eyebrow">Care &amp; safety</p>
+      <h1>Privacy &amp; Your Data</h1>
+      <p class="lede">No accounts. No server-side storage of your answers. No advertising trackers, no analytics. Your reflections stay in your own browser — and this page tells you honestly what that does and does not protect, what the hosting layer still sees, and what would have to change before any account, cloud, or AI feature could ever launch.</p>
+    </header>
+
+    <article class="prose">
+
+      <div class="local-toc"><strong>On this page</strong><ol>
+        <li><a href="#plain-summary">The plain summary</a></li>
+        <li><a href="#how-it-works">How the browser-only model works</a></li>
+        <li><a href="#no-account">"No-account, browser-only" — not "anonymous"</a></li>
+        <li><a href="#infrastructure">What the hosting layer still sees</a></li>
+        <li><a href="#limits">The honest limits of browser storage</a></li>
+        <li><a href="#consent">The consent standard</a></li>
+        <li><a href="#commitments">Standing commitments</a></li>
+        <li><a href="#legal">Legal classification stays open</a></li>
+        <li><a href="#minors">Minors</a></li>
+        <li><a href="#future">If accounts or AI ever launch</a></li>
+        <li><a href="#security">Security posture</a></li>
+      </ol></div>
+
+      <h2 id="plain-summary" class="anchor-offset"><span class="kicker">Read this if you read nothing else</span>The plain summary</h2>
+      <p class="statement">The current public check-in requires no account, and your answers are never uploaded to a Whole Man server. This site sets no advertising trackers and sends no analytics. The AI reviewer is offline and cannot see visitor data.</p>
+      <ul>
+        <li>Everything you enter in the <a href="check-in.html">well-being check-in</a> stays in your browser. The <a href="reflect.html">reflection tools</a> go further: nothing is typed and nothing is stored at all.</li>
+        <li>You choose separately whether to <em>participate</em> and whether to <em>store</em> anything. Saying yes to one is never treated as saying yes to the other.</li>
+        <li>You can review, edit, export, or erase your local journal at any time — including erasing everything, consent records included.</li>
+        <li>Owner authentication on this site does not provide access to any visitor's local reflections.</li>
+        <li>Crisis information is never gated by any of this. It requires no account, no consent, no disclosure — see <a href="care.html">Find Care &amp; Crisis</a>.</li>
+      </ul>
+      <div class="callout caution"><span class="label">Privacy is not monitoring</span>
+        <p>Because your answers remain in this browser and Whole Man does not monitor them, nothing you enter here can trigger rescue or outreach. This site will never imply both complete privacy and active safety monitoring. If you may be in immediate danger or unable to stay safe, use the <a href="care.html#crisis-now">crisis options</a> now.</p>
+      </div>
+
+      <h2 id="how-it-works" class="anchor-offset"><span class="kicker">Deliberately narrow by design</span>How the browser-only model works</h2>
+      <p>The adult check-in has a deliberately narrow data architecture. Answers remain in the visitor's browser; nothing is transmitted to, or stored on, a Whole Man server. Within that model:</p>
+      <ul>
+        <li><strong>Participation and storage are separate decisions.</strong> You see every question before consenting, select which topics to include, and can skip any question or stop entirely at any point.</li>
+        <li><strong>Four storage choices.</strong> Store full answers, store a summary only, keep answers for this session only (cleared when the tab closes), or save nothing at all. The no-save path is always available.</li>
+        <li><strong>Consent is stored separately from entries.</strong> Your storage preferences and your journal entries live under separate browser-storage keys, so erasing one never silently keeps the other.</li>
+        <li><strong>Full journal control.</strong> Saved entries can be reviewed, edited, deleted one at a time, deleted by session, or deleted entirely; a separate control erases everything including consent records. Entries can be exported as a JSON file — with a clear warning that the exported file is unencrypted.</li>
+        <li><strong>Browser storage is not encrypted by Whole Man</strong>, and this site will never call local data "encrypted" unless a real, audited encryption design with a comprehensible recovery model actually exists.</li>
+        <li><strong>Display preferences</strong> (dark theme, calm mode) are also stored only in your browser and contain nothing about you beyond those two settings.</li>
+      </ul>
+      <p>Two standing exclusions apply beyond the check-in. First, the AI reviewer is offline; the current version cannot see visitor data. Second, check-ins, journals, clinical messages, crisis disclosures, provider records, payments, and identity data are permanently excluded from any future editorial AI review — a rule anchored in the <a href="governance.html">governance standard</a>.</p>
+      <p class="small">Loss risks you should know: clearing browser data, using private browsing, switching devices, or switching browser profiles can permanently delete locally stored entries. Whole Man holds no copy and cannot restore them.</p>
+
+      <h2 id="no-account" class="anchor-offset"><span class="kicker">A correction this site applies to itself</span>"No-account, browser-only" — not "anonymous"</h2>
+      <p>Earlier copy on this project sometimes described the check-in as "anonymous." That word is broader than what can be demonstrated, and it has been corrected. "No account required" and "answers remain in the browser" are supportable claims. "Anonymous" is not — because hosting providers, network infrastructure, bot protection, and server logs may still process IP addresses, request metadata, or cookies even when the application itself never receives your check-in answers.</p>
+      <div class="callout"><span class="label">The accurate term</span>
+        <p><strong>No-account, browser-only check-in.</strong> The word "anonymous" will be used only after a documented telemetry, logging, cookie, and re-identification analysis supports it. This correction is recorded on the public <a href="evidence.html#corrections">corrections register</a>.</p>
+      </div>
+
+      <h2 id="infrastructure" class="anchor-offset"><span class="kicker">Honesty about the stack</span>What the hosting layer still sees</h2>
+      <p>The public site is delivered through managed hosting and Cloudflare infrastructure, and a bot-management cookie has been observed on the live site. This does not contradict the claim that check-in answers remain browser-side — but honest privacy language has to distinguish five different things instead of blurring them together:</p>
+      <ol>
+        <li><strong>Ordinary infrastructure request data</strong> — IP addresses, request metadata, and infrastructure cookies processed by hosting, network, and bot-protection layers as a condition of serving any website. Whole Man does not control or eliminate this layer.</li>
+        <li><strong>Application analytics</strong> — none. This site sends no analytics events.</li>
+        <li><strong>Advertising trackers</strong> — none, ever, on any page.</li>
+        <li><strong>Browser-stored well-being answers</strong> — yours alone, in your browser, under the model described above.</li>
+        <li><strong>Future account or clinical data</strong> — none exists today; creating any would be a <a href="#future">new privacy event</a> requiring new notice and new consent.</li>
+      </ol>
+
+      <h2 id="limits" class="anchor-offset"><span class="kicker">What local storage cannot promise</span>The honest limits of browser storage</h2>
+      <p>Keeping answers out of a central server substantially reduces breach exposure and avoids creating a server-side health-reflection database. It does not eliminate privacy risk. Browser storage is not automatically confidential merely because the server does not receive it. Locally stored or exported data may still be visible to:</p>
+      <ul>
+        <li>another person using the same device or browser profile;</li>
+        <li>browser extensions;</li>
+        <li>device-management software;</li>
+        <li>malware;</li>
+        <li>local backups or synced browser data, depending on browser behavior;</li>
+        <li>anyone who receives your exported JSON file; or</li>
+        <li>forensic recovery outside this site's control.</li>
+      </ul>
+      <p>Withdrawal has honest limits too. Withdrawing consent can stop future use and remove the data this site controls in your browser. It cannot truthfully promise deletion from screenshots, exported copies, device backups, malicious extensions, or data you have voluntarily shared elsewhere. None of this is said to alarm or blame you — it is said because a privacy promise is an integrity obligation, not marketing copy.</p>
+      <p class="small">If you share a device, consider the session-only or save-nothing modes, and note that this site's design avoids conspicuous notifications — discreet shared-device design is one of the <a href="#commitments">standing commitments</a> below.</p>
+
+      <h2 id="consent" class="anchor-offset"><span class="kicker">Stronger than a checkbox</span>The consent standard</h2>
+      <p>The current consent design separates participation from storage, previews every question, allows topic selection, and preserves skip and stop controls throughout. The complete standard this site holds consent to — now and for anything built later — is that consent must be:</p>
+      <ul>
+        <li><strong>specific</strong> to the activity;</li>
+        <li><strong>presented before</strong> any collection;</li>
+        <li><strong>understandable</strong> without legal expertise;</li>
+        <li><strong>unbundled</strong> from marketing and membership;</li>
+        <li><strong>freely revocable</strong>;</li>
+        <li><strong>granular</strong> where purposes differ;</li>
+        <li><strong>accompanied by a no-save path</strong>;</li>
+        <li><strong>explicit about device and export limitations</strong>; and</li>
+        <li><strong>versioned</strong> whenever purposes or architecture change.</li>
+      </ul>
+
+      <h2 id="commitments" class="anchor-offset"><span class="kicker">Non-negotiables</span>Standing commitments</h2>
+      <p>Private journals, check-ins, clinical communications, accessibility preferences, and crisis disclosures will not be sold, used for targeted advertising, or repurposed to contest refunds. The following commitments bind the current site and every future version of it:</p>
+      <ul>
+        <li>A data-flow map and legal classification for each service before it launches.</li>
+        <li>Data minimization and purpose limitation, with session-only use wherever possible.</li>
+        <li>Encryption in transit and at rest for any future server-side systems.</li>
+        <li>Separate editorial, membership, community, and clinical systems.</li>
+        <li>Role-based access, multifactor authentication, audit logs, vendor review, and tested breach-response procedures with legally required notification.</li>
+        <li>No advertising trackers on check-in, journal, care, safety, crisis, or provider-matching pages — and in practice, none anywhere on this site.</li>
+        <li>No sale of health or emotional data.</li>
+        <li>Deletion, export, correction, and consent-withdrawal controls.</li>
+        <li>Plain-language privacy notices.</li>
+        <li>Discreet shared-device and notification design.</li>
+        <li>No training of models on intimate content — journals, check-ins, clinical communications — without separate, explicit, revocable consent.</li>
+      </ul>
+      <div class="callout principle"><span class="label">Analytics &amp; advertising boundary</span>
+        <p>No advertising, retargeting, data brokerage, cross-site profiling, or sale of health-reflection data — ever. No analytics event may contain an answer, journal text, crisis disclosure, health inference, owner note, or exported content. If product analytics are ever added, they will collect only the minimum aggregate operational signals needed to understand accessibility, errors, and voluntary feature use — and will never be optimized for longer distress engagement, more intimate disclosure, or conversion immediately after vulnerability.</p>
+      </div>
+
+      <h2 id="legal" class="anchor-offset"><span class="kicker">No false certainty</span>Legal classification stays open</h2>
+      <p>HIPAA does not automatically apply to every wellness application. U.S. Department of Health and Human Services guidance explains that personal health information entered into many consumer apps is not protected by HIPAA unless a covered-entity or business-associate relationship applies.<a class="src" href="evidence.html#r25">[R25]</a> The FTC's Health Breach Notification Rule can apply to health applications outside HIPAA,<a class="src" href="evidence.html#r22">[R22]</a> and state privacy laws — including consumer-health-data laws and, for a Texas-connected project, the Texas Data Privacy and Security Act — may impose additional obligations.<a class="src" href="evidence.html">[E20]</a> Depending on structure, the FTC Act, professional law, or multiple regimes may apply at once, and regulators advise developers to determine which rules apply and to build privacy and security into the product from the start.</p>
+      <p>No statement on this page determines that HIPAA, FTC rules, a state privacy law, or another regime does or does not apply. Applicability depends on facts such as business role, covered-entity relationships, data types, jurisdiction, scale, and product behavior. Before server-side accounts, journals, matching, scheduling, or professional care ever launch, jurisdiction-specific counsel must determine:</p>
+      <ul>
+        <li>entity and service classification;</li>
+        <li>controller/processor roles;</li>
+        <li>HIPAA covered-entity or business-associate status where applicable;</li>
+        <li>FTC Health Breach Notification obligations;</li>
+        <li>Texas and other state privacy requirements;</li>
+        <li>consumer-health-data requirements in applicable states;</li>
+        <li>biometric, geolocation, cookie, and tracking rules;</li>
+        <li>data-retention and deletion duties;</li>
+        <li>breach-notification plans; and</li>
+        <li>cross-border obligations if service extends outside the United States.</li>
+      </ul>
+      <p class="small">This page is a published commitment and an honest status report. It is not a legal opinion.</p>
+
+      <h2 id="minors" class="anchor-offset"><span class="kicker">Boys in the philosophy, adults in the tools</span>Minors</h2>
+      <p>The public check-in is adult-only, while the framework's philosophy discusses boys as well as men. That distinction is deliberate and correct: public educational content may remain accessible to young visitors, but adult journaling, community, private messaging, and clinical workflows must never silently include minors. A self-attested age gate reduces ambiguity; it does not create a youth-safety program.</p>
+      <p>Before any tool, account, community, care, or personalization is ever offered to minors, a separate developmental and legal design must exist, addressing:</p>
+      <ul>
+        <li>age bands and jurisdiction;</li>
+        <li>parental consent where required;</li>
+        <li>youth assent and evolving autonomy;</li>
+        <li>safeguarding and mandatory-reporting boundaries;</li>
+        <li>school and family access;</li>
+        <li>crisis escalation;</li>
+        <li>advertising and profiling prohibitions;</li>
+        <li>deletion and retention;</li>
+        <li>age-appropriate language and professional oversight;</li>
+        <li>qualified child and adolescent professionals and strong moderation; and</li>
+        <li>no unrestricted adult–minor private messaging, under any design.</li>
+      </ul>
+      <p>Under U.S. law, COPPA imposes requirements on services directed to children under thirteen and on general-audience services with actual knowledge that they collect personal information from a child under thirteen; the 2025 amendments strengthened consent, disclosure, minimization, retention, and parental-control requirements.<a class="src" href="evidence.html#r23">[R23]</a> Broader youth duties may apply beyond COPPA. Until this work exists, "boys" belongs to the philosophical scope and public education — not to the adult check-in or any planned member workflow. If you are under 18, the <a href="care.html#crisis-now">care and crisis resources</a> remain fully open to you.</p>
+
+      <h2 id="future" class="anchor-offset"><span class="kicker">A new privacy event, not a feature update</span>If accounts or AI ever launch</h2>
+      <p>Accounts, cloud sync, community posts, provider matching, scheduling, payments, clinical intake, analytics, AI personalization, and support messaging are not incremental UI additions. Each one creates new data subjects, new purposes, new recipients, new retention periods, new legal roles, new breach surfaces, and new deletion obligations. Each is a new privacy event — and this page, the consent flows, and the public notices will be re-versioned before any of them exists.</p>
+      <p>Before the first server-side visitor record is ever collected, all of the following must be complete:</p>
+      <ol>
+        <li>A route-by-route data inventory.</li>
+        <li>A purpose and legal-basis analysis appropriate to the operating jurisdictions.</li>
+        <li>Data minimization and field-by-field justification.</li>
+        <li>Role mapping among platform, payment processor, providers, moderators, vendors, and the site.</li>
+        <li>Retention and deletion schedules.</li>
+        <li>Access, correction, export, objection, and appeal procedures where applicable.</li>
+        <li>Vendor and subprocessor review.</li>
+        <li>Encryption, key management, authentication, authorization, logging, backups, recovery, and breach response.</li>
+        <li>Privacy and security testing.</li>
+        <li>New consent and public-notice versions.</li>
+        <li>A determination of whether health-privacy, consumer-health-data, general-privacy, or breach-notification regimes apply.</li>
+        <li>Qualified legal review.</li>
+      </ol>
+      <p>The same applies to AI. The reviewer is offline today; any future automated review operates under the <a href="governance.html">permanent constitutional rule</a> that it never touches check-ins, journals, clinical messages, crisis disclosures, provider records, payments, or identity data.</p>
+
+      <h2 id="security" class="anchor-offset"><span class="kicker">Observed, not audited</span>Security posture</h2>
+      <p>An independent audit of the live site observed a permissions policy, a referrer policy, and X-Content-Type-Options on a direct public response. That is a useful observation — not a complete security-header audit. A single response does not establish a comprehensive Content Security Policy, HSTS, anti-framing control, cache policy, dependency posture, authorization correctness, or application-level resilience. The current narrow client-only design reduces, but does not eliminate, the need for these controls.</p>
+      <p>The formal review still required before any sensitive or payment data is ever stored:</p>
+      <ul>
+        <li>a Content Security Policy appropriate to the framework and external resources;</li>
+        <li>HSTS, after confirming HTTPS-only operation and subdomain implications;</li>
+        <li>a framing policy through CSP frame-ancestors or an appropriate legacy control;</li>
+        <li>referrer minimization;</li>
+        <li>cache rules for owner and future private content;</li>
+        <li>a permissions policy matched to the browser features actually used;</li>
+        <li>dependency and supply-chain scanning;</li>
+        <li>secret scanning in current source and history;</li>
+        <li>cross-site scripting and injection review;</li>
+        <li>CSRF analysis for any future state-changing endpoints;</li>
+        <li>authentication, session, authorization, rate-limit, and abuse testing;</li>
+        <li>logging and redaction review;</li>
+        <li>backup and restore drills;</li>
+        <li>denial-of-service and cost-exhaustion protections; and</li>
+        <li>an independent penetration test.</li>
+      </ul>
+      <p>Credential handling and the incident history that shaped these rules are documented openly on the <a href="governance.html">governance page</a>; the site's accessibility commitments — which, like privacy, are never premium features — are on the <a href="accessibility.html">accessibility standard</a>.</p>
+
+      <nav class="pager" aria-label="Sequence">
+        <a href="evidence.html"><span class="dir">Previous</span>Evidence &amp; Corrections</a>
+        <a href="governance.html" style="text-align:right"><span class="dir">Next</span>Governance Standard</a>
+      </nav>
+    </article>
+  </div>
+</main>
+
+<div class="crisis-strip" role="region" aria-label="Crisis resources">
+  <div class="wrap">
+    <strong>In crisis or thinking about suicide?</strong>
+    In the United States, call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline — call, text, or <a href="https://988lifeline.org/chat/">chat</a>, with Deaf and hard-of-hearing access). In immediate danger, call <a href="tel:911">911</a>. Free, 24/7, and never behind membership, payment, or sign-in. <a href="care.html">More care resources →</a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <nav aria-labelledby="fg-start">
+        <h2 id="fg-start">Start here</h2>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About &amp; current state</a></li>
+          <li><a href="membership.html">Membership &amp; services</a></li>
+          <li><a href="glossary.html">Glossary</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-understand">
+        <h2 id="fg-understand">Understand</h2>
+        <ul>
+          <li><a href="framework.html">Framework overview</a></li>
+          <li><a href="framework-thesis.html">The civilizational thesis</a></li>
+          <li><a href="framework-purpose.html">Not a problem to solve</a></li>
+          <li><a href="framework-architecture.html">Integrity architecture</a></li>
+          <li><a href="framework-dignity.html">Dignity &amp; sovereignty</a></li>
+          <li><a href="framework-biology.html">Biological integrity</a></li>
+          <li><a href="framework-lenses.html">Three credibility lenses</a></li>
+          <li><a href="framework-proportionality.html">Moral proportionality</a></li>
+          <li><a href="framework-social-authority.html">Social authority &amp; extraction</a></li>
+          <li><a href="framework-disability.html">Disability &amp; capacity</a></li>
+          <li><a href="framework-relationships.html">Relationships &amp; repair</a></li>
+          <li><a href="framework-life.html">Masculinity in service of life</a></li>
+          <li><a href="framework-variation.html">Many male lives</a></li>
+          <li><a href="framework-environment.html">Environment &amp; reciprocity</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-apply">
+        <h2 id="fg-apply">Apply &amp; tools</h2>
+        <ul>
+          <li><a href="scenarios.html">Scenario library</a></li>
+          <li><a href="reflect.html">Private reflection tools</a></li>
+          <li><a href="check-in.html">Well-being check-in</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-care">
+        <h2 id="fg-care">Care &amp; safety</h2>
+        <ul>
+          <li><a href="care.html">Find care &amp; crisis</a></li>
+          <li><a href="care.html#protecting-male-life">Protecting male life</a></li>
+          <li><a href="accessibility.html">Accessibility standard</a></li>
+          <li><a href="privacy.html">Privacy &amp; your data</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-institution">
+        <h2 id="fg-institution">Institution</h2>
+        <ul>
+          <li><a href="evidence.html">Evidence &amp; corrections</a></li>
+          <li><a href="governance.html">Governance standard</a></li>
+          <li><a href="about.html#roadmap">Roadmap &amp; launch gates</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p><strong>Whole Man</strong> is a live Open Access editorial beta: a complete long-form framework, public care and crisis navigation, optional adult browser-local reflection tools, transparent privacy controls, and a public owner-control governance standard. Its automated AI reviewer, paid subscriptions, billing, refunds, community, provider network, and clinical-care operations are <strong>not live</strong>.</p>
+      <p>Educational publication only — not medical, psychological, legal, or clinical advice; not diagnosis; not emergency intervention; not a substitute for qualified professional care. Reading this site is not treatment.</p>
+      <p>This site sets no advertising trackers and sends no analytics. Optional tools store data only in your own browser. <a href="privacy.html">How your data works →</a></p>
+      <p>© <span id="footer-year">2026</span> Whole Man · Male Integrity Sustains Human Civilization · <a href="evidence.html#corrections">Corrections</a> · <a href="accessibility.html">Accessibility</a></p>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script src="assets/site.js"></script>
+</body>
+</html>

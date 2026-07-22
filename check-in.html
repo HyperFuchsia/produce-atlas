@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adult Well-Being Check-In — Whole Man</title>
+<meta name="description" content="A no-account, browser-only well-being check-in for adults: consent-first, non-diagnostic, non-scored, with separate storage choices and full local deletion controls.">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+/* apply saved theme before first paint to avoid flash */
+(function(){try{var t=localStorage.getItem("wm-theme");if(t==="dark"||(t===null&&matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.setAttribute("data-theme","dark");}if(localStorage.getItem("wm-calm")==="on"){document.documentElement.setAttribute("data-calm","on");}}catch(e){}})();
+</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<div class="progress" aria-hidden="true"></div>
+
+<div class="shell">
+<header class="site-header">
+  <div class="wrap masthead">
+    <a class="brand" href="index.html">
+      <span class="brand-name">WHOLE&nbsp;MAN</span>
+      <span class="brand-line">Health · Integrity · Self-government</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary">
+      <ul>
+        <li><a href="index.html">Start Here</a></li>
+        <li><a href="framework.html">Framework</a></li>
+        <li><a href="scenarios.html">Apply</a></li>
+        <li><a href="check-in.html">Check-In</a></li>
+        <li><a href="care.html">Find Care</a></li>
+        <li><a href="evidence.html">Evidence</a></li>
+        <li><a href="membership.html">Membership</a></li>
+        <li><a href="governance.html">Governance</a></li>
+      </ul>
+    </nav>
+    <div class="header-tools">
+      <button type="button" class="tool-btn" id="calm-toggle" aria-pressed="false" title="Turn off the moving background words">Calm mode</button>
+      <button type="button" class="tool-btn" id="theme-toggle" aria-pressed="false">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <header class="page-title">
+      <p class="eyebrow">Apply · Optional adult tool · No-account, browser-only</p>
+      <h1>The Adult Well-Being Check-In</h1>
+      <p class="lede">A short, private way for an adult to notice how he is actually doing — physical needs, emotional condition, psychological pressure, connection, safety, work, and boundaries — and what one next step might be. It is invitation, not obligation. It produces no score and no diagnosis. Your selections are processed in this browser and saved only if you make a separate storage choice.</p>
+    </header>
+
+    <article class="prose">
+
+      <div class="local-toc">
+        <strong>On this page</strong>
+        <ol>
+          <li><a href="#before-you-begin">Before you begin</a></li>
+          <li><a href="#the-tool">The check-in</a></li>
+          <li><a href="#journal">Your journal on this device</a></li>
+          <li><a href="#consent">How consent works here: five separate permissions</a></li>
+          <li><a href="#results">What the result means — and what it cannot mean</a></li>
+          <li><a href="#storage">The four storage choices</a></li>
+          <li><a href="#deletion">What deletion can and cannot do</a></li>
+          <li><a href="#boundaries">Tool boundaries</a></li>
+          <li><a href="#reflection-vs-checkin">The check-in is not the reflection tools</a></li>
+        </ol>
+      </div>
+
+      <h2 id="before-you-begin" class="anchor-offset"><span class="kicker">Ground rules first</span>Before you begin</h2>
+
+      <div class="callout crisis"><span class="label">If you are in danger now</span><p>This check-in is not an emergency service and is not monitored by anyone. If you are in crisis or thinking about suicide, in the United States call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline — call, text, or <a href="https://988lifeline.org/chat/">chat</a>, with Deaf and hard-of-hearing access). Veterans: call 988, then press 1. In immediate danger, call <a href="tel:911">911</a>. These are free, available 24/7, and never behind membership, registration, payment, or any AI gate. <a href="care.html">All care and crisis resources →</a></p></div>
+
+      <p>The check-in is designed for adults age eighteen and older. If you are under eighteen, you keep full access to every article on this site and to urgent resources without entering any personal information — start with <a href="care.html">Find Care &amp; Crisis</a>, which is fully public.</p>
+
+      <p>This tool is <strong>no-account and browser-only</strong>. We deliberately do not call it &ldquo;anonymous,&rdquo; because that word promises more than any website can honestly deliver. What we can say precisely: the check-in requires no account and no sign-in; your answers are not uploaded to a Whole Man server; there is no analytics or advertising code on this site; and everything the tool stores, it stores in your own browser, under controls you can see and use on this page. What the hosting layer still sees, and the exact limits of these guarantees, are documented plainly on the <a href="privacy.html">privacy page</a>.</p>
+
+      <p>Every step can be previewed before you commit, skipped once you are inside, and stopped at any moment. Nothing is recorded unless you make a separate storage choice at the end — participation and storage are different decisions, and the tool never merges them.</p>
+
+      <div class="callout"><span class="label">Keyboard &amp; screen-reader behavior</span><p>When the check-in dialog opens, keyboard focus moves immediately to the dialog&rsquo;s heading, and the page behind it is made inert. Tab cycles inside the dialog only; Escape closes it at any step; and focus returns to the button that opened it on every closure path — close button, Escape, stopping mid-way, or finishing. See the <a href="accessibility.html">accessibility standard</a> for the site-wide commitments.</p></div>
+
+      <h2 id="the-tool" class="anchor-offset"><span class="kicker">The tool</span>The check-in</h2>
+
+      <p>Seven topics, each with two direct questions and three plain answers. The topics follow the check-in&rsquo;s operational purpose — physical needs, emotional condition, psychological pressure, connection, safety, work, boundaries, support, and immediate next steps:</p>
+
+      <ul>
+        <li><strong>Sleep &amp; physical energy</strong> — whether your body is getting what it runs on.</li>
+        <li><strong>Mood &amp; emotional condition</strong> — what most days actually feel like.</li>
+        <li><strong>Stress &amp; psychological pressure</strong> — the load you are carrying and whether you get real breaks from it.</li>
+        <li><strong>Connection &amp; support</strong> — whether anyone knows how your life actually is.</li>
+        <li><strong>Safety</strong> — physical and emotional safety, including whether anyone is currently harming, threatening, controlling, or coercing you.</li>
+        <li><strong>Work &amp; practical load</strong> — work, money, and obligation, and whether any room in your life is not obligation.</li>
+        <li><strong>Boundaries &amp; self-respect</strong> — whether you can say no, and how you are treating yourself in your own judgment.</li>
+      </ul>
+
+      <p>You choose which topics are permitted before any question appears; unpermitted topics are never asked. Within a permitted topic you can skip any individual question, go back, or stop entirely.</p>
+
+      <div class="tool-panel" id="checkin-panel">
+        <h3>Begin, preview, or decline — each is a full answer</h3>
+        <p>Opening the dialog commits you to nothing. The first screen is an invitation with an adult-age confirmation, a full question preview, and an &ldquo;ask me later&rdquo; option. The check-in records nothing unless you make a separate storage choice at the end.</p>
+        <p class="small" id="wm-invite-note" hidden></p>
+        <p>
+          <button type="button" class="btn btn-primary" id="wm-launch" hidden>Open the check-in</button>
+          <button type="button" class="btn btn-quiet" id="wm-clear-invite" hidden>Clear my &ldquo;ask later&rdquo; preference</button>
+          <a class="btn btn-quiet" href="care.html">I&rsquo;m under 18 — take me to care resources</a>
+        </p>
+        <div class="notice" role="status" id="wm-page-status" hidden></div>
+        <noscript>
+          <div class="notice">JavaScript is turned off in this browser, so the interactive check-in cannot run. Nothing is lost by that: the entire framework, all articles, and every care and crisis resource on this site work without JavaScript, and the check-in never sends data anywhere in any case. If you want the tool, enable JavaScript for this site; if not, <a href="care.html">Find Care &amp; Crisis</a> covers the same ground in prose.</div>
+        </noscript>
+      </div>
+
+      <h2 id="journal" class="anchor-offset"><span class="kicker">Your data, your controls</span>Your journal on this device</h2>
+
+      <p>If you chose to store any responses, they appear here — with the saved-entry count, each entry&rsquo;s date and result, full answer review, answer editing (the result title is recalculated after an edit), individual deletion, deletion of the session response, delete-all, JSON export, withdrawal of check-in consent, and complete erasure of every check-in key this site uses. &ldquo;On this device&rdquo; means this browser profile — not encrypted device storage, not a clinical record, not a cloud backup, and not cross-device synchronization.</p>
+
+      <div class="tool-panel" id="wm-journal">
+        <h3 id="wm-journal-h">Saved responses</h3>
+        <div id="wm-journal-body">
+          <p class="small">The journal needs JavaScript to display and manage stored entries. If JavaScript is off, nothing was ever stored by this page to begin with.</p>
+        </div>
+      </div>
+
+      <h2 id="consent" class="anchor-offset"><span class="kicker">Sovereignty, made mechanical</span>How consent works here: five separate permissions</h2>
+
+      <p>The check-in deliberately separates five consents that most software merges into one:</p>
+
+      <dl class="deflist">
+        <dt>1 · Consent to open the check-in</dt>
+        <dd>Nothing starts until you open it. The invitation can be declined, previewed, or deferred, and declining changes nothing about your access to the rest of the site.</dd>
+        <dt>2 · Consent to discuss selected topics</dt>
+        <dd>You grant permission topic by topic. A topic you do not permit is never asked about — not asked and ignored, but never asked.</dd>
+        <dt>3 · Consent to answer a particular question</dt>
+        <dd>Inside a permitted topic, every individual question still carries a skip control. Permitting a topic is not an obligation to answer everything in it.</dd>
+        <dt>4 · Consent to store the response</dt>
+        <dd>Answering is not saving. After the result, a separate storage decision offers <a href="#storage">four choices</a>, including saving nothing at all.</dd>
+        <dt>5 · Consent to future invitations</dt>
+        <dd>An &ldquo;ask me later&rdquo; preference exists, and its limits are stated exactly below.</dd>
+      </dl>
+
+      <p>Granting any one of these grants nothing else. This separation is one of the project&rsquo;s strongest practical expressions of <a href="framework-dignity.html">sovereignty</a>: consent that is specific, revocable, and never bundled.</p>
+
+      <div class="callout"><span class="label">What &ldquo;ask me later&rdquo; actually does</span><p>Whole Man does not operate any outreach or reminder system. Choosing &ldquo;ask me later&rdquo; records a preference in this browser — it does not schedule a contact, an email, a notification, or anything else, because no such machinery exists. The invitation reappears only when you next open this page, and the preference only changes the wording of the panel above. A visible control to clear the preference appears in that panel whenever the preference is set.</p></div>
+
+      <h2 id="results" class="anchor-offset"><span class="kicker">Non-diagnostic by design</span>What the result means — and what it cannot mean</h2>
+
+      <p>The check-in is not a screening instrument, not a diagnosis, not therapy, and not a monitored emergency request. It does not create a combined wellness score, and it makes no inference about your character or masculinity. When your answers indicate lower support in some area, the result suggests exactly one thing: identify the area requiring attention, and consider a trusted person, a clinician, a practical service, a safety resource, or a boundary.</p>
+
+      <div class="callout principle"><span class="label">The decision rule, disclosed in full</span><p>&ldquo;Non-scored&rdquo; does not mean &ldquo;no interpretation,&rdquo; so here is the entire interpretation. The check-in produces one of four deterministic result states: <strong>no answered questions</strong>; <strong>any lowest-support answer</strong> (which takes priority); otherwise <strong>any middle answer</strong>; otherwise <strong>all highest-support answers</strong>. There is no arithmetic, no weighting, and no hidden model — a lowest answer anywhere yields the &ldquo;needs attention&rdquo; result, full stop.</p></div>
+
+      <div class="callout caution"><span class="label">Limit of the best possible result</span><p>The all-highest result may describe your limited selections positively, but it cannot establish safety, health, the absence of abuse, the absence of suicide risk, or the absence of any condition the check-in never asked about. Fourteen questions cannot clear a life.</p></div>
+
+      <p>These commitments are permanent for every version of this tool:</p>
+
+      <ul>
+        <li>no suicide-risk scoring by a general-purpose model;</li>
+        <li>no character or masculinity inference;</li>
+        <li>no promise that a check-in is monitored;</li>
+        <li>no silent emergency dispatch;</li>
+        <li>no crisis upsell;</li>
+        <li>direct access to 988/911 information on the result view itself;</li>
+        <li>and clear escalation to qualified care whenever symptoms or risk exceed what educational reflection can hold — that path is <a href="care.html">Find Care &amp; Crisis</a>.</li>
+      </ul>
+
+      <h2 id="storage" class="anchor-offset"><span class="kicker">A separate decision</span>The four storage choices</h2>
+
+      <p>After the result, and only then, the check-in asks what should happen to your response. The four choices, what each stores, where, and the principal risk of each:</p>
+
+      <div class="table-scroll wide-block">
+        <table class="matrix">
+          <caption>Storage choices in the well-being check-in</caption>
+          <thead>
+            <tr><th scope="col">Choice</th><th scope="col">What is stored</th><th scope="col">Where</th><th scope="col">Principal risk</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Full response</th><td>Topics, individual answer values, result, date</td><td>Browser local storage</td><td>Readable by any person or browser extension with access to this browser profile.</td></tr>
+            <tr><th scope="row">Summary only</th><td>Result summary and topic names, without individual answers</td><td>Browser local storage</td><td>Still sensitive, and not encrypted by Whole Man.</td></tr>
+            <tr><th scope="row">Session only</th><td>The current response, for this browser session</td><td>Browser session storage</td><td>Session persistence varies with browser behavior and crash restoration — this is browser session storage, not a guarantee of deletion when the tab closes.</td></tr>
+            <tr><th scope="row">Do not save</th><td>No journal entry</td><td>Temporary in-memory interaction only</td><td>None retained. This site runs no analytics that could reconstruct a discarded response, and it will stay that way.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Your consent preferences (adult confirmation, participation, permitted topics, invitation preference) are stored separately from journal entries, under separate browser keys — so withdrawing consent and deleting entries remain independent acts, each fully in your control.</p>
+
+      <h2 id="deletion" class="anchor-offset"><span class="kicker">Honest limits</span>What deletion can and cannot do</h2>
+
+      <p>The deletion controls here are real, and their limits are stated rather than implied:</p>
+
+      <ul>
+        <li><strong>What deletion does:</strong> the application removes its known browser-storage keys — responses, the session response, consent preferences, topic permissions, and the invitation preference, according to the scope you confirm.</li>
+        <li><strong>What deletion cannot guarantee:</strong> removal from operating-system backups, browser synchronization histories, forensic recovery, files you exported, screenshots, or copies you placed anywhere else. No website can truthfully promise device-level erasure, so this one does not.</li>
+        <li><strong>No automatic expiry:</strong> saved entries do not expire on their own. They remain in this browser until you delete them (the journal keeps at most one hundred valid entries, and malformed stored data is filtered out rather than displayed).</li>
+        <li><strong>Withdrawal and deletion are separate:</strong> withdrawing check-in consent does not delete stored entries, and deleting entries does not withdraw consent. Each control names exactly what it touches.</li>
+        <li><strong>Confirmation names the scope:</strong> every destructive action asks you to confirm with the exact scope spelled out, and single-entry deletion offers a brief undo.</li>
+        <li><strong>Any future change is a new consent event:</strong> if storage ever moved beyond this browser — accounts, cloud, synchronization — that would be a new privacy event requiring fresh, field-specific opt-in. Local data would never be imported by default. The <a href="privacy.html">privacy page</a> carries this commitment in full.</li>
+      </ul>
+
+      <h2 id="boundaries" class="anchor-offset"><span class="kicker">The standing rule for every tool</span>Tool boundaries</h2>
+
+      <p>Definitions alone are pseudo-operational; a framework that cannot be used is decoration. So every major concept on this site is meant to provide a path from observation to analysis, finding, action, repair, and verification — and the check-in is that path for daily well-being. But the operational ambition is bounded by a standing rule:</p>
+
+      <p class="statement">Tools must remain optional, consent-based, private, editable, exportable, and deletable. They must not create masculinity, dignity, or character scores.</p>
+
+      <p>The check-in complies by construction: it is opened only by choice, gated by five separate consents, processed only in your browser, editable and exportable from the journal above, deletable down to the last key — and its four result states describe support levels in areas you selected, never the worth of the man selecting them. Where the questions touch pressure and expectation, the framework&rsquo;s analysis of <a href="framework-social-authority.html">failure codes and conditional manhood</a> explains why a well-being tool must never become another test to pass.</p>
+
+      <h2 id="reflection-vs-checkin" class="anchor-offset"><span class="kicker">A distinction that matters</span>The check-in is not the reflection tools</h2>
+
+      <p>This site offers two kinds of private tools, and the privacy model depends on stating the difference exactly. The <a href="reflect.html">four guided reflection paths</a> do not collect or save an answer — they show one prompt at a time, nothing is typed, nothing is selected, nothing is stored. The optional well-being check-in on this page processes your selections in this browser and saves them only if you make a separate storage choice. Every path, in both kinds of tool, may be previewed, skipped, or stopped.</p>
+
+      <p class="small">This wording replaces an earlier, looser formulation that described all tools as collecting nothing — a small wording issue with large integrity significance, because exact distinctions are what a privacy model is made of. The correction is logged on the <a href="evidence.html#corrections">corrections register</a>.</p>
+
+      <nav class="pager" aria-label="Sequence">
+        <a href="reflect.html"><span class="dir">Previous</span>Private Reflection Tools</a>
+        <a href="care.html" style="text-align:right"><span class="dir">Next</span>Find Care &amp; Crisis</a>
+      </nav>
+    </article>
+
+    <dialog class="modal" id="wm-dialog" aria-labelledby="wm-dialog-title">
+      <div class="modal-head">
+        <h2 id="wm-dialog-title" tabindex="-1">Adult well-being check-in</h2>
+        <button type="button" class="btn-small" id="wm-close" aria-label="Close the check-in — nothing is saved unless you already chose to save">Close</button>
+      </div>
+      <div class="modal-body" id="wm-body"></div>
+      <div class="modal-foot" id="wm-foot"></div>
+    </dialog>
+  </div>
+</main>
+
+<div class="crisis-strip" role="region" aria-label="Crisis resources">
+  <div class="wrap">
+    <strong>In crisis or thinking about suicide?</strong>
+    In the United States, call or text <a href="tel:988">988</a> (Suicide &amp; Crisis Lifeline — call, text, or <a href="https://988lifeline.org/chat/">chat</a>, with Deaf and hard-of-hearing access). In immediate danger, call <a href="tel:911">911</a>. Free, 24/7, and never behind membership, payment, or sign-in. <a href="care.html">More care resources →</a>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <nav aria-labelledby="fg-start">
+        <h2 id="fg-start">Start here</h2>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="about.html">About &amp; current state</a></li>
+          <li><a href="membership.html">Membership &amp; services</a></li>
+          <li><a href="glossary.html">Glossary</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-understand">
+        <h2 id="fg-understand">Understand</h2>
+        <ul>
+          <li><a href="framework.html">Framework overview</a></li>
+          <li><a href="framework-thesis.html">The civilizational thesis</a></li>
+          <li><a href="framework-purpose.html">Not a problem to solve</a></li>
+          <li><a href="framework-architecture.html">Integrity architecture</a></li>
+          <li><a href="framework-dignity.html">Dignity &amp; sovereignty</a></li>
+          <li><a href="framework-biology.html">Biological integrity</a></li>
+          <li><a href="framework-lenses.html">Three credibility lenses</a></li>
+          <li><a href="framework-proportionality.html">Moral proportionality</a></li>
+          <li><a href="framework-social-authority.html">Social authority &amp; extraction</a></li>
+          <li><a href="framework-disability.html">Disability &amp; capacity</a></li>
+          <li><a href="framework-relationships.html">Relationships &amp; repair</a></li>
+          <li><a href="framework-life.html">Masculinity in service of life</a></li>
+          <li><a href="framework-variation.html">Many male lives</a></li>
+          <li><a href="framework-environment.html">Environment &amp; reciprocity</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-apply">
+        <h2 id="fg-apply">Apply &amp; tools</h2>
+        <ul>
+          <li><a href="scenarios.html">Scenario library</a></li>
+          <li><a href="reflect.html">Private reflection tools</a></li>
+          <li><a href="check-in.html">Well-being check-in</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-care">
+        <h2 id="fg-care">Care &amp; safety</h2>
+        <ul>
+          <li><a href="care.html">Find care &amp; crisis</a></li>
+          <li><a href="care.html#protecting-male-life">Protecting male life</a></li>
+          <li><a href="accessibility.html">Accessibility standard</a></li>
+          <li><a href="privacy.html">Privacy &amp; your data</a></li>
+        </ul>
+      </nav>
+      <nav aria-labelledby="fg-institution">
+        <h2 id="fg-institution">Institution</h2>
+        <ul>
+          <li><a href="evidence.html">Evidence &amp; corrections</a></li>
+          <li><a href="governance.html">Governance standard</a></li>
+          <li><a href="about.html#roadmap">Roadmap &amp; launch gates</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-legal">
+      <p><strong>Whole Man</strong> is a live Open Access editorial beta: a complete long-form framework, public care and crisis navigation, optional adult browser-local reflection tools, transparent privacy controls, and a public owner-control governance standard. Its automated AI reviewer, paid subscriptions, billing, refunds, community, provider network, and clinical-care operations are <strong>not live</strong>.</p>
+      <p>Educational publication only — not medical, psychological, legal, or clinical advice; not diagnosis; not emergency intervention; not a substitute for qualified professional care. Reading this site is not treatment.</p>
+      <p>This site sets no advertising trackers and sends no analytics. Optional tools store data only in your own browser. <a href="privacy.html">How your data works →</a></p>
+      <p>© <span id="footer-year">2026</span> Whole Man · Male Integrity Sustains Human Civilization · <a href="evidence.html#corrections">Corrections</a> · <a href="accessibility.html">Accessibility</a></p>
+    </div>
+  </div>
+</footer>
+</div>
+
+<script src="assets/site.js"></script>
+<script src="assets/checkin.js"></script>
+</body>
+</html>
