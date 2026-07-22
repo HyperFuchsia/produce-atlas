@@ -211,7 +211,11 @@ export function renderGallery(container: HTMLElement, entries: ListEntry[]): voi
         }
       }
     },
-    { root: container.parentElement, rootMargin: "200px" },
+    // Observe against the viewport so only on-screen plates render. The scroll
+    // container is a fixed overlay whose content translates within the
+    // viewport, so `root: null` lazily draws as cards scroll into view —
+    // critical now the collection runs to hundreds of specimens.
+    { root: null, rootMargin: "300px" },
   );
   container.querySelectorAll(".specimen").forEach((el) => plantObserver!.observe(el));
 }
