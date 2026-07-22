@@ -1284,6 +1284,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves (infused)", cautionParts: "", note: "Beverage crop; the leaves contain caffeine." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The world's word for tea comes in two forms, and the split is a map of trade. Where the leaf arrived overland or via inland Chinese speech it is cha, chai, or shai — from Persia to India to Russia; where it came by sea from the Fujian coast it is te, tea, or thé, as in the ports the Dutch and English used. One plant, two routes, two names.",
+          "That one plant is Camellia sinensis, an evergreen shrub. Green, black, oolong, white, and pu-erh teas are not different species but the same leaves treated differently — the degree of withering, bruising, and oxidation before drying is what separates a delicate green from a dark, malty black.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "Origin in the hills of the east",
+        paragraphs: [
+          "Tea is native to the highland forests where southwestern China, northern Myanmar, and northeastern India meet, and it exists in two main varieties: the small-leaved China type and the large-leaved Assam type. Chinese tradition places the discovery of tea in deep antiquity, crediting the mythical emperor Shennong, and by the Tang dynasty tea drinking was refined enough to inspire Lu Yu's famous Classic of Tea.",
+          "Carried by Buddhist monks, tea and its ritual travelled to Japan, where it became the meditative tea ceremony — one of many cultures the leaf reshaped around itself.",
+        ],
+        sourceIds: ["sauer1993", "kiple2000"],
+      },
+      {
+        heading: "The leaf that moved empires",
+        paragraphs: [
+          "Tea reached Europe in the seventeenth century and became a British obsession so profound that it distorted global history. To pay for Chinese tea, for which Britain had little China wanted in return, the British East India Company pushed opium into China — a trade that led to the Opium Wars. Determined to break their dependence on China, the British used wild Assam tea and plants smuggled out of China to build vast tea plantations in India and Ceylon in the nineteenth century.",
+          "Tea's political weight ran the other way too: a tax on it helped spark the Boston Tea Party and the American Revolution. Few plants have sat so squarely at the centre of war, trade, and empire.",
+        ],
+        sourceIds: ["kiple2000", "dalby2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Tea is the most consumed manufactured drink in the world, second only to water among beverages overall, and is grown across a broad tropical and subtropical belt, with China and India the largest producers, followed by Kenya, Sri Lanka, and others. From a shrub in the eastern hills, it has become a daily ritual on every continent.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "olive",
@@ -1811,6 +1844,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Rhizome", cautionParts: "", note: "Used fresh, dried, and ground." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "\"Ginger\" descends, through Greek and Latin, from a Sanskrit word for the plant, a mark of its ancient passage west from Asia. The part used is not a root but a rhizome — a knobbly underground stem — of Zingiber officinale, prized for the warm, biting pungency that comes from a compound called gingerol.",
+          "Ginger is a genuine cultigen: it is not known in the wild and rarely if ever sets seed, so it has been propagated entirely by dividing and replanting its rhizomes for thousands of years. Every ginger plant is, in effect, a piece of an ancient clone.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "Origin & the early spice trade",
+        paragraphs: [
+          "Ginger was domesticated in Maritime Southeast Asia in deep antiquity and spread early to India and China, where it became a cornerstone of both cooking and traditional medicine. Because the rhizome survives long journeys, ginger was among the first Asian spices to reach the West: it was known to the Greeks and Romans through Indian Ocean trade, arriving overland and by sea long before most other spices.",
+          "Through the Middle Ages it was one of the most common and valued spices in Europe, used heavily in cooking and preserved as a sweet.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "A spice that crossed to the New World",
+        paragraphs: [
+          "Ginger has an unusual distinction among Asian spices: the Spanish carried it to the Caribbean very early, and it thrived there, making it one of the first Eastern spices to be successfully grown in the Americas. Jamaican ginger in particular became a noted commodity, so that within a century of Columbus the spice was flowing to Europe from the west as well as the east.",
+          "Its uses multiplied everywhere it went — fresh in Asian cooking, dried and ground in European baking, and, later, as the flavour of ginger ale and ginger beer.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Ginger is grown across the warm regions of the world, with India the largest producer, followed by other tropical Asian and African growers. Used fresh, dried, ground, candied, and pickled, and valued as much for settling stomachs as for seasoning, it remains one of the most widely used spices on Earth.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "turmeric",
@@ -1838,6 +1904,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Rhizome", cautionParts: "", note: "Used fresh and as a dried powder; also a natural dye." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Turmeric, Curcuma longa, is a relative of ginger grown for the same kind of underground rhizome, but here the prize is colour as much as flavour: cut it open and it bleeds a vivid orange-yellow, from a pigment called curcumin. That colour is what tints curry powder, mustard, and countless dishes, and stains everything it touches.",
+          "Like ginger, cultivated turmeric is a sterile cultigen, unknown in the wild and propagated only by dividing its rhizomes — a plant that cannot reproduce without human hands.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "A sacred Indian crop",
+        paragraphs: [
+          "Turmeric was domesticated in South Asia and has been cultivated in India for thousands of years, where it is far more than a spice. It is woven into Hindu ritual and daily life — smeared on brides and grooms as an auspicious, purifying substance, offered in worship, and used as a household medicine and antiseptic in the Ayurvedic tradition. Few spices carry such sacred weight.",
+          "It is also one of the world's great natural dyes, colouring cloth and food a warm gold long before synthetic pigments existed.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "Spread & reputation",
+        paragraphs: [
+          "From India turmeric spread across tropical Asia, into the Middle East, and to East Africa, becoming a fixture of the region's cooking and trade. In Europe it never rivalled the glamorous spices, but it found a niche as a cheap colouring — sometimes called \"Indian saffron\" for its ability to lend a golden hue at a fraction of saffron's cost.",
+          "For most of its history it remained, above all, an Asian crop for Asian kitchens and rituals.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "India grows and consumes the overwhelming majority of the world's turmeric, and it remains central to South Asian cooking. In recent years curcumin has driven a global wellness boom — golden lattes, supplements, and health claims — giving this ancient sacred rhizome a conspicuous second life far from the temple and the curry pot.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "cinnamon",
@@ -1865,6 +1964,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Inner bark", cautionParts: "", note: "Ceylon cinnamon; cassia is a related, coumarin-richer substitute." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Cinnamon is unusual among spices in being neither a seed, fruit, nor root but bark — the thin inner bark of a tree, peeled, dried, and curled into the familiar quills. \"True\" cinnamon is Cinnamomum verum, also called Ceylon cinnamon, delicate and fragrant.",
+          "Most of what is sold worldwide as \"cinnamon,\" however, is cassia, from related Cinnamomum species — cheaper, stronger, and higher in coumarin, a compound best not consumed in large amounts. The distinction between true cinnamon and cassia is old, and has always been partly a matter of who controlled the real thing.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "An ancient and secret trade",
+        paragraphs: [
+          "Cinnamon is one of the most ancient of traded spices. It appears in ancient Egypt, where it was used in embalming and sacred anointing oils, and it reached the Mediterranean through a long chain of middlemen. Arab traders who controlled the supply guarded its origin with deliberately fantastical tales — that cinnamon came from the nests of fierce birds, or from deep valleys guarded by serpents — stories the Greek historian Herodotus recorded, and which kept buyers ignorant of the true source in South Asia.",
+          "That true source, above all the island of Sri Lanka, produced the finest cinnamon, and knowledge of it was worth hiding.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The prize of colonial powers",
+        paragraphs: [
+          "When Europeans finally reached the source, cinnamon became a prize worth conquering for. The Portuguese seized coastal Sri Lanka for its cinnamon in the sixteenth century; the Dutch East India Company then took the island and enforced a ruthless monopoly over the trade; and the British followed. Like pepper, cloves, and nutmeg, cinnamon was one of the spices whose value helped drive European colonial expansion across the Indian Ocean.",
+          "The monopoly eventually broke as the tree was cultivated more widely and cheaper cassia captured the mass market.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Sri Lanka remains the home of true Ceylon cinnamon, while most of the world's everyday \"cinnamon\" is cassia grown in Indonesia, China, and Vietnam. Warm, sweet, and woody, it flavours everything from pastries and mulled drinks to savoury dishes across the Middle East and South Asia — a bark that once carried myths, and empires, on its scent.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "avocado",
@@ -2853,6 +2985,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves", cautionParts: "", note: "Used fresh and dried as a culinary herb." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Basil carries a regal name: it comes from the Greek basilikon, \"royal\" or \"kingly,\" suggesting a herb once thought worthy of kings. The culinary sweet basil is Ocimum basilicum, an aromatic member of the mint family, and it exists in many forms — the large-leaved Genovese basil of Italian pesto, the anise-scented Thai basil, and lemon, cinnamon, and purple varieties among them.",
+          "It should not be confused with its close relative holy basil, or tulsi (Ocimum tenuiflorum), a different and sacred plant in Hindu worship — though the two share the family's warm, clove-like aromatics.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "An Asian herb goes west",
+        paragraphs: [
+          "Though we think of basil as quintessentially Mediterranean, it is native to the tropics of Asia and Africa, most likely India, where it has been cultivated since antiquity. It travelled westward along ancient trade routes into the Middle East and the classical Mediterranean world, gathering a thick layer of folklore on the way — variously linked to love, to mourning, and, through a fanciful echo of its name, to the mythical basilisk.",
+          "In the warm south of Europe it found a second home, and became so central to the region's cooking that its Asian origins are easily forgotten.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "A herb of two culinary worlds",
+        paragraphs: [
+          "Basil is unusual in being a star of two very different cuisines. In Italy and the Mediterranean, sweet basil is pounded into pesto and layered with tomato and mozzarella, its scent almost synonymous with summer cooking. In Southeast Asia, Thai and holy basils bring their sharper, spicier notes to stir-fries, curries, and noodle dishes.",
+          "The same genus, in different hands, anchors flavours a continent apart.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Basil is one of the world's most popular culinary herbs, grown commercially in fields and greenhouses and on countless windowsills, and sold fresh, dried, and as pastes and oils. From a sacred and \"royal\" plant of tropical Asia, it has become an everyday kitchen staple across the globe.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "coriander",
@@ -2880,6 +3045,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Leaves and seeds", cautionParts: "", note: "Both the fresh leaves and dried seeds are used." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Coriandrum sativum is really two seasonings in one plant. Its fresh leaves and its dried seeds taste nothing alike — the leaves bright, green, and citrusy; the seeds warm, nutty, and faintly orange — and English even splits them by name: \"coriander\" for the seed (and, in Britain, the whole plant), \"cilantro,\" the Spanish word, for the leaf in the Americas.",
+          "The herb also famously divides people. To a minority, the fresh leaves taste of soap rather than citrus, an aversion linked to variants in a smell-receptor gene — a rare case of a food that literally tastes different depending on your DNA.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "One of the oldest cultivated herbs",
+        paragraphs: [
+          "Coriander is among the most anciently cultivated herbs of the Old World, domesticated in the eastern Mediterranean and Near East. Its seeds turn up in Bronze Age contexts and in ancient Egyptian tombs, including that of Tutankhamun, and it is old and familiar enough to appear in the Hebrew Bible, where the miraculous manna is described as being \"like coriander seed.\"",
+          "From this Near Eastern heartland it spread across the whole Old World in antiquity — through the Mediterranean, into India and China — becoming one of the most universal of seasonings.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "A truly global seasoning",
+        paragraphs: [
+          "Few plants are so thoroughly woven into so many cuisines. The seed is a backbone of Indian and Middle Eastern spice blends and of curry powders; the leaf is indispensable to the cooking of South and Southeast Asia. When the Spanish carried coriander to the Americas, cilantro became central to Mexican and Latin American food, closing a loop around the world.",
+          "That a single herb should be essential to Indian, Thai, Mexican, and Middle Eastern kitchens alike is a measure of how far and how early it travelled.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Coriander is grown around the world both as a fresh herb and as a spice seed, with India a leading producer of the seed. Cheap, fast-growing, and doubly useful, it remains one of the most widely used flavourings on the planet — even if a share of the world will always taste soap where others taste citrus.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "clove",
@@ -2907,6 +3105,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Dried flower buds", cautionParts: "Concentrated clove oil", note: "The spice is safe in culinary amounts; concentrated clove oil (eugenol) can irritate." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "A clove is a flower that never opened. The spice is the dried, unopened flower bud of the tree Syzygium aromaticum, and its name comes from the Latin clavus, \"nail,\" which is exactly what a clove looks like. Its intense, warm aroma comes from an oil rich in eugenol — the same compound that gives cloves their long use as a numbing toothache remedy.",
+          "For most of history this small nail-shaped bud came from one almost impossibly small place, and that scarcity made it one of the most valuable substances on Earth.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "The spice of five tiny islands",
+        paragraphs: [
+          "Cloves grew, for most of their history, only on a handful of tiny volcanic islands in the Moluccas of eastern Indonesia — the original \"Spice Islands.\" From this pinpoint origin they travelled astonishing distances astonishingly early: cloves reached the ancient Near East and the Roman world, and at the Han court in China officials were reportedly required to hold cloves in their mouths to sweeten their breath before addressing the emperor.",
+          "That such a specific product from such remote islands could reach across all of Eurasia thousands of years ago is one of the great testaments to the reach of ancient trade.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "Monopoly and violence",
+        paragraphs: [
+          "When Europeans traced cloves to their source, the result was brutal. The Portuguese and then the Dutch East India Company fought to monopolise the trade, and the Dutch enforced their control with terrible ruthlessness — restricting clove trees to a single island under their command and uprooting or burning the trees elsewhere, destroying the livelihoods of the islanders who depended on them.",
+          "The monopoly was finally broken in the eighteenth century when a determined Frenchman smuggled seedlings out of the islands, and cloves were established far away in places like Zanzibar and Madagascar.",
+        ],
+        sourceIds: ["dalby2000", "sauer1993"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Indonesia — the cloves' homeland — is today both the largest producer and the largest consumer, because most of its crop goes not into food but into kretek, the clove-scented cigarettes smoked across the country. Madagascar and Zanzibar remain major exporters for the spice trade, sending the little nail-shaped buds into baking, mulled drinks, and spice blends worldwide.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "nutmeg",
@@ -2934,6 +3165,39 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Seed (and mace aril)", cautionParts: "Large doses (myristicin)", note: "Culinary amounts are safe; large doses of nutmeg are toxic and psychoactive." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "The nutmeg tree, Myristica fragrans, is generous in an unusual way: it yields two distinct spices from a single fruit. Nutmeg is the hard inner seed; mace is the lacy scarlet coat, or aril, that wraps around it. Both are warm and aromatic, and both come from the same pit.",
+          "Nutmeg also has a hidden edge. It contains myristicin, harmless in the pinch used to season food but toxic and hallucinogenic in large quantities — a reminder that this cosy baking spice is a potent substance.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "The spice of the Banda Islands",
+        paragraphs: [
+          "For most of history nutmeg grew in only one place on Earth: the Banda Islands, a minuscule cluster in the Moluccas of eastern Indonesia. That absolute scarcity made it fabulously valuable in medieval and early-modern Europe, where it was also believed — wrongly but expensively — to ward off the plague, driving prices to extraordinary heights.",
+          "A spice worth many times its weight in gold, sourced from islands most Europeans could not find on a map, nutmeg became an object of obsession.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "Genocide and a fateful trade",
+        paragraphs: [
+          "The Dutch East India Company's drive to monopolise nutmeg produced one of the darkest episodes of the spice era. In 1621, to seize total control of the Banda Islands, the Dutch killed, enslaved, or drove out almost the entire native Bandanese population — a slaughter that reduced tens of thousands of people to a fraction of their number.",
+          "Nutmeg also shaped the map in a stranger way. To secure the last Banda island held by the English, the Dutch traded away a distant possession of their own in the 1667 Treaty of Breda: the island of Manhattan. Nutmeg, in effect, was once judged more valuable than New York.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "The monopoly was eventually broken when the British transplanted nutmeg trees to other tropical colonies, and today Indonesia and the Caribbean island of Grenada — which puts a nutmeg on its national flag — are the leading producers. The spice that once triggered atrocities and swapped for Manhattan now sits quietly in the baking cupboard, grated over custards and mulled wine.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
   {
     id: "vanilla",
@@ -2961,5 +3225,38 @@ export const CROPS: Crop[] = [
     maturity: "authored",
     coordinatePrecision: "representative",
     safety: { edibleParts: "Cured seed pods", cautionParts: "", note: "The cured pods and their extract flavour foods; the fresh plant is not eaten." },
+    dossier: [
+      {
+        heading: "Name & identity",
+        paragraphs: [
+          "Vanilla is the world's only orchid grown for food. The spice is the cured seed pod of the climbing orchid Vanilla planifolia, and its name comes from the Spanish vainilla, \"little pod.\" Freshly picked, the green pod has no vanilla scent at all; the familiar aroma, from a compound called vanillin, develops only through a long, laborious curing process of blanching, sweating, and drying that can take months.",
+          "That intensive hand-work, combined with the plant's fussy demands, makes real vanilla one of the most expensive spices in the world, rivalled only by saffron.",
+        ],
+        sourceIds: ["powo", "dalby2000"],
+      },
+      {
+        heading: "A Mesoamerican orchid",
+        paragraphs: [
+          "Vanilla is native to Mesoamerica, where the Totonac people of what is now Mexico first cultivated it, and the Aztecs prized it as a flavouring for their bitter cacao drink. For centuries after Europeans encountered it, Mexico held an unbreakable monopoly on vanilla — not by force, but by biology.",
+          "The vanilla orchid is pollinated in its Mexican homeland by particular native bees and hummingbirds. Transplanted anywhere else, the vines would flower beautifully but set no pods, because their natural pollinators did not exist there. Vanilla simply refused to fruit away from home.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The boy who freed vanilla",
+        paragraphs: [
+          "The monopoly was broken by a child. In 1841, on the Indian Ocean island of Réunion, a twelve-year-old enslaved boy named Edmond Albius devised a quick, reliable method of hand-pollinating the vanilla flower with a sliver of bamboo and a flick of the thumb — a technique so effective that it is still used, essentially unchanged, on vanilla farms everywhere today.",
+          "His invention freed vanilla from Mexico and made it a global crop, transforming the Indian Ocean islands into its new heartland — though Albius himself, freed from slavery only later, died in poverty, largely uncredited in his lifetime.",
+        ],
+        sourceIds: ["dalby2000", "kiple2000"],
+      },
+      {
+        heading: "The crop today",
+        paragraphs: [
+          "Today Madagascar and neighbouring Indian Ocean islands dominate the world's supply of natural vanilla, whose price swings wildly with weather and harvests. Because true vanilla is so costly and labour-intensive, the overwhelming majority of \"vanilla\" flavour in the world is synthetic vanillin, made from wood pulp or petrochemicals — so that the taste of a Mexican orchid, hand-pollinated by a technique a boy invented, reaches most people only in imitation.",
+        ],
+        sourceIds: ["faostat", "kiple2000"],
+      },
+    ],
   },
 ];
