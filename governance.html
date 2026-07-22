@@ -62,10 +62,14 @@
         <li><a href="#review">Ethical review criteria</a></li>
         <li><a href="#credentials">Credentials, access, secrets, and recovery</a></li>
         <li><a href="#integrity">Institutional integrity requirements</a></li>
+        <li><a href="#conduct">Professional independence &amp; moderation good faith</a></li>
         <li><a href="#completeness">The master completeness standard</a></li>
         <li><a href="#gates">Launch gates and acceptance criteria</a></li>
         <li><a href="#checklist">Quality &amp; launch checklist</a></li>
         <li><a href="#prelaunch">Pre-launch non-negotiables</a></li>
+        <li><a href="#testing">Required test layers</a></li>
+        <li><a href="#failure">Failure behavior</a></li>
+        <li><a href="#measurement">Measurement without extraction</a></li>
         <li><a href="#templates">Governance &amp; release templates</a></li>
         <li><a href="#constitution">The non-negotiable launch constitution</a></li>
         <li><a href="#standard">The institutional standard Whole Man must meet</a></li>
@@ -244,7 +248,7 @@
         <li>Production currently contains that value as the <code>OWNER_EMAIL</code> environment setting.</li>
         <li>No production <code>OPENAI_API_KEY</code> was observed.</li>
         <li>A previous local development key was described as saved to a local environment file in an earlier workspace checkout, but the current workspace no longer contains that checkout or file after maintenance. Its continuing existence must not be assumed.</li>
-        <li>A subsequent secure production-key creation attempt did not return a usable encrypted handoff. No production secret was installed.</li>
+        <li>A subsequent secure production-key creation attempt did not return a usable encrypted handoff; the process was deliberately stopped to avoid creating an untracked or duplicate credential. No production secret was installed.</li>
         <li>The owner reported that no resulting key appeared. The final production-key setup was explicitly deferred.</li>
         <li>If an unused key named &ldquo;Whole Man Production Governance&rdquo; is ever discovered in the OpenAI dashboard, it should be revoked before a new final key is created.</li>
       </ul>
@@ -262,6 +266,7 @@
         <li>Store it directly in the production host&rsquo;s protected server-side secret manager as <code>OPENAI_API_KEY</code>.</li>
         <li>Never place it in a variable exposed to client bundles, including any <code>PUBLIC_</code> or <code>NEXT_PUBLIC_</code> convention.</li>
         <li>Do not paste it into chat, email, a screenshot, analytics, logging output, an issue tracker, or a repository.</li>
+        <li>Use separate development and production credentials; a development key must never serve production.</li>
         <li>Configure the approved model separately.</li>
         <li>Run a minimal server-side connectivity test that sends no private visitor information.</li>
         <li>Verify request logging, redaction, timeout, budget, and failure behavior.</li>
@@ -319,6 +324,16 @@
         <li>Publication of adverse incidents, correction patterns, accessibility failures, and changes made.</li>
       </ul>
 
+      <h2 id="conduct" class="anchor-offset"><span class="kicker">Culture without ideological capture</span>Professional independence and moderation good faith</h2>
+
+      <p>Two standards from the community and professional conduct rules bind the institution itself and therefore belong in the governance record.</p>
+
+      <h3>Professionals are not ideological representatives</h3>
+      <p>Professionals who ever serve through this project must retain independent, evidence-based judgment. Whole Man may require commitments to dignity, consent, non-domination, privacy, accessibility, and accountability. It must not require clinicians to affirm every member interpretation or to act as ideological representatives of the brand. Qualified review protects visitors only if the reviewer remains free to disagree with the institution.</p>
+
+      <h3>Good-faith disclosure is answered with help, not punishment</h3>
+      <p>Moderation must distinguish help-seeking from advocacy of harm. &ldquo;I am having thoughts of hurting someone and need help&rdquo; requires a safety-oriented response. &ldquo;You should hurt this person&rdquo; requires enforcement and intervention. Good-faith disclosure of dangerous thoughts must not be punished merely because the subject is difficult; punishing honest disclosure teaches people to hide exactly the states that most need <a href="care.html">care</a>.</p>
+
       <h2 id="completeness" class="anchor-offset"><span class="kicker">Master completeness standard</span>What must exist before Whole Man can claim institutional integrity</h2>
 
       <p>The philosophy is sufficiently developed. The remaining risk is operational contradiction: teaching dignity while collecting unnecessary data, teaching biological sustainability while overworking staff, teaching sovereignty while using manipulative subscriptions, or teaching accountability while hiding errors. The website is not complete until its governance makes those contradictions materially harder to sustain.</p>
@@ -353,7 +368,7 @@
       </div></details>
 
       <details class="fold"><summary>Gate B — Public-tool safety</summary><div class="fold-body">
-        <p>Pass only if: the complete <a href="check-in.html">check-in</a> works in all four storage modes; skip, stop, preview, and topic choice work; no score, diagnosis, or safety clearance is produced; no-save is genuinely available; edit, single delete, delete all, erase everything, and export work; exported files carry a clear unencrypted-file warning; browser/device limits are visible; storage failure and corruption fail safely; crisis resources remain reachable without completing the tool; and synthetic test data is removed.</p>
+        <p>Pass only if: the complete <a href="check-in.html">check-in</a> works in all four storage modes; skip, stop, preview, and topic choice work; no score, diagnosis, or safety clearance is produced; no-save is genuinely available; edit, single delete, delete all, erase everything, and export work; exported files carry a clear unencrypted-file warning; browser/device limits are visible; storage failure and corruption fail safely; crisis resources remain reachable without completing the tool; the result experience — non-diagnostic language at entry and result, no score, escalation copy — has been tested with distressed users; and synthetic test data is removed.</p>
       </div></details>
 
       <details class="fold"><summary>Gate C — Accessibility</summary><div class="fold-body">
@@ -374,6 +389,40 @@
 
       <details class="fold"><summary>Gate G — Clinical or community service</summary><div class="fold-body">
         <p>Pass only after a separate qualified review confirms professional governance, licensing and scope, records, insurance, emergency response, safeguarding, moderation, staffing, accessibility, and operational resilience. A technically functional feature is not enough.</p>
+        <p>Before any counseling, therapy, provider matching, peer support, moderated group, or care consultation opens, the project must establish:</p>
+        <ul>
+          <li>Exact service definitions and prohibited representations.</li>
+          <li>Jurisdiction and licensure coverage.</li>
+          <li>Identity and credential verification.</li>
+          <li>Malpractice and general-liability coverage.</li>
+          <li>Clinical leadership and supervision.</li>
+          <li>Informed consent and notices of privacy practices where applicable.</li>
+          <li>Records, retention, access, amendment, and secure messaging.</li>
+          <li>Scheduling, cancellations, no-shows, refunds, and continuity.</li>
+          <li>Emergency and after-hours boundaries.</li>
+          <li>Mandatory-reporting procedures.</li>
+          <li>Risk assessment and escalation.</li>
+          <li>Peer-versus-clinical role scripts.</li>
+          <li>Accessibility and language access.</li>
+          <li>Complaints, adverse events, appeals, and provider removal.</li>
+          <li>Outcome and quality review without coercive data extraction.</li>
+          <li>A tested shutdown or continuity plan if staffing fails.</li>
+        </ul>
+        <p>No AI may replace professional triage, determine eligibility for care, rank provider quality without an auditable basis, or infer clinical risk from private writings outside an approved, consented, professionally governed workflow.</p>
+        <p>Future peer spaces create responsibilities that do not exist on a static publication. At minimum they require:</p>
+        <ul>
+          <li>A visible code of conduct grounded in anti-scapegoating and survivor safety.</li>
+          <li>Trained human moderation with scheduled coverage.</li>
+          <li>Reporting, blocking, appeal, ban, and restoration processes.</li>
+          <li>Rules against harassment, threats, doxxing, coercion, hate, clinical impersonation, and grievance recruitment.</li>
+          <li>Crisis and imminent-threat escalation.</li>
+          <li>Records and retention proportionate to safety needs.</li>
+          <li>Moderator wellness and supervision.</li>
+          <li>Transparency about response times.</li>
+          <li>Separation of <a href="care.html">peer support from therapy</a>.</li>
+          <li>Clear closure if staffing cannot meet the promised standard.</li>
+        </ul>
+        <p>Community must not launch merely because a forum feature is technically available.</p>
       </div></details>
 
       <h2 id="checklist" class="anchor-offset"><span class="kicker">Compact standard</span>Quality &amp; launch checklist</h2>
@@ -489,9 +538,87 @@
         <li>Independent evaluation of outcomes and unintended harms.</li>
       </ul></div></details>
 
+      <h2 id="testing" class="anchor-offset"><span class="kicker">Nine layers, none optional</span>Required test layers</h2>
+
+      <p>Every release is tested at nine layers. No layer may be skipped.</p>
+
+      <div class="table-scroll wide-block"><table class="matrix">
+        <caption>Required test layers and the minimum tests in each</caption>
+        <thead><tr><th scope="col">Layer</th><th scope="col">Minimum tests</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Content</th><td>Required sections, definitions, warnings, current/planned labels, resource URLs, review dates, and prohibited overclaims.</td></tr>
+          <tr><th scope="row">Unit</th><td>Storage-mode behavior, consent-state transitions, topic filtering, summary derivation, deletion, export formatting, and owner-rule normalization.</td></tr>
+          <tr><th scope="row">Integration</th><td>Modal focus, session/local storage, theme persistence, navigation, resource links, authentication callback, and note lifecycle.</td></tr>
+          <tr><th scope="row">End-to-end</th><td>Full check-in in each storage mode; skip and stop; edit, delete, and export; signed-out, correct-owner, and wrong-owner routes; mobile and dark mode.</td></tr>
+          <tr><th scope="row">Accessibility</th><td>Automated checks plus keyboard, screen-reader, zoom, reflow, contrast, motion, and cognitive walkthroughs.</td></tr>
+          <tr><th scope="row">Security</th><td>Secret scanning, built-asset inspection, authorization, caching, injection, dependency, headers, rate limiting, and logging.</td></tr>
+          <tr><th scope="row">Resilience</th><td>External-link failure, storage unavailable, corrupted local data, interrupted session, API timeout or quota failure, and safe offline-reviewer behavior.</td></tr>
+          <tr><th scope="row">Visual</th><td>Desktop and mobile, light and dark, high contrast, reduced motion, long text, error states, and modal overflow.</td></tr>
+          <tr><th scope="row">Release</th><td>Staging smoke test, artifact hash, owner approval record, production smoke test, rollback rehearsal, and post-release observation.</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout principle"><span class="label">Automation is not enough</span><p>Automated tests are necessary but insufficient. Ethical and clinical wording requires human review; authorization requires adversarial identity tests; and accessibility requires assistive-technology use.</p></div>
+
+      <h2 id="failure" class="anchor-offset"><span class="kicker">Declared boundaries</span>Failure behavior</h2>
+
+      <p>When a dependency fails, the site must fail within its declared boundary. Each failure scenario has a required behavior, decided in advance:</p>
+
+      <div class="table-scroll wide-block"><table class="matrix">
+        <caption>Declared failure boundaries for each dependency</caption>
+        <thead><tr><th scope="col">Failure scenario</th><th scope="col">Required behavior</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">AI quota or model failure</th><td>No note, or a clearly failed draft — never a silent approval and never a website change.</td></tr>
+          <tr><th scope="row">Local storage unavailable</th><td>Offer session-only or no-save mode and explain that persistence is unavailable.</td></tr>
+          <tr><th scope="row">Corrupted local entry</th><td>Isolate it, preserve the other entries, and offer safe deletion or export where possible.</td></tr>
+          <tr><th scope="row">External resource unavailable</th><td>Show a verified fallback and an emergency number; record a maintenance alert.</td></tr>
+          <tr><th scope="row">Owner authentication unavailable</th><td>The public site remains public; owner actions become unavailable rather than bypassed.</td></tr>
+          <tr><th scope="row">Payment, provider, or community infrastructure unavailable</th><td>Enrollment remains closed; no charge and no false promise of access.</td></tr>
+          <tr><th scope="row">Accessibility regression</th><td>Block the release when critical, or disable the affected optional feature while preserving essential content.</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="callout principle"><span class="label">Honest unavailability</span><p>The safest fallback is not always &ldquo;keep the feature running.&rdquo; In several cases the honest and least harmful state is unavailable-with-explanation.</p></div>
+
+      <h2 id="measurement" class="anchor-offset"><span class="kicker">Agency-preserving metrics</span>Measurement and accountability without extraction</h2>
+
+      <h3>What the product must never optimize for</h3>
+      <ul>
+        <li>Maximum time spent while distressed.</li>
+        <li>Maximum intimate disclosure.</li>
+        <li>Repeated checking of a wellness state.</li>
+        <li>Conversion immediately after a concerning result.</li>
+        <li>Dependency on membership, moderator reassurance, AI, or providers.</li>
+        <li>Outrage, enemy identification, or grievance intensity.</li>
+        <li>Public performance of masculinity.</li>
+        <li>Staff volume at the expense of review quality.</li>
+      </ul>
+
+      <p class="statement">Those metrics would contradict sovereignty even if they improved revenue or engagement.</p>
+
+      <h3>Appropriate measures</h3>
+      <p>Useful measures are operational and agency-preserving:</p>
+      <ul>
+        <li>Visitors can understand the framework&rsquo;s central distinctions.</li>
+        <li>People can find crisis and care resources quickly.</li>
+        <li><a href="privacy.html">Consent choices</a> are understood and honored.</li>
+        <li>No-save and deletion paths work reliably.</li>
+        <li>Users can stop without penalty.</li>
+        <li>Accessibility defects are found and resolved.</li>
+        <li>External resources remain current.</li>
+        <li>Evidence claims have review dates and correction records.</li>
+        <li>Governance concerns reach the owner with adequate context.</li>
+        <li>Approved changes pass release gates and can be rolled back.</li>
+        <li><a href="membership.html">Paid services</a>, if launched, are actually delivered within promised access times.</li>
+        <li>Complaints receive fair review.</li>
+        <li>People can leave, export, or decline without losing basic dignity resources.</li>
+      </ul>
+
+      <div class="callout caution"><span class="label">No proof-of-suffering</span><p>If outcomes are ever studied, the methods must be voluntary, minimal, and ethically reviewed. Never make people prove distress, improvement, masculinity, or compliance to receive basic respect.</p></div>
+
       <h2 id="templates" class="anchor-offset"><span class="kicker">Records that make decisions auditable</span>Governance &amp; release templates</h2>
 
-      <p>Three standing templates keep every decision, concern, and correction auditable.</p>
+      <p>Three standing templates keep every decision, concern, and correction auditable. They also answer a documented operational risk: sole executive authority without a workflow becomes an undocumented bottleneck. The owner therefore commits to these decision templates, to response targets for pending decisions, to defined delegation boundaries, and to a pre-authorized emergency-safe shutdown as the only action that may precede a full decision record.</p>
 
       <details class="fold"><summary>Owner decision record</summary><div class="fold-body"><ul>
         <li>Decision ID</li>
@@ -548,6 +675,24 @@
         <li>Whether the earlier wording caused known harm</li>
         <li>Follow-up monitoring</li>
       </ul><p>Published corrections live on the <a href="evidence.html#corrections">corrections register</a>.</p></div></details>
+
+      <h3>Versioning and release record</h3>
+      <p>Beyond the decision templates, every release must record:</p>
+      <ul>
+        <li>Release number, date, commit, and build identifier.</li>
+        <li>The exact approved change set.</li>
+        <li>Owner approval timestamp and scope.</li>
+        <li>Specialist approvals required and obtained.</li>
+        <li>Migrations or environment changes.</li>
+        <li>Public wording affected.</li>
+        <li>Tests and artifacts.</li>
+        <li>Known limitations.</li>
+        <li>Rollback version and trigger.</li>
+        <li>Live verification results.</li>
+        <li>Post-release corrections.</li>
+      </ul>
+
+      <div class="callout caution"><span class="label">Approvals must be specific</span><p>An approval for &ldquo;the governance feature&rdquo; is too broad. Approval must identify the actual proposal, the source diff, environment changes, data behavior, and the release target.</p></div>
 
       <h2 id="constitution" class="anchor-offset"><span class="kicker">Appendix E, canonical</span>The non-negotiable launch constitution</h2>
 
