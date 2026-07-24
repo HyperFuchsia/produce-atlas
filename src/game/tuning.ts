@@ -8,6 +8,26 @@
 export const PPM = 46; // pixels per metre at zoom 1
 export const GROUND_SCREEN_Y = 400; // where the floor sits in the 540-high virtual view
 
+/**
+ * Lanes. The platform is 7.2 m wide and, until now, Marcus only ever ran down
+ * the middle of it — every hazard had to span the whole deck because there was
+ * nowhere to go. Three lanes turn that width into a decision.
+ */
+export const LANES = {
+  count: 3,
+  /** Distance between lane centres, metres. */
+  spacing: 2.3,
+  /** How fast he crosses between lanes. */
+  changeSpeed: 15.5,
+  /** Half-width of the runner for lateral collision. */
+  halfWidth: 0.36,
+  /** Half-width that counts as "spans the whole deck". */
+  fullHalfWidth: 3.6,
+} as const;
+
+/** Centre of a lane index: -1 left, 0 middle, +1 right. */
+export const laneX = (index: number): number => index * LANES.spacing;
+
 export const PLAYER = {
   /** Screen x (virtual px) the runner is pinned to; the world scrolls past. */
   anchorX: 0.27,

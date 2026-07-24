@@ -1,4 +1,5 @@
 import type { Obstacle } from './entities';
+import { LANES, laneX } from './tuning';
 import type { World } from './world';
 
 /**
@@ -10,21 +11,56 @@ import type { World } from './world';
 export interface BotIntent {
   wantJump: boolean;
   wantDive: boolean;
+  wantLeft: boolean;
+  wantRight: boolean;
   holdJump: boolean;
   holdDive: boolean;
 }
 
-const idle = (): BotIntent => ({ wantJump: false, wantDive: false, holdJump: false, holdDive: false });
+const idle = (): BotIntent => ({
+  wantJump: false,
+  wantDive: false,
+  wantLeft: false,
+  wantRight: false,
+  holdJump: false,
+  holdDive: false,
+});
 
 export class Autopilot {
   private holdJumpFor = 0;
   private holdDiveFor = 0;
   private jumpCooldown = 0;
+  private laneCooldown = 0;
 
   reset(): void {
     this.holdJumpFor = 0;
     this.holdDiveFor = 0;
     this.jumpCooldown = 0;
+    this.laneCooldown = 0;
+  }
+
+  /**
+   * Is this lane clear through the given stretch of track? Used both to decide
+   * whether a dodge is needed and to make sure the dodge lands somewhere safe —
+   * sidestepping out of one wall into another is worse than not moving.
+   */
+  private laneIsClear(world: World, lane: number, x0: number, x1: number): boolean {
+    const lateral = laneX(lane);
+    for (const o of world.spawner.obstacles) {
+      if (o.broken || o.standable) continue;
+      if (o.x + o.w < x0 || o.x > x1) continue;
+      if (Math.abs(lateral - o.lane) >= o.halfW + LANES.halfWidth) continue;
+      // Anything a jump or a slide can beat does not force a dodge.
+      const clearableByAir = o.y + o.h <= 2.55;
+      const clearableBySlide = o.y > 0.55;
+      if (clearableByAir || clearableBySlide || o.breakable) continue;
+      return false;
+    }
+    for (const g of world.spawner.gaps) {
+      if (g.x1 < x0 || g.x0 > x1) continue;
+      if (Math.abs(lateral - g.lane) < g.halfW + LANES.halfWidth) return false;
+    }
+    return true;
   }
 
   update(world: World, dt: number): BotIntent {
@@ -33,6 +69,7 @@ export class Autopilot {
     this.holdJumpFor = Math.max(0, this.holdJumpFor - dt);
     this.holdDiveFor = Math.max(0, this.holdDiveFor - dt);
     this.jumpCooldown = Math.max(0, this.jumpCooldown - dt);
+    this.laneCooldown = Math.max(0, this.laneCooldown - dt);
 
     out.holdJump = this.holdJumpFor > 0;
     out.holdDive = this.holdDiveFor > 0;
@@ -46,17 +83,68 @@ export class Autopilot {
     let pitTime = Infinity;
     if (pit) pitTime = (pit.x0 - front) / speed;
 
-    // ---- nearest blocking obstacle
+    // ---- nearest blocking obstacle *in this lane*
     let threat: Obstacle | null = null;
     let threatTime = Infinity;
     for (const o of world.spawner.obstacles) {
       if (o.broken || o.standable) continue;
       if (o.x + o.w < front) continue;
+      if (Math.abs(p.lateral - o.lane) >= o.halfW + LANES.halfWidth) continue;
       const t = (o.x - front) / speed;
       if (t > 0.95) break;
       if (t < threatTime) {
         threat = o;
         threatTime = t;
+      }
+    }
+
+    // ---- a wall too tall to jump and too low to slide leaves only a sidestep.
+    // Crossing a lane takes a fixed ~0.15 s, so the decision has to be made
+    // early, and it has to check that the destination is actually clear.
+    if (!p.changingLane && this.laneCooldown <= 0) {
+      const escapeTo = front + speed * 0.75;
+      // Look *further* down a destination lane than down the one being escaped:
+      // checking only as far as the current threat will happily sidestep into a
+      // wall standing just past it.
+      const commitTo = front + speed * 1.5;
+
+      if (!this.laneIsClear(world, p.lane, front, escapeTo)) {
+        const limit = (LANES.count - 1) / 2;
+        const inRange = (l: number) => l >= -limit && l <= limit;
+
+        // Search outward for the nearest safe lane and step toward it. Only
+        // considering *adjacent* lanes strands him when two lanes are blocked
+        // and the gap is on the far side — he needs to be willing to cross
+        // twice, which there is time for.
+        let target: number | null = null;
+        for (let d = 1; d <= LANES.count && target === null; d++) {
+          for (const l of [p.lane - d, p.lane + d]) {
+            if (!inRange(l)) continue;
+            if (this.laneIsClear(world, l, front, commitTo)) {
+              target = l;
+              break;
+            }
+          }
+        }
+        // Nothing is safe for the long haul; take the best short-term escape.
+        if (target === null) {
+          for (let d = 1; d <= LANES.count && target === null; d++) {
+            for (const l of [p.lane - d, p.lane + d]) {
+              if (!inRange(l)) continue;
+              if (this.laneIsClear(world, l, front, escapeTo)) {
+                target = l;
+                break;
+              }
+            }
+          }
+        }
+
+        if (target !== null && target !== p.lane) {
+          if (target < p.lane) out.wantLeft = true;
+          else out.wantRight = true;
+          this.laneCooldown = 0.16;
+          return out;
+        }
       }
     }
 

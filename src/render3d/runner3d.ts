@@ -265,10 +265,20 @@ export class Runner3D {
   }
 
   /** Pose and place the runner for this frame. */
-  update(player: Player, speedT: number, worldZ: number, y: number, opts: { flow: number; overdrive: boolean; ghost: number }): void {
+  update(
+    player: Player,
+    speedT: number,
+    worldZ: number,
+    y: number,
+    lateral: number,
+    opts: { flow: number; overdrive: boolean; ghost: number },
+  ): void {
     const pose = poseFor(player, speedT);
 
-    this.group.position.set(0, y, worldZ);
+    this.group.position.set(lateral, y, worldZ);
+    // Bank into a lane change — the body leads the feet, as it does in life.
+    this.group.rotation.z = -player.bank * 0.5;
+    this.group.rotation.y = player.bank * 0.55;
     this.pivot.position.y = HIP_Y + pose.hipDrop;
     this.pivot.position.z = -pose.hipShift;
     this.pivot.rotation.x = pose.rot;

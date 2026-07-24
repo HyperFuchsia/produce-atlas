@@ -33,7 +33,15 @@ const simulate = (seed: number, seconds: number) => {
 
   while (steps < maxSteps) {
     const intent = bot.update(world, FIXED_DT);
-    world.step(FIXED_DT, intent.wantJump, intent.wantDive, intent.holdJump, intent.holdDive);
+    world.step(
+      FIXED_DT,
+      intent.wantJump,
+      intent.wantDive,
+      intent.holdJump,
+      intent.holdDive,
+      intent.wantLeft,
+      intent.wantRight,
+    );
     world.events.length = 0;
     peakObstacles = Math.max(peakObstacles, world.spawner.obstacles.length);
     furthest = Math.max(furthest, world.stats.distance);
@@ -102,7 +110,9 @@ describe('generator', () => {
         const a = solid[i];
         const b = solid[j];
         if (a.x + a.w <= b.x || b.x + b.w <= a.x) continue;
-        // Overlapping x is allowed only when they occupy different heights.
+        // Overlapping x is fine when they sit in different lanes, or at
+        // different heights. Only all three axes at once is a real collision.
+        if (Math.abs(a.lane - b.lane) >= a.halfW + b.halfW) continue;
         const vertical = overlaps(
           { x: a.x, y: a.y, w: a.w, h: a.h },
           { x: b.x, y: b.y, w: b.w, h: b.h },
@@ -238,7 +248,15 @@ describe('rules', () => {
     const bot = new Autopilot();
     for (let i = 0; i < 180; i++) {
       const intent = bot.update(world, FIXED_DT);
-      world.step(FIXED_DT, intent.wantJump, intent.wantDive, intent.holdJump, intent.holdDive);
+      world.step(
+        FIXED_DT,
+        intent.wantJump,
+        intent.wantDive,
+        intent.holdJump,
+        intent.holdDive,
+        intent.wantLeft,
+        intent.wantRight,
+      );
     }
     expect(world.stats.vaults + world.stats.clears).toBeGreaterThan(0);
     expect(world.phase).toBe('running');

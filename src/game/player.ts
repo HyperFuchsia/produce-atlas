@@ -1,9 +1,10 @@
 import { clamp, type Rect } from '../engine/math';
-import { PLAYER } from './tuning';
+import { LANES, PLAYER, laneX } from './tuning';
 
 export type PlayerState = 'run' | 'air' | 'vault' | 'slide' | 'dive' | 'hurt' | 'dead';
 
 export type PlayerEvent =
+  | 'lane'
   | 'jump'
   | 'doubleFail'
   | 'land'
@@ -17,6 +18,8 @@ export type PlayerEvent =
 export interface PlayerCtx {
   wantJump: boolean;
   wantDive: boolean;
+  wantLeft: boolean;
+  wantRight: boolean;
   holdJump: boolean;
   holdDive: boolean;
   /** Horizontal speed the run manager wants this frame (m/s). */
@@ -62,6 +65,14 @@ export class Player {
   /** Extra speed from vaults/dives that decays back to the run speed. */
   boost = 0;
 
+  /** Lane index (−1 left, 0 middle, +1 right) and the smoothed position. */
+  lane = 0;
+  lateral = 0;
+  /** Previous lateral, for render interpolation. */
+  pLateral = 0;
+  /** Signed lean into a lane change, purely for the pose. */
+  bank = 0;
+
   /** Cosmetic: leg cycle phase, used by the character renderer. */
   cycle = 0;
   lean = 0;
@@ -88,7 +99,16 @@ export class Player {
     this.boost = 0;
     this.cycle = 0;
     this.lean = 0;
+    this.lane = 0;
+    this.lateral = 0;
+    this.pLateral = 0;
+    this.bank = 0;
     this.events.length = 0;
+  }
+
+  /** True while he is still crossing between lanes. */
+  get changingLane(): boolean {
+    return Math.abs(this.lateral - laneX(this.lane)) > 0.02;
   }
 
   get height(): number {
@@ -115,6 +135,8 @@ export class Player {
   step(dt: number, ctx: PlayerCtx): void {
     this.px = this.x;
     this.py = this.y;
+    this.pLateral = this.lateral;
+    this.stepLateral(dt, ctx);
     this.stateT += dt;
     this.sinceJump += dt;
     this.invuln = Math.max(0, this.invuln - dt);
@@ -239,6 +261,38 @@ export class Player {
       this.state = this.onGround ? 'run' : 'air';
       this.stateT = 0;
     }
+  }
+
+  /**
+   * Lateral movement. A lane change is a commitment: the input picks a target
+   * lane and he crosses at a fixed speed, so a dodge always takes the same time
+   * to complete and can be read by the player as a fixed cost.
+   */
+  private stepLateral(dt: number, ctx: PlayerCtx): void {
+    if (this.state === 'dead') return;
+    const limit = (LANES.count - 1) / 2;
+    if (ctx.wantLeft && this.lane > -limit) {
+      this.lane--;
+      this.events.push('lane');
+    }
+    if (ctx.wantRight && this.lane < limit) {
+      this.lane++;
+      this.events.push('lane');
+    }
+
+    const target = laneX(this.lane);
+    const delta = target - this.lateral;
+    const step = LANES.changeSpeed * dt;
+    this.lateral = Math.abs(delta) <= step ? target : this.lateral + Math.sign(delta) * step;
+
+    // Bank into the turn, and settle back when the crossing finishes.
+    const wanted = clamp(delta * 0.5, -0.42, 0.42);
+    this.bank += (wanted - this.bank) * Math.min(1, dt * 12);
+  }
+
+  /** Shove him back inside the deck — used when a wall blocks a lane change. */
+  blockLaneChange(): void {
+    this.lane = Math.round(this.lateral / LANES.spacing);
   }
 
   /** Called by the world when the feet cross a solid surface while falling. */

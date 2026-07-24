@@ -25,6 +25,10 @@ export interface Obstacle {
   y: number;
   w: number;
   h: number;
+  /** Lateral centre (metres from the platform's middle). */
+  lane: number;
+  /** Lateral half-extent. `LANES.fullHalfWidth` means it spans the deck. */
+  halfW: number;
   vaultable: boolean;
   breakable: boolean;
   standable: boolean;
@@ -53,6 +57,8 @@ export interface Pickup {
   kind: PickupKind;
   x: number;
   y: number;
+  /** Lateral position. */
+  lane: number;
   r: number;
   taken: boolean;
   t: number;
@@ -61,10 +67,12 @@ export interface Pickup {
   vy: number;
 }
 
-/** A solid stretch of floor. Anything between two spans is a pit. */
-export interface FloorSpan {
+/** A hole in the deck, optionally confined to part of its width. */
+export interface Gap {
   x0: number;
   x1: number;
+  lane: number;
+  halfW: number;
 }
 
 let nextId = 1;
@@ -73,6 +81,8 @@ export const resetIds = (): void => {
 };
 
 export interface ObstacleOpts {
+  lane?: number;
+  halfW?: number;
   vaultable?: boolean;
   breakable?: boolean;
   standable?: boolean;
@@ -97,6 +107,8 @@ export const makeObstacle = (
   y,
   w,
   h,
+  lane: opts.lane ?? 0,
+  halfW: opts.halfW ?? 3.6,
   vaultable: opts.vaultable ?? false,
   breakable: opts.breakable ?? false,
   standable: opts.standable ?? false,
@@ -113,11 +125,12 @@ export const makeObstacle = (
   seed: opts.seed ?? Math.floor(x * 7.13) % 997,
 });
 
-export const makePickup = (kind: PickupKind, x: number, y: number): Pickup => ({
+export const makePickup = (kind: PickupKind, x: number, y: number, lane = 0): Pickup => ({
   id: nextId++,
   kind,
   x,
   y,
+  lane,
   r: kind === 'shard' ? 0.32 : kind === 'core' ? 0.55 : 0.62,
   taken: false,
   t: 0,

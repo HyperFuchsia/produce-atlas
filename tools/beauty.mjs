@@ -24,6 +24,8 @@ const OBSTACLE = (kind, x, y, w, h, extra = {}) => ({
   y,
   w,
   h,
+  lane: 0,
+  halfW: 3.6,
   vaultable: false,
   breakable: false,
   standable: false,
@@ -131,7 +133,7 @@ const main = async () => {
     w.spawner.gaps.length = 0;
     w.spawner.obstacles.push({
       id: 5150, kind: 'panel', x: w.player.x + 16, y: 0, w: 0.45, h: 2.9,
-      vaultable: false, breakable: true, standable: false, cleared: false,
+      lane: 0, halfW: 3.6, vaultable: false, breakable: true, standable: false, cleared: false,
       broken: false, minClear: 99, locked: false, t: 0, baseY: 0, amp: 0,
       period: 2, phase: 0, variant: 0, seed: 3,
     });

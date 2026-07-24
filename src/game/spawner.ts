@@ -1,5 +1,6 @@
 import { Rng } from '../engine/rng';
-import type { Obstacle, Pickup } from './entities';
+import { LANES } from './tuning';
+import type { Gap, Obstacle, Pickup } from './entities';
 import { PATTERNS, type ChunkCtx } from './patterns';
 import { WORLD } from './tuning';
 
@@ -15,7 +16,7 @@ import { WORLD } from './tuning';
 export class Spawner {
   obstacles: Obstacle[] = [];
   pickups: Pickup[] = [];
-  gaps: { x0: number; x1: number }[] = [];
+  gaps: Gap[] = [];
 
   /** World x where the next chunk will be written. */
   cursor = 0;
@@ -99,18 +100,22 @@ export class Spawner {
     this.gaps.length = w;
   }
 
-  /** Is there floor under this world x? */
-  isSolidAt(x: number): boolean {
-    for (const g of this.gaps) if (x > g.x0 && x < g.x1) return false;
+  /** Is there floor under this world x, in this lane? */
+  isSolidAt(x: number, lateral = 0): boolean {
+    for (const g of this.gaps) {
+      if (x <= g.x0 || x >= g.x1) continue;
+      if (Math.abs(lateral - g.lane) < g.halfW + LANES.halfWidth) return false;
+    }
     return true;
   }
 
-  /** Nearest pit ahead of x within `range`, or null. */
-  pitAhead(x: number, range: number): { x0: number; x1: number } | null {
-    let best: { x0: number; x1: number } | null = null;
+  /** Nearest pit ahead of x that threatens this lane, or null. */
+  pitAhead(x: number, range: number, lateral = 0): Gap | null {
+    let best: Gap | null = null;
     for (const g of this.gaps) {
       if (g.x1 < x) continue;
       if (g.x0 > x + range) continue;
+      if (Math.abs(lateral - g.lane) >= g.halfW + LANES.halfWidth) continue;
       if (!best || g.x0 < best.x0) best = g;
     }
     return best;

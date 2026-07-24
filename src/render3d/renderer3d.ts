@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { clamp, damp } from '../engine/math';
 import type { Screen } from '../engine/screen';
 import { RUN } from '../game/tuning';
@@ -50,7 +54,12 @@ export class Renderer3D {
   private zone: Zone3D = cloneZone(zone3DAt(0));
   private time = 0;
   private camY = 3;
+  private camLateral = 0;
   private camShake = 0;
+  private composer: EffectComposer | null = null;
+  private bloom: UnrealBloomPass | null = null;
+  private grade: ShaderPass | null = null;
+  private usePost = true;
   private banner: HTMLDivElement;
   private bannerTimer = 0;
   private perf: HTMLDivElement;
@@ -136,8 +145,79 @@ export class Renderer3D {
     this.perf.hidden = true;
     host.appendChild(this.perf);
 
+    this.buildPost();
     screen.onResize(() => this.applySize());
     this.applySize();
+  }
+
+  /**
+   * Post chain: bloom, then a grade/vignette pass.
+   *
+   * Bloom is not decoration here — the whole look is emissive strips against
+   * near-black, and without a bloom the neon reads as flat coloured tape. The
+   * pass runs at half resolution, which is where bloom looks best anyway
+   * (it is a blur) and costs a quarter of the fill.
+   */
+  private buildPost(): void {
+    try {
+      const vp = this.screen.viewport;
+      const composer = new EffectComposer(this.renderer);
+      composer.addPass(new RenderPass(this.scene, this.camera));
+
+      const bloom = new UnrealBloomPass(
+        new THREE.Vector2(Math.max(1, vp.width * 0.5), Math.max(1, vp.height * 0.5)),
+        1.15, // strength
+        0.85, // radius
+        0.66, // threshold — only the emissive strips and lights should bloom
+      );
+      composer.addPass(bloom);
+
+      const grade = new ShaderPass({
+        uniforms: {
+          tDiffuse: { value: null },
+          uVignette: { value: 0.9 },
+          uSaturation: { value: 1.16 },
+          uTint: { value: new THREE.Color(0x0a1428) },
+          uFlash: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D tDiffuse;
+          uniform float uVignette;
+          uniform float uSaturation;
+          uniform vec3 uTint;
+          varying vec2 vUv;
+          void main() {
+            vec4 c = texture2D(tDiffuse, vUv);
+            // Saturate around luma, so neon gets richer without clipping.
+            float l = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
+            c.rgb = mix(vec3(l), c.rgb, uSaturation);
+            // Lift the shadows toward the zone's own blue rather than to grey.
+            c.rgb += uTint * (1.0 - smoothstep(0.0, 0.35, l)) * 0.5;
+            // Vignette.
+            vec2 d = vUv - 0.5;
+            float v = 1.0 - dot(d, d) * uVignette;
+            c.rgb *= v;
+            gl_FragColor = vec4(c.rgb, c.a);
+          }
+        `,
+      });
+      grade.renderToScreen = true;
+      composer.addPass(grade);
+
+      this.composer = composer;
+      this.bloom = bloom;
+      this.grade = grade;
+    } catch {
+      // Any failure here just means we draw without post; never a black screen.
+      this.composer = null;
+    }
   }
 
   private applySize(): void {
@@ -147,6 +227,11 @@ export class Renderer3D {
     this.camera.aspect = vp.aspect;
     // Portrait sees less width, so widen the lens to keep the same road ahead.
     this.camera.updateProjectionMatrix();
+    if (this.composer) {
+      this.composer.setPixelRatio(this.screen.pixelRatio);
+      this.composer.setSize(vp.width, vp.height);
+      this.bloom?.setSize(Math.max(1, vp.width * 0.5), Math.max(1, vp.height * 0.5));
+    }
   }
 
   reset(): void {
@@ -154,6 +239,7 @@ export class Renderer3D {
     this.bannerTimer = 0;
     this.banner.classList.remove('is-on');
     this.camY = 3;
+    this.camLateral = 0;
     this.trailTimer = 0;
   }
 
@@ -178,6 +264,9 @@ export class Renderer3D {
         break;
       case 'dive':
         this.fx.emit(e.x, e.y + 0.4, 12, { speed: 3.4, spread: 1.6, color: 0x9fb4d6, life: 0.5, size: 0.3 });
+        break;
+      case 'lane':
+        this.fx.emit(e.x, e.y + 0.35, 7, { speed: 3, spread: 1.2, dir: -1, color: accent, life: 0.3, size: 0.22 });
         break;
       case 'vault':
         this.fx.emit(e.x, e.y, e.perfect ? 34 : 16, {
@@ -262,6 +351,7 @@ export class Renderer3D {
     // Interpolate the fixed-step simulation into render space.
     const x = p.px + (p.x - p.px) * alpha;
     const y = p.py + (p.y - p.py) * alpha;
+    const lateral = p.pLateral + (p.lateral - p.pLateral) * alpha;
     const z = -x;
 
     // ---------------------------------------------------------------- zone
@@ -287,11 +377,15 @@ export class Renderer3D {
     // Portrait has a much narrower horizontal lens, so it takes a gentler
     // angle — at the landscape offset the runner falls outside the frame.
     const side = this.screen.viewport.portrait ? 2.7 : 5.2;
-    this.camera.position.set(side, this.camY + portraitLift, z + back);
+    // Follow lane changes only partly. Tracking them fully would swing the
+    // whole city sideways every dodge; ignoring them entirely would let him
+    // walk out of frame.
+    this.camLateral = damp(this.camLateral, lateral * 0.45, 9, frameDt);
+    this.camera.position.set(side + this.camLateral, this.camY + portraitLift, z + back);
     // Aim slightly *past* the runner, not at him: overshooting swings him back
     // toward the middle of the frame while the platform still recedes across
     // it, so hazards travel toward him rather than straight at the lens.
-    this.camera.lookAt(-0.9, 1.35 + y * 0.3, z - 5.5);
+    this.camera.lookAt(-0.9 + this.camLateral, 1.35 + y * 0.3, z - 5.5);
 
     // Speed widens the lens; portrait widens it further to restore lookahead.
     const fov = 62 + speedT * 9 + (this.screen.viewport.portrait ? 8 : 0) + (world.overdriveTimer > 0 ? 5 : 0);
@@ -316,13 +410,13 @@ export class Renderer3D {
     this.runner.setAccent(this.zone.accent);
     const blinking = p.invuln > 0 && world.phase === 'running';
     const ghost = blinking ? (Math.sin(this.time * 26) > 0 ? 1 : 0) : 1;
-    this.runner.update(p, speedT, z, y, {
+    this.runner.update(p, speedT, z, y, lateral, {
       flow: world.flowActive ? 1 : 0,
       overdrive: world.overdriveTimer > 0,
       ghost,
     });
 
-    this.rimLight.position.set(-1.6, y + 2.4, z + 0.4);
+    this.rimLight.position.set(lateral - 1.6, y + 2.4, z + 0.4);
     this.rimLight.color.copy(world.flowActive ? new THREE.Color(0xff3fa4) : this.zone.key);
     this.rimLight.intensity = world.flowActive ? 30 : 20;
 
@@ -347,7 +441,22 @@ export class Renderer3D {
       this.perf.hidden = true;
     }
 
-    this.renderer.render(this.scene, this.camera);
+    if (this.usePost && this.composer) {
+      if (this.grade) {
+        // Flow pushes saturation; the grade lifts shadows toward the zone hue.
+        const sat = 1.16 + (world.flowActive ? 0.22 : 0) + (world.overdriveTimer > 0 ? 0.12 : 0);
+        this.grade.uniforms.uSaturation.value +=
+          (sat - this.grade.uniforms.uSaturation.value) * Math.min(1, frameDt * 6);
+        (this.grade.uniforms.uTint.value as THREE.Color).copy(this.zone.fog).multiplyScalar(0.35);
+      }
+      if (this.bloom) {
+        const target = 1.15 + (world.flowActive ? 0.5 : 0) + (world.overdriveTimer > 0 ? 0.35 : 0);
+        this.bloom.strength += (target - this.bloom.strength) * Math.min(1, frameDt * 5);
+      }
+      this.composer.render(frameDt);
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
   }
 
   private applyZone(opts: RenderOpts): void {
@@ -355,6 +464,8 @@ export class Renderer3D {
     fog.color.copy(this.zone.fog);
     fog.near = this.zone.fogNear;
     fog.far = opts.quality === 'low' ? this.zone.fogFar * 0.72 : this.zone.fogFar;
+    // Post is the first thing to go when a device is struggling.
+    this.usePost = opts.quality === 'high';
     this.renderer.setClearColor(this.zone.fog.getHex(), 1);
     this.skyTex.update(this.zone);
 

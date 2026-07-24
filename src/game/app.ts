@@ -311,7 +311,15 @@ export class App {
       case 'boot': {
         // Attract mode: the bot runs the Conduit behind the menu.
         const intent = this.bot.update(this.world, dt);
-        this.world.step(dt, intent.wantJump, intent.wantDive, intent.holdJump, intent.holdDive);
+        this.world.step(
+          dt,
+          intent.wantJump,
+          intent.wantDive,
+          intent.holdJump,
+          intent.holdDive,
+          intent.wantLeft,
+          intent.wantRight,
+        );
         if (this.world.phase !== 'running' && this.world.phase !== 'dying') {
           this.world.start({ ...buildRunConfig(this.profile, (Math.random() * 1e9) | 0), headstart: 0, startShields: 0 });
           this.bot.reset();
@@ -321,14 +329,28 @@ export class App {
       case 'playing': {
         if (this.forceBot) {
           const intent = this.bot.update(this.world, dt);
-          this.world.step(dt, intent.wantJump, intent.wantDive, intent.holdJump, intent.holdDive);
+          this.world.step(
+            dt,
+            intent.wantJump,
+            intent.wantDive,
+            intent.holdJump,
+            intent.holdDive,
+            intent.wantLeft,
+            intent.wantRight,
+          );
           if (this.world.phase === 'revive') this.enterRevive();
           else if (this.world.phase === 'over') this.finishRun();
           break;
         }
-        const wantJump = this.input.consume('up');
-        const wantDive = this.input.consume('down');
-        this.world.step(dt, wantJump, wantDive, this.input.isHeld('up'), this.input.isHeld('down'));
+        this.world.step(
+          dt,
+          this.input.consume('up'),
+          this.input.consume('down'),
+          this.input.isHeld('up'),
+          this.input.isHeld('down'),
+          this.input.consume('left'),
+          this.input.consume('right'),
+        );
         if (this.world.phase === 'revive') this.enterRevive();
         else if (this.world.phase === 'over') this.finishRun();
         break;
@@ -387,6 +409,10 @@ export class App {
         case 'slide':
           audio.play('slide');
           haptics.fire('light');
+          break;
+        case 'lane':
+          audio.play('lane');
+          haptics.fire('select');
           break;
         case 'dive':
           audio.play('dive');

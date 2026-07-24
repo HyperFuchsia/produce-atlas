@@ -71,6 +71,14 @@ const main = async () => {
   const jumped = await page.evaluate(() => window.NEON_VAULT.world.player.y > 0.05);
   check('keyboard reaches the game', jumped);
 
+  // Lane changes are the new third verb — prove the input path reaches the sim.
+  await page.waitForTimeout(400);
+  const laneBefore = await page.evaluate(() => window.NEON_VAULT.world.player.lane);
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(250);
+  const laneAfter = await page.evaluate(() => window.NEON_VAULT.world.player.lane);
+  check('lane change works', laneAfter !== laneBefore, `lane ${laneBefore} → ${laneAfter}`);
+
   // Hand it to the bot to prove a real run holds up.
   await page.evaluate(() => window.NEON_VAULT.setBot(true));
   const samples = [];

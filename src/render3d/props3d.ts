@@ -328,9 +328,10 @@ export class Props3D {
 
       const item = pool[idx];
       item.group.visible = true;
-      // Unit meshes sit on y=0 spanning z ∈ [-0.5, 0.5]; scale to the hitbox.
-      item.group.position.set(0, o.y, -(o.x + o.w * 0.5));
-      item.group.scale.set(1, o.h, o.w);
+      // Unit meshes sit on y=0 spanning z ∈ [-0.5, 0.5] and x ∈ [-SPAN/2,
+      // SPAN/2]; scale to the exact hitbox, including its lateral extent.
+      item.group.position.set(o.lane, o.y, -(o.x + o.w * 0.5));
+      item.group.scale.set(Math.min(1, (o.halfW * 2) / SPAN), o.h, o.w);
 
       if (item.spin) item.spin.rotation.x = Math.sin(this.time * 2.5 + o.seed) * 0.15;
       if (o.kind === 'gate') {
@@ -361,21 +362,21 @@ export class Props3D {
         if (s >= this.shards.length) continue;
         const m = this.shards[s++];
         m.visible = true;
-        m.position.set(0, pk.y + bob, -pk.x);
+        m.position.set(pk.lane, pk.y + bob, -pk.x);
         m.rotation.y = this.time * 2.4 + pk.x;
         m.rotation.z = 0.35;
       } else if (pk.kind === 'core') {
         if (c >= this.cores.length) continue;
         const m = this.cores[c++];
         m.visible = true;
-        m.position.set(0, pk.y + bob, -pk.x);
+        m.position.set(pk.lane, pk.y + bob, -pk.x);
         m.rotation.y = this.time * 1.6;
         m.rotation.x = this.time * 0.9;
       } else {
         if (p >= this.powers.length) continue;
         const g = this.powers[p++];
         g.visible = true;
-        g.position.set(0, pk.y + bob, -pk.x);
+        g.position.set(pk.lane, pk.y + bob, -pk.x);
         g.rotation.y = this.time * 1.8;
         const color = pk.kind === 'magnet' ? 0x45f5ff : pk.kind === 'shield' ? 0x9dff4d : 0xff3fa4;
         for (const child of g.children) {

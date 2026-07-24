@@ -25,12 +25,20 @@ hazards travel toward Marcus rather than straight at the lens. An off-axis view
 also reads *height* properly — the only axis this game asks you to judge. From
 directly behind, a vault and a dive look far more alike than they should.
 
-**Three verbs.** Tap the top half of the screen to jump; hold longer to jump
-higher. Tap the bottom half to dive — a slide on the ground, a fast headfirst
-dive in the air. Meet a barrier mid-jump and Marcus hand-plants into an
-automatic vault. That is the entire control scheme.
+**Four verbs, two of them on the same finger.** Tap the top half of the screen
+(or swipe up) to jump; hold longer to jump higher. Tap the bottom half (or
+swipe down) to dive — a slide on the ground, a fast headfirst dive in the air.
+Swipe left or right to change lane. Meet a barrier mid-jump and Marcus
+hand-plants into an automatic vault.
 
-**Ten obstacle types**, each demanding a different read: vaultable barriers,
+**Three lanes.** Some walls are too tall to jump and too low to slide under, so
+the only way past is beside them — and shard trails mark the safe line, which
+makes the greedy read and the correct read the same read. Lane hazards compose
+with the vertical ones: dodge, then vault; slide under a scanner that only
+covers two lanes; jump a hole that only eats one.
+
+**Eleven obstacle types**, each demanding a different read: lane walls,
+vaultable barriers,
 crate walls, scanner beams with a slide gap, hovering sentries, glass panels
 that only a dive breaks, plasma gates that alternate high and low on a beat,
 spring pads, elevated rails, narrow pylons, and holes in the deck.
@@ -63,6 +71,12 @@ A few decisions worth knowing about:
 runner lives or dies on consistent physics: the same jump must clear the same
 barrier on a 60 Hz phone and a 120 Hz iPad.
 
+**The third axis is one number.** An obstacle carries a lateral centre and a
+half-extent, and collision asks whether the runner's extent overlaps it.
+Anything authored as full-width behaves exactly as it did before lanes existed
+— which is why adding a whole movement axis did not disturb a single existing
+pattern.
+
 **Levels are authored in seconds, not metres.** Every distance in
 `src/game/patterns.ts` is written as a fraction of a second of travel and
 multiplied by the current run speed. As Marcus accelerates from 10 m/s to
@@ -88,6 +102,11 @@ re-placed each frame from a sliding window of slot indices, with every
 variation derived from a hash of the index. The result is an infinite,
 deterministic city at constant memory and, at the time of writing, **~95 draw
 calls and 12k triangles** for the whole scene.
+
+**Bloom is not decoration.** The whole look is emissive strips against
+near-black; without a bloom pass the neon reads as flat coloured tape. It runs
+at half resolution — which is where a blur belongs anyway — and is the first
+thing the quality governor drops.
 
 **All audio is synthesised at runtime.** Every sound effect is built from
 oscillators and filtered noise, and the music is a look-ahead scheduled synth
@@ -117,7 +136,9 @@ bounded forever, and a rule-based bot must survive 90-second windows of real
 generated course. That last test is the one that matters — it is how the
 unfair cases got found and fixed (spring pads that acted as walls, sentries
 that dipped below slide height, gates that flipped while you were airborne,
-pylon rows with no legal landing spot).
+pylon rows with no legal landing spot, and — once lanes arrived — a bot that
+would sidestep into a wall standing just beyond its scan, then strand itself
+when the only gap was two lanes away).
 
 `npm run smoke` boots the built game in a real browser, plays a kilometre
 through the attract bot, and asserts progression, every menu, the

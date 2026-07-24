@@ -3,7 +3,7 @@ import { Rng } from '../engine/rng';
 import { gateIsHigh, resetIds, updateObstacle, type Obstacle, type Pickup } from './entities';
 import { Player } from './player';
 import { Spawner } from './spawner';
-import { PLAYER, RUN, SCORE, WORLD } from './tuning';
+import { LANES, PLAYER, RUN, SCORE, WORLD } from './tuning';
 
 export type RunPhase = 'running' | 'dying' | 'revive' | 'over';
 
@@ -39,6 +39,7 @@ export type FxEvent =
   | { type: 'jump'; x: number; y: number }
   | { type: 'land'; x: number; y: number; hard: boolean }
   | { type: 'slide'; x: number; y: number }
+  | { type: 'lane'; x: number; y: number }
   | { type: 'dive'; x: number; y: number }
   | { type: 'vault'; x: number; y: number; perfect: boolean }
   | { type: 'shatter'; x: number; y: number }
@@ -178,6 +179,17 @@ export class World {
     this.spawner.ensure(this.player.x, this.difficulty, this.speed);
   }
 
+  /**
+   * Does the runner's lateral extent overlap this obstacle's?
+   *
+   * This is the whole of the third axis. Anything authored with
+   * `LANES.fullHalfWidth` still spans the deck and behaves exactly as it did
+   * before lanes existed, which is why the entire pattern library kept working.
+   */
+  private laterallyOverlaps(lane: number, halfW: number): boolean {
+    return Math.abs(this.player.lateral - lane) < halfW + LANES.halfWidth;
+  }
+
   private speedForDistance(dist: number): number {
     return RUN.startSpeed + (RUN.maxSpeed - RUN.startSpeed) * (1 - Math.exp(-dist / RUN.speedRamp));
   }
@@ -186,7 +198,15 @@ export class World {
   // Simulation
   // ==========================================================================
 
-  step(dt: number, wantJump: boolean, wantDive: boolean, holdJump: boolean, holdDive: boolean): void {
+  step(
+    dt: number,
+    wantJump: boolean,
+    wantDive: boolean,
+    holdJump: boolean,
+    holdDive: boolean,
+    wantLeft = false,
+    wantRight = false,
+  ): void {
     if (this.phase === 'over' || this.phase === 'revive') return;
 
     // Hit-stop: a few frames of frozen time sell every impact.
@@ -203,6 +223,8 @@ export class World {
       this.player.step(scaled, {
         wantJump: false,
         wantDive: false,
+        wantLeft: false,
+        wantRight: false,
         holdJump: false,
         holdDive: false,
         targetSpeed: 0,
@@ -231,6 +253,8 @@ export class World {
     this.player.step(scaled, {
       wantJump,
       wantDive,
+      wantLeft,
+      wantRight,
       holdJump,
       holdDive,
       targetSpeed: this.speed,
@@ -279,11 +303,12 @@ export class World {
     if (!p.onGround && p.vy <= 0) {
       let best: number | null = null;
       // Floor
-      if (this.spawner.isSolidAt(p.x) && p.py >= -0.001 && p.y <= 0) best = 0;
+      if (this.spawner.isSolidAt(p.x, p.lateral) && p.py >= -0.001 && p.y <= 0) best = 0;
       // Standable props
       for (const o of this.spawner.obstacles) {
         if (!o.standable || o.broken) continue;
         if (p.x + hw < o.x || p.x - hw > o.x + o.w) continue;
+        if (!this.laterallyOverlaps(o.lane, o.halfW)) continue;
         const top = o.y + o.h;
         if (p.py >= top - 0.02 && p.y <= top) best = best === null ? top : Math.max(best, top);
       }
@@ -295,7 +320,7 @@ export class World {
     } else if (p.onGround) {
       // Walked off the end of a rail, or over a pit.
       if (p.supportY === 0) {
-        if (!this.spawner.isSolidAt(p.x)) p.leaveGround();
+        if (!this.spawner.isSolidAt(p.x, p.lateral)) p.leaveGround();
       } else {
         const support = this.standableAt(p.x, p.supportY);
         if (!support) p.leaveGround();
@@ -310,6 +335,7 @@ export class World {
       if (!o.standable || o.broken) continue;
       if (Math.abs(o.y + o.h - top) > 0.05) continue;
       if (x + hw < o.x || x - hw > o.x + o.w) continue;
+      if (!this.laterallyOverlaps(o.lane, o.halfW)) continue;
       return o;
     }
     return null;
@@ -334,6 +360,7 @@ export class World {
     const standing: Rect = { x: p.x - PLAYER.width * 0.5, y: p.y, w: PLAYER.width, h: PLAYER.height };
     for (const o of this.spawner.obstacles) {
       if (o.broken || o.standable) continue;
+      if (!this.laterallyOverlaps(o.lane, o.halfW)) continue;
       if (overlaps(standing, { x: o.x, y: o.y, w: o.w, h: o.h })) return true;
     }
     return false;
@@ -351,12 +378,15 @@ export class World {
       if (o.x > p.x + 8) break; // list is generated in x order
       if (o.x + o.w < p.x - 4) continue;
 
+      const sameLane = this.laterallyOverlaps(o.lane, o.halfW);
+
       // Track how close the miss was, for CLOSE CALL credit.
-      if (box.x < o.x + o.w && box.x + box.w > o.x) {
+      if (sameLane && box.x < o.x + o.w && box.x + box.w > o.x) {
         const gap = Math.max(o.y - (box.y + box.h), box.y - (o.y + o.h));
         if (gap >= 0) o.minClear = Math.min(o.minClear, gap);
       }
 
+      if (!sameLane) continue;
       if (!overlaps(box, { x: o.x, y: o.y, w: o.w, h: o.h })) continue;
 
       // Standables are one-way platforms: you may pass up through them and land
@@ -437,6 +467,8 @@ export class World {
       if (o.x + o.w >= p.x - PLAYER.width * 0.5) continue;
       o.cleared = true;
       if (o.kind === 'pad' || o.kind === 'rail') continue;
+      // Dodging into a clear lane counts; a hazard three lanes over does not.
+      if (o.minClear > 90) continue;
       this.stats.clears++;
       this.bumpCombo();
       this.addFlow(RUN.flowGainPerClear);
@@ -493,11 +525,13 @@ export class World {
       if (magnetOn && pk.kind === 'shard') {
         const dx = px - pk.x;
         const dy = py - pk.y;
-        const dist = Math.hypot(dx, dy);
+        const dl = p.lateral - pk.lane;
+        const dist = Math.hypot(dx, dy, dl);
         if (dist < radius) {
           const pull = (1 - dist / radius) * 46;
           pk.vx = damp(pk.vx, (dx / (dist || 1)) * pull, 8, dt);
           pk.vy = damp(pk.vy, (dy / (dist || 1)) * pull, 8, dt);
+          pk.lane += (dl / (dist || 1)) * pull * dt;
           pk.x += pk.vx * dt;
           pk.y += pk.vy * dt;
         }
@@ -507,6 +541,7 @@ export class World {
       const cx = clamp(pk.x, box.x, box.x + box.w);
       const cy = clamp(pk.y, box.y, box.y + box.h);
       const grabR = pk.r + (pk.kind === 'shard' ? 0.35 : 0.55);
+      if (Math.abs(pk.lane - p.lateral) > grabR + LANES.halfWidth) continue;
       if ((pk.x - cx) ** 2 + (pk.y - cy) ** 2 > grabR * grabR) continue;
 
       pk.taken = true;
@@ -634,6 +669,9 @@ export class World {
           break;
         case 'slideStart':
           this.events.push({ type: 'slide', x: p.x, y: p.y });
+          break;
+        case 'lane':
+          this.events.push({ type: 'lane', x: p.x, y: p.y });
           break;
         case 'diveStart':
           this.events.push({ type: 'dive', x: p.x, y: p.y });

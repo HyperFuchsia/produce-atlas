@@ -1,5 +1,6 @@
 import type { Rng } from '../engine/rng';
-import { makeObstacle, makePickup, type Obstacle, type Pickup } from './entities';
+import { makeObstacle, makePickup, type Gap, type Obstacle, type Pickup } from './entities';
+import { LANES, laneX } from './tuning';
 
 /**
  * The pattern library.
@@ -26,7 +27,7 @@ export interface ChunkCtx {
 export interface Chunk {
   obstacles: Obstacle[];
   pickups: Pickup[];
-  gaps: { x0: number; x1: number }[];
+  gaps: Gap[];
   length: number;
 }
 
@@ -44,19 +45,27 @@ export interface PatternDef {
 const s2m = (ctx: ChunkCtx, seconds: number): number => seconds * ctx.speed;
 
 /** Shards along a jump arc, so the greedy line is also the correct line. */
-const arcShards = (out: Pickup[], x0: number, x1: number, peak: number, count: number, floor = 0.9): void => {
+const arcShards = (
+  out: Pickup[],
+  x0: number,
+  x1: number,
+  peak: number,
+  count: number,
+  floor = 0.9,
+  lane = 0,
+): void => {
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0.5 : i / (count - 1);
     const x = x0 + (x1 - x0) * t;
     const y = floor + Math.sin(t * Math.PI) * (peak - floor);
-    out.push(makePickup('shard', x, y));
+    out.push(makePickup('shard', x, y, lane));
   }
 };
 
-const lineShards = (out: Pickup[], x0: number, x1: number, y: number, count: number): void => {
+const lineShards = (out: Pickup[], x0: number, x1: number, y: number, count: number, lane = 0): void => {
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0 : i / (count - 1);
-    out.push(makePickup('shard', x0 + (x1 - x0) * t, y));
+    out.push(makePickup('shard', x0 + (x1 - x0) * t, y, lane));
   }
 };
 
@@ -64,14 +73,25 @@ const lineShards = (out: Pickup[], x0: number, x1: number, y: number, count: num
 // Element builders — the vocabulary the patterns are written in.
 // --------------------------------------------------------------------------
 
-const barrier = (x: number, h = 1.15): Obstacle =>
-  makeObstacle('barrier', x, 0, 1.0, h, { vaultable: true, standable: false });
+const FULL: number = LANES.fullHalfWidth;
+/** One lane's worth of lateral half-extent, with a little forgiveness. */
+const LANE_HALF = LANES.spacing * 0.5 - 0.06;
 
-const stack = (x: number, h = 1.95): Obstacle => makeObstacle('stack', x, 0, 1.5, h, { vaultable: h <= 1.5 });
+const barrier = (x: number, h = 1.15, lane = 0, halfW = FULL): Obstacle =>
+  makeObstacle('barrier', x, 0, 1.0, h, { vaultable: true, standable: false, lane, halfW });
 
-const beam = (x: number, gap = 0.98): Obstacle => makeObstacle('beam', x, gap, 1.5, 3.4 - gap);
+const stack = (x: number, h = 1.95, lane = 0, halfW = FULL): Obstacle =>
+  makeObstacle('stack', x, 0, 1.5, h, { vaultable: h <= 1.5, lane, halfW });
 
-const panel = (x: number): Obstacle => makeObstacle('panel', x, 0, 0.45, 2.9, { breakable: true });
+/** A full-height wall confined to one lane — dodge it, you cannot clear it. */
+const wall = (x: number, lane: number): Obstacle =>
+  makeObstacle('stack', x, 0, 1.6, 3.4, { lane: laneX(lane), halfW: LANE_HALF });
+
+const beam = (x: number, gap = 0.98, lane = 0, halfW = FULL): Obstacle =>
+  makeObstacle('beam', x, gap, 1.5, 3.4 - gap, { lane, halfW });
+
+const panel = (x: number, lane = 0, halfW = FULL): Obstacle =>
+  makeObstacle('panel', x, 0, 0.45, 2.9, { breakable: true, lane, halfW });
 
 const drone = (x: number, y: number, amp = 0.5, period = 2.4, phase = 0): Obstacle =>
   makeObstacle('drone', x, y, 1.25, 0.95, { amp, period, phase });
@@ -262,7 +282,7 @@ export const PATTERNS: PatternDef[] = [
       const x0 = c.x + s2m(c, 0.45);
       const p: Pickup[] = [];
       arcShards(p, x0 - 1, x0 + w + 1, 3.0, 6, 1.4);
-      return { obstacles: [], pickups: p, gaps: [{ x0, x1: x0 + w }], length: w + s2m(c, 1.05) };
+      return { obstacles: [], pickups: p, gaps: [{ x0, x1: x0 + w, lane: 0, halfW: FULL }], length: w + s2m(c, 1.05) };
     },
   },
   {
@@ -277,7 +297,7 @@ export const PATTERNS: PatternDef[] = [
       const p: Pickup[] = [];
       arcShards(p, x0 - 1, x0 + w + 1, 3.0, 5, 1.4);
       arcShards(p, o[0].x - 1.2, o[0].x + 2.6, 2.6, 4);
-      return { obstacles: o, pickups: p, gaps: [{ x0, x1: x0 + w }], length: o[0].x - c.x + s2m(c, 0.95) };
+      return { obstacles: o, pickups: p, gaps: [{ x0, x1: x0 + w, lane: 0, halfW: FULL }], length: o[0].x - c.x + s2m(c, 0.95) };
     },
   },
   {
@@ -295,7 +315,7 @@ export const PATTERNS: PatternDef[] = [
       return {
         obstacles: o,
         pickups: p,
-        gaps: [{ x0: px + 1.9, x1: px + 1.9 + w }],
+        gaps: [{ x0: px + 1.9, x1: px + 1.9 + w, lane: 0, halfW: FULL }],
         length: w + s2m(c, 1.4),
       };
     },
@@ -410,6 +430,125 @@ export const PATTERNS: PatternDef[] = [
       lineShards(p, cX + 0.8, dX - 1.2, 0.9, 3);
       p.push(makePickup('core', dX + 3.2, 2.2));
       return { obstacles: o, pickups: p, gaps: [], length: dX - c.x + s2m(c, 1.05) };
+    },
+  },
+  // --------------------------------------------------------------------------
+  // Lane patterns. These are the reason the deck is three lanes wide: the verb
+  // is "read which lane is open", and it composes with jump and dive rather
+  // than replacing them.
+  // --------------------------------------------------------------------------
+  {
+    id: 'lane-single',
+    minD: 0.06,
+    weight: (d) => 1.6 + d * 0.5,
+    tags: ['lane'],
+    build: (c) => {
+      // One lane blocked, two open — the gentlest possible introduction.
+      const blocked = c.rng.int(-1, 1);
+      const x = c.x + s2m(c, 0.55);
+      const o = [wall(x, blocked)];
+      const p: Pickup[] = [];
+      // Shards mark a safe lane, so the correct read is also the greedy one.
+      const safe = blocked === 0 ? c.rng.pick([-1, 1]) : 0;
+      lineShards(p, x - 2, x + 3, 1.05, 5, laneX(safe));
+      return { obstacles: o, pickups: p, gaps: [], length: s2m(c, 1.25) };
+    },
+  },
+  {
+    id: 'lane-pair',
+    minD: 0.3,
+    weight: (d) => 0.7 + d * 1.2,
+    tags: ['lane'],
+    build: (c) => {
+      // Two lanes blocked: exactly one way through, and you must spot it early.
+      const open = c.rng.int(-1, 1);
+      const x = c.x + s2m(c, 0.6);
+      const o: Obstacle[] = [];
+      for (const l of [-1, 0, 1]) if (l !== open) o.push(wall(x, l));
+      const p: Pickup[] = [];
+      lineShards(p, x - 2.4, x + 3.4, 1.05, 6, laneX(open));
+      return { obstacles: o, pickups: p, gaps: [], length: s2m(c, 1.35) };
+    },
+  },
+  {
+    id: 'lane-weave',
+    minD: 0.45,
+    weight: (d) => 0.4 + d * 1.5,
+    tags: ['lane'],
+    build: (c) => {
+      // A slalom: consecutive blocks that force alternating dodges.
+      const step = s2m(c, 0.62);
+      const x0 = c.x + s2m(c, 0.45);
+      const first = c.rng.pick([-1, 1]);
+      const o: Obstacle[] = [];
+      const p: Pickup[] = [];
+      const n = c.d > 0.7 ? 3 : 2;
+      for (let i = 0; i < n; i++) {
+        const blocked = i % 2 === 0 ? first : -first;
+        o.push(wall(x0 + i * step, blocked));
+        lineShards(p, x0 + i * step - 1, x0 + i * step + 1, 1.05, 2, laneX(-blocked));
+      }
+      return { obstacles: o, pickups: p, gaps: [], length: step * (n - 1) + s2m(c, 1.2) };
+    },
+  },
+  {
+    id: 'lane-and-vault',
+    minD: 0.35,
+    weight: (d) => 0.5 + d * 1.3,
+    tags: ['mixed'],
+    build: (c) => {
+      // Dodge, then vault: the two verbs in sequence, close enough to feel
+      // like one movement but far enough apart to be readable.
+      const x0 = c.x + s2m(c, 0.45);
+      const x1 = x0 + s2m(c, 0.66);
+      const blocked = c.rng.pick([-1, 1]);
+      const o: Obstacle[] = [wall(x0, blocked), barrier(x1, 1.2)];
+      const p: Pickup[] = [];
+      lineShards(p, x0 - 1.4, x0 + 1.4, 1.05, 3, laneX(-blocked));
+      arcShards(p, x1 - 1.4, x1 + 3, 2.6, 5, 0.9, laneX(-blocked));
+      return { obstacles: o, pickups: p, gaps: [], length: x1 - c.x + s2m(c, 0.95) };
+    },
+  },
+  {
+    id: 'lane-hole',
+    minD: 0.5,
+    weight: (d) => 0.35 + d * 1.1,
+    tags: ['lane'],
+    build: (c) => {
+      // A hole in one lane. Sidestep it, or jump it and keep your line.
+      const lane = c.rng.int(-1, 1);
+      const x0 = c.x + s2m(c, 0.5);
+      const w = s2m(c, 0.45);
+      const p: Pickup[] = [];
+      arcShards(p, x0 - 1, x0 + w + 1, 2.8, 5, 1.3, laneX(lane));
+      const safe = lane === 0 ? 1 : 0;
+      lineShards(p, x0, x0 + w, 1.05, 3, laneX(safe));
+      return {
+        obstacles: [],
+        pickups: p,
+        gaps: [{ x0, x1: x0 + w, lane: laneX(lane), halfW: LANE_HALF }],
+        length: w + s2m(c, 1.15),
+      };
+    },
+  },
+  {
+    id: 'lane-beam',
+    minD: 0.55,
+    weight: (d) => 0.3 + d * 1.2,
+    tags: ['mixed'],
+    build: (c) => {
+      // A scanner over two lanes and a wall in the third: slide, or sidestep
+      // into the clear lane. Two correct answers, which is the good kind of
+      // decision — both are legal, one is faster.
+      const x = c.x + s2m(c, 0.55);
+      const wallLane = c.rng.pick([-1, 1]);
+      const o: Obstacle[] = [
+        wall(x, wallLane),
+        beam(x, 0.95, laneX(-wallLane) * 0.5, LANES.spacing - 0.1),
+      ];
+      const p: Pickup[] = [];
+      lineShards(p, x - 1.2, x + 2, 0.42, 4, laneX(-wallLane));
+      return { obstacles: o, pickups: p, gaps: [], length: s2m(c, 1.35) };
     },
   },
   {

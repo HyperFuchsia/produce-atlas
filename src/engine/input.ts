@@ -1,33 +1,54 @@
 /**
- * Unified input: touch (tap zones + swipes), mouse, keyboard and gamepad all
- * collapse into two buffered actions — UP (jump/vault) and DOWN (dive/slide).
+ * Unified input: touch, mouse, keyboard and gamepad all collapse into four
+ * buffered actions — UP (jump/vault), DOWN (dive/slide), LEFT and RIGHT
+ * (lane changes).
  *
- * Two details that make a runner feel fair:
+ * The touch scheme is the part that needed care. Firing a jump on `pointerdown`
+ * is the lowest-latency thing you can do, but it makes horizontal swipes
+ * impossible — the jump has already gone off before the finger moves. Waiting
+ * for `pointerup` fixes swipes and adds latency to every jump.
+ *
+ * So: a swipe fires the instant it crosses the threshold, a quick tap fires on
+ * release, and a press still held after HOLD_FIRE_MS fires there and stays
+ * held — which is what keeps variable jump height working for players who
+ * press and hold rather than flick.
+ *
+ * Two details make it fair regardless:
  *  - *Buffering*: an action pressed slightly too early still fires when it
  *    becomes legal (BUFFER_MS).
  *  - *Hold state*: variable jump height and extended slides need to know the
  *    button is still down, not just that it was tapped.
  */
 
-export type Action = 'up' | 'down';
+export type Action = 'up' | 'down' | 'left' | 'right';
 
 const BUFFER_MS = 130;
+/** Movement (CSS px) that turns a press into a swipe. */
+const SWIPE_PX = 26;
+/** A press still held this long fires in place, so holds still work. */
+const HOLD_FIRE_MS = 120;
 
 export interface InputOptions {
   /** Swap tap zones for left-handed / inverted preference. */
   invert: boolean;
 }
 
+interface Touch {
+  startX: number;
+  startY: number;
+  startTime: number;
+  fired: Action | null;
+}
+
 export class Input {
-  private buffered: Record<Action, number> = { up: 0, down: 0 };
-  private held: Record<Action, boolean> = { up: false, down: false };
-  private heldSince: Record<Action, number> = { up: 0, down: 0 };
+  private buffered: Record<Action, number> = { up: 0, down: 0, left: 0, right: 0 };
+  private held: Record<Action, boolean> = { up: false, down: false, left: false, right: false };
+  private heldSince: Record<Action, number> = { up: 0, down: 0, left: 0, right: 0 };
   private keys = new Set<string>();
-  private pointerAction = new Map<number, Action>();
+  private touches = new Map<number, Touch>();
   private now = 0;
   private enabled = true;
-  private padUpWasDown = false;
-  private padDownWasDown = false;
+  private padState: Record<Action, boolean> = { up: false, down: false, left: false, right: false };
 
   options: InputOptions = { invert: false };
   /** Fired for any input while the game is not running (menus use it to start). */
@@ -59,6 +80,13 @@ export class Input {
   /** Advance the internal clock; call once per frame before consuming. */
   tick(nowMs: number): void {
     this.now = nowMs;
+    // A press held past the window is a deliberate hold, not a swipe.
+    for (const t of this.touches.values()) {
+      if (t.fired || nowMs - t.startTime < HOLD_FIRE_MS) continue;
+      const action = this.zoneAction(t.startY);
+      t.fired = action;
+      this.press(action, nowMs);
+    }
     this.pollGamepad();
   }
 
@@ -92,7 +120,8 @@ export class Input {
     if (!this.enabled) return;
     this.buffered[action] = nowMs;
     if (!this.held[action]) this.heldSince[action] = nowMs;
-    this.held[action] = true;
+    // Lane changes are discrete: there is nothing to hold.
+    this.held[action] = action === 'up' || action === 'down';
   }
 
   release(action: Action): void {
@@ -102,7 +131,9 @@ export class Input {
   releaseAll = (): void => {
     this.held.up = false;
     this.held.down = false;
-    this.pointerAction.clear();
+    this.held.left = false;
+    this.held.right = false;
+    this.touches.clear();
     this.keys.clear();
   };
 
@@ -143,6 +174,14 @@ export class Input {
       case 'ShiftRight':
       case 'KeyX':
         return 'down';
+      case 'ArrowLeft':
+      case 'KeyA':
+      case 'KeyQ':
+        return 'left';
+      case 'ArrowRight':
+      case 'KeyD':
+      case 'KeyE':
+        return 'right';
       default:
         return null;
     }
@@ -152,35 +191,52 @@ export class Input {
   private onPointerDown = (e: PointerEvent): void => {
     // Menu buttons live in the DOM above the canvas and stop propagation
     // themselves; anything reaching here is a gameplay input.
-    const action = this.resolveZone(e.clientY);
-    this.pointerAction.set(e.pointerId, action);
+    this.touches.set(e.pointerId, {
+      startX: e.clientX,
+      startY: e.clientY,
+      startTime: performance.now(),
+      fired: null,
+    });
     (e.target as Element)?.setPointerCapture?.(e.pointerId);
-    this.press(action, performance.now());
+    this.onAnyPress?.();
     e.preventDefault();
   };
 
   private onPointerMove = (e: PointerEvent): void => {
-    if (!this.pointerAction.has(e.pointerId)) return;
-    // A swipe that crosses into the other half re-triggers the opposite action,
-    // so "tap-and-drag down" reads as a dive without lifting the finger.
-    const action = this.resolveZone(e.clientY);
-    const prev = this.pointerAction.get(e.pointerId);
-    if (prev !== action) {
-      this.pointerAction.set(e.pointerId, action);
-      if (prev) this.release(prev);
-      this.press(action, performance.now());
-    }
+    const t = this.touches.get(e.pointerId);
+    if (!t || t.fired) return;
+    const dx = e.clientX - t.startX;
+    const dy = e.clientY - t.startY;
+    if (Math.abs(dx) < SWIPE_PX && Math.abs(dy) < SWIPE_PX) return;
+
+    // Dominant axis wins, so a sloppy diagonal still does the obvious thing.
+    let action: Action;
+    if (Math.abs(dx) > Math.abs(dy)) action = dx > 0 ? 'right' : 'left';
+    else action = dy > 0 ? 'down' : 'up';
+    t.fired = action;
+    this.press(action, performance.now());
+    e.preventDefault();
   };
 
   private onPointerUp = (e: PointerEvent): void => {
-    const action = this.pointerAction.get(e.pointerId);
-    if (!action) return;
-    this.pointerAction.delete(e.pointerId);
-    for (const a of this.pointerAction.values()) if (a === action) return;
-    this.release(action);
+    const t = this.touches.get(e.pointerId);
+    if (!t) return;
+    this.touches.delete(e.pointerId);
+    if (!t.fired) {
+      // A clean tap: top half jumps, bottom half dives.
+      this.press(this.zoneAction(t.startY), performance.now());
+      // Release straight away — a tap is not a hold.
+      this.release('up');
+      this.release('down');
+      return;
+    }
+    if (t.fired === 'up' || t.fired === 'down') {
+      for (const other of this.touches.values()) if (other.fired === t.fired) return;
+      this.release(t.fired);
+    }
   };
 
-  private resolveZone(clientY: number): Action {
+  private zoneAction(clientY: number): Action {
     const rect = this.target.getBoundingClientRect();
     const rel = (clientY - rect.top) / Math.max(1, rect.height);
     const isTop = rel < 0.5;
@@ -192,19 +248,19 @@ export class Input {
   private pollGamepad(): void {
     const pads = navigator.getGamepads?.();
     if (!pads) return;
-    let up = false;
-    let down = false;
+    const now: Record<Action, boolean> = { up: false, down: false, left: false, right: false };
     for (const pad of pads) {
       if (!pad) continue;
-      up = up || !!pad.buttons[0]?.pressed || !!pad.buttons[12]?.pressed || (pad.axes[1] ?? 0) < -0.5;
-      down = down || !!pad.buttons[1]?.pressed || !!pad.buttons[13]?.pressed || (pad.axes[1] ?? 0) > 0.5;
+      now.up = now.up || !!pad.buttons[0]?.pressed || !!pad.buttons[12]?.pressed || (pad.axes[1] ?? 0) < -0.5;
+      now.down = now.down || !!pad.buttons[1]?.pressed || !!pad.buttons[13]?.pressed || (pad.axes[1] ?? 0) > 0.5;
+      now.left = now.left || !!pad.buttons[14]?.pressed || (pad.axes[0] ?? 0) < -0.5;
+      now.right = now.right || !!pad.buttons[15]?.pressed || (pad.axes[0] ?? 0) > 0.5;
       if (pad.buttons[9]?.pressed) this.onPauseKey?.();
     }
-    if (up && !this.padUpWasDown) this.press('up', performance.now());
-    if (!up && this.padUpWasDown) this.release('up');
-    if (down && !this.padDownWasDown) this.press('down', performance.now());
-    if (!down && this.padDownWasDown) this.release('down');
-    this.padUpWasDown = up;
-    this.padDownWasDown = down;
+    for (const a of ['up', 'down', 'left', 'right'] as Action[]) {
+      if (now[a] && !this.padState[a]) this.press(a, performance.now());
+      if (!now[a] && this.padState[a]) this.release(a);
+      this.padState[a] = now[a];
+    }
   }
 }

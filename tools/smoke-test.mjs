@@ -195,6 +195,8 @@ const main = async () => {
       y: 0,
       w: 2,
       h: 3.2,
+      lane: 0,
+      halfW: 3.6,
       vaultable: false,
       breakable: false,
       standable: false,

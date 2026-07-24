@@ -59,19 +59,31 @@ const makeWindowTexture = (): THREE.CanvasTexture => {
  */
 const makeDeckTexture = (): THREE.CanvasTexture => {
   const cvs = document.createElement('canvas');
-  cvs.width = 64;
+  cvs.width = 128;
   cvs.height = 64;
   const ctx = cvs.getContext('2d')!;
-  ctx.fillStyle = '#0b1322';
-  ctx.fillRect(0, 0, 64, 64);
-  ctx.fillStyle = 'rgba(150,220,255,0.16)';
-  ctx.fillRect(0, 0, 64, 3);
-  ctx.fillStyle = 'rgba(150,220,255,0.05)';
-  ctx.fillRect(0, 32, 64, 1);
-  for (let i = 1; i < 4; i++) {
-    ctx.fillStyle = 'rgba(150,220,255,0.05)';
-    ctx.fillRect(i * 16, 0, 1, 64);
+  ctx.fillStyle = '#060b14';
+  ctx.fillRect(0, 0, 128, 64);
+
+  // Spill from the edge lighting, as if the deck were wet. This is what turns
+  // a black slab into a surface — and, being emissive, it feeds the bloom.
+  for (const [x0, x1] of [
+    [0, 26],
+    [128, 102],
+  ]) {
+    const g = ctx.createLinearGradient(x0, 0, x1, 0);
+    g.addColorStop(0, 'rgba(150,230,255,0.34)');
+    g.addColorStop(0.3, 'rgba(150,230,255,0.07)');
+    g.addColorStop(1, 'rgba(150,230,255,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(Math.min(x0, x1), 0, Math.abs(x1 - x0), 64);
   }
+
+  // Panel seam at the leading edge of every 2 m tile, plus lane hints.
+  ctx.fillStyle = 'rgba(170,230,255,0.16)';
+  ctx.fillRect(0, 0, 128, 3);
+  ctx.fillStyle = 'rgba(150,220,255,0.07)';
+  for (const u of [0.333, 0.667]) ctx.fillRect(u * 128, 0, 1.5, 64);
   return new THREE.CanvasTexture(cvs);
 };
 
@@ -111,7 +123,13 @@ export class Track3D {
 
     // ---------------------------------------------------------------- deck
     // Faces are ordered +x −x +y −y +z −z; only the top carries the panel seam.
-    this.deckTopMat = new THREE.MeshLambertMaterial({ color: 0x0a1020, map: makeDeckTexture() });
+    const deckTex = makeDeckTexture();
+    this.deckTopMat = new THREE.MeshLambertMaterial({
+      color: 0x0a1020,
+      map: deckTex,
+      emissive: new THREE.Color(0x1b3550),
+      emissiveMap: deckTex,
+    });
     this.deck = new THREE.InstancedMesh(
       new THREE.BoxGeometry(TRACK_WIDTH, 0.4, TILE * 0.96),
       [this.deckMat, this.deckMat, this.deckTopMat, this.deckMat, this.deckMat, this.deckMat],
@@ -199,7 +217,8 @@ export class Track3D {
   /** Re-place every repeating element for the camera's current position. */
   update(camX: number, spawner: Spawner, zone: Zone3D, time: number): void {
     this.deckMat.color.copy(zone.deck);
-    this.deckTopMat.color.copy(zone.deck).multiplyScalar(1.3);
+    this.deckTopMat.color.copy(zone.deck).multiplyScalar(0.95);
+    this.deckTopMat.emissive.copy(zone.deckEdge).multiplyScalar(0.28);
     this.edgeMat.color.copy(zone.deckEdge);
     this.buildingMat.color.copy(zone.building);
     this.buildingMat.emissive.copy(zone.window).multiplyScalar(0.17);

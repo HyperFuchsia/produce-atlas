@@ -182,6 +182,11 @@ export class AudioEngine {
         this.noise(t, 0.26, { filter: 'bandpass', freq: 2600, sweepTo: 300, gain: 0.16, q: 0.7 });
         this.tone(520, t, 0.2, { type: 'sawtooth', gain: 0.1, sweepTo: 160 });
         break;
+      case 'lane':
+        if (!this.gate('lane', 70)) return;
+        this.noise(t, 0.13, { filter: 'bandpass', freq: 2200, sweepTo: 900, gain: 0.1, q: 1.6 });
+        this.tone(420, t, 0.09, { type: 'triangle', gain: 0.09, sweepTo: 620 });
+        break;
       case 'slide':
         if (!this.gate('slide', 220)) return;
         this.noise(t, 0.32, { filter: 'bandpass', freq: 900, sweepTo: 1500, gain: 0.09, q: 2.4 });
@@ -373,6 +378,7 @@ export type SfxName =
   | 'perfect'
   | 'dive'
   | 'slide'
+  | 'lane'
   | 'shatter'
   | 'shard'
   | 'core'
