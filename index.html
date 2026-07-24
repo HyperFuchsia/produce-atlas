@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>NEON VAULT</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#05060d" />
+    <meta name="description" content="NEON VAULT — vault, jump and dive down the Conduit in a neon future city." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icon-192.png" />
+    <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="stage" aria-label="Game view" role="img"></canvas>
+
+      <!-- Touch control hint zones (visual only; input is handled globally) -->
+      <div id="ui" class="ui">
+        <!-- ============================ BOOT ============================ -->
+        <section class="screen screen--boot" data-screen="boot">
+          <div class="boot-mark">
+            <div class="boot-mark__glyph">/\</div>
+            <h1 class="boot-mark__title">NEON<span>VAULT</span></h1>
+            <p class="boot-mark__sub">loading the conduit…</p>
+          </div>
+        </section>
+
+        <!-- ============================ TITLE ============================ -->
+        <section class="screen screen--title" data-screen="title" hidden>
+          <header class="title-block">
+            <h1 class="logo">NEON<span>VAULT</span></h1>
+            <p class="logo-sub">One path. Infinite momentum.</p>
+          </header>
+
+          <div class="title-stats">
+            <div class="stat"><span class="stat__k">BEST</span><b id="t-best">0</b></div>
+            <div class="stat"><span class="stat__k">SHARDS</span><b id="t-shards">0</b></div>
+            <div class="stat"><span class="stat__k">LEVEL</span><b id="t-level">1</b></div>
+          </div>
+
+          <div class="title-actions">
+            <button class="btn btn--primary" data-action="play">
+              <span class="btn__label">RUN</span>
+              <span class="btn__hint">tap / space</span>
+            </button>
+            <div class="btn-row">
+              <button class="btn" data-action="shop">GEAR</button>
+              <button class="btn" data-action="missions">MISSIONS<i class="dot" id="missions-dot" hidden></i></button>
+              <button class="btn" data-action="settings">SETTINGS</button>
+            </div>
+            <button class="btn btn--ghost" data-action="howto">HOW TO PLAY</button>
+          </div>
+
+          <footer class="title-foot">
+            <span id="t-daily" class="daily"></span>
+          </footer>
+        </section>
+
+        <!-- ============================ HOW TO ============================ -->
+        <section class="screen screen--sheet" data-screen="howto" hidden>
+          <div class="sheet">
+            <h2 class="sheet__title">HOW TO PLAY</h2>
+            <div class="howto">
+              <div class="howto__row">
+                <div class="howto__icon">▲</div>
+                <div>
+                  <b>VAULT / JUMP</b>
+                  <p>Tap the <em>top half</em> of the screen, or press <kbd>Space</kbd> / <kbd>↑</kbd>. Hold longer to jump higher. Hit a barrier mid-air and Marcus hand-plants into an automatic vault.</p>
+                </div>
+              </div>
+              <div class="howto__row">
+                <div class="howto__icon">▼</div>
+                <div>
+                  <b>DIVE / SLIDE</b>
+                  <p>Tap the <em>bottom half</em>, or press <kbd>↓</kbd> / <kbd>S</kbd>. On the ground you slide under beams. In the air you dive — fast, low, and hard enough to smash through glass panels.</p>
+                </div>
+              </div>
+              <div class="howto__row">
+                <div class="howto__icon">◆</div>
+                <div>
+                  <b>FLOW</b>
+                  <p>Late vaults, close-call dives and shard chains build the Flow meter. Fill it to enter <b>FLOW STATE</b>: double score and a shockwave that shrugs off one impact.</p>
+                </div>
+              </div>
+              <div class="howto__row">
+                <div class="howto__icon">✦</div>
+                <div>
+                  <b>SHARDS</b>
+                  <p>Spend them in GEAR on permanent upgrades and looks. Everything you unlock is yours forever — no timers, no energy.</p>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn--primary" data-action="back">GOT IT</button>
+          </div>
+        </section>
+
+        <!-- ============================ SHOP ============================ -->
+        <section class="screen screen--sheet" data-screen="shop" hidden>
+          <div class="sheet">
+            <header class="sheet__head">
+              <h2 class="sheet__title">GEAR</h2>
+              <div class="wallet">✦ <b id="shop-shards">0</b></div>
+            </header>
+            <div class="tabs" role="tablist">
+              <button class="tab is-on" data-tab="upgrades" role="tab">UPGRADES</button>
+              <button class="tab" data-tab="skins" role="tab">LOOKS</button>
+            </div>
+            <div class="shop-list" id="shop-list"></div>
+            <button class="btn btn--primary" data-action="back">BACK</button>
+          </div>
+        </section>
+
+        <!-- ============================ MISSIONS ============================ -->
+        <section class="screen screen--sheet" data-screen="missions" hidden>
+          <div class="sheet">
+            <header class="sheet__head">
+              <h2 class="sheet__title">MISSIONS</h2>
+              <div class="wallet">LV <b id="mission-level">1</b></div>
+            </header>
+            <div class="xpbar"><i id="xpbar-fill"></i><span id="xpbar-label">0 / 100 XP</span></div>
+            <div class="mission-list" id="mission-list"></div>
+            <p class="fineprint">Complete all three to roll a fresh set.</p>
+            <button class="btn btn--primary" data-action="back">BACK</button>
+          </div>
+        </section>
+
+        <!-- ============================ SETTINGS ============================ -->
+        <section class="screen screen--sheet" data-screen="settings" hidden>
+          <div class="sheet">
+            <h2 class="sheet__title">SETTINGS</h2>
+            <div class="settings" id="settings-list"></div>
+            <button class="btn btn--danger btn--small" data-action="reset">RESET ALL PROGRESS</button>
+            <button class="btn btn--primary" data-action="back">BACK</button>
+          </div>
+        </section>
+
+        <!-- ============================ PAUSE ============================ -->
+        <section class="screen screen--modal" data-screen="pause" hidden>
+          <div class="modal">
+            <h2 class="sheet__title">PAUSED</h2>
+            <div class="pause-stats">
+              <div class="stat"><span class="stat__k">DISTANCE</span><b id="p-dist">0</b></div>
+              <div class="stat"><span class="stat__k">SCORE</span><b id="p-score">0</b></div>
+              <div class="stat"><span class="stat__k">SHARDS</span><b id="p-shards">0</b></div>
+            </div>
+            <button class="btn btn--primary" data-action="resume">RESUME</button>
+            <button class="btn" data-action="restart">RESTART</button>
+            <button class="btn btn--ghost" data-action="quit">QUIT TO TITLE</button>
+          </div>
+        </section>
+
+        <!-- ============================ REVIVE ============================ -->
+        <section class="screen screen--modal" data-screen="revive" hidden>
+          <div class="modal modal--revive">
+            <h2 class="sheet__title">SECOND WIND</h2>
+            <p class="modal__sub">Re-sync the courier rig and keep the run alive.</p>
+            <div class="revive-ring"><i id="revive-ring-fill"></i><b id="revive-count">5</b></div>
+            <button class="btn btn--primary" data-action="revive"><span id="revive-cost">✦ 150</span></button>
+            <button class="btn btn--ghost" data-action="giveup">END RUN</button>
+          </div>
+        </section>
+
+        <!-- ============================ GAME OVER ============================ -->
+        <section class="screen screen--over" data-screen="over" hidden>
+          <div class="over">
+            <p class="over__kicker" id="o-kicker">RUN COMPLETE</p>
+            <h2 class="over__score" id="o-score">0</h2>
+            <p class="over__best" id="o-best"></p>
+            <div class="over-grid">
+              <div class="stat"><span class="stat__k">DISTANCE</span><b id="o-dist">0 m</b></div>
+              <div class="stat"><span class="stat__k">SHARDS</span><b id="o-shards">0</b></div>
+              <div class="stat"><span class="stat__k">TOP COMBO</span><b id="o-combo">x1</b></div>
+              <div class="stat"><span class="stat__k">VAULTS</span><b id="o-vaults">0</b></div>
+            </div>
+            <div class="over-missions" id="o-missions"></div>
+            <button class="btn btn--primary" data-action="again">RUN AGAIN</button>
+            <div class="btn-row">
+              <button class="btn" data-action="shop">GEAR</button>
+              <button class="btn btn--ghost" data-action="quit">TITLE</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ============================ HUD ============================ -->
+        <section class="screen screen--hud" data-screen="hud" hidden>
+          <div class="hud-top">
+            <div class="hud-score">
+              <b id="h-score">0</b>
+              <span id="h-dist">0 m</span>
+            </div>
+            <div class="hud-right">
+              <div class="hud-shards">✦ <b id="h-shards">0</b></div>
+              <button class="iconbtn" data-action="pause" aria-label="Pause">❚❚</button>
+            </div>
+          </div>
+          <div class="hud-flow">
+            <div class="flowbar"><i id="h-flow"></i></div>
+            <div class="hud-combo" id="h-combo" hidden>x2</div>
+          </div>
+          <div class="hud-powers" id="h-powers"></div>
+          <div class="toasts" id="h-toasts"></div>
+        </section>
+      </div>
+
+      <div id="rotate-hint" class="rotate-hint" hidden>
+        <div class="rotate-hint__inner">↻<p>Turn your device sideways for the full view</p></div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
