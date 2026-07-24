@@ -1,7 +1,8 @@
 # Shipping NEON VAULT to the App Store
 
-The game is a self-contained web build wrapped in a native iOS shell by
-Capacitor. Everything below is the real, ordered checklist — the parts that
+The game is a self-contained WebGL build wrapped in a native iOS shell by
+Capacitor. It renders through WKWebView, which has hardware-accelerated WebGL
+on every iOS version this project supports. Everything below is the real, ordered checklist — the parts that
 need a Mac are called out, because they cannot be done from Linux or CI
 without one.
 
@@ -42,8 +43,8 @@ In **Signing & Capabilities**:
 In **General → Deployment Info**:
 
 - Minimum Deployment: **iOS 14.0** (Capacitor 6's floor).
-- Device Orientation: check **all four** — the game adapts to portrait and
-  landscape and shows a rotate hint in portrait.
+- Device Orientation: check **all four** — the 3-D camera adapts to both, and
+  portrait widens the lens to keep the same road ahead.
 - Status Bar Style: Light, "Hide status bar" checked.
 
 In **Info.plist**, add:
@@ -83,6 +84,7 @@ Suggested metadata (edit to taste):
 
 - **Name:** Neon Vault
 - **Subtitle:** One path. Infinite momentum.
+- **What's new / hook:** a 3-D endless runner with a two-tap control scheme
 - **Category:** Games → Arcade (secondary: Action)
 - **Age rating:** 4+ (no violence, no user content, no purchases by default)
 - **Keywords:** runner, endless runner, parkour, vault, arcade, neon, cyberpunk, one tap, reflex, freerun
@@ -99,6 +101,8 @@ Suggested metadata (edit to taste):
 >
 > • **Three verbs, no menus.** Tap high to vault, tap low to dive. That's the
 >   whole control scheme, and it's deep enough to chase for months.
+> • **Full 3-D.** The camera rides your shoulder down a lit deck strung through
+>   the city, and every hazard arrives in depth.
 > • **A course that scales with you.** Obstacles are spaced by reaction time,
 >   not distance, so the Conduit stays exactly as readable at full speed.
 > • **Flow State.** Chain perfect vaults and close calls to double your score

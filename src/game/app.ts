@@ -5,7 +5,7 @@ import { Loop } from '../engine/loop';
 import { clamp } from '../engine/math';
 import { Screen } from '../engine/screen';
 import { flushProfile, loadProfile, saveProfile, wipeProfile, type Profile, type Settings } from '../engine/storage';
-import { Renderer } from '../render/renderer';
+import { Renderer3D } from '../render3d/renderer3d';
 import { UI } from '../ui/ui';
 import { Autopilot } from './autopilot';
 import { applyRunToMissions, refreshIfComplete, type MissionCompletion } from './missions';
@@ -24,7 +24,7 @@ export class App {
   private readonly screen: Screen;
   private readonly input: Input;
   private readonly world = new World();
-  private readonly renderer: Renderer;
+  private readonly renderer: Renderer3D;
   private readonly ui = new UI();
   private readonly bot = new Autopilot();
   private readonly loop: Loop;
@@ -42,7 +42,7 @@ export class App {
   constructor(canvas: HTMLCanvasElement) {
     this.profile = loadProfile();
     this.screen = new Screen(canvas);
-    this.renderer = new Renderer(this.screen);
+    this.renderer = new Renderer3D(this.screen);
     this.input = new Input(canvas);
     this.loop = new Loop(this.update, this.render);
 
@@ -80,7 +80,6 @@ export class App {
     });
 
     window.addEventListener('pagehide', () => flushProfile(this.profile));
-    this.screen.onResize((vp) => this.ui.setRotateHint(vp.portrait && this.state === 'title'));
   }
 
   // ==========================================================================
@@ -108,7 +107,6 @@ export class App {
 
     this.ui.renderTitle(this.profile, dailyText);
     this.ui.show('title');
-    this.ui.setRotateHint(this.screen.viewport.portrait);
     audio.stopMusic(0.6);
     saveProfile(this.profile);
   }
@@ -456,29 +454,47 @@ export class App {
   };
 
   /**
-   * Quality governor. If the device can't hold a smooth frame we shed effects
-   * before we shed resolution — a runner that stutters is a runner that lies to
-   * the player about when to jump.
+   * Quality governor.
+   *
+   * If the device can't hold a smooth frame we shed effects before resolution —
+   * a runner that stutters lies to the player about when to jump.
+   *
+   * The window is deliberately short. An earlier version averaged 90 frames
+   * before acting, which on the machines that actually need help (4 fps) meant
+   * waiting twenty seconds for the first correction. It now reacts inside a
+   * second, and a genuinely dire frame rate triggers an immediate drop.
    */
   private governPerformance(frameDt: number): void {
     if (this.profile.settings.quality !== 'auto') return;
-    this.perfCooldown -= frameDt;
     this.perfSamples.push(frameDt);
-    if (this.perfSamples.length > 90) this.perfSamples.shift();
-    if (this.perfCooldown > 0 || this.perfSamples.length < 90) return;
+    if (this.perfSamples.length > 24) this.perfSamples.shift();
+    this.perfCooldown -= frameDt;
 
     let sum = 0;
     for (const s of this.perfSamples) sum += s;
-    const avgFps = 1 / (sum / this.perfSamples.length);
-    this.perfCooldown = 4;
+    const avgFps = this.perfSamples.length ? 1 / (sum / this.perfSamples.length) : 60;
 
-    // Hysteresis matters here: a governor that flips on a single slow second
-    // strips the weather and foreground off a machine that was coping fine.
+    // Emergency: unplayable, act now regardless of the cooldown.
+    if (this.perfSamples.length >= 8 && avgFps < 24) {
+      this.quality = 'low';
+      this.screen.setRenderScale(Math.max(0.5, this.screen.renderScale - 0.25));
+      this.perfSamples.length = 0;
+      this.perfCooldown = 1.5;
+      return;
+    }
+
+    if (this.perfCooldown > 0 || this.perfSamples.length < 24) return;
+    this.perfCooldown = 3;
+
+    // Hysteresis matters: a single slow second should not strip the weather off
+    // a machine that was coping fine.
     if (avgFps < 44 && this.quality === 'high') {
       this.quality = 'low';
     } else if (avgFps < 38) {
-      this.screen.setRenderScale(Math.max(0.6, this.screen.renderScale - 0.15));
-    } else if (avgFps > 54 && this.quality === 'low' && this.screen.renderScale >= 1) {
+      this.screen.setRenderScale(Math.max(0.5, this.screen.renderScale - 0.15));
+    } else if (avgFps > 56 && this.screen.renderScale < 1) {
+      this.screen.setRenderScale(Math.min(1, this.screen.renderScale + 0.1));
+    } else if (avgFps > 56 && this.quality === 'low') {
       this.quality = 'high';
     }
   }
@@ -496,6 +512,7 @@ export class App {
       startRun: () => this.startRun(),
       pause: () => this.pause(),
       resume: () => this.resume(),
+      budget: () => this.renderer.budget,
       setBot: (v: boolean) => {
         this.forceBot = v;
         this.bot.reset();

@@ -6,8 +6,9 @@ An endless runner about a kinetic courier named Marcus Vale, who moves through
 the vertical megacity of New Lagos the only way the Conduit allows: forward.
 Everything the city puts on that path gets vaulted, jumped, or dived through.
 
-Built as a shippable iOS title — Canvas 2D, TypeScript, zero art or audio
-assets, ~35 kB gzipped, wrapped for the App Store with Capacitor.
+Built as a shippable iOS title — a real-time 3-D game in WebGL (three.js) and
+TypeScript, with zero art or audio assets on disk, wrapped for the App Store
+with Capacitor.
 
 ```bash
 npm install
@@ -17,6 +18,9 @@ npm run dev        # play it at localhost:5173
 ---
 
 ## The game
+
+**A camera behind your shoulder, and one road.** You run *into* the screen down
+a lit deck suspended through the city, and everything arrives in depth.
 
 **Three verbs.** Tap the top half of the screen to jump; hold longer to jump
 higher. Tap the bottom half to dive — a slide on the ground, a fast headfirst
@@ -43,10 +47,11 @@ four trails, three rotating contracts, courier levels and a daily bonus.
 src/
   engine/     loop, input, audio, haptics, storage, screen, maths, rng
   game/       simulation — player, world, spawner, patterns, missions, meta
-  render/     background, character, props, fx, palette, renderer
+  render/     pose solver + shared palette
+  render3d/   scene, track, props, runner, particles, zone theming
   ui/         DOM menus, HUD, shop, settings
 tests/        headless simulation + fairness tests
-tools/        smoke test, icon generation, dev screenshots
+tools/        smoke test, icon generation, screenshots, single-file build
 ```
 
 A few decisions worth knowing about:
@@ -63,14 +68,33 @@ stays exactly as tight in the only unit a player actually feels — time to
 react. The generator sizes itself on *baseline* speed, never the boosted
 speed, so a power-up can only ever make the Conduit easier.
 
-**Marcus is drawn, not animated.** He is a small skeleton solved with forward
-kinematics and inked with paths every frame, so his pose blends continuously
-with the physics, he recolours instantly for every outfit, and he costs a few
-hundred bytes instead of a sprite atlas.
+**The simulation knows nothing about the renderer.** The world runs in metres
+on a single forward axis; the view maps that onto −Z and adds a chase camera.
+That separation is why the game could move from a 2-D side view to full 3-D
+without touching the physics, the generator, or a single fairness test.
+
+**Marcus is solved, not animated.** He is a small skeleton of joint angles
+driven by live physics — vertical speed, air time, how long a state has been
+held — so his pose blends continuously with what the simulation is doing
+rather than playing back fixed clips. The 3-D build feeds those identical
+angles into a hierarchy of meshes, and he recolours instantly for every outfit.
+
+**The city is never spawned.** Deck tiles, buildings, gantries, billboards and
+pit markers all live in fixed-size instanced meshes whose instances are
+re-placed each frame from a sliding window of slot indices, with every
+variation derived from a hash of the index. The result is an infinite,
+deterministic city at constant memory and, at the time of writing, **~95 draw
+calls and 12k triangles** for the whole scene.
 
 **All audio is synthesised at runtime.** Every sound effect is built from
 oscillators and filtered noise, and the music is a look-ahead scheduled synth
 loop whose tempo and layer count follow the run's intensity.
+
+**Colour is information.** The Conduit's key light is cyan, and cyan light on
+brown skin renders olive — so Marcus's skin, hair and beard carry more of their
+own colour than the scene's, and he reads the same under every zone. The same
+rule applies to hazard tape: a blocking face is unlit so its gold never shifts
+with the lighting.
 
 **Nothing leaves the device.** No network calls, no analytics, no accounts —
 which is also why the App Store privacy answer is simply "Data Not Collected".
@@ -93,8 +117,15 @@ that dipped below slide height, gates that flipped while you were airborne,
 pylon rows with no legal landing spot).
 
 `npm run smoke` boots the built game in a real browser, plays a kilometre
-through the attract bot, and asserts frame rate, progression, every menu, the
-pause/revive/results flow, portrait layout, and zero console errors.
+through the attract bot, and asserts progression, every menu, the
+pause/revive/results flow, portrait layout, the render budget, and zero console
+errors.
+
+A note on frame rate: CI here has no GPU, so WebGL falls back to a software
+rasterizer and the measured fps describes that rasterizer, not the game. The
+smoke test therefore reports fps and *asserts* on draw calls and triangles —
+the numbers that actually predict device performance. On real hardware a
+~95-call, 12k-triangle scene is not a demanding frame.
 
 ## Shipping to the App Store
 
@@ -118,8 +149,10 @@ pattern library in `src/game/patterns.ts` is a flat list of chunk builders;
 adding a new obstacle arrangement means adding one entry with a difficulty
 threshold and a weight curve.
 
-`dev/character.html` renders Marcus at print scale in every animation state —
-open it with `npm run dev` when tuning the character art.
+`npm run single-file` packs the whole game into one self-contained HTML file
+that runs from a hosted page, a `file://` URL or a USB stick, and verifies it
+end to end. `node tools/shoot.mjs <out.png> [w] [h] [ms]` grabs a gameplay
+frame for eyeballing changes.
 
 ## Licence
 

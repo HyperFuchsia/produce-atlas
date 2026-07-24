@@ -428,8 +428,4 @@ export class UI {
   previewSkin(p: Profile): { skin: ReturnType<typeof currentSkin>; trail: ReturnType<typeof currentTrail> } {
     return { skin: currentSkin(p), trail: currentTrail(p) };
   }
-
-  setRotateHint(show: boolean): void {
-    ($('#rotate-hint') as HTMLElement).hidden = !show;
-  }
 }
