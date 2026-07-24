@@ -49,6 +49,8 @@ const capsule = (radius: number, length: number, material: THREE.Material): THRE
 export class Runner3D {
   readonly group = new THREE.Group();
 
+  /** Rotates (bank, wall roll); the shadow and fill light must not. */
+  private body = new THREE.Group();
   private pivot = new THREE.Group();
   private spine = new THREE.Group();
   private shoulders = new THREE.Group();
@@ -64,7 +66,8 @@ export class Runner3D {
   private skinId = '';
 
   constructor() {
-    this.group.add(this.pivot);
+    this.group.add(this.body);
+    this.body.add(this.pivot);
 
     // Contact shadow — a soft disc that lives on the deck, not on the body.
     const shadowMat = new THREE.MeshBasicMaterial({
@@ -89,10 +92,11 @@ export class Runner3D {
       }),
     );
     this.glow.position.y = 1;
-    this.group.add(this.glow);
+    this.body.add(this.glow);
 
     this.fillLight.position.set(2.2, 2.0, 1.8);
     this.group.add(this.fillLight);
+    this.fillLight.matrixAutoUpdate = true;
   }
 
   /** (Re)build the body with a skin's palette. Cheap enough to call on change. */
@@ -100,7 +104,9 @@ export class Runner3D {
     if (this.skinId === skin.id) return;
     this.skinId = skin.id;
 
-    this.pivot.clear();
+    this.body.remove(this.pivot);
+    this.pivot = new THREE.Group();
+    this.body.add(this.pivot);
     for (const m of this.materials) m.dispose();
     this.materials.length = 0;
     this.accentMats.length = 0;
@@ -275,10 +281,17 @@ export class Runner3D {
   ): void {
     const pose = poseFor(player, speedT);
 
-    this.group.position.set(lateral, y, worldZ);
+    // A wall run hugs the panel: shift him the last half-metre so his shoes
+    // meet the face rather than hanging in the air beside it.
+    this.group.position.set(lateral + player.wallRoll * 0.45, y, worldZ);
     // Bank into a lane change — the body leads the feet, as it does in life.
-    this.group.rotation.z = -player.bank * 0.5;
-    this.group.rotation.y = player.bank * 0.55;
+    // A wall run rolls much further: his feet end up on the wall, which is the
+    // whole reason the move is worth having. Sign matters — +Z rotation swings
+    // his head toward −X, so a left wall needs a *negative* angle to plant the
+    // feet on it and throw the torso back out over the deck.
+    const roll = player.wallRoll * 1.18;
+    this.body.rotation.z = -player.bank * 0.5 + roll;
+    this.body.rotation.y = player.bank * 0.55;
     this.pivot.position.y = HIP_Y + pose.hipDrop;
     this.pivot.position.z = -pose.hipShift;
     this.pivot.rotation.x = pose.rot;
@@ -300,6 +313,13 @@ export class Runner3D {
       a.root.rotation.x = arm.shoulder + pose.torsoLean;
       a.child.rotation.x = arm.elbow - arm.shoulder;
     }
+
+    // The fill normally rides his open side. On a wall it swings across to the
+    // panel, so the surface blooms where his shoes strike it — the one cue
+    // that says "in contact" rather than "falling past".
+    const wall = player.wallRoll;
+    this.fillLight.position.set(2.2 + wall * 3.6, 2.0 - Math.abs(wall) * 0.9, 1.8);
+    this.fillLight.intensity = 9 + Math.abs(wall) * 10;
 
     // Blink while invulnerable; the whole rig fades rather than flickering parts.
     const visible = opts.ghost > 0.5;

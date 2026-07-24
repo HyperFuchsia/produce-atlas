@@ -63,6 +63,27 @@ export const PLAYER = {
   padLaunchVelocity: 21,
 } as const;
 
+/**
+ * Wall running. A long energy field across the deck cannot be jumped or slid —
+ * the only way through is up the wall beside it, which is what finally makes
+ * the lane you are standing in a life-or-death decision rather than a
+ * preference.
+ */
+export const WALL = {
+  /** Height his feet ride at while on the wall. */
+  height: 2.5,
+  /** Time to swing up onto the wall, and to settle back down after. */
+  mountTime: 0.22,
+  /** How far outboard of the lane centre he sits while attached. */
+  outboard: 0.85,
+  /** Upward kick when the wall ends, so the dismount arcs rather than drops. */
+  dismountVelocity: 5.4,
+  /** Speed bonus while attached — a wall run should feel fast. */
+  speedBonus: 1.6,
+  /** Score per metre of wall covered. */
+  scorePerMetre: 14,
+} as const;
+
 export const RUN = {
   startSpeed: 10.6,
   maxSpeed: 25.5,

@@ -44,16 +44,38 @@ export class Autopilot {
    * whether a dodge is needed and to make sure the dodge lands somewhere safe —
    * sidestepping out of one wall into another is worse than not moving.
    */
-  private laneIsClear(world: World, lane: number, x0: number, x1: number): boolean {
+  private laneIsClear(world: World, lane: number, x0: number, x1: number, speed: number): boolean {
     const lateral = laneX(lane);
+
+    /**
+     * Is a hazard spanning [a,b] carried over by a mountable wall in this lane?
+     * Asking whether the wall covers the whole *scan window* is wrong — the
+     * window is far longer than any wall, so that test never fires and the bot
+     * runs straight into the field the wall exists to beat.
+     */
+    const wallCovers = (a: number, b: number): boolean => {
+      for (const w of world.spawner.obstacles) {
+        if (w.kind !== 'wallrun' || w.broken) continue;
+        if (Math.abs(lateral - w.lane) >= w.halfW + LANES.halfWidth) continue;
+        if (w.x <= a + 0.5 && w.x + w.w >= b - 0.5) return true;
+      }
+      return false;
+    };
+
     for (const o of world.spawner.obstacles) {
+      if (o.kind === 'wallrun') continue;
       if (o.broken || o.standable) continue;
       if (o.x + o.w < x0 || o.x > x1) continue;
       if (Math.abs(lateral - o.lane) >= o.halfW + LANES.halfWidth) continue;
-      // Anything a jump or a slide can beat does not force a dodge.
-      const clearableByAir = o.y + o.h <= 2.55;
+      // Anything a jump or a slide can beat does not force a dodge — but
+      // "jumpable" is about length as well as height. A field is only 1.85 m
+      // tall and looks clearable, yet it runs for twenty metres: no jump in the
+      // game covers that, and checking height alone walks straight into it.
+      const jumpReach = speed * 0.5;
+      const clearableByAir = o.y + o.h <= 2.55 && o.w <= jumpReach;
       const clearableBySlide = o.y > 0.55;
       if (clearableByAir || clearableBySlide || o.breakable) continue;
+      if (wallCovers(o.x, o.x + o.w)) continue;
       return false;
     }
     for (const g of world.spawner.gaps) {
@@ -74,6 +96,8 @@ export class Autopilot {
     out.holdJump = this.holdJumpFor > 0;
     out.holdDive = this.holdDiveFor > 0;
     if (world.phase !== 'running') return out;
+    // On the wall there is nothing to decide: enjoy the ride.
+    if (p.state === 'wallrun') return out;
 
     const speed = Math.max(1, world.speed);
     const front = p.x + 0.33;
@@ -87,7 +111,7 @@ export class Autopilot {
     let threat: Obstacle | null = null;
     let threatTime = Infinity;
     for (const o of world.spawner.obstacles) {
-      if (o.broken || o.standable) continue;
+      if (o.broken || o.standable || o.kind === 'wallrun') continue;
       if (o.x + o.w < front) continue;
       if (Math.abs(p.lateral - o.lane) >= o.halfW + LANES.halfWidth) continue;
       const t = (o.x - front) / speed;
@@ -108,7 +132,7 @@ export class Autopilot {
       // wall standing just past it.
       const commitTo = front + speed * 1.5;
 
-      if (!this.laneIsClear(world, p.lane, front, escapeTo)) {
+      if (!this.laneIsClear(world, p.lane, front, escapeTo, speed)) {
         const limit = (LANES.count - 1) / 2;
         const inRange = (l: number) => l >= -limit && l <= limit;
 
@@ -120,7 +144,7 @@ export class Autopilot {
         for (let d = 1; d <= LANES.count && target === null; d++) {
           for (const l of [p.lane - d, p.lane + d]) {
             if (!inRange(l)) continue;
-            if (this.laneIsClear(world, l, front, commitTo)) {
+            if (this.laneIsClear(world, l, front, commitTo, speed)) {
               target = l;
               break;
             }
@@ -131,7 +155,7 @@ export class Autopilot {
           for (let d = 1; d <= LANES.count && target === null; d++) {
             for (const l of [p.lane - d, p.lane + d]) {
               if (!inRange(l)) continue;
-              if (this.laneIsClear(world, l, front, escapeTo)) {
+              if (this.laneIsClear(world, l, front, escapeTo, speed)) {
                 target = l;
                 break;
               }

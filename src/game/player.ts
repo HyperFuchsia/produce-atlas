@@ -1,7 +1,7 @@
 import { clamp, type Rect } from '../engine/math';
-import { LANES, PLAYER, laneX } from './tuning';
+import { LANES, PLAYER, WALL, laneX } from './tuning';
 
-export type PlayerState = 'run' | 'air' | 'vault' | 'slide' | 'dive' | 'hurt' | 'dead';
+export type PlayerState = 'run' | 'air' | 'vault' | 'slide' | 'dive' | 'wallrun' | 'hurt' | 'dead';
 
 export type PlayerEvent =
   | 'lane'
@@ -13,7 +13,9 @@ export type PlayerEvent =
   | 'slideStart'
   | 'slideEnd'
   | 'vaultStart'
-  | 'vaultEnd';
+  | 'vaultEnd'
+  | 'wallMount'
+  | 'wallEnd';
 
 export interface PlayerCtx {
   wantJump: boolean;
@@ -73,6 +75,11 @@ export class Player {
   /** Signed lean into a lane change, purely for the pose. */
   bank = 0;
 
+  /** Wall run: which side he is attached to (−1 left, +1 right), and how far in. */
+  wallSide = 0;
+  wallRoll = 0;
+  wallEndX = 0;
+
   /** Cosmetic: leg cycle phase, used by the character renderer. */
   cycle = 0;
   lean = 0;
@@ -103,6 +110,9 @@ export class Player {
     this.lateral = 0;
     this.pLateral = 0;
     this.bank = 0;
+    this.wallSide = 0;
+    this.wallRoll = 0;
+    this.wallEndX = 0;
     this.events.length = 0;
   }
 
@@ -112,6 +122,9 @@ export class Player {
   }
 
   get height(): number {
+    // On the wall he is horizontal-ish against it, but the box that matters is
+    // still the one the deck hazards below him must miss.
+    if (this.state === 'wallrun') return PLAYER.height * 0.8;
     if (this.state === 'slide') return PLAYER.slideHeight;
     if (this.state === 'dive') return PLAYER.diveHeight;
     if (this.state === 'vault') return PLAYER.height * 0.78;
@@ -147,6 +160,24 @@ export class Player {
       this.y = Math.max(0, this.y + this.vy * dt);
       this.vx *= 0.94;
       this.x += this.vx * dt;
+      return;
+    }
+
+    // ---------------------------------------------------------------- wall run
+    if (this.state === 'wallrun') {
+      const t = clamp(this.stateT / WALL.mountTime, 0, 1);
+      const ease = 1 - Math.pow(1 - t, 3);
+      this.y = WALL.height * ease;
+      // Roll onto the wall: feet toward it, body square to the deck.
+      this.wallRoll = this.wallSide * ease;
+      this.vy = 0;
+      this.vx = ctx.targetSpeed + WALL.speedBonus;
+      this.x += this.vx * dt;
+      this.cycle += dt * (this.vx / 12) * 9.5;
+      this.lean = 0.3;
+      // A push away from the wall drops him off it early, by choice.
+      const bailing = this.wallSide < 0 ? ctx.wantRight : ctx.wantLeft;
+      if (bailing) this.releaseWall();
       return;
     }
 
@@ -270,6 +301,17 @@ export class Player {
    */
   private stepLateral(dt: number, ctx: PlayerCtx): void {
     if (this.state === 'dead') return;
+    if (this.state === 'wallrun') {
+      // Pinned to the wall; the lane index stays put for the dismount.
+      const target = laneX(this.wallSide) + this.wallSide * WALL.outboard;
+      this.lateral += (target - this.lateral) * Math.min(1, dt * 14);
+      return;
+    }
+    // Settle the roll back to level once he is off the wall.
+    if (this.wallRoll !== 0) {
+      this.wallRoll += (0 - this.wallRoll) * Math.min(1, dt * 9);
+      if (Math.abs(this.wallRoll) < 0.01) this.wallRoll = 0;
+    }
     const limit = (LANES.count - 1) / 2;
     if (ctx.wantLeft && this.lane > -limit) {
       this.lane--;
@@ -288,6 +330,31 @@ export class Player {
     // Bank into the turn, and settle back when the crossing finishes.
     const wanted = clamp(delta * 0.5, -0.42, 0.42);
     this.bank += (wanted - this.bank) * Math.min(1, dt * 12);
+  }
+
+  /** Latch onto a side wall. The world decides when; the player owns the ride. */
+  mountWall(side: number, endX: number): void {
+    this.state = 'wallrun';
+    this.stateT = 0;
+    this.wallSide = side;
+    this.wallEndX = endX;
+    this.lane = side;
+    this.onGround = false;
+    this.vy = 0;
+    this.jumpCut = true;
+    this.events.push('wallMount');
+  }
+
+  /** Step off the wall, arcing back toward the deck. */
+  releaseWall(): void {
+    if (this.state !== 'wallrun') return;
+    this.state = 'air';
+    this.stateT = 0;
+    this.onGround = false;
+    this.vy = WALL.dismountVelocity;
+    this.jumpCut = true;
+    this.wallSide = 0;
+    this.events.push('wallEnd');
   }
 
   /** Shove him back inside the deck — used when a wall blocks a lane change. */

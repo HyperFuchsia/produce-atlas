@@ -37,11 +37,21 @@ makes the greedy read and the correct read the same read. Lane hazards compose
 with the vertical ones: dodge, then vault; slide under a scanner that only
 covers two lanes; jump a hole that only eats one.
 
-**Eleven obstacle types**, each demanding a different read: lane walls,
+**Wall running.** Some hazards refuse every other answer: a plasma field floods
+the deck from edge to edge, twice too long to jump and twice too tall to slide.
+The only line is the lane hard against the side wall, and taking it puts Marcus
+up on the wall itself — horizontal, feet on the panel, the field tearing past
+below. He rides it for score by the metre and drops back to the deck at the
+lip, or bails early by swiping away. Mounting is automatic: the skill is the
+lane read, made under pressure, and it is the one hazard where choosing the
+right lane is the whole answer.
+
+**Thirteen obstacle types**, each demanding a different read: lane walls,
 vaultable barriers,
 crate walls, scanner beams with a slide gap, hovering sentries, glass panels
 that only a dive breaks, plasma gates that alternate high and low on a beat,
-spring pads, elevated rails, narrow pylons, and holes in the deck.
+spring pads, elevated rails, narrow pylons, holes in the deck, run-up walls,
+and deck-wide plasma fields.
 
 **Flow.** Late vaults, close calls and shard chains fill the Flow meter. Fill
 it and you enter Flow State: double score, extra speed, and one free hit.
@@ -138,7 +148,12 @@ unfair cases got found and fixed (spring pads that acted as walls, sentries
 that dipped below slide height, gates that flipped while you were airborne,
 pylon rows with no legal landing spot, and — once lanes arrived — a bot that
 would sidestep into a wall standing just beyond its scan, then strand itself
-when the only gap was two lanes away).
+when the only gap was two lanes away). The wall run was the newest catch: the
+bot judged a plasma field jumpable because it checked the field's *height*
+against a jump and never its *length*, so it kept sprinting into a twenty-metre
+hazard. Teaching the oracle that a jump also has a horizontal reach took the
+death count from sixteen to zero, and now a sampling run clears ninety-odd wall
+sections and two kilometres of wall without dying once.
 
 `npm run smoke` boots the built game in a real browser, plays a kilometre
 through the attract bot, and asserts progression, every menu, the

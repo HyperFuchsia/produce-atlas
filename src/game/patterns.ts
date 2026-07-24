@@ -1,6 +1,6 @@
 import type { Rng } from '../engine/rng';
 import { makeObstacle, makePickup, type Gap, type Obstacle, type Pickup } from './entities';
-import { LANES, laneX } from './tuning';
+import { LANES, WALL, laneX } from './tuning';
 
 /**
  * The pattern library.
@@ -104,6 +104,16 @@ const pad = (x: number): Obstacle => makeObstacle('pad', x, 0, 1.8, 0.55, { stan
 const rail = (x: number, w: number, y = 2.9): Obstacle => makeObstacle('rail', x, y, w, 0.42, { standable: true });
 
 const pylon = (x: number, h = 2.2): Obstacle => makeObstacle('pylon', x, 0, 0.55, h);
+
+/**
+ * A mountable side wall. Its collision extent is the *mount zone* — the outer
+ * lane — while the renderer draws the wall itself out at the deck edge.
+ */
+const wallrun = (x: number, len: number, side: number): Obstacle =>
+  makeObstacle('wallrun', x, 0, len, 4.6, { lane: side * (LANES.spacing + 0.6), halfW: 1.15 });
+
+/** A long lethal floor field: too long to jump, too tall to slide. */
+const field = (x: number, len: number): Obstacle => makeObstacle('field', x, 0, len, 1.85);
 
 // --------------------------------------------------------------------------
 // Patterns
@@ -549,6 +559,55 @@ export const PATTERNS: PatternDef[] = [
       const p: Pickup[] = [];
       lineShards(p, x - 1.2, x + 2, 0.42, 4, laneX(-wallLane));
       return { obstacles: o, pickups: p, gaps: [], length: s2m(c, 1.35) };
+    },
+  },
+  // --------------------------------------------------------------------------
+  // Wall runs. The deck is covered by something that cannot be jumped or slid,
+  // and a wall runs alongside it. Get into the lane beside the wall and Marcus
+  // takes it automatically — the read is the lane, the payoff is the ride.
+  // --------------------------------------------------------------------------
+  {
+    id: 'wall-run',
+    minD: 0.22,
+    weight: (d) => 1.3 + d * 1.4,
+    tags: ['wall'],
+    build: (c) => {
+      const side = c.rng.pick([-1, 1]);
+      const lead = s2m(c, 0.85); // runway to read it and pick the lane
+      const len = s2m(c, c.rng.range(0.95, 1.35));
+      const x0 = c.x + lead;
+
+      // The wall starts a touch early so the mount happens before the field.
+      const o: Obstacle[] = [wallrun(x0 - 1.6, len + 1.6, side), field(x0, len)];
+
+      const p: Pickup[] = [];
+      // Shards ride the wall, marking the line and paying for taking it.
+      lineShards(p, x0, x0 + len, WALL.height + 0.55, Math.max(4, Math.round(len / 2.2)), laneX(side) + side * 0.85);
+      // A core at the far end, reachable only from the wall.
+      p.push(makePickup('core', x0 + len - 1.5, WALL.height + 1.1, laneX(side) + side * 0.85));
+      return { obstacles: o, pickups: p, gaps: [], length: lead + len + s2m(c, 1.1) };
+    },
+  },
+  {
+    id: 'wall-run-long',
+    minD: 0.55,
+    weight: (d) => (d < 0.55 ? 0 : 0.6 + d * 1.3),
+    tags: ['wall'],
+    build: (c) => {
+      // Longer ride, and a barrier waiting on the landing so the dismount has
+      // to be read too.
+      const side = c.rng.pick([-1, 1]);
+      const lead = s2m(c, 0.8);
+      const len = s2m(c, c.rng.range(1.5, 2.0));
+      const x0 = c.x + lead;
+      const o: Obstacle[] = [wallrun(x0 - 1.6, len + 1.6, side), field(x0, len)];
+      const landing = x0 + len + s2m(c, 0.75);
+      o.push(barrier(landing, 1.2));
+
+      const p: Pickup[] = [];
+      lineShards(p, x0, x0 + len, WALL.height + 0.55, Math.max(5, Math.round(len / 2)), laneX(side) + side * 0.85);
+      arcShards(p, landing - 1.4, landing + 3, 2.6, 4, 0.9, laneX(side));
+      return { obstacles: o, pickups: p, gaps: [], length: landing - c.x + s2m(c, 1.0) };
     },
   },
   {

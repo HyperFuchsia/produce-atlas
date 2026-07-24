@@ -194,8 +194,19 @@ const hurtPose = (p: Player): Pose => ({
   flare: 1,
 });
 
+/** Sideways sprint along a wall: an upright run, rolled onto its side. */
+const wallPose = (p: Player, speedT: number): Pose => {
+  const base = runPose(p, speedT);
+  base.torsoLean = 0.34 + speedT * 0.16;
+  base.headTilt = -0.3;
+  base.flare = 1;
+  return base;
+};
+
 export const poseFor = (p: Player, speedT: number): Pose => {
   switch (p.state) {
+    case 'wallrun':
+      return wallPose(p, speedT);
     case 'vault':
       return vaultPose(p);
     case 'dive':

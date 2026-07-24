@@ -187,6 +187,16 @@ export class AudioEngine {
         this.noise(t, 0.13, { filter: 'bandpass', freq: 2200, sweepTo: 900, gain: 0.1, q: 1.6 });
         this.tone(420, t, 0.09, { type: 'triangle', gain: 0.09, sweepTo: 620 });
         break;
+      case 'wall':
+        // A scrape into a rising tone: contact, then commitment.
+        this.noise(t, 0.3, { filter: 'bandpass', freq: 700, sweepTo: 2600, gain: 0.15, q: 1.2 });
+        this.tone(240, t, 0.28, { type: 'sawtooth', gain: 0.13, sweepTo: 700 });
+        this.tone(NOTE(SCALE[7]) * 2, t + 0.06, 0.3, { type: 'triangle', gain: 0.1 });
+        break;
+      case 'wallOff':
+        this.tone(NOTE(SCALE[9]) * 2, t, 0.22, { type: 'triangle', gain: 0.12 });
+        this.noise(t, 0.18, { filter: 'highpass', freq: 900, sweepTo: 3400, gain: 0.1 });
+        break;
       case 'slide':
         if (!this.gate('slide', 220)) return;
         this.noise(t, 0.32, { filter: 'bandpass', freq: 900, sweepTo: 1500, gain: 0.09, q: 2.4 });
@@ -379,6 +389,8 @@ export type SfxName =
   | 'dive'
   | 'slide'
   | 'lane'
+  | 'wall'
+  | 'wallOff'
   | 'shatter'
   | 'shard'
   | 'core'

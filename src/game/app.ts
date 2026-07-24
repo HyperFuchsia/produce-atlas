@@ -414,6 +414,14 @@ export class App {
           audio.play('lane');
           haptics.fire('select');
           break;
+        case 'wallMount':
+          audio.play('wall');
+          haptics.fire('heavy');
+          break;
+        case 'wallEnd':
+          audio.play('wallOff');
+          haptics.fire('medium');
+          break;
         case 'dive':
           audio.play('dive');
           haptics.fire('medium');

@@ -59,10 +59,12 @@ export class Props3D {
   private accentMats: THREE.MeshBasicMaterial[] = [];
 
   constructor() {
-    const kinds: ObstacleKind[] = ['barrier', 'stack', 'beam', 'panel', 'drone', 'gate', 'pad', 'rail', 'pylon'];
+    const kinds: ObstacleKind[] = [
+      'barrier', 'stack', 'beam', 'panel', 'drone', 'gate', 'pad', 'rail', 'pylon', 'wallrun', 'field',
+    ];
     for (const kind of kinds) {
       const pool: PoolItem[] = [];
-      const size = kind === 'barrier' || kind === 'beam' || kind === 'panel' ? 8 : 5;
+      const size = kind === 'barrier' || kind === 'beam' || kind === 'panel' ? 8 : kind === 'wallrun' || kind === 'field' ? 3 : 5;
       for (let i = 0; i < size; i++) {
         const item = this.build(kind);
         item.group.visible = false;
@@ -280,6 +282,96 @@ export class Props3D {
         return { group: g, glow: strip };
       }
 
+      case 'wallrun': {
+        // The collision extent is the mount lane; the wall itself is drawn out
+        // at the deck edge, where it reads as a surface you could run on.
+        // It is lit, not dark: an unlit navy slab disappeared into the skyline
+        // and the run looked like Marcus falling over in mid-air.
+        const face = new THREE.Mesh(
+          new THREE.BoxGeometry(0.5, 1, 1),
+          this.keep(new THREE.MeshLambertMaterial({ color: 0x2c4470, emissive: 0x0b1526 })),
+        );
+        face.position.set(0, 0.5, 0);
+        body.add(face);
+        // Light rails at running height: the invitation, and the sightline.
+        for (const h of [0.42, 0.62]) {
+          const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 0.98), this.accent(0x45f5ff));
+          rail.position.set(-0.3, h, 0);
+          body.add(rail);
+        }
+        // Panel seams down its length. Without them the face is a flat colour
+        // and nothing on it moves, so the wall reads as painted backdrop
+        // rather than a surface tearing past at forty metres a second.
+        const seamMat = this.emissive(0x45f5ff, { transparent: true, opacity: 0.5 });
+        for (let i = 0; i < 5; i++) {
+          const seam = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.88, 0.012), seamMat);
+          seam.position.set(-0.27, 0.5, -0.5 + (i + 0.5) / 5);
+          body.add(seam);
+        }
+        const glow = new THREE.Mesh(
+          new THREE.BoxGeometry(0.06, 0.55, 0.98),
+          this.emissive(0x45f5ff, { transparent: true, opacity: 0.2, depthWrite: false }),
+        );
+        glow.position.set(-0.32, 0.52, 0);
+        body.add(glow);
+        return { group: g, glow };
+      }
+
+      case 'field': {
+        // Lethal, and it must look it — but as a volume of energy you can see
+        // through, not a painted slab that swallows the whole frame.
+        const core = new THREE.Mesh(
+          new THREE.BoxGeometry(SPAN, 1, 1),
+          this.emissive(0xff2f6d, { transparent: true, opacity: 0.09, depthWrite: false }),
+        );
+        core.position.y = 0.5;
+        body.add(core);
+        const floor = new THREE.Mesh(
+          new THREE.BoxGeometry(SPAN, 0.05, 1),
+          this.emissive(0xff2f6d, { transparent: true, opacity: 0.5 }),
+        );
+        floor.position.y = 0.015;
+        body.add(floor);
+        // The ceiling of the volume. It must stay see-through: opaque, this is
+        // a 6 m × 24 m plate seen from a camera above it, and it painted out
+        // half the screen in flat magenta.
+        const cap = new THREE.Mesh(
+          new THREE.BoxGeometry(SPAN, 0.06, 1),
+          this.emissive(0xff2f6d, { transparent: true, opacity: 0.2, depthWrite: false }),
+        );
+        cap.position.y = 1;
+        body.add(cap);
+        // Emitter ribs down its length, kept deliberately faint. You view a
+        // field end-on, so every rib stacks: seven at 0.4 opacity multiplied
+        // out to a 97%-opaque magenta curtain that hid the whole course
+        // behind it. Five at 0.1 still read as a field and you can see through.
+        const ribMat = this.emissive(0xff5f95, { transparent: true, opacity: 0.1, depthWrite: false });
+        for (let i = 0; i < 5; i++) {
+          const rib = new THREE.Mesh(new THREE.BoxGeometry(SPAN, 0.9, 0.03), ribMat);
+          rib.position.set(0, 0.5, -0.5 + (i + 0.5) / 5);
+          body.add(rib);
+        }
+        // Edge rails carry the width instead — they read at a glance and,
+        // being end-on themselves, never stack.
+        for (const sx of [-1, 1]) {
+          const rail = new THREE.Mesh(
+            new THREE.BoxGeometry(0.08, 0.08, 1),
+            this.emissive(0xff87ad, { transparent: true, opacity: 0.85 }),
+          );
+          rail.position.set(sx * SPAN * 0.5, 1, 0);
+          body.add(rail);
+        }
+        for (const sx of [-1, 1]) {
+          const post = new THREE.Mesh(
+            new THREE.BoxGeometry(0.22, 1.15, 0.22),
+            this.keep(new THREE.MeshLambertMaterial({ color: 0x2a1522 })),
+          );
+          post.position.set(sx * SPAN * 0.5, 0.55, 0);
+          body.add(post);
+        }
+        return { group: g, glow: cap };
+      }
+
       case 'pylon': {
         const post = new THREE.Mesh(
           new THREE.BoxGeometry(0.55, 1, 0.55),
@@ -330,8 +422,14 @@ export class Props3D {
       item.group.visible = true;
       // Unit meshes sit on y=0 spanning z ∈ [-0.5, 0.5] and x ∈ [-SPAN/2,
       // SPAN/2]; scale to the exact hitbox, including its lateral extent.
-      item.group.position.set(o.lane, o.y, -(o.x + o.w * 0.5));
-      item.group.scale.set(Math.min(1, (o.halfW * 2) / SPAN), o.h, o.w);
+      if (o.kind === 'wallrun') {
+        const side = Math.sign(o.lane) || 1;
+        item.group.position.set(side * (TRACK_WIDTH * 0.5 + 0.25), 0, -(o.x + o.w * 0.5));
+        item.group.scale.set(side, o.h, o.w);
+      } else {
+        item.group.position.set(o.lane, o.y, -(o.x + o.w * 0.5));
+        item.group.scale.set(Math.min(1, (o.halfW * 2) / SPAN), o.h, o.w);
+      }
 
       if (item.spin) item.spin.rotation.x = Math.sin(this.time * 2.5 + o.seed) * 0.15;
       if (o.kind === 'gate') {

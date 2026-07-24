@@ -54,7 +54,11 @@ export class Renderer3D {
   private zone: Zone3D = cloneZone(zone3DAt(0));
   private time = 0;
   private camY = 3;
-  private camLateral = 0;
+  private camX = 5.2;
+  private camLookX = -0.9;
+  private camLookY = 1.35;
+  private camBack = 4.7;
+  private camRoll = 0;
   private camShake = 0;
   private composer: EffectComposer | null = null;
   private bloom: UnrealBloomPass | null = null;
@@ -239,7 +243,11 @@ export class Renderer3D {
     this.bannerTimer = 0;
     this.banner.classList.remove('is-on');
     this.camY = 3;
-    this.camLateral = 0;
+    this.camX = 5.2;
+    this.camLookX = -0.9;
+    this.camLookY = 1.35;
+    this.camBack = 4.7;
+    this.camRoll = 0;
     this.trailTimer = 0;
   }
 
@@ -267,6 +275,13 @@ export class Renderer3D {
         break;
       case 'lane':
         this.fx.emit(e.x, e.y + 0.35, 7, { speed: 3, spread: 1.2, dir: -1, color: accent, life: 0.3, size: 0.22 });
+        break;
+      case 'wallMount':
+        this.fx.emit(e.x, e.y, 26, { speed: 6, spread: 2, dir: -1, color: accent, life: 0.5, size: 0.3 });
+        this.fx.screenFlash('#45f5ff', 0.26);
+        break;
+      case 'wallEnd':
+        this.fx.emit(e.x, e.y, 20, { speed: 6, spread: 2.4, color: 0xffc857, life: 0.5, size: 0.3 });
         break;
       case 'vault':
         this.fx.emit(e.x, e.y, e.perfect ? 34 : 16, {
@@ -364,11 +379,8 @@ export class Renderer3D {
 
     // ---------------------------------------------------------------- camera
     const speedT = clamp((world.speed - RUN.startSpeed) / (RUN.maxSpeed - RUN.startSpeed), 0, 1);
-    // Follow height only partly: a jump should read without throwing the world.
-    this.camY = damp(this.camY, 3.15 + y * 0.4, 7, frameDt);
 
     const portraitLift = this.screen.viewport.portrait ? 0.5 : 0;
-    const back = 4.7 + speedT * 0.9 + (world.overdriveTimer > 0 ? 0.7 : 0);
     // Three-quarter view: the camera sits off the side of the platform rather
     // than dead behind. The platform then recedes on a diagonal, and — more
     // usefully — an off-axis view reads *height* properly, which is the only
@@ -376,19 +388,60 @@ export class Renderer3D {
     // dive look far more alike than they should.
     // Portrait has a much narrower horizontal lens, so it takes a gentler
     // angle — at the landscape offset the runner falls outside the frame.
-    const side = this.screen.viewport.portrait ? 2.7 : 5.2;
-    // Follow lane changes only partly. Tracking them fully would swing the
-    // whole city sideways every dodge; ignoring them entirely would let him
-    // walk out of frame.
-    this.camLateral = damp(this.camLateral, lateral * 0.45, 9, frameDt);
-    this.camera.position.set(side + this.camLateral, this.camY + portraitLift, z + back);
-    // Aim slightly *past* the runner, not at him: overshooting swings him back
-    // toward the middle of the frame while the platform still recedes across
-    // it, so hazards travel toward him rather than straight at the lens.
-    this.camera.lookAt(-0.9 + this.camLateral, 1.35 + y * 0.3, z - 5.5);
+    // Camera placement is expressed as two absolute numbers — where the lens
+    // sits laterally, and where it aims — rather than an offset plus a follow.
+    // Composing those two was the bug: tracking him toward the wall cancelled
+    // the side offset and parked the camera directly over the hazard.
+    const baseSide = this.screen.viewport.portrait ? 2.7 : 5.2;
+    const wallSide = p.state === 'wallrun' ? Math.sign(p.wallSide) : 0;
+
+    let targetCamX: number;
+    let targetLookX: number;
+    let targetCamY: number;
+    let targetLookY: number;
+    let targetBack: number;
+    if (wallSide !== 0) {
+      // Ride the same side as the wall, but only part way out — far enough
+      // that we see the panel edge-on with Marcus against it, close enough
+      // that he is not a speck. The default chase pose framed him at 12% of
+      // frame height; this holds him near a quarter of it.
+      //
+      // Height matters as much as distance. The standing camera floats a
+      // metre above his head at wall height and looks *down*, which flattens
+      // the roll to nothing — the whole point of the move is that he has gone
+      // sideways, and you only read that from level with him.
+      targetCamX = wallSide * 1.9;
+      targetLookX = lateral + wallSide * 0.2;
+      targetCamY = y + 1.0;
+      targetLookY = y + 0.35;
+      targetBack = 3.6;
+    } else {
+      targetCamX = baseSide + lateral * 0.45;
+      targetLookX = -0.9 + lateral * 0.45;
+      // Follow height only partly: a jump should read without throwing the world.
+      targetCamY = 3.15 + y * 0.4;
+      targetLookY = 1.35 + y * 0.3;
+      targetBack = 4.7 + speedT * 0.9 + (world.overdriveTimer > 0 ? 0.7 : 0);
+    }
+    this.camX = damp(this.camX, targetCamX, 5.5, frameDt);
+    this.camLookX = damp(this.camLookX, targetLookX, 6.5, frameDt);
+    this.camY = damp(this.camY, targetCamY, 7, frameDt);
+    this.camLookY = damp(this.camLookY, targetLookY, 7, frameDt);
+    this.camBack = damp(this.camBack, targetBack, 4.5, frameDt);
+    // Dutch tilt toward the wall. Rolling the horizon is what sells a wall run
+    // as gravity having moved rather than Marcus having tripped.
+    this.camRoll = damp(this.camRoll, wallSide * 0.16, 5, frameDt);
+
+    this.camera.position.set(this.camX, this.camY + portraitLift, z + this.camBack);
+    this.camera.lookAt(this.camLookX, this.camLookY, z - 5.5);
+    this.camera.rotation.z += this.camRoll;
 
     // Speed widens the lens; portrait widens it further to restore lookahead.
-    const fov = 62 + speedT * 9 + (this.screen.viewport.portrait ? 8 : 0) + (world.overdriveTimer > 0 ? 5 : 0);
+    // A wall run tightens it instead: the only live decision is whether to
+    // bail, so there is nothing downtrack left to read, and the long lens buys
+    // the one moment in the game worth looking at.
+    const fov =
+      62 + speedT * 9 + (this.screen.viewport.portrait ? 8 : 0) + (world.overdriveTimer > 0 ? 5 : 0) - Math.abs(this.camRoll) * 38;
     if (Math.abs(this.camera.fov - fov) > 0.05) {
       this.camera.fov = fov;
       this.camera.updateProjectionMatrix();
@@ -416,7 +469,7 @@ export class Renderer3D {
       ghost,
     });
 
-    this.rimLight.position.set(lateral - 1.6, y + 2.4, z + 0.4);
+    this.rimLight.position.set(lateral + (this.camX > lateral ? 1.4 : -1.4), y + 2.4, z + 0.6);
     this.rimLight.color.copy(world.flowActive ? new THREE.Color(0xff3fa4) : this.zone.key);
     this.rimLight.intensity = world.flowActive ? 30 : 20;
 
@@ -424,7 +477,7 @@ export class Renderer3D {
     this.props.update(world.spawner.obstacles, world.spawner.pickups, x, frameDt, this.zone);
 
     this.emitTrail(world, x, y, frameDt, opts);
-    this.fx.update(frameDt, z + back, world.speed, this.camera, this.screen.canvas);
+    this.fx.update(frameDt, z + this.camBack, world.speed, this.camera, this.screen.canvas);
 
     // ---------------------------------------------------------------- chrome
     if (this.bannerTimer > 0) {

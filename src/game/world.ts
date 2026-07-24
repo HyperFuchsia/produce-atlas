@@ -3,7 +3,7 @@ import { Rng } from '../engine/rng';
 import { gateIsHigh, resetIds, updateObstacle, type Obstacle, type Pickup } from './entities';
 import { Player } from './player';
 import { Spawner } from './spawner';
-import { LANES, PLAYER, RUN, SCORE, WORLD } from './tuning';
+import { LANES, PLAYER, RUN, SCORE, WALL, WORLD } from './tuning';
 
 export type RunPhase = 'running' | 'dying' | 'revive' | 'over';
 
@@ -40,6 +40,8 @@ export type FxEvent =
   | { type: 'land'; x: number; y: number; hard: boolean }
   | { type: 'slide'; x: number; y: number }
   | { type: 'lane'; x: number; y: number }
+  | { type: 'wallMount'; x: number; y: number; side: number }
+  | { type: 'wallEnd'; x: number; y: number }
   | { type: 'dive'; x: number; y: number }
   | { type: 'vault'; x: number; y: number; perfect: boolean }
   | { type: 'shatter'; x: number; y: number }
@@ -123,6 +125,8 @@ export class World {
   private rng = new Rng();
   private clearsSinceCombo = 0;
   private airPeak = 0;
+  private wallStartX = 0;
+  private wallScored = 0;
 
   get difficulty(): number {
     return clamp(this.stats.distance / 2400, 0, 1);
@@ -278,6 +282,7 @@ export class World {
       updateObstacle(o, scaled, o.kind === 'gate' && lead < 0.95 && lead > -1.5);
     }
 
+    this.resolveWall(scaled);
     this.resolveSupport();
     this.resolveObstacles();
     this.resolvePickups(scaled);
@@ -294,10 +299,60 @@ export class World {
     this.updateCamera(dt, false);
   }
 
+  /**
+   * Wall running.
+   *
+   * Mounting is automatic: be in the lane beside the wall as it starts and he
+   * takes it. The skill is the lane read, made under pressure by the fact that
+   * what is on the deck alongside cannot be jumped or slid — so this is the one
+   * hazard where choosing the right lane is the whole answer, and the reward is
+   * the most expressive thing in the game.
+   */
+  private resolveWall(dt: number): void {
+    const p = this.player;
+
+    if (p.state === 'wallrun') {
+      // Score by the metre so a longer ride is worth more, and end it at the lip.
+      const covered = p.x - this.wallStartX;
+      const due = Math.floor(covered) - this.wallScored;
+      if (due > 0) {
+        this.wallScored += due;
+        this.stats.score += Math.round(WALL.scorePerMetre * due * this.scoreMultiplier);
+        this.addFlow(RUN.flowGainPerClear * 0.35 * due);
+      }
+      if (p.x >= p.wallEndX) {
+        p.releaseWall();
+        this.award(SCORE.vault, p.x, WALL.height + 0.6, 'WALL RUN', '#45f5ff');
+        this.stats.vaults++;
+        this.stats.clears++;
+        this.bumpCombo();
+        this.addFlow(RUN.flowGainPerPerfect);
+      }
+      return;
+    }
+
+    if (p.state === 'dead' || p.state === 'hurt' || p.invuln > 0.9) return;
+
+    for (const o of this.spawner.obstacles) {
+      if (o.kind !== 'wallrun' || o.broken) continue;
+      if (p.x < o.x || p.x > o.x + o.w - 0.5) continue;
+      if (!this.laterallyOverlaps(o.lane, o.halfW)) continue;
+      const side = Math.sign(o.lane) || 1;
+      p.mountWall(side, o.x + o.w);
+      this.wallStartX = p.x;
+      this.wallScored = 0;
+      o.cleared = true;
+      this.events.push({ type: 'wallMount', x: p.x, y: WALL.height, side });
+      this.shake = Math.max(this.shake, 0.25);
+      return;
+    }
+    void dt;
+  }
+
   // -------------------------------------------------------------- support
   private resolveSupport(): void {
     const p = this.player;
-    if (p.state === 'vault' || p.state === 'dead') return;
+    if (p.state === 'vault' || p.state === 'wallrun' || p.state === 'dead') return;
     const hw = PLAYER.width * 0.5;
 
     if (!p.onGround && p.vy <= 0) {
@@ -369,12 +424,12 @@ export class World {
   // -------------------------------------------------------------- obstacles
   private resolveObstacles(): void {
     const p = this.player;
-    if (p.state === 'dead') return;
+    if (p.state === 'dead' || p.state === 'wallrun') return;
     const box = p.hitbox();
     const grab = PLAYER.vaultGrab + this.config.glovesLevel * 0.18;
 
     for (const o of this.spawner.obstacles) {
-      if (o.broken) continue;
+      if (o.broken || o.kind === 'wallrun') continue;
       if (o.x > p.x + 8) break; // list is generated in x order
       if (o.x + o.w < p.x - 4) continue;
 
@@ -466,7 +521,7 @@ export class World {
       if (o.cleared || o.broken) continue;
       if (o.x + o.w >= p.x - PLAYER.width * 0.5) continue;
       o.cleared = true;
-      if (o.kind === 'pad' || o.kind === 'rail') continue;
+      if (o.kind === 'pad' || o.kind === 'rail' || o.kind === 'wallrun') continue;
       // Dodging into a clear lane counts; a hazard three lanes over does not.
       if (o.minClear > 90) continue;
       this.stats.clears++;
@@ -669,6 +724,9 @@ export class World {
           break;
         case 'slideStart':
           this.events.push({ type: 'slide', x: p.x, y: p.y });
+          break;
+        case 'wallEnd':
+          this.events.push({ type: 'wallEnd', x: p.x, y: p.y });
           break;
         case 'lane':
           this.events.push({ type: 'lane', x: p.x, y: p.y });

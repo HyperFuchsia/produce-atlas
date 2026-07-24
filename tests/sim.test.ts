@@ -104,7 +104,9 @@ describe('generator', () => {
     for (let d = 0; d <= 1; d += 0.1) {
       spawner.ensure(spawner.cursor + 400, d, 10 + d * 15);
     }
-    const solid = spawner.obstacles.filter((o) => !o.standable);
+    // Standables and mountable walls are routes, not blockers: a wall run is
+    // *supposed* to sit inside the field it carries you over.
+    const solid = spawner.obstacles.filter((o) => !o.standable && o.kind !== 'wallrun');
     for (let i = 0; i < solid.length; i++) {
       for (let j = i + 1; j < solid.length; j++) {
         const a = solid[i];

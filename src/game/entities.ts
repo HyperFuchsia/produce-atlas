@@ -15,7 +15,9 @@ export type ObstacleKind =
   | 'gate' // plasma gate alternating high/low on a beat
   | 'pad' // spring pad — standable, launches you high
   | 'rail' // elevated platform you can run along
-  | 'pylon'; // narrow tall post — precise jump
+  | 'pylon' // narrow tall post — precise jump
+  | 'wallrun' // mountable side wall: run along it to clear what is below
+  | 'field'; // long lethal floor field — too long to jump, too tall to slide
 
 export interface Obstacle {
   id: number;
