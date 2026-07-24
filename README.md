@@ -19,8 +19,11 @@ npm run dev        # play it at localhost:5173
 
 ## The game
 
-**A camera behind your shoulder, and one road.** You run *into* the screen down
-a lit deck suspended through the city, and everything arrives in depth.
+**An angled view across an elevated platform.** The camera sits off the side of
+the deck rather than dead behind it, so the platform recedes on a diagonal and
+hazards travel toward Marcus rather than straight at the lens. An off-axis view
+also reads *height* properly — the only axis this game asks you to judge. From
+directly behind, a vault and a dive look far more alike than they should.
 
 **Three verbs.** Tap the top half of the screen to jump; hold longer to jump
 higher. Tap the bottom half to dive — a slide on the ground, a fast headfirst

@@ -275,12 +275,23 @@ export class Renderer3D {
     // ---------------------------------------------------------------- camera
     const speedT = clamp((world.speed - RUN.startSpeed) / (RUN.maxSpeed - RUN.startSpeed), 0, 1);
     // Follow height only partly: a jump should read without throwing the world.
-    this.camY = damp(this.camY, 2.75 + y * 0.4, 7, frameDt);
+    this.camY = damp(this.camY, 3.15 + y * 0.4, 7, frameDt);
 
     const portraitLift = this.screen.viewport.portrait ? 0.5 : 0;
-    const back = 6.4 + speedT * 1.1 + (world.overdriveTimer > 0 ? 0.9 : 0);
-    this.camera.position.set(0, this.camY + portraitLift, z + back);
-    this.camera.lookAt(0, 1.3 + y * 0.3, z - 10.5);
+    const back = 4.7 + speedT * 0.9 + (world.overdriveTimer > 0 ? 0.7 : 0);
+    // Three-quarter view: the camera sits off the side of the platform rather
+    // than dead behind. The platform then recedes on a diagonal, and — more
+    // usefully — an off-axis view reads *height* properly, which is the only
+    // axis this game asks you to judge. From straight behind, a vault and a
+    // dive look far more alike than they should.
+    // Portrait has a much narrower horizontal lens, so it takes a gentler
+    // angle — at the landscape offset the runner falls outside the frame.
+    const side = this.screen.viewport.portrait ? 2.7 : 5.2;
+    this.camera.position.set(side, this.camY + portraitLift, z + back);
+    // Aim slightly *past* the runner, not at him: overshooting swings him back
+    // toward the middle of the frame while the platform still recedes across
+    // it, so hazards travel toward him rather than straight at the lens.
+    this.camera.lookAt(-0.9, 1.35 + y * 0.3, z - 5.5);
 
     // Speed widens the lens; portrait widens it further to restore lookahead.
     const fov = 62 + speedT * 9 + (this.screen.viewport.portrait ? 8 : 0) + (world.overdriveTimer > 0 ? 5 : 0);
@@ -311,7 +322,7 @@ export class Renderer3D {
       ghost,
     });
 
-    this.rimLight.position.set(0.6, y + 2.2, z + 1.6);
+    this.rimLight.position.set(-1.6, y + 2.4, z + 0.4);
     this.rimLight.color.copy(world.flowActive ? new THREE.Color(0xff3fa4) : this.zone.key);
     this.rimLight.intensity = world.flowActive ? 30 : 20;
 

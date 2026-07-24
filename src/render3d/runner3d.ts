@@ -91,7 +91,7 @@ export class Runner3D {
     this.glow.position.y = 1;
     this.group.add(this.glow);
 
-    this.fillLight.position.set(0.4, 1.7, 2.2);
+    this.fillLight.position.set(2.2, 2.0, 1.8);
     this.group.add(this.fillLight);
   }
 
