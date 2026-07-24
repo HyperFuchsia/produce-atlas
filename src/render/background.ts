@@ -56,6 +56,12 @@ export const blendedPalette = (a: ZonePalette, b: ZonePalette, t: number): ZoneP
 
 export const drawBackground = (o: BgOpts): void => {
   const { ctx, vw, vh } = o;
+  /**
+   * Everything below was authored against a 540-high stage. A tall portrait
+   * viewport gets a taller city, but only partly so — scaling the skyline by
+   * the full height ratio turns one tower into a featureless wall.
+   */
+  const k = Math.min(1.8, 1 + (Math.max(1, o.groundY / 400) - 1) * 0.5);
   const pal = lerpPalette(o.palette, o.next, o.blend);
   const camPx = o.camX * o.pxPerM;
   const camLift = o.camY * o.pxPerM;
@@ -78,7 +84,8 @@ export const drawBackground = (o: BgOpts): void => {
   ctx.fillRect(0, 0, vw, vh);
 
   // A hanging world: the sister planet the Conduit was built to service.
-  const planetR = vh * 0.19;
+  // Size the planet off the smaller axis so portrait doesn't fill the sky with it.
+  const planetR = Math.min(vh * 0.19, vw * 0.2);
   const px = vw * 0.74 - (camPx * 0.004) % (vw * 3);
   ctx.save();
   ctx.beginPath();
@@ -141,9 +148,9 @@ export const drawBackground = (o: BgOpts): void => {
     groundY: o.groundY + camLift * 0.25,
     camPx,
     parallax: 0.05,
-    spacing: 78,
-    minH: 60,
-    maxH: 200,
+    spacing: 78 * k,
+    minH: 60 * k,
+    maxH: 200 * k,
     color: pal.far,
     windowColor: pal.window,
     windowAlpha: 0.1,
@@ -153,16 +160,16 @@ export const drawBackground = (o: BgOpts): void => {
   });
 
   ctx.fillStyle = pal.fog;
-  ctx.fillRect(0, o.groundY - 240 + camLift * 0.2, vw, 260);
+  ctx.fillRect(0, o.groundY - 240 * k + camLift * 0.2, vw, 260 * k);
 
   drawSkyline(ctx, {
     vw,
     groundY: o.groundY + camLift * 0.5,
     camPx,
     parallax: 0.14,
-    spacing: 104,
-    minH: 110,
-    maxH: 300,
+    spacing: 104 * k,
+    minH: 110 * k,
+    maxH: 300 * k,
     color: pal.mid,
     windowColor: pal.window,
     windowAlpha: 0.24,
@@ -171,16 +178,16 @@ export const drawBackground = (o: BgOpts): void => {
     time: o.time,
   });
 
-  drawSkyRail(ctx, vw, o.groundY - 210 + camLift * 0.45, camPx * 0.22, pal, o.time);
+  drawSkyRail(ctx, vw, o.groundY - 210 * k + camLift * 0.45, camPx * 0.22, pal, o.time);
 
   drawSkyline(ctx, {
     vw,
     groundY: o.groundY + camLift * 0.78,
     camPx,
     parallax: 0.32,
-    spacing: 150,
-    minH: 170,
-    maxH: 430,
+    spacing: 150 * k,
+    minH: 170 * k,
+    maxH: 430 * k,
     color: pal.near,
     windowColor: pal.window,
     windowAlpha: 0.4,

@@ -37,7 +37,7 @@ export const PLAYER = {
   vaultExitVelocity: 8.2,
   vaultSpeedBonus: 1.9,
   /** Feet may be this far below an obstacle's lip and still catch the vault. */
-  vaultGrab: 0.62,
+  vaultGrab: 0.74,
 
   hurtStun: 0.5,
   padLaunchVelocity: 21,

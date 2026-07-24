@@ -227,7 +227,7 @@ body {
 .btn:active {
   transform: scale(0.97);
 }
-.btn:hover {
+.btn:hover:not(.btn--primary):not(.btn--ghost):not(.btn--danger) {
   background: rgba(20, 34, 62, 0.92);
 }
 .btn:focus-visible {
@@ -244,6 +244,9 @@ body {
   box-shadow: 0 0 26px rgba(69, 245, 255, 0.34);
 }
 .btn--primary:hover {
+  /* Must restate the gradient: a bare `.btn:hover` rule outranks `.btn--primary`
+     on specificity and would leave dark text on a dark fill. */
+  background: linear-gradient(120deg, #6cf9ff, #35a9ff 60%, #ff5cb4);
   box-shadow: 0 0 38px rgba(69, 245, 255, 0.5);
 }
 .btn__label {
@@ -260,6 +263,13 @@ body {
   background: transparent;
   border-color: rgba(127, 142, 168, 0.35);
   color: var(--dim);
+}
+.btn--ghost:hover {
+  background: rgba(127, 142, 168, 0.12);
+  color: var(--ink);
+}
+.btn--danger:hover {
+  background: rgba(60, 14, 22, 0.8);
 }
 .btn--danger {
   border-color: rgba(255, 91, 91, 0.5);
@@ -712,6 +722,16 @@ body {
 }
 .power span {
   position: relative;
+}
+.power__n {
+  position: absolute;
+  right: 0.15em;
+  bottom: 0.05em;
+  font-size: 0.62em;
+  font-weight: 900;
+  font-style: normal;
+  color: var(--lime);
+  text-shadow: 0 1px 3px #000;
 }
 
 .toasts {

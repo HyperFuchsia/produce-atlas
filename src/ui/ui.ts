@@ -143,7 +143,7 @@ export class UI {
 
     const powers: string[] = [];
     if (world.shields > 0) powers.push(`shield:${world.shields}:1`);
-    if (world.magnetTimer > 0) powers.push(`magnet:✦:${(world.magnetTimer / 12).toFixed(2)}`);
+    if (world.magnetTimer > 0) powers.push(`magnet:🧲:${(world.magnetTimer / 12).toFixed(2)}`);
     if (world.overdriveTimer > 0) powers.push(`over:⚡:${(world.overdriveTimer / 7.5).toFixed(2)}`);
     const key = powers.join('|');
     if (key !== this.lastHud.powers) {
@@ -154,7 +154,8 @@ export class UI {
         const el = document.createElement('div');
         el.className = 'power';
         el.style.setProperty('--p', `${Math.min(100, Number(pct) * 100)}%`);
-        el.innerHTML = `<span>${kind === 'shield' ? '🛡' : label}</span>`;
+        el.innerHTML =
+          kind === 'shield' ? `<span>🛡</span><i class="power__n">${label}</i>` : `<span>${label}</span>`;
         host.appendChild(el);
       }
       this.lastHud.powers = key;

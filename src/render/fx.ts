@@ -288,9 +288,10 @@ export class Fx {
     ctx.textBaseline = 'middle';
     for (const p of this.popups) {
       if (!p.alive) continue;
-      const sx = v.sx(p.x);
-      const sy = v.sy(p.y);
-      if (sx < -80 || sx > v.vw + 80) continue;
+      // Awards are anchored to the obstacle that earned them, which may have
+      // already scrolled off — clamp so the player always reads the reward.
+      const sx = clamp(v.sx(p.x), 78, v.vw - 78);
+      const sy = clamp(v.sy(p.y), 40, v.vh - 40);
       const t = clamp(p.life / p.maxLife, 0, 1);
       const pop = t > 0.85 ? 1 + (1 - t) * 4 : 1;
       ctx.globalAlpha = Math.min(1, t * 1.8);

@@ -1,6 +1,6 @@
 import { clamp, lerp } from '../engine/math';
-import type { Screen } from '../engine/screen';
-import { GROUND_SCREEN_Y, PLAYER, PPM, RUN } from '../game/tuning';
+import { groundYFor, type Screen } from '../engine/screen';
+import { PLAYER, PPM, RUN } from '../game/tuning';
 import type { FxEvent, World } from '../game/world';
 import type { SkinDef, TrailDef } from '../game/tuning';
 import { drawBackground, drawForeground, drawGround, drawPost, blendedPalette } from './background';
@@ -151,7 +151,7 @@ export class Renderer {
     const anchorPx = vw * PLAYER.anchorX;
     const camX = ix;
     const camY = world.camY;
-    const groundY = GROUND_SCREEN_Y + vp.insetTop * 0.4;
+    const groundY = groundYFor(vh) + vp.insetTop * 0.4;
 
     let pal = zoneAt(world.zone);
     const nextPal = zoneAt(world.zone + 1);

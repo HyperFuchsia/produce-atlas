@@ -7,9 +7,22 @@ import { clamp } from './math';
  * fair way to handle it — the camera pulls back rather than the world changing).
  */
 
+/**
+ * The design height. Landscape phones and tablets get exactly this, which is
+ * what all the tuning was authored against.
+ */
 export const VIRTUAL_HEIGHT = 540;
 export const MIN_VIRTUAL_WIDTH = 620;
 export const MAX_VIRTUAL_WIDTH = 1180;
+export const MAX_VIRTUAL_HEIGHT = 1500;
+
+/**
+ * Where the deck sits, given a viewport height. Landscape lands on 400 of 540
+ * exactly as before; a tall portrait viewport keeps the same band of floor
+ * below the runner and spends the extra height on city above him.
+ */
+export const groundYFor = (viewportHeight: number): number =>
+  viewportHeight - Math.min(240, Math.max(140, viewportHeight * 0.26));
 
 export interface Viewport {
   /** virtual units */
@@ -95,9 +108,26 @@ export class Screen {
     const dpr = clamp(window.devicePixelRatio || 1, 1, 3);
     const aspect = cssW / cssH;
 
+    // Flex the virtual viewport so its aspect always matches the device's.
+    // A fixed 16:9 stage letterboxed a portrait phone down to a narrow strip
+    // with black bars over most of the screen; instead the width holds its
+    // range and the height grows, which portrait then fills with skyline.
     const vp = this.viewport;
-    vp.height = VIRTUAL_HEIGHT;
-    vp.width = clamp(Math.round(VIRTUAL_HEIGHT * aspect), MIN_VIRTUAL_WIDTH, MAX_VIRTUAL_WIDTH);
+    let vw = VIRTUAL_HEIGHT * aspect;
+    let vh = VIRTUAL_HEIGHT;
+    if (vw < MIN_VIRTUAL_WIDTH) {
+      vw = MIN_VIRTUAL_WIDTH;
+      vh = MIN_VIRTUAL_WIDTH / aspect;
+    } else if (vw > MAX_VIRTUAL_WIDTH) {
+      vw = MAX_VIRTUAL_WIDTH;
+      vh = MAX_VIRTUAL_WIDTH / aspect;
+    }
+    if (vh > MAX_VIRTUAL_HEIGHT) {
+      vh = MAX_VIRTUAL_HEIGHT;
+      vw = MAX_VIRTUAL_HEIGHT * aspect;
+    }
+    vp.width = Math.round(vw);
+    vp.height = Math.round(vh);
     vp.portrait = aspect < 1;
     vp.dpr = dpr;
 
