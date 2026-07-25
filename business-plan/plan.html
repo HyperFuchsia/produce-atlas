@@ -1,0 +1,686 @@
+<title>Ungoverned Automation — Business Layout &amp; Workflow</title>
+
+<style>
+  :root {
+    --paper:      #EFF2F5;
+    --panel:      #F7F9FA;
+    --ink:        #111820;
+    --steel:      #5A6875;
+    --hairline:   #C9D2DA;
+    --hairline-2: #DDE4EA;
+    --accent:     #0D7A84;
+    --accent-ink: #095C64;
+    --accent-wash:#DCEBEC;
+
+    --critical: #B23A32;
+    --major:    #C67C1E;
+    --minor:    #2F6BA8;
+    --good:     #0D7A84;
+
+    --serif: ui-serif, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+    --measure: 68ch;
+    --gap: 1.5rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:      #0D1114;
+      --panel:      #151B20;
+      --ink:        #E2E8EC;
+      --steel:      #93A2AF;
+      --hairline:   #2C363E;
+      --hairline-2: #212A31;
+      --accent:     #2FA3AE;
+      --accent-ink: #55BEC8;
+      --accent-wash:#122A2D;
+
+      --critical: #E2607F;
+      --major:    #B08327;
+      --minor:    #5F97D8;
+      --good:     #2FA3AE;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0D1114; --panel:#151B20; --ink:#E2E8EC; --steel:#93A2AF;
+    --hairline:#2C363E; --hairline-2:#212A31;
+    --accent:#2FA3AE; --accent-ink:#55BEC8; --accent-wash:#122A2D;
+    --critical:#E2607F; --major:#B08327; --minor:#5F97D8; --good:#2FA3AE;
+  }
+  :root[data-theme="light"] {
+    --paper:#EFF2F5; --panel:#F7F9FA; --ink:#111820; --steel:#5A6875;
+    --hairline:#C9D2DA; --hairline-2:#DDE4EA;
+    --accent:#0D7A84; --accent-ink:#095C64; --accent-wash:#DCEBEC;
+    --critical:#B23A32; --major:#C67C1E; --minor:#2F6BA8; --good:#0D7A84;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .sheet {
+    max-width: 78rem;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3.5rem) clamp(1rem, 4vw, 3rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  /* ---- nameplate ------------------------------------------------ */
+  .plate {
+    border: 2px solid var(--ink);
+    background: var(--panel);
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .plate__top { padding: clamp(1.25rem, 3vw, 2.25rem); display: flex; flex-direction: column; gap: 1rem; }
+  .plate__eyebrow {
+    font-family: var(--mono);
+    font-size: .7rem;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--steel);
+    display: flex; flex-wrap: wrap; gap: .35rem 1.25rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(1.9rem, 5.5vw, 3.4rem);
+    line-height: 1.04;
+    font-weight: 600;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    max-width: 22ch;
+  }
+  .plate__thesis {
+    font-family: var(--serif);
+    font-size: clamp(1.02rem, 2.1vw, 1.28rem);
+    line-height: 1.5;
+    color: var(--steel);
+    max-width: 56ch;
+    text-wrap: pretty;
+  }
+  .plate__specs {
+    border-top: 2px solid var(--ink);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  }
+  .spec {
+    padding: .9rem clamp(1.25rem, 3vw, 2.25rem);
+    border-right: 1px solid var(--hairline);
+    display: flex; flex-direction: column; gap: .15rem;
+  }
+  .spec:last-child { border-right: 0; }
+  .spec__k {
+    font-family: var(--mono); font-size: .65rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--steel);
+  }
+  .spec__v {
+    font-family: var(--mono); font-size: .96rem; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- sections -------------------------------------------------- */
+  section { display: flex; flex-direction: column; gap: 1.25rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .85rem; border-bottom: 2px solid var(--ink); padding-bottom: .5rem; flex-wrap: wrap; }
+  .sec-num {
+    font-family: var(--mono); font-size: .78rem; font-weight: 700;
+    color: var(--accent); letter-spacing: .06em;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 600;
+    font-size: clamp(1.3rem, 3vw, 1.75rem); line-height: 1.15;
+    letter-spacing: -.01em;
+  }
+  .sec-note { font-size: .82rem; color: var(--steel); margin-left: auto; font-family: var(--mono); }
+  h3 {
+    font-family: var(--sans); font-size: .74rem; font-weight: 700;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--steel);
+  }
+  p { max-width: var(--measure); text-wrap: pretty; }
+  .lede { font-size: 1.03rem; }
+  strong { font-weight: 650; }
+  em.term { font-style: normal; font-family: var(--mono); font-size: .93em; color: var(--accent-ink); }
+
+  /* ---- generic grid ---------------------------------------------- */
+  .cols { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+  .card {
+    background: var(--panel); border: 1px solid var(--hairline);
+    padding: 1.15rem 1.25rem; display: flex; flex-direction: column; gap: .55rem;
+  }
+  .card p { font-size: .93rem; }
+  .card__k { font-family: var(--mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--steel); }
+  .card__h { font-family: var(--serif); font-size: 1.12rem; font-weight: 600; line-height: 1.25; }
+
+  /* ---- tables ---------------------------------------------------- */
+  .scroll { overflow-x: auto; border: 1px solid var(--hairline); background: var(--panel); }
+  table { border-collapse: collapse; width: 100%; font-size: .9rem; min-width: 34rem; }
+  th, td { text-align: left; padding: .62rem .85rem; border-bottom: 1px solid var(--hairline-2); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: .66rem; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--steel); font-weight: 600;
+    border-bottom: 1px solid var(--hairline); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.id { font-family: var(--mono); font-weight: 600; color: var(--accent-ink); white-space: nowrap; }
+
+  /* ---- meters ---------------------------------------------------- */
+  .meters { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+  .meterbox { background: var(--panel); border: 1px solid var(--hairline); padding: 1.15rem 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+  .meterbox__head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; border-bottom: 1px solid var(--hairline-2); padding-bottom: .6rem; }
+  .verdict { font-family: var(--mono); font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: .18rem .5rem; border: 1px solid currentColor; white-space: nowrap; }
+  .verdict--bad  { color: var(--critical); }
+  .verdict--good { color: var(--good); }
+  .meter { display: grid; grid-template-columns: 5.4rem 1fr 3.2rem; align-items: center; gap: .7rem; }
+  .meter__lab { font-family: var(--mono); font-size: .74rem; color: var(--steel); }
+  .meter__track { height: 11px; background: var(--hairline-2); border-radius: 2px; overflow: hidden; }
+  .meter__fill { height: 100%; border-radius: 0 4px 4px 0; }
+  .meter__val { font-family: var(--mono); font-size: .82rem; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+
+  /* ---- chips ----------------------------------------------------- */
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chip {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .07em;
+    text-transform: uppercase; font-weight: 600;
+    padding: .18rem .5rem; border: 1px solid currentColor; white-space: nowrap;
+  }
+  .chip--critical { color: var(--critical); }
+  .chip--major    { color: var(--major); }
+  .chip--minor    { color: var(--minor); }
+
+  /* ---- phases ---------------------------------------------------- */
+  .phases { display: flex; flex-direction: column; }
+  .phase {
+    display: grid;
+    grid-template-columns: 8.5rem 1fr;
+    gap: 0 1.5rem;
+    border-top: 1px solid var(--hairline);
+    padding: 1.1rem 0;
+  }
+  .phase:last-child { border-bottom: 1px solid var(--hairline); }
+  .phase__when { display: flex; flex-direction: column; gap: .2rem; }
+  .phase__n { font-family: var(--mono); font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .phase__t { font-family: var(--mono); font-size: .8rem; color: var(--steel); font-variant-numeric: tabular-nums; }
+  .phase__body { display: flex; flex-direction: column; gap: .5rem; }
+  .phase__h { font-family: var(--serif); font-size: 1.14rem; font-weight: 600; }
+  .phase__exit { font-size: .85rem; color: var(--steel); border-left: 2px solid var(--accent); padding-left: .7rem; }
+  .phase__exit b { color: var(--ink); font-weight: 650; }
+  ul.tight { padding-left: 1.05rem; display: flex; flex-direction: column; gap: .25rem; font-size: .93rem; max-width: var(--measure); }
+  ul.tight li::marker { color: var(--accent); }
+
+  /* ---- callout --------------------------------------------------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-wash);
+    padding: 1rem 1.15rem;
+    display: flex; flex-direction: column; gap: .5rem;
+  }
+  .callout p { max-width: 62ch; font-size: .95rem; }
+  .callout__k { font-family: var(--mono); font-size: .67rem; letter-spacing: .13em; text-transform: uppercase; color: var(--accent-ink); font-weight: 700; }
+
+  /* ---- mermaid --------------------------------------------------- */
+  pre.mermaid {
+    background: var(--panel); border: 1px solid var(--hairline);
+    padding: 1.25rem; overflow-x: auto; text-align: center;
+  }
+
+  .foot { border-top: 2px solid var(--ink); padding-top: 1rem; font-size: .84rem; color: var(--steel); display: flex; flex-direction: column; gap: .4rem; }
+  .foot code { font-family: var(--mono); font-size: .93em; }
+
+  a { color: var(--accent-ink); }
+  a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  @media (max-width: 34rem) {
+    .phase { grid-template-columns: 1fr; gap: .5rem; }
+    .spec { border-right: 0; border-bottom: 1px solid var(--hairline); }
+  }
+</style>
+
+<div class="sheet">
+
+  <!-- ══════════ NAMEPLATE ══════════ -->
+  <header class="plate">
+    <div class="plate__top">
+      <div class="plate__eyebrow">
+        <span>Business layout &amp; workflow</span>
+        <span>Rev. 0.1 — draft</span>
+        <span>Working branch <code>claude/business-idea-review</code></span>
+      </div>
+      <h1>Lemon laws for automation.</h1>
+      <p class="plate__thesis">
+        AI is an industrial tool, not a wild animal. We install the hard-coded
+        governor that contains the liability — so an operator can run it at full
+        capacity instead of paying a permanent tax on manufactured fear.
+      </p>
+    </div>
+    <div class="plate__specs">
+      <div class="spec"><span class="spec__k">Category</span><span class="spec__v">Inspection&nbsp;&amp;&nbsp;certification</span></div>
+      <div class="spec"><span class="spec__k">Beachhead</span><span class="spec__v">Warehouse&nbsp;automation</span></div>
+      <div class="spec"><span class="spec__k">Buyer</span><span class="spec__v">EHS&nbsp;/&nbsp;operations</span></div>
+      <div class="spec"><span class="spec__k">Channel</span><span class="spec__v">Insurance&nbsp;carriers</span></div>
+      <div class="spec"><span class="spec__k">First revenue</span><span class="spec__v">Month&nbsp;6</span></div>
+      <div class="spec"><span class="spec__k">Capital req.</span><span class="spec__v">Bootstrap</span></div>
+    </div>
+  </header>
+
+  <!-- ══════════ §1 THE CALL ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§1</span>
+      <h2>The market call</h2>
+      <span class="sec-note">decision D-0</span>
+    </div>
+    <p class="lede">
+      The doctrine is a <strong>safety engineering</strong> doctrine. It borrows its
+      authority from boilers, cranes, reactors, machine guards, and load charts.
+      There is exactly one sector where that vocabulary is already the buyer's
+      native language — so sell it there, where nothing has to be taught first.
+    </p>
+    <div class="cols">
+      <div class="card">
+        <span class="card__k">Target</span>
+        <span class="card__h">Warehouse &amp; fulfilment automation</span>
+        <p>Sites running autonomous mobile robots or cobots on the same floor as human pickers. Second wave: discrete manufacturing.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Why it lands</span>
+        <span class="card__h">The framework is pre-sold</span>
+        <p>Hierarchy of controls, lockout/tagout, machine guarding, load charts. Every concept in the doctrine already exists here under a different name.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Why it's open</span>
+        <span class="card__h">Nobody is looking here</span>
+        <p>AI governance is chasing bias, privacy, and white-collar LLM workflows. Almost nobody is applying it where a misfire breaks a femur.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <span class="callout__k">The thing that makes it real</span>
+      <p>
+        <strong>&ldquo;Biological integrity&rdquo; stops being rhetoric here.</strong> People lose
+        hands to machines — that is the entire reason this sector's safety culture
+        exists. The most awkward phrase in the source material becomes the most
+        natural one, and the insurance that already covers those injuries becomes
+        the distribution channel.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ §2 THE OFFER ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§2</span>
+      <h2>What is sold</h2>
+      <span class="sec-note">decision D-9</span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>Line</th><th>Deliverable</th><th class="num">Price</th><th>Type</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="id">A</td>
+            <td><strong>Actuator inventory + control scoring</strong><br>Single facility. Two to three weeks. The wedge.</td>
+            <td class="num">$12k – $25k</td><td>Project</td>
+          </tr>
+          <tr>
+            <td class="id">B</td>
+            <td><strong>Full assessment + remediation blueprint + certificate</strong><br>Adds trip design and the conformance certificate.</td>
+            <td class="num">$30k – $45k</td><td>Project</td>
+          </tr>
+          <tr>
+            <td class="id">C</td>
+            <td><strong>Governor licence</strong><br>The enforcement middleware, per site.</td>
+            <td class="num">$2k – $8k / mo</td><td>Recurring</td>
+          </tr>
+          <tr>
+            <td class="id">D</td>
+            <td><strong>Recertification</strong><br>Annual, like every other inspection regime.</td>
+            <td class="num">$8k – $15k / yr</td><td>Recurring</td>
+          </tr>
+          <tr>
+            <td class="id">E</td>
+            <td><strong>Enterprise multi-site programme</strong><br>Year two, once case studies exist.</td>
+            <td class="num">$150k +</td><td>Project</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <span class="callout__k">Why the pitch is capacity, not safety</span>
+      <p>
+        Risk products are cost centres — benchmarked down, deferred, squeezed every
+        budget cycle. Utilisation products are profit centres — funded and
+        championed. Same product, different buying behaviour, different price
+        ceiling. <strong>The CEO buys the confidence, the CFO funds the compliance,
+        and the invoice says compliance.</strong>
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ §3 THE WORKFLOW ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§3</span>
+      <h2>The workflow</h2>
+      <span class="sec-note">UAS-1 Clause 11</span>
+    </div>
+    <h3>Assessment pipeline — six stages</h3>
+    <pre class="mermaid">
+flowchart LR
+  S1["1 · Enumerate<br/>actuator registry"] --> S2["2 · Classify<br/>tier + control level"]
+  S2 --> S3["3 · Gap analysis<br/>findings + blueprint"]
+  S3 --> S4["4 · Remediate<br/>client or third party"]
+  S4 --> S5["5 · Verify<br/>proof tests witnessed"]
+  S5 --> S6{"6 · Certify"}
+  S6 -->|conforms| C["Certificate<br/>12 months max"]
+  S6 -->|declines fix| W["Certificate withheld<br/>insurer sees the absence"]
+    </pre>
+    <p>
+      Stages 1–4 are project revenue. Stage 5 onward is the annuity. Enforcement
+      works through the <strong>absence of a valid certificate</strong> — never by
+      disclosing findings to a third party. That is how boiler, elevator, and
+      electrical listing all operate, and it means the assessor never has to act
+      against the client who engaged them.
+    </p>
+
+    <h3>Governor architecture — what stage 5 installs</h3>
+    <pre class="mermaid">
+flowchart LR
+  AI["AI system<br/>any vendor"] --> G{{"ACTUATOR GATE<br/>deterministic · out-of-band"}}
+  R[("Actuator<br/>registry")] --- G
+  P[("Policy<br/>hard limits")] --- G
+  G -->|permit| ACT["Actuator<br/>robot · payment · write"]
+  G -->|breach| T["Alarm → Trip → Lockout"]
+  G --> L[("Evidence log<br/>hash-chained")]
+    </pre>
+    <div class="cols">
+      <div class="card">
+        <span class="card__k">Axiom 1</span>
+        <span class="card__h">Not an AI</span>
+        <p>Deterministic rules only. Every competing guardrail is itself a model — probabilistic, and reachable by the same prompt channel it guards.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Axiom 2</span>
+        <span class="card__h">Inline, not fast</span>
+        <p>On the critical path, so the action cannot begin before the decision. Out-of-band interdiction is a race, and a race has a loss probability speed never removes.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Axiom 3</span>
+        <span class="card__h">Deny the resource</span>
+        <p>Cut the fuel line. Revoke the credential, the path, the enable signal — never send the failing component an instruction and hope.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Axiom 4</span>
+        <span class="card__h">Fail closed</span>
+        <p>Governor unreachable or unsure, the action does not execute. Availability is subordinate to safety, and the buyer chooses that knowingly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ §4 THE PROOF ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§4</span>
+      <h2>What an assessment produces</h2>
+      <span class="sec-note">worked example · 8 actuators</span>
+    </div>
+    <p>
+      One distribution centre, scored by the conformance tool against UAS-1:v0.1.
+      <em class="term">GAR</em> is the Governed Actuator Ratio — the share of
+      actuators carrying an engineering control rather than a policy.
+    </p>
+    <div class="meters">
+      <div class="meterbox">
+        <div class="meterbox__head">
+          <div>
+            <h3>Pre-assessment</h3>
+            <span class="meter__lab">registry 2026-07-14</span>
+          </div>
+          <span class="verdict verdict--bad">Non-conforming</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Overall</span>
+          <div class="meter__track"><div class="meter__fill" style="width:37.5%;background:var(--critical)"></div></div>
+          <span class="meter__val">37.5%</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Tier 1</span>
+          <div class="meter__track"><div class="meter__fill" style="width:33.3%;background:var(--critical)"></div></div>
+          <span class="meter__val">33.3%</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Tier 2</span>
+          <div class="meter__track"><div class="meter__fill" style="width:33.3%;background:var(--critical)"></div></div>
+          <span class="meter__val">33.3%</span>
+        </div>
+        <div class="chips">
+          <span class="chip chip--critical">2 critical</span>
+          <span class="chip chip--major">9 major</span>
+          <span class="chip chip--minor">2 minor</span>
+        </div>
+      </div>
+
+      <div class="meterbox">
+        <div class="meterbox__head">
+          <div>
+            <h3>Post-remediation</h3>
+            <span class="meter__lab">registry 2026-11-03</span>
+          </div>
+          <span class="verdict verdict--good">Level 2 — Governed</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Overall</span>
+          <div class="meter__track"><div class="meter__fill" style="width:87.5%;background:var(--good)"></div></div>
+          <span class="meter__val">87.5%</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Tier 1</span>
+          <div class="meter__track"><div class="meter__fill" style="width:100%;background:var(--good)"></div></div>
+          <span class="meter__val">100%</span>
+        </div>
+        <div class="meter">
+          <span class="meter__lab">Tier 2</span>
+          <div class="meter__track"><div class="meter__fill" style="width:100%;background:var(--good)"></div></div>
+          <span class="meter__val">100%</span>
+        </div>
+        <div class="chips">
+          <span class="chip chip--minor">1 minor</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>Three findings the site would not have produced on its own</h3>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Actuator</th><th>Finding</th><th>Remediation</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="id">conveyor<wbr>.speed<wbr>.setpoint</td>
+            <td><strong>A claimed engineering control that isn't one.</strong> The speed limiter ran <em>inside</em> the SCADA bridge — same process, same failure domain as the integration it governs.</td>
+            <td>Moved to a dedicated safety PLC on a separate network segment. The rule never changed; the thing enforcing it stopped sharing fate with its subject.</td>
+          </tr>
+          <tr>
+            <td class="id">dock<wbr>.door<wbr>.release</td>
+            <td><strong>A Tier 1 actuator governed by a procedure.</strong> An SOP requiring visual confirmation, on a mechanism that can drop a forklift and its operator off a loading dock. Also unattributed — nobody could say who authorised it.</td>
+            <td>Physical interlock. Presence detection wired into the door control circuit: the model may request release and cannot cause it.</td>
+          </tr>
+          <tr>
+            <td class="id">yard<wbr>.slot<wbr>.assign</td>
+            <td><strong>Transitive inheritance.</strong> It only writes data — looks Tier 4. But its output fed the dock door with no governed boundary between them, so it inherits Tier 2.</td>
+            <td>Validation moved to a separate service on separate credentials, establishing the boundary. Invisible to any assessment that stops at the first hop.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════ §5 THE SEQUENCE ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§5</span>
+      <h2>Eighteen months</h2>
+      <span class="sec-note">each phase funds the next</span>
+    </div>
+    <p class="lede">
+      Sequenced against real constraints: limited capital, limited time, no
+      enterprise credentials yet, no network into Fortune 500 risk functions. A
+      plan that opens with &ldquo;sell $300k audits to Fortune 500 CROs&rdquo;
+      fails in week one. <strong>You cannot buy authority, so you publish your way
+      into it.</strong>
+    </p>
+    <div class="phases">
+
+      <div class="phase">
+        <div class="phase__when"><span class="phase__n">Phase 0</span><span class="phase__t">Weeks 1–8</span></div>
+        <div class="phase__body">
+          <span class="phase__h">Fix and publish</span>
+          <ul class="tight">
+            <li>Apply the correction list — every absolute claim, every retired term</li>
+            <li>Write and publish <strong>The Ungoverned Automation Standard v0.1</strong>, free and citable</li>
+            <li>Ship the free self-assessment checklist as the funnel</li>
+          </ul>
+          <p class="phase__exit"><b>Exit:</b> standard published, checklist live. <b>Cost: time only.</b></p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase__when"><span class="phase__n">Phase 1</span><span class="phase__t">Months 2–6</span></div>
+        <div class="phase__body">
+          <span class="phase__h">Authority and evidence</span>
+          <ul class="tight">
+            <li>Publish relentlessly — lead with <em>&ldquo;your AI safety programme is an administrative control&rdquo;</em></li>
+            <li>Three pilot assessments, free or near-free. You are buying case studies, not revenue</li>
+            <li>Attach the credentialed three: a licensed PE, a product liability attorney, an insurance broker</li>
+          </ul>
+          <p class="phase__exit"><b>Exit:</b> three anonymised case studies with before/after scores, one PE willing to sign.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase__when"><span class="phase__n">Phase 2</span><span class="phase__t">Months 6–12</span></div>
+        <div class="phase__body">
+          <span class="phase__h">First revenue and the governor</span>
+          <ul class="tight">
+            <li>Start charging. Every proposal opens with <em>their</em> utilisation delta calculated</li>
+            <li>Build Governor v0 — open-core, eight to twelve weeks for one competent engineer</li>
+            <li>Entity, E&amp;O quote against the corrected claims, engagement terms reviewed</li>
+          </ul>
+          <p class="phase__exit"><b>Exit:</b> first certification issued under a PE signature, governor in one production environment, E&amp;O bound.</p>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="phase__when"><span class="phase__n">Phase 3</span><span class="phase__t">Months 12–18</span></div>
+        <div class="phase__body">
+          <span class="phase__h">The insurer channel</span>
+          <ul class="tight">
+            <li>Approach equipment-breakdown and workers' comp writers with industrial books</li>
+            <li>Pitch: you are pricing governed and ungoverned sites identically because no inspection standard exists</li>
+            <li>Ask for a premium credit on certified sites — and you select for the better risk</li>
+          </ul>
+          <p class="phase__exit"><b>Exit:</b> one carrier relationship producing inbound referrals. <b>This is the flywheel; everything before it is preparation for one conversation.</b></p>
+        </div>
+      </div>
+
+    </div>
+    <div class="callout">
+      <span class="callout__k">Why the insurer changes everything</span>
+      <p>
+        Once one carrier credits certification, you stop selling — clients arrive
+        because their broker sent them. Authority is settled by the requirement
+        rather than by your reputation. Certification becomes cheaper than the
+        premium differential, which makes it free in the buyer's arithmetic. That
+        is the boiler sequence exactly: voluntary inspection, then insurance
+        requirement, then building code, then law. It began in 1866 with one
+        insurer who wanted better loss data.
+      </p>
+    </div>
+  </section>
+
+  <!-- ══════════ §6 DECISIONS ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§6</span>
+      <h2>Decisions taken</h2>
+      <span class="sec-note">11 open questions, forced</span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Question</th><th>Call</th></tr></thead>
+        <tbody>
+          <tr><td class="id">D-0</td><td>Which industry first</td><td>Warehouse &amp; industrial automation, where AI touches machinery</td></tr>
+          <tr><td class="id">D-1</td><td>Insider or adversary</td><td><strong>Insider.</strong> Drop plaintiff-side work — it forecloses every enterprise account</td></tr>
+          <tr><td class="id">D-2</td><td>Independence structure</td><td>Certify + licence; remediation referred out. Build toward inspect-and-underwrite</td></tr>
+          <tr><td class="id">D-3</td><td>Naming</td><td>Retire &ldquo;Dignity&rdquo; from client-facing use — it signals AI ethics to the wrong reader</td></tr>
+          <tr><td class="id">D-4</td><td>Where authority comes from</td><td>Publish the standard free, before selling anything. OWASP model, not UL</td></tr>
+          <tr><td class="id">D-5</td><td>Who receives a failed finding</td><td>Client only. Enforcement is the <em>absence</em> of a certificate</td></tr>
+          <tr><td class="id">D-6</td><td>Your own liability</td><td>E&amp;O is a gating item — and it disciplines the claims language for free</td></tr>
+          <tr><td class="id">D-7</td><td>Credentials</td><td>Founder owns thesis and go-to-market; a licensed PE signs every certificate</td></tr>
+          <tr><td class="id">D-8</td><td>Scope limits</td><td>Cut labour-market and economic claims. Write about them; never invoice for them</td></tr>
+          <tr><td class="id">D-9</td><td>Pricing</td><td>$12k–$45k for a first-wave facility. The Fortune 500 numbers are year three</td></tr>
+          <tr><td class="id">D-10</td><td>CISO or EHS</td><td>EHS leads; CISO co-signs the digital half of the same registry</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════ §7 STATUS ══════════ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§7</span>
+      <h2>What exists right now</h2>
+      <span class="sec-note">pushed to the working branch</span>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <span class="card__k">Built · normative</span>
+        <span class="card__h">UAS-1:v0.1</span>
+        <p>Twelve clauses, five annexes, RFC 2119 language. Mapped clause-by-clause to NIST AI RMF, ISO/IEC 42001, IEC 61508, ISO 13855, ISO 10218, OSHA 1910.212.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Built · runs</span>
+        <span class="card__h">Conformance scorer</span>
+        <p>Reads a registry, applies the demotion rules, reports the level and what blocks the next. Stops at Level 2 by design — Level 3 needs a human assessor and a PE signature.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Built · runs</span>
+        <span class="card__h">Doctrine linter</span>
+        <p>Fails on absolute claims, retired vocabulary, and unsourced attributed quotes. A written rule against overclaiming is administrative; this is the engineering control.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Next</span>
+        <span class="card__h">Two deliverables</span>
+        <p>The free self-assessment checklist — top of funnel. And the flagship article: <em>&ldquo;Your AI safety programme is an administrative control.&rdquo;</em></p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="callout__k">The strongest argument in the whole plan</span>
+      <p>
+        Alignment training, ethics boards, and acceptable use policies are
+        <strong>administrative controls</strong> — tier four of five in a hierarchy
+        every safety professional already accepts as settled. A governor is an
+        <strong>engineering control</strong>, tier three, and categorically
+        preferred wherever feasible. That is not an opinion to be argued. It is an
+        existing professional standard that independently rates the entire
+        incumbent approach as weak, and you are only applying the ranking to a new
+        hazard class.
+      </p>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div>Draft v0.1. Numeric thresholds pending validation by a licensed engineer are marked <code>[PE-REVIEW]</code> in the standard rather than omitted — reviewers need something specific to disagree with.</div>
+    <div>No conformance level under this standard eliminates risk. Clause 10.5.2 makes that binding on the certifying body, not advisory.</div>
+  </footer>
+
+</div>
