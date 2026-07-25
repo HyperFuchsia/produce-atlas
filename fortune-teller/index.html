@@ -1,0 +1,983 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A coin-operated fortune machine that takes one fictional dollar and prints one piece of genuinely useful advice.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  body, h1, h2, p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  canvas, img { max-width: 100%; }
+</style>
+<title>Madame Automata — One Fictional Dollar</title>
+
+<style>
+  :root {
+    color-scheme: light dark;
+
+    --ground:   #D6DAD1;
+    --ground-2: #C6CBC1;
+    --ink:      #232A28;
+    --ink-soft: #5C6663;
+    --rule:     rgba(35, 42, 40, 0.18);
+
+    --enamel:   #101A19;
+    --enamel-2: #1B2A28;
+    --enamel-3: #08100F;
+    --brass:    #B0873F;
+    --brass-dim:#7E6130;
+    --verdigris:#3E9187;
+
+    /* The ticket is a printed object. It does not change with the room. */
+    --stock:     #E9E7DE;
+    --stock-2:   #DEDACD;
+    --print:     #6E2436;
+    --print-soft:#9A5F6C;
+
+    --font-display: "Hoefler Text", "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --font-ui: Optima, Candara, "Gill Sans", "Gill Sans MT", "Trebuchet MS", system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+    --step: clamp(0.9rem, 0.84rem + 0.3vw, 1rem);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:   #0A100F;
+      --ground-2: #121A19;
+      --ink:      #D3D9D1;
+      --ink-soft: #8B958F;
+      --rule:     rgba(211, 217, 209, 0.16);
+      --enamel:   #131F1E;
+      --enamel-2: #1E2E2C;
+      --enamel-3: #060C0B;
+      --brass:    #C9A05A;
+      --brass-dim:#8E7038;
+      --verdigris:#56B3A7;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #0A100F;
+    --ground-2: #121A19;
+    --ink:      #D3D9D1;
+    --ink-soft: #8B958F;
+    --rule:     rgba(211, 217, 209, 0.16);
+    --enamel:   #131F1E;
+    --enamel-2: #1E2E2C;
+    --enamel-3: #060C0B;
+    --brass:    #C9A05A;
+    --brass-dim:#8E7038;
+    --verdigris:#56B3A7;
+  }
+
+  :root[data-theme="light"] {
+    --ground:   #D6DAD1;
+    --ground-2: #C6CBC1;
+    --ink:      #232A28;
+    --ink-soft: #5C6663;
+    --rule:     rgba(35, 42, 40, 0.18);
+    --enamel:   #101A19;
+    --enamel-2: #1B2A28;
+    --enamel-3: #08100F;
+    --brass:    #B0873F;
+    --brass-dim:#7E6130;
+    --verdigris:#3E9187;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--step);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .parlour {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: clamp(1.5rem, 1rem + 3vw, 3.5rem) 1.25rem 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
+
+  /* ── Marquee ───────────────────────────────────────────── */
+
+  .marquee {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: center;
+  }
+
+  .marquee h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 1.3rem + 3.4vw, 3.2rem);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.05;
+    text-wrap: balance;
+    margin: 0;
+  }
+
+  .marquee .rule {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: var(--brass);
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .marquee .rule::before,
+  .marquee .rule::after {
+    content: "";
+    width: clamp(1.5rem, 6vw, 3.5rem);
+    height: 1px;
+    background: currentColor;
+    opacity: 0.55;
+  }
+
+  .marquee p {
+    margin: 0;
+    max-width: 30rem;
+    color: var(--ink-soft);
+    text-wrap: pretty;
+  }
+
+  /* ── Cabinet ───────────────────────────────────────────── */
+
+  .cabinet {
+    background:
+      linear-gradient(180deg, var(--enamel-2), var(--enamel) 38%, var(--enamel-3));
+    border: 1px solid var(--enamel-3);
+    border-radius: 6px 6px 3px 3px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      0 18px 40px -24px rgba(0, 0, 0, 0.85);
+    padding: 1.5rem 1.25rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    position: relative;
+  }
+
+  .cabinet::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid var(--brass-dim);
+    border-radius: 3px;
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .plate {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--brass);
+  }
+
+  .glass {
+    position: relative;
+    aspect-ratio: 12 / 5;
+    border-radius: 4px;
+    overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 45%, #0d1c1b, #050a0a 70%);
+    border: 1px solid rgba(176, 135, 63, 0.35);
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.9);
+  }
+
+  .glass canvas { display: block; width: 100%; height: 100%; }
+
+  .glass::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(155deg, rgba(255, 255, 255, 0.09) 0 22%, transparent 46%);
+    pointer-events: none;
+  }
+
+  .status {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0.7rem;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--verdigris);
+    text-shadow: 0 0 12px rgba(62, 145, 135, 0.55);
+  }
+
+  /* ── Console ───────────────────────────────────────────── */
+
+  .console {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  @media (max-width: 30rem) {
+    .console { grid-template-columns: 1fr; align-items: stretch; }
+  }
+
+  .wallet {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-family: var(--font-mono);
+    color: #9FB0AB;
+  }
+
+  .wallet .label {
+    font-size: 0.58rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--brass-dim);
+  }
+
+  .wallet .amount {
+    font-size: 1.5rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--brass);
+    letter-spacing: 0.02em;
+  }
+
+  .wallet .note { font-size: 0.7rem; color: #6F827D; font-family: var(--font-ui); letter-spacing: 0; }
+
+  .lever {
+    font-family: var(--font-ui);
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    color: #0B1211;
+    background: linear-gradient(180deg, #D8AE63, var(--brass) 45%, #8C6A2E);
+    border: 1px solid #6B5124;
+    border-radius: 3px;
+    padding: 0.75rem 1.4rem;
+    cursor: pointer;
+    box-shadow: 0 3px 0 #5B4420, inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    transition: transform 90ms ease, box-shadow 90ms ease;
+  }
+
+  .lever:hover:not(:disabled) { transform: translateY(1px); box-shadow: 0 2px 0 #5B4420, inset 0 1px 0 rgba(255,255,255,0.4); }
+  .lever:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #5B4420, inset 0 1px 0 rgba(255,255,255,0.3); }
+  .lever:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: 0 3px 0 #5B4420; }
+
+  .lever.secondary {
+    background: transparent;
+    color: var(--brass);
+    border: 1px solid var(--brass-dim);
+    box-shadow: none;
+    font-size: 0.85rem;
+  }
+
+  .lever.secondary:hover { background: rgba(176, 135, 63, 0.12); transform: none; box-shadow: none; }
+
+  :is(.lever, .stub, .theme-toggle):focus-visible {
+    outline: 2px solid var(--verdigris);
+    outline-offset: 3px;
+  }
+
+  /* ── Coin ──────────────────────────────────────────────── */
+
+  .slot-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: center;
+    position: relative;
+  }
+
+  .slot {
+    width: 3.2rem;
+    height: 0.5rem;
+    border-radius: 3px;
+    background: var(--enamel-3);
+    border: 1px solid var(--brass-dim);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.9);
+  }
+
+  .slot-row .caption {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--brass-dim);
+  }
+
+  .coin {
+    position: absolute;
+    left: 50%;
+    top: -2.2rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-left: -2.15rem;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #E7C989, var(--brass) 55%, #7A5C28);
+    border: 1px solid #6B5124;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .coin.drop { animation: drop 520ms cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+
+  @keyframes drop {
+    0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+    75%  { opacity: 1; transform: translateY(2.1rem) rotate(220deg) scaleX(0.4); }
+    100% { opacity: 0; transform: translateY(2.4rem) rotate(280deg) scaleX(0.15); }
+  }
+
+  /* ── Ticket ────────────────────────────────────────────── */
+
+  .tray { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 520ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .tray.out { grid-template-rows: 1fr; }
+  .tray > .clip { overflow: hidden; }
+
+  .ticket {
+    background:
+      linear-gradient(180deg, var(--stock), var(--stock-2));
+    color: var(--print);
+    border-radius: 2px;
+    padding: 1.6rem 1.5rem 1.1rem;
+    box-shadow: 0 14px 28px -22px rgba(0, 0, 0, 0.9);
+    transform: translateY(-14px);
+    opacity: 0;
+    transition: transform 520ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 380ms ease 120ms;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .tray.out .ticket { transform: translateY(0); opacity: 1; }
+
+  /* perforation */
+  .ticket::before {
+    content: "";
+    position: absolute;
+    top: 0.55rem;
+    left: 1rem;
+    right: 1rem;
+    height: 1px;
+    background: repeating-linear-gradient(90deg, var(--print-soft) 0 3px, transparent 3px 8px);
+    opacity: 0.65;
+  }
+
+  .ticket-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--print-soft);
+  }
+
+  .ticket .opener {
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 1rem + 0.9vw, 1.5rem);
+    font-style: italic;
+    line-height: 1.35;
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  .ticket .counsel {
+    font-family: var(--font-display);
+    font-size: 1.02rem;
+    line-height: 1.6;
+    margin: 0;
+    text-wrap: pretty;
+    max-width: 34em;
+  }
+
+  .ticket .divider { height: 1px; background: var(--print-soft); opacity: 0.3; }
+
+  .ticket .action { display: flex; flex-direction: column; gap: 0.3rem; }
+
+  .ticket .action .label,
+  .ticket .favors .label {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--print-soft);
+  }
+
+  .ticket .action p { margin: 0; font-family: var(--font-display); font-size: 1rem; }
+  .ticket .favors { font-family: var(--font-display); font-size: 0.92rem; font-style: italic; color: var(--print-soft); }
+
+  .ticket-foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--print-soft);
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid rgba(154, 95, 108, 0.3);
+    padding-top: 0.7rem;
+  }
+
+  /* ── Stubs ─────────────────────────────────────────────── */
+
+  .stubs { display: flex; flex-direction: column; gap: 0.7rem; }
+
+  .stubs h2 {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    font-weight: 400;
+    margin: 0;
+  }
+
+  .stub-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .stub {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: var(--ground-2);
+    border: 1px dashed var(--rule);
+    border-radius: 2px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transition: color 120ms ease, border-color 120ms ease;
+  }
+
+  .stub:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .stub[aria-current="true"] { color: var(--print); border-style: solid; border-color: var(--print-soft); }
+
+  /* ── Colophon ──────────────────────────────────────────── */
+
+  .colophon {
+    border-top: 1px solid var(--rule);
+    padding-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  .theme-toggle {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    background: none;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    padding: 0.35rem 0.6rem;
+    cursor: pointer;
+  }
+
+  .theme-toggle:hover { color: var(--ink); }
+
+  .visually-hidden {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+<main class="parlour">
+
+  <header class="marquee">
+    <span class="rule">Coin-operated</span>
+    <h1>Madame&nbsp;Automata</h1>
+    <p>One fictional dollar, one printed ticket. The machine cannot see your future — it has never claimed to. It only prints things that were already true of you, and one small thing to do about it.</p>
+  </header>
+
+  <section class="cabinet" aria-label="The fortune machine">
+    <div class="plate">Advice &amp; Auguries &middot; est. nowhere</div>
+
+    <div class="glass">
+      <canvas id="orb" width="720" height="300" aria-hidden="true"></canvas>
+      <p class="status" id="status" role="status" aria-live="polite">Awaiting coin</p>
+    </div>
+
+    <div class="slot-row">
+      <span class="caption">Insert here</span>
+      <span class="slot" aria-hidden="true"></span>
+      <span class="coin" id="coin" aria-hidden="true"></span>
+    </div>
+
+    <div class="console">
+      <div class="wallet">
+        <span class="label">Wallet</span>
+        <span class="amount" id="wallet">F$7</span>
+        <span class="note" id="wallet-note">Fictional dollars. Not redeemable anywhere real.</span>
+      </div>
+      <button class="lever" id="pull" type="button">Insert F$1 &amp; pull the lever</button>
+    </div>
+  </section>
+
+  <section class="tray" id="tray" aria-label="Printed ticket">
+    <div class="clip">
+      <article class="ticket" id="ticket">
+        <div class="ticket-head">
+          <span id="t-aspect">On attention</span>
+          <span id="t-serial">No. 0000</span>
+        </div>
+        <p class="opener" id="t-opener"></p>
+        <p class="counsel" id="t-counsel"></p>
+        <div class="divider" aria-hidden="true"></div>
+        <div class="action">
+          <span class="label">Do this today</span>
+          <p id="t-action"></p>
+        </div>
+        <p class="favors" id="t-favors"></p>
+        <div class="ticket-foot">
+          <span id="t-date"></span>
+          <span id="t-number"></span>
+          <span id="t-colophon"></span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="stubs" id="stubs" hidden>
+    <h2>Your stubs</h2>
+    <div class="stub-grid" id="stub-grid"></div>
+  </section>
+
+  <footer class="colophon">
+    <span>No data leaves this page. No accounts, no cards, no real money — the dollar is as fictional as the fortune.</span>
+    <button class="theme-toggle" id="theme" type="button">Lights</button>
+  </footer>
+
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ── The book of readings ────────────────────────────────
+     Each aspect keeps its own openers, counsel, actions and
+     favors so a drawn ticket stays internally coherent.     */
+
+  const BOOK = [
+    {
+      aspect: "On attention",
+      openers: [
+        "You have been half-finishing something for weeks, and you know exactly which thing it is.",
+        "Lately the day gets spent before you have decided what to spend it on.",
+        "You keep a list of what matters somewhere, and you have not looked at it recently."
+      ],
+      counsel: [
+        "Attention is the one currency you cannot borrow against. Decide the day's single true task before the day decides for you, and guard the first hour of it.",
+        "Most of what feels like exhaustion is switching cost. Do fewer things at once and the same work will genuinely weigh less.",
+        "The thing you are avoiding opening is almost never as heavy as the avoiding. Open it, read it, and write down what it actually asks of you."
+      ],
+      actions: [
+        "Name tomorrow's most important task tonight, in writing, before you sleep.",
+        "Take twenty minutes with everything closed but one window.",
+        "Leave your phone in another room for the length of one meal."
+      ],
+      favors: "Favors: early hours, shut doors, short lists."
+    },
+    {
+      aspect: "On work",
+      openers: [
+        "You are more competent than your inner commentary allows, and the gap costs you time.",
+        "Something at work is waiting on a conversation you have not scheduled.",
+        "You have been busy in a way that does not add up to progress."
+      ],
+      counsel: [
+        "Ship the imperfect version. Feedback on something real beats another week of your own opinion, every time.",
+        "Ambiguity is not a personal failing; it is a signal that somebody needs to decide. If nobody else will, write down the decision you are assuming and send it.",
+        "Do the unglamorous maintenance now — the notes, the cleanup, the follow-up message. Future you is a real person and will be grateful."
+      ],
+      actions: [
+        "Send the message you have drafted in your head three times.",
+        "Spend fifteen minutes making the next step obvious instead of doing it.",
+        "Ask one person what they would do in your position, then actually listen."
+      ],
+      favors: "Favors: plain language, sent drafts, Tuesday."
+    },
+    {
+      aspect: "On people",
+      openers: [
+        "There is someone you think of often and contact rarely.",
+        "You have been generous lately in ways nobody has thanked you for.",
+        "A small misunderstanding is sitting somewhere, taking up more room than its size."
+      ],
+      counsel: [
+        "People rarely need advice; they need a witness. Ask one more question before you offer a solution.",
+        "Assume the more boring explanation. Almost nobody is thinking about you as much as your worst hypothesis requires.",
+        "Say the appreciative thing out loud. It costs nothing, it is almost never unwelcome, and unspoken warmth does no work in the world."
+      ],
+      actions: [
+        "Message the person you thought of this week and say only that you thought of them.",
+        "Tell someone specifically what they did well — the detail, not the compliment.",
+        "Let one small slight go, entirely and privately, today."
+      ],
+      favors: "Favors: second questions, direct asks, the benefit of the doubt."
+    },
+    {
+      aspect: "On rest",
+      openers: [
+        "You have been treating rest as something to earn rather than something you run on.",
+        "Your tiredness is older than the week you have been blaming it on.",
+        "You have been productive at the expense of being well, and calling it a season."
+      ],
+      counsel: [
+        "Rest before you are empty. Recovery taken early is cheap; recovery taken late is expensive and takes twice as long.",
+        "Very few decisions improve after midnight. Nearly everything you re-read tomorrow will look smaller then.",
+        "Boredom is not the enemy of a good life — it is where most of your better ideas have historically come from. Leave yourself unentertained for a while."
+      ],
+      actions: [
+        "Go outside for fifteen minutes without listening to anything.",
+        "Choose one obligation this week and decline it, kindly, without inventing an excuse.",
+        "Sleep on the decision. It will keep."
+      ],
+      favors: "Favors: dusk, walks without a destination, unscheduled Sundays."
+    },
+    {
+      aspect: "On money",
+      openers: [
+        "You know roughly what you spend, and roughly is doing a great deal of work in that sentence.",
+        "There is a small recurring charge you have been meaning to cancel.",
+        "You have been managing money by feel, and the feeling is worse than the figures."
+      ],
+      counsel: [
+        "Look at the actual number. Vague money dread is heavier than a known figure, even a bad one — the knowing is what shrinks it.",
+        "Spend generously on what you touch every day and ruthlessly less on what you touch once a year. Most regret hides in the reverse.",
+        "Automate one good decision so you stop having to make it. Willpower is a poor treasurer."
+      ],
+      actions: [
+        "Open the account and read the true balance, out loud if that helps.",
+        "Cancel one subscription you have not deliberately used this month.",
+        "Move a small, unimpressive amount somewhere you will not see it."
+      ],
+      favors: "Favors: honest arithmetic, dull accounts, receipts read once."
+    },
+    {
+      aspect: "On decisions",
+      openers: [
+        "You already know the answer to the question you keep re-asking your friends.",
+        "You have been waiting for a certainty that was never going to arrive.",
+        "Two roads have been open for a while now, and the waiting has quietly become the third."
+      ],
+      counsel: [
+        "When a decision is genuinely close, it matters less than you think which way it goes — and the cost of standing still is the cost you keep forgetting to count.",
+        "Make reversible decisions quickly and irreversible ones slowly. Most of what is paralysing you is reversible.",
+        "Ask what you would tell a friend in exactly your position. You are reliably wiser on someone else's behalf; borrow that wisdom for yourself."
+      ],
+      actions: [
+        "Set a real date for the decision and write it where you will see it.",
+        "Write both options down and notice which one you hope the coin lands on.",
+        "Take the smallest irreversible step toward the thing you already want."
+      ],
+      favors: "Favors: deadlines, coins flipped for the feeling, first drafts."
+    },
+    {
+      aspect: "On change",
+      openers: [
+        "Something in your life is ending slowly, and you have been polite about not noticing.",
+        "You have outgrown a routine that used to fit you well.",
+        "A part of your plan stopped being true a while ago and you kept quoting it anyway."
+      ],
+      counsel: [
+        "Change rarely announces itself; it accumulates, then appears sudden. Look at what you have already stopped enjoying and stop calling it temporary.",
+        "You do not need a new life. You need to change about three things and keep the rest — and you probably know two of them.",
+        "Grieve the version of the plan that is not happening. Skipping that step does not save time, it just moves the cost somewhere less convenient."
+      ],
+      actions: [
+        "Write down the thing you have outgrown. Do not solve it yet — just name it.",
+        "Change one fixed point of your week and watch what moves around it.",
+        "Tell one trusted person the thing you have not said out loud."
+      ],
+      favors: "Favors: honest names, the first week of anything, endings admitted early."
+    },
+    {
+      aspect: "On craft",
+      openers: [
+        "You are further along than you were a year ago and have given yourself no credit for it.",
+        "There is something you want to be good at, and you have been treating that wish as a personality rather than a schedule.",
+        "You have been consuming a great deal about the thing and practising very little of it."
+      ],
+      counsel: [
+        "Skill is mostly repetitions arranged in time. Twenty minutes on most days will outrun a heroic weekend every season of the year.",
+        "Study something one field over. The interesting ideas usually arrive carried by someone who was not supposed to be in the room.",
+        "Keep a record of what you tried. Memory quietly edits the failures out, and the record is what turns experience into skill."
+      ],
+      actions: [
+        "Practise the boring fundamental for twenty minutes.",
+        "Find someone two steps ahead of you and read what they read.",
+        "Write three lines about what you learned today, badly."
+      ],
+      favors: "Favors: repetition, borrowed methods, notes kept badly but kept."
+    },
+    {
+      aspect: "On yourself",
+      openers: [
+        "You hold yourself to a standard you would find cruel applied to anyone you love.",
+        "You have been describing a preference as though it were a flaw.",
+        "Someone praised you recently and you spent the moment editing it down."
+      ],
+      counsel: [
+        "Speak to yourself the way you would to a capable colleague having a hard week: plainly, without contempt, and assuming they will handle it.",
+        "Being hard on yourself is not why you have accomplished things — it is the tax you paid along the way. You can keep the standards and drop the tone.",
+        "The trait you keep apologising for is doing real work somewhere in your life. Find where it is an asset before you file it as a fault."
+      ],
+      actions: [
+        "Write down one thing you handled well this week, in specific terms.",
+        "Catch the sentence you say to yourself and rewrite it once — kinder, and equally true.",
+        "Accept one compliment without amending it."
+      ],
+      favors: "Favors: plain mirrors, evidence, one honest friend."
+    }
+  ];
+
+  const HOURS = [
+    "a good hour: 6:40 a.m.",
+    "a good hour: just after noon",
+    "a good hour: 4 p.m.",
+    "a good hour: the one before dusk",
+    "a good hour: late, but not too late",
+    "a good hour: first light, Thursday"
+  ];
+
+  const COLOPHONS = [
+    "the machine keeps the dollar",
+    "advice sold as seen",
+    "no refunds, no oracles",
+    "printed while you waited",
+    "true of most people, useful to you",
+    "the ticket is yours"
+  ];
+
+  const PATTER = [
+    "Coin accepted",
+    "Something turns over",
+    "Setting the type",
+    "Printing"
+  ];
+
+  /* ── State ───────────────────────────────────────────── */
+
+  const $ = (id) => document.getElementById(id);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  let wallet = 7;
+  let serial = 412;
+  let busy = false;
+  const stubs = [];
+  const recent = { aspect: -1 };
+
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+  function drawAspect() {
+    if (BOOK.length < 2) return 0;
+    let i = Math.floor(Math.random() * BOOK.length);
+    if (i === recent.aspect) i = (i + 1 + Math.floor(Math.random() * (BOOK.length - 1))) % BOOK.length;
+    recent.aspect = i;
+    return i;
+  }
+
+  function compose() {
+    const entry = BOOK[drawAspect()];
+    serial += 1 + Math.floor(Math.random() * 5);
+    return {
+      aspect: entry.aspect,
+      opener: pick(entry.openers),
+      counsel: pick(entry.counsel),
+      action: pick(entry.actions),
+      favors: entry.favors,
+      serial: "No. " + String(serial).padStart(4, "0"),
+      date: new Date().toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }).toUpperCase(),
+      number: pick(HOURS),
+      colophon: pick(COLOPHONS)
+    };
+  }
+
+  function render(t, { current = true } = {}) {
+    $("t-aspect").textContent = t.aspect;
+    $("t-serial").textContent = t.serial;
+    $("t-opener").textContent = t.opener;
+    $("t-counsel").textContent = t.counsel;
+    $("t-action").textContent = t.action;
+    $("t-favors").textContent = t.favors;
+    $("t-date").textContent = t.date;
+    $("t-number").textContent = t.number;
+    $("t-colophon").textContent = t.colophon;
+    $("tray").classList.add("out");
+    if (current) markStub(t.serial);
+  }
+
+  function markStub(serialText) {
+    for (const btn of $("stub-grid").children) {
+      btn.setAttribute("aria-current", btn.dataset.serial === serialText ? "true" : "false");
+    }
+  }
+
+  function addStub(t) {
+    stubs.unshift(t);
+    const grid = $("stub-grid");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "stub";
+    btn.dataset.serial = t.serial;
+    btn.textContent = t.serial + " · " + t.aspect.replace(/^On /, "");
+    btn.addEventListener("click", () => { if (!busy) render(t); });
+    grid.prepend(btn);
+    $("stubs").hidden = false;
+  }
+
+  function updateWallet() {
+    $("wallet").textContent = "F$" + wallet;
+    const pull = $("pull");
+    pull.disabled = busy;
+    if (wallet > 0) {
+      pull.className = "lever";
+      pull.textContent = "Insert F$1 & pull the lever";
+      $("wallet-note").textContent = "Fictional dollars. Not redeemable anywhere real.";
+    } else {
+      pull.className = "lever secondary";
+      pull.textContent = "Check the coin return";
+      $("wallet-note").textContent = "Pockets empty. Try the coin return — they always have one.";
+    }
+  }
+
+  function say(text) { $("status").textContent = text; }
+
+  /* ── The pull ────────────────────────────────────────── */
+
+  async function pull() {
+    if (busy) return;
+
+    if (wallet === 0) {
+      wallet = 1;
+      updateWallet();
+      say("One dollar recovered");
+      return;
+    }
+
+    busy = true;
+    wallet -= 1;
+    updateWallet();
+
+    const coin = $("coin");
+    coin.classList.remove("drop");
+    void coin.offsetWidth;
+    coin.classList.add("drop");
+
+    $("tray").classList.remove("out");
+    spin(true);
+
+    const beat = reduced ? 60 : 620;
+    for (const line of PATTER) {
+      say(line);
+      await wait(beat);
+    }
+
+    const ticket = compose();
+    render(ticket);
+    addStub(ticket);
+    markStub(ticket.serial);
+    spin(false);
+    say(wallet > 0 ? "Ready" : "Coin return, then");
+    busy = false;
+    updateWallet();
+  }
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /* ── The glass ───────────────────────────────────────── */
+
+  const canvas = $("orb");
+  const ctx = canvas.getContext("2d");
+  let phase = 0;
+  let energy = 0;
+  let target = 0;
+
+  function spin(on) { target = on ? 1 : 0; }
+
+  function frame() {
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    energy += (target - energy) * 0.045;
+    phase += 0.004 + energy * 0.02;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 190 + energy * 60);
+    glow.addColorStop(0, "rgba(86, 179, 167, " + (0.18 + energy * 0.42) + ")");
+    glow.addColorStop(1, "rgba(6, 14, 13, 0)");
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, w, h);
+
+    // concentric rings, slowly out of step with one another
+    for (let i = 0; i < 9; i++) {
+      const r = 30 + i * 16 + Math.sin(phase * (1 + i * 0.22) + i) * (5 + energy * 16);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, r * 1.25, r * (0.6 + Math.sin(phase * 0.7 + i) * 0.06), Math.sin(phase * 0.35 + i) * 0.5, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(176, 135, 63, " + (0.11 + (8 - i) * 0.02 + energy * 0.18) + ")";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // the iris
+    const iris = 15 + Math.sin(phase * 1.4) * 2.5 + energy * 20;
+    ctx.beginPath();
+    ctx.arc(cx, cy, iris, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(86, 179, 167, " + (0.35 + energy * 0.45) + ")";
+    ctx.fill();
+
+    if (!reduced) requestAnimationFrame(frame);
+  }
+
+  /* ── Wiring ──────────────────────────────────────────── */
+
+  $("pull").addEventListener("click", pull);
+
+  $("theme").addEventListener("click", () => {
+    const root = document.documentElement;
+    const dark = root.dataset.theme
+      ? root.dataset.theme === "dark"
+      : matchMedia("(prefers-color-scheme: dark)").matches;
+    root.dataset.theme = dark ? "light" : "dark";
+  });
+
+  updateWallet();
+  if (reduced) { energy = 0.2; frame(); } else { requestAnimationFrame(frame); }
+})();
+</script>
+</body>
+</html>
