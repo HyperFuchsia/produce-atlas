@@ -25,12 +25,68 @@ typefaces are embedded in the file.
 | `S` | voiceover script panel |
 | `G` | title-safe / action-safe / rule-of-thirds guides |
 
-The stage is a fixed **1920 × 1080** frame, letterboxed and scaled to fit whatever window you give it.
-At a 1920×1080 viewport the scale is exactly 1:1, so a 1080p capture is pixel-perfect with no resampling.
+**Suggested capture routine:** fullscreen (`F`) → `C` to hide the apparatus → `R` to restart → record.
+The mouse cursor and the key hints both auto-hide after ~2.5s of stillness, so nothing leaks into
+the frame.
 
-**Suggested capture routine:** fullscreen (`F`) on a 1080p display → `C` to hide the apparatus → `R` to
-restart → record. The mouse cursor and the key hints both auto-hide after ~2.5s of stillness, so
-nothing leaks into the frame.
+### Resolution
+
+The piece is authored in a 1920×1080 coordinate space and the stage is transform-scaled to whatever
+the viewport gives it, so **type and vector work re-rasterise crisply at any output size, 4K
+included** — there is no fixed-resolution bitmap anywhere in the design.
+
+The one exception is the `<canvas>` backing the generated art, whose backing store is real pixels.
+It is re-allocated at the true device resolution on load and on resize, so it reaches 3840×2160 by
+either route a viewer gets to 4K:
+
+| Viewport | devicePixelRatio | Canvas backing |
+| --- | --- | --- |
+| 3840×2160 | 1 | 3840×2160 |
+| 1920×1080 | 2 *(Retina / scaled 4K)* | 3840×2160 |
+| 1920×1080 | 1 | 1920×1080 |
+| smaller window | 1 | 1920×1080 |
+
+Film grain holds its texel size constant in device pixels rather than scaling with the frame, so 4K
+gets *finer* grain, the way a faster film stock would — not the same grain blown up.
+
+## Rendering a true 4K master
+
+A screen recording can never contain more pixels than the display it was taken from, so if you don't
+have a 4K panel — or you just want a clean master with no compositor noise and no dropped frames —
+render it offline instead:
+
+```bash
+npm i playwright
+node render-4k.mjs                       # -> a-naming-error-2160p.mp4
+```
+
+This drives the page frame by frame in headless Chromium at `deviceScaleFactor: 2` and pipes frames
+straight into ffmpeg. Every CSS animation is pinned to an exact `currentTime` and the canvas clock is
+derived from the global timeline, so a given frame index always renders identically — re-running
+produces byte-identical frames.
+
+| Option | Default | |
+| --- | --- | --- |
+| `--out <path>` | derived from codec | output file |
+| `--fps 30` | 30 | frame rate |
+| `--height 2160` | 2160 | use `1080` for a 1080p master |
+| `--plates 1-6` | all | render a subset, 1-indexed inclusive |
+| `--frames png\|jpeg` | png | capture format |
+| `--codec h264\|prores\|vp9\|vp8` | h264 | |
+| `--workers N` | cores−1, max 6 | parallel renderers |
+| `--apparatus` | off | keep plate number / rail / timecode in frame |
+| `--chrome`, `--ffmpeg` | | explicit binaries |
+
+**You need a full ffmpeg** — `brew install ffmpeg` or `apt install ffmpeg`. Do *not* point it at the
+copy bundled with Playwright: that is built with `--disable-everything` and has no PNG decoder, no
+libx264 and no mp4 muxer. The script checks up front and tells you exactly what's missing rather
+than failing halfway.
+
+**Timing.** PNG capture at 4K costs roughly 4s per frame per worker — that's Chromium's PNG encoder,
+not the page — so a full 4:40 run at 30fps is about 2.5 core-hours: roughly 40 minutes on 8 cores.
+`--frames jpeg` is about 4× faster and fine for previews, but JPEG chroma subsampling softens crisp
+type on dark grounds, which is precisely this piece's worst case. Keep PNG for anything you'll
+actually upload.
 
 Total runtime is **4:40** of visuals. Narration will naturally run longer than the on-screen beats, so
 either read at a relaxed pace against the timings or record voice first and stretch the per-plate

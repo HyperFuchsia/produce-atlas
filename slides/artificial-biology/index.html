@@ -868,8 +868,9 @@ html,body{
   };
 
   /* ---------- grain texture, generated once, inlined as a data URI ---------- */
+  const GRAIN_TILE = 256;
   (function makeGrain(){
-    const n = 128, c = document.createElement('canvas');
+    const n = GRAIN_TILE, c = document.createElement('canvas');
     c.width = c.height = n;
     const g = c.getContext('2d'), img = g.createImageData(n, n), d = img.data;
     for (let i = 0; i < d.length; i += 4) {
@@ -880,13 +881,41 @@ html,body{
     document.documentElement.style.setProperty('--grain-src', `url(${c.toDataURL()})`);
   })();
 
-  /* ---------- fit the 1920x1080 stage into the viewport ---------- */
-  function fit(){
-    const pad = 0;
-    const s = Math.min((innerWidth - pad) / 1920, (innerHeight - pad) / 1080);
-    stage.style.transform = `scale(${s})`;
+  /* ---------- resolution independence ----------
+     Everything is authored in a 1920x1080 coordinate space and the stage is
+     transform-scaled to whatever the viewport gives it, so type and vector
+     work re-rasterise crisply at any output size — including 4K.
+
+     The canvas cannot ride that transform: its backing store is fixed pixels,
+     so it has to be re-allocated at the true device resolution and the render
+     transform reset to keep the renderers drawing in 1920x1080 logical units.
+
+     renderScale covers both ways a viewer reaches 4K: a 3840-wide viewport at
+     dpr 1 (fit scale 2), and a 1920-wide viewport at dpr 2 (fit scale 1). */
+  let fitScale = 1, renderScale = 0;
+  const MAX_RENDER_SCALE = 2;   // 3840x2160 backing store
+
+  function sizeCanvas(){
+    const want = Math.min(MAX_RENDER_SCALE,
+                          Math.max(1, Math.ceil(fitScale * (devicePixelRatio || 1) * 2) / 2));
+    if (want === renderScale) return;
+    renderScale = want;
+    canvas.width  = Math.round(1920 * renderScale);
+    canvas.height = Math.round(1080 * renderScale);
+    // Film grain is a property of the stock, not of the frame: hold its texel
+    // size constant in device pixels so 4K gets finer grain, not chunkier.
+    document.getElementById('grain').style.backgroundSize =
+      `${(520 / renderScale).toFixed(1)}px ${(520 / renderScale).toFixed(1)}px`;
   }
-  addEventListener('resize', fit); fit();
+
+  function fit(){
+    fitScale = Math.min(innerWidth / 1920, innerHeight / 1080);
+    stage.style.transform = `scale(${fitScale})`;
+    sizeCanvas();
+  }
+  addEventListener('resize', fit);
+  matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener?.('change', fit);
+  fit();
 
   /* ---------- split display lines into word spans for staggered rise ---------- */
   scenes.forEach(sc => {
@@ -1128,12 +1157,18 @@ html,body{
     }
   };
 
-  let last = performance.now();
-  function frame(now){
-    const dt = Math.min(60, now - last); last = now;
-    artT += (reduce ? dt * .3 : dt) / 1000;
+  // Renderers always work in 1920x1080 logical units; the transform maps them
+  // onto whatever backing store sizeCanvas() allocated.
+  function drawArt(){
+    ctx.setTransform(renderScale, 0, 0, renderScale, 0, 0);
     ctx.clearRect(0, 0, 1920, 1080);
     (RENDER[art] || RENDER.noise)(1920, 1080, artT);
+  }
+
+  let last = performance.now(), offline = false;
+  function frame(now){
+    const dt = Math.min(60, now - last); last = now;
+    if (!offline) { artT += (reduce ? dt * .3 : dt) / 1000; drawArt(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
@@ -1252,6 +1287,33 @@ html,body{
   addEventListener('mousemove', wake); wake();
 
   stage.addEventListener('click', () => paused ? play() : pause());
+
+  /* ---------- deterministic frame hook ----------
+     Lets render-4k.mjs step the piece frame by frame and capture a true
+     3840x2160 master without needing a 4K display to record from. Every CSS
+     animation is pinned to an exact currentTime and the canvas clock is
+     derived from the global timeline, so a given frame index always renders
+     identically. Completely inert during normal playback. */
+  window.__plate = {
+    count: scenes.length,
+    durations: durs,
+    totalMs: total,
+    async seek(i, msIntoScene){
+      offline = true;
+      if (i !== idx) {
+        go(i);
+        await new Promise(r => requestAnimationFrame(r));
+      }
+      paused = true;
+      elapsedInScene = Math.min(msIntoScene, durs[i]);
+      paint();
+      document.getAnimations().forEach(a => {
+        try { a.pause(); a.currentTime = msIntoScene; } catch (e) { /* not seekable */ }
+      });
+      artT = (starts[i] + msIntoScene) / 1000;   // continuous across the piece
+      drawArt();
+    }
+  };
 
   go(0); loop();
 })();
