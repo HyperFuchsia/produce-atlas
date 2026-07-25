@@ -12,6 +12,16 @@ typefaces are embedded in the file.
 
 ---
 
+## Playing it
+
+There's a control bar along the bottom — **prev · play/pause · next · restart · fullscreen · clean ·
+script** — so the piece is fully operable with the mouse. Clicking anywhere on the frame also toggles
+play/pause. The bar fades out after a few seconds of stillness while playing, and reappears on any
+mouse movement; it stays put whenever the piece is paused.
+
+The keyboard shortcuts below do the same things, but note that **an embedded page receives no key
+events until you click it once** to give it focus. That's why the buttons exist.
+
 ## Recording it
 
 | Key | Action |

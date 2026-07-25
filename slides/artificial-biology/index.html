@@ -47,7 +47,6 @@
 }
 
 html,body{
-  height:100%;
   margin:0;
   background:#000;
   overflow:hidden;
@@ -55,12 +54,28 @@ html,body{
   -webkit-font-smoothing:antialiased;
 }
 
-/* ---------- letterbox + scaled stage ---------- */
+/* ---------- letterbox + scaled stage ----------
+   The frame stays IN FLOW with a real 16:9 height rather than position:fixed.
+   Embedding hosts size their iframe from document scrollHeight, and a fully
+   fixed-position layout reports zero height — which collapses the frame to
+   nothing. An in-flow aspect-ratio box gives the host something to measure. */
 
 .frame{
-  position:fixed; inset:0;
+  position:relative;
+  width:100%;
+  aspect-ratio:16 / 9;
+  margin:0 auto;
   background:#000;
   display:grid; place-items:center;
+  overflow:hidden;
+}
+/* Capping height against the viewport only makes sense standalone. Inside an
+   embed the host sets the iframe height FROM this element, so a viewport cap
+   would feed back on itself and could lock the frame at whatever height the
+   iframe happened to start at. Embedded, height is purely a function of width. */
+:root.standalone .frame{max-height:100svh}
+.frame:fullscreen{
+  width:100vw; height:100vh; max-height:none; aspect-ratio:auto;
 }
 
 .stage{
@@ -356,8 +371,10 @@ html,body{
 
 /* ---------- script panel (never in frame) ---------- */
 
+/* Anchored to the frame, not the viewport: inside an embed the iframe can be
+   taller than the visible area, and a fixed-position panel would hang off it. */
 .panel{
-  position:fixed; top:0; right:0; bottom:0; width:520px; z-index:40;
+  position:absolute; top:0; right:0; bottom:0; width:520px; max-width:100%; z-index:40;
   background:#0A0B0E; border-left:1px solid rgba(237,231,218,.12);
   transform:translateX(100%); transition:transform 340ms cubic-bezier(.3,.8,.3,1);
   display:flex; flex-direction:column;
@@ -408,16 +425,31 @@ html,body{
 
 /* ---------- key hints ---------- */
 
+/* Doubles as the control bar: every hint is a real button, so the piece is
+   fully operable by mouse. An embedded iframe does not receive key events
+   until it has focus, so keyboard-only controls are not sufficient. */
 .hints{
-  position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:30;
-  display:flex; gap:20px; font-family:var(--mono); font-size:11px; letter-spacing:.16em;
-  text-transform:uppercase; color:#4A4E56; transition:opacity 500ms ease; pointer-events:none;
+  position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:30;
+  display:flex; gap:8px; flex-wrap:wrap; justify-content:center;
+  max-width:calc(100% - 24px);
+  transition:opacity 500ms ease;
 }
-.hints kbd{color:#8C919B; font:inherit; border:1px solid #33373E; padding:2px 6px; margin-right:6px}
-.hints.hide{opacity:0}
+.hints.hide{opacity:0; pointer-events:none}
+.hints button{
+  display:inline-flex; align-items:center; gap:7px;
+  font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:#8C919B; background:rgba(10,11,14,.72); border:1px solid #2A2E35;
+  padding:7px 11px; cursor:pointer; transition:.16s; backdrop-filter:blur(6px);
+}
+.hints button:hover{color:var(--ink); background:var(--bone); border-color:var(--bone)}
+.hints button:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.hints kbd{color:#5C616B; font:inherit; border:1px solid #33373E; padding:1px 5px}
+.hints button:hover kbd{color:#6B7078; border-color:#9A958A}
+.hints .primary{color:var(--bone); border-color:#414650}
 
 /* clean mode strips every non-frame element */
 .clean .plate,.clean .bar,.clean .hints{opacity:0 !important}
+.clean .hints{pointer-events:none !important}   /* invisible must also mean unclickable */
 .clean .panel{transform:translateX(100%) !important}
 
 @media (prefers-reduced-motion:reduce){
@@ -813,7 +845,6 @@ html,body{
 
     <div class="bar"><i id="barFill"></i></div>
   </div>
-</div>
 
 <aside class="panel" id="panel" aria-label="Voiceover script">
   <header>
@@ -841,18 +872,23 @@ html,body{
 </aside>
 
 <div class="hints" id="hints">
-  <span><kbd>space</kbd>play</span>
-  <span><kbd>&larr; &rarr;</kbd>step</span>
-  <span><kbd>f</kbd>fullscreen</span>
-  <span><kbd>c</kbd>clean</span>
-  <span><kbd>s</kbd>script</span>
-  <span><kbd>g</kbd>guides</span>
-  <span><kbd>r</kbd>restart</span>
+  <button type="button" id="cPrev" title="Previous plate"><kbd>&larr;</kbd>prev</button>
+  <button type="button" id="cPlay" class="primary" title="Play / pause"><kbd>space</kbd><span id="cPlayLabel">pause</span></button>
+  <button type="button" id="cNext" title="Next plate"><kbd>&rarr;</kbd>next</button>
+  <button type="button" id="cRestart" title="Restart from plate 01"><kbd>r</kbd>restart</button>
+  <button type="button" id="cFull" title="Fullscreen"><kbd>f</kbd>fullscreen</button>
+  <button type="button" id="cClean" title="Hide all on-screen apparatus"><kbd>c</kbd>clean</button>
+  <button type="button" id="cScript" title="Voiceover script"><kbd>s</kbd>script</button>
 </div>
+
+</div><!-- /.frame -->
 
 <script>
 (() => {
   "use strict";
+
+  // Standalone gets a viewport height cap; embedded is sized by the host.
+  if (window.self === window.top) document.documentElement.classList.add('standalone');
 
   const stage  = document.getElementById('stage');
   const wash   = document.getElementById('wash');
@@ -908,11 +944,19 @@ html,body{
       `${(520 / renderScale).toFixed(1)}px ${(520 / renderScale).toFixed(1)}px`;
   }
 
+  // Measure the frame element rather than the viewport: inside an embed the
+  // iframe can be laid out late or at an odd size, and innerHeight would be
+  // wrong or zero at the moment this first runs.
+  const frameEl = document.querySelector('.frame');
   function fit(){
-    fitScale = Math.min(innerWidth / 1920, innerHeight / 1080);
+    const r = frameEl.getBoundingClientRect();
+    const w = r.width  || innerWidth  || 1920;
+    const h = r.height || innerHeight || 1080;
+    fitScale = Math.max(0.05, Math.min(w / 1920, h / 1080));   // never scale to 0
     stage.style.transform = `scale(${fitScale})`;
     sizeCanvas();
   }
+  new ResizeObserver(fit).observe(frameEl);
   addEventListener('resize', fit);
   matchMedia(`(resolution: ${devicePixelRatio}dppx)`).addEventListener?.('change', fit);
   fit();
@@ -1229,8 +1273,12 @@ html,body{
     }, 100);
   }
 
-  const pause = () => { paused = true;  hints.classList.remove('hide'); };
-  const play  = () => { paused = false; };
+  const setPlayLabel = () => {
+    const el = document.getElementById('cPlayLabel');
+    if (el) el.textContent = paused ? 'play' : 'pause';
+  };
+  const pause = () => { paused = true;  hints.classList.remove('hide'); setPlayLabel(); };
+  const play  = () => { paused = false; setPlayLabel(); wake(); };
 
   /* ---------- controls ---------- */
   const panel  = document.getElementById('panel');
@@ -1246,14 +1294,41 @@ html,body{
     else if (k === 'home'){ go(0); }
     else if (k === 'end'){ go(scenes.length - 1); }
     else if (k === 'r'){ go(0); play(); }
-    else if (k === 'f'){
-      const el = document.documentElement;
-      document.fullscreenElement ? document.exitFullscreen() : el.requestFullscreen?.();
-    }
+    else if (k === 'f'){ toggleFull(); }
     else if (k === 'c'){ document.body.classList.toggle('clean'); }
     else if (k === 's'){ panel.classList.toggle('on'); if (panel.classList.contains('on')) cueEls[idx].scrollIntoView({block:'center'}); }
     else if (k === 'g'){ guides.classList.toggle('on'); }
   });
+
+  // Fullscreen targets the frame so the :fullscreen rules apply. Inside a
+  // sandboxed iframe the request can be refused; fall back rather than throw.
+  function toggleFull(){
+    if (document.fullscreenElement) { document.exitFullscreen?.(); return; }
+    const p = frameEl.requestFullscreen?.();
+    if (p && p.catch) p.catch(() => {});
+  }
+
+  /* ---------- on-screen controls ----------
+     An embedded iframe gets no key events until it is focused, so the piece
+     must be fully operable with the mouse alone. */
+  const bind = (id, fn) => document.getElementById(id)?.addEventListener('click', e => {
+    e.stopPropagation(); fn();
+  });
+  bind('cPrev',    () => { go(idx - 1); pause(); });
+  bind('cNext',    () => { go(idx + 1); pause(); });
+  bind('cPlay',    () => { paused ? play() : pause(); });
+  bind('cRestart', () => { go(0); play(); });
+  bind('cFull',    toggleFull);
+  bind('cClean',   () => document.body.classList.toggle('clean'));
+  bind('cScript',  () => {
+    panel.classList.toggle('on');
+    if (panel.classList.contains('on')) cueEls[idx].scrollIntoView({ block:'center' });
+  });
+  setPlayLabel();
+
+  // Take focus on first interaction so the keyboard shortcuts start working
+  // when the page is running inside a frame.
+  addEventListener('pointerdown', () => { try { window.focus(); } catch (e) {} }, { once:true });
 
   document.getElementById('closePanel').addEventListener('click', () => panel.classList.remove('on'));
 
@@ -1273,18 +1348,23 @@ html,body{
     setTimeout(() => e.target.textContent = 'Copy timings', 1600);
   });
 
-  /* hide chrome when the pointer rests — so a capture is never contaminated */
+  /* Hide chrome when the pointer rests, so a capture is never contaminated —
+     but never while paused, or the controls would vanish out from under
+     someone who has deliberately stopped to look at a plate. */
   let idleTimer = null;
-  const wake = () => {
+  function wake(){
     stage.classList.remove('is-idle');
     hints.classList.remove('hide');
     clearTimeout(idleTimer);
     idleTimer = setTimeout(() => {
+      if (paused) return;
       stage.classList.add('is-idle');
       hints.classList.add('hide');
-    }, 2600);
-  };
-  addEventListener('mousemove', wake); wake();
+    }, 3200);
+  }
+  addEventListener('mousemove', wake);
+  addEventListener('pointerdown', wake);
+  wake();
 
   stage.addEventListener('click', () => paused ? play() : pause());
 
