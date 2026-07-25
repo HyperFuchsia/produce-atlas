@@ -24,7 +24,10 @@ measurement of your luck against what the amplitudes predicted.
   separate into f(j)+g(k). The meter is 1−Tr ρ² of one reel's reduced state; it is
   zero the instant you measure and climbs back toward 0.84 as the state re-entangles.
 - **l₁ coherence** (Baumgratz, Cramer & Plenio 2014) on reel one, and a
-  **Leggett–Garg K** = 2C₁−C₂ test of your hit sequence against macrorealism (K ≤ 1).
+  **Leggett–Garg K** test of your hit sequence against macrorealism. Averaged over
+  aligned triples, K = 1 − 4f where f is the fraction of triples that alternate, so
+  the bound K ≤ 1 holds by construction (verified over 300,000 random sequences:
+  max 1.000, fair-coin mean 0.00, perfect alternation −3).
 
 ### Why the luck index cannot be gamed
 
@@ -44,6 +47,16 @@ put down** (no currency, credits, wagers, prizes, payouts, streaks, daily bonus,
 countdowns, notifications, leaderboards or unlocks — nothing is lost by closing the
 tab), and **your time is the only stake**. A session clock runs in the header as the
 page's only honest score, and every quarter hour the LCD says so out loud.
+
+### Interface
+
+Powers on with a real LCD segment test — every pixel and flag lit, then blank, then
+ready. The lever can be pressed or **dragged down** like the real thing, releasing
+short of the catch to abandon the pull. Three alike inverts the reel cells twice at
+about 3 Hz, which is how a 1-bit panel cheers. Reset asks twice before clearing a
+log. Every instrument on the panel is a button that explains itself inline, the
+drift chart is readable with the arrow keys, and the reels carry live ARIA labels.
+Keyboard throughout: **space** observe, **B** burst, **S** sound, **R** reset.
 
 ### Everything else
 

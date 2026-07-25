@@ -134,12 +134,19 @@ h1 span{color:var(--rain)}
 .key:active:not(:disabled){transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
 .key:disabled{opacity:.45;cursor:not-allowed}
 .key:focus-visible{outline:2px solid var(--hud);outline-offset:3px}
-.keyhint{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:#9AA1A5;text-transform:uppercase}
+.keyhint{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.13em;color:#899094;text-transform:uppercase;text-align:right}
+.keyhint b{color:#C6CCCF;font-weight:400}
+.key.armed{
+  color:#1E1403;background:linear-gradient(180deg,#F7CE7A,var(--amber) 55%,#A0742010);
+  background:linear-gradient(180deg,#F7CE7A,var(--amber) 55%,#9C7420);
+  box-shadow:0 3px 0 #6B4E12, inset 0 1px 0 rgba(255,255,255,.45);
+}
 .grille{display:flex;gap:4px}
 .grille i{width:4px;height:4px;border-radius:50%;background:#191D20;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 
 /* lever */
-.lever{position:relative;width:66px;border:0;padding:0;cursor:pointer;background:none;flex:none}
+.lever{position:relative;width:66px;border:0;padding:0;background:none;flex:none;cursor:grab;touch-action:none}
+.lever.dragging{cursor:grabbing}
 .lever-mount{
   position:absolute;left:0;top:50%;transform:translateY(-50%);
   width:30px;height:98px;border-radius:0 7px 7px 0;
@@ -198,6 +205,7 @@ h1 span{color:var(--rain)}
 
 .chartwrap{display:flex;flex-direction:column;gap:5px}
 .chart{width:100%;height:72px;display:block;cursor:crosshair;touch-action:none}
+.chart:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
 .chart .zero{stroke:var(--panel-line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
 .chart .trace{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .chart .area{stroke:none;opacity:.16}
@@ -229,6 +237,20 @@ h1 span{color:var(--rain)}
 .ptable td.barcell{width:36%;padding-left:12px}
 .pbar{position:relative;display:block;width:100%;height:3px;background:rgba(43,224,124,.13)}
 .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--rain);opacity:.7}
+
+/* inline glossary */
+.term{
+  font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;text-align:left;
+  border-bottom:1px dotted var(--muted);letter-spacing:inherit;text-transform:inherit;
+}
+.term:hover{color:var(--text);border-bottom-color:var(--text)}
+.term[aria-expanded="true"]{color:var(--rain);border-bottom-color:var(--rain)}
+.term:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
+.def{
+  margin:0;padding:9px 11px;font-size:12.5px;line-height:1.5;color:var(--text);
+  background:rgba(43,224,124,.06);border-left:2px solid var(--rain);
+}
+.def[hidden]{display:none}
 
 /* ---------- manual: one sheet, hairline seams ---------- */
 .manual{border:1px solid var(--panel-line);display:flex;flex-direction:column}
@@ -336,14 +358,14 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <div class="keys">
           <button class="key" id="bSpin">Observe</button>
           <button class="key grey" id="bBurst">Burst ×10</button>
-          <button class="key grey" id="bSound" aria-pressed="false">Sound</button>
+          <button class="key grey" id="bSound" aria-pressed="false">Sound off</button>
           <button class="key grey" id="bReset">Reset</button>
-          <span class="keyhint">space = observe</span>
+          <span class="keyhint"><b>space</b> observe · <b>B</b> burst<br><b>S</b> sound · <b>R</b> reset</span>
         </div>
         <div class="grille" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
 
-      <button class="lever" id="lever" aria-label="Pull the lever to observe">
+      <button class="lever" id="lever" aria-label="Pull the lever to observe — drag it down or press it">
         <span class="lever-mount"></span>
         <span class="lever-arm"><span class="lever-ball"></span></span>
       </button>
@@ -367,13 +389,16 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <div class="stat"><dt>Matches</dt><dd id="sHits">0 <small id="sHitsExp">of 0.0</small></dd></div>
         <div class="stat"><dt>Three alike</dt><dd id="sTrios">0 <small id="sTriosExp">of 0.00</small></dd></div>
         <div class="stat"><dt>Best run</dt><dd id="sRun">0</dd></div>
-        <div class="stat"><dt>Evidence Σp(1−p)</dt><dd id="sEv">0.00</dd></div>
-        <div class="stat"><dt>Leggett–Garg K</dt><dd id="sLG">—</dd></div>
+        <div class="stat"><dt><button class="term" type="button" data-def="ev" aria-expanded="false">Evidence Σp(1−p)</button></dt><dd id="sEv">0.00</dd></div>
+        <div class="stat"><dt><button class="term" type="button" data-def="lg" aria-expanded="false">Leggett–Garg K</button></dt><dd id="sLG">—</dd></div>
       </dl>
 
+      <p class="def" hidden></p>
+
       <div class="chartwrap">
-        <svg class="chart" id="chart" viewBox="0 0 320 78" preserveAspectRatio="none" role="img" aria-label="Cumulative drift of matches away from the amplitudes' prediction"></svg>
-        <p class="cap" id="cap">DRIFT TRACE BEGINS AT OBSERVATION 2</p>
+        <svg class="chart" id="chart" viewBox="0 0 320 78" preserveAspectRatio="none" role="img" tabindex="0"
+             aria-label="Cumulative drift of matches away from the amplitudes' prediction. Focus and use the arrow keys to read each observation."></svg>
+        <p class="cap" id="cap" role="status" aria-live="polite">DRIFT TRACE BEGINS AT OBSERVATION 2</p>
       </div>
     </div>
 
@@ -384,23 +409,25 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <canvas id="phasor" width="300" height="300" aria-label="Argand diagram of the seven complex amplitudes on reel one"></canvas>
         <div class="meters">
           <div class="meter">
-            <div class="meter-top"><span>l₁ coherence</span><b id="cohVal">0.00</b></div>
+            <div class="meter-top"><button class="term" type="button" data-def="coh" aria-expanded="false">l₁ coherence</button><b id="cohVal">0.00</b></div>
             <div class="bar"><i id="cohBar" style="width:0%"></i></div>
           </div>
           <div class="meter">
-            <div class="meter-top"><span>entanglement 2·3</span><b id="fidVal">0.00</b></div>
+            <div class="meter-top"><button class="term" type="button" data-def="ent" aria-expanded="false">entanglement 2·3</button><b id="fidVal">0.00</b></div>
             <div class="bar amber"><i id="fidBar" style="width:0%"></i></div>
           </div>
           <div class="meter">
-            <div class="meter-top"><span>match probability</span><b id="phitVal">0.0%</b></div>
+            <div class="meter-top"><button class="term" type="button" data-def="phit" aria-expanded="false">match probability</button><b id="phitVal">0.0%</b></div>
             <div class="bar"><i id="phitBar" style="width:0%"></i></div>
           </div>
         </div>
       </div>
 
+      <p class="def" hidden></p>
+
       <table class="ptable">
         <thead>
-          <tr><th>Species</th><th class="barcell">|ψ|² reel 1</th><th>η</th><th>p(next)</th></tr>
+          <tr><th>Species</th><th class="barcell">|ψ|² reel 1</th><th><button class="term" type="button" data-def="eta" aria-expanded="false">η</button></th><th>p(next)</th></tr>
         </thead>
         <tbody id="ptable"></tbody>
       </table>
@@ -447,7 +474,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
       <div class="entry">
         <h3>Instruments on the panel</h3>
-        <p><b>l₁ coherence</b> (Baumgratz, Cramer &amp; Plenio, 2014) is zero the instant you measure and climbs as the state spreads back out. <b>Entanglement</b> is the real thing: reels two and three share one 49-dimensional state, coupled by a phase that will not separate, and the meter is 1−Tr ρ² of one reel's reduced state. <b>Leggett–Garg K</b> tests your hit sequence against macrorealism, bound at K ≤ 1 — and no sequence you can produce will break it.</p>
+        <p><b>l₁ coherence</b> (Baumgratz, Cramer &amp; Plenio, 2014) is zero the instant you measure and climbs as the state spreads back out. <b>Entanglement</b> is the real thing: reels two and three share one 49-dimensional state, coupled by a phase that will not separate, and the meter is 1−Tr ρ² of one reel's reduced state. <b>Leggett–Garg K</b> tests your hit sequence against macrorealism. Averaged over aligned triples it equals 1 − 4f, where f is the fraction of your triples that alternate: a fair coin sits near 0, sticky Zeno reels climb toward the bound of 1, and nothing you can do gets past it.</p>
       </div>
 
       <div class="entry">
@@ -681,9 +708,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     spins:0, hits:0, trios:0,
     expHits:0, varHits:0, expTrios:0,
     run:0, bestRun:0, dry:0, longestDry:0,
-    drift:[], q:[], lifetime:0
+    drift:[], q:[], lifetime:0, hinted:0
   };
-  var busy = false, sound = false, burstLeft = 0, audio = null, anim = null;
+  var busy = false, sound = false, burstLeft = 0, burstActive = false, audio = null, anim = null;
   var lastMeasure = performance.now(), entangled = false, zeno = false;
 
   function load(){
@@ -732,9 +759,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   }
 
   /* ============================ LCD cells ============================ */
-  var cellCtx = [].slice.call(document.querySelectorAll(".cell")).map(function(c){
+  var cellCtx = [].slice.call(document.querySelectorAll(".cell")).map(function(c, i){
     var cv = c.querySelector("canvas");
-    return {el:c, cv:cv, ctx:cv.getContext("2d"), taxon:c.querySelector(".taxon"), shown:0, px:8};
+    cv.setAttribute("role", "img");
+    cv.setAttribute("aria-label", "Reel " + (i+1) + ", not yet observed");
+    return {el:c, cv:cv, ctx:cv.getContext("2d"), taxon:c.querySelector(".taxon"),
+            shown:0, px:8, mode:"normal", invert:false, n:i+1};
   });
   function sizeCells(){
     cellCtx.forEach(function(c){
@@ -747,11 +777,13 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     });
   }
   function drawCell(c){
-    var ctx = c.ctx, g = SYMBOLS[c.shown].grid, px = c.px, i, x, y;
+    var ctx = c.ctx, g = SYMBOLS[c.shown].grid, px = c.px, i, x, y, on;
     ctx.clearRect(0,0,c.cv.width,c.cv.height);
     for(i=0;i<GRID*GRID;i++){
       x = (i % GRID)*px; y = ((i/GRID)|0)*px;
-      ctx.fillStyle = g[i] ? "rgba(16,23,11,.94)" : "rgba(16,23,11,.06)";
+      on = c.mode === "all" ? true : c.mode === "blank" ? false : g[i];
+      if(c.invert) on = !on;
+      ctx.fillStyle = on ? "rgba(16,23,11,.94)" : "rgba(16,23,11,.06)";
       ctx.fillRect(x + px*0.06, y + px*0.06, px*0.88, px*0.88);
     }
   }
@@ -760,7 +792,55 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     c.shown = sym;
     c.taxon.textContent = SYMBOLS[sym].taxon;
     c.el.classList.toggle("locked", !!locked);
+    c.cv.setAttribute("aria-label", "Reel " + c.n + ", " + SYMBOLS[sym].common + (locked ? "" : ", still turning"));
     drawCell(c);
+  }
+
+  /* Three-alike inverts the cells twice, at about 3 Hz — a real LCD game's only
+     way to cheer, and slow enough to be safe. */
+  var flashUntil = 0, lastInv = false;
+  function celebrate(kind){
+    if(reduced || kind !== "trio") return;
+    flashUntil = performance.now() + 700;
+  }
+  function flashTick(now){
+    var inv = flashUntil > now && (Math.floor((flashUntil - now)/175) % 2 === 1);
+    if(inv === lastInv) return;
+    lastInv = inv;
+    cellCtx.forEach(function(c){ c.invert = inv; drawCell(c); });
+  }
+
+  /* ============================ power-on segment test ============================ */
+  var booting = true;
+  function segTest(on){
+    el("segSpins").innerHTML = segText(on ? "888" : "   ", 3);
+    el("segHits").innerHTML  = segText(on ? "888" : "   ", 3);
+    el("segZ").innerHTML     = segText(on ? "8888" : "    ", 4);
+  }
+  function flags(on){
+    [].forEach.call(document.querySelectorAll(".flag"), function(f){ f.classList.toggle("on", on); });
+  }
+  function bootDone(){
+    booting = false;
+    cellCtx.forEach(function(c){ c.mode = "normal"; drawCell(c); });
+    flags(false);
+    renderStats();
+    el("msg").textContent = "QA-77 READY \u00B7 PULL THE LEVER TO COLLAPSE THE WAVEFUNCTION";
+    setKeys(false);
+  }
+  function boot(){
+    setKeys(true);
+    if(reduced){ bootDone(); return; }
+    el("msg").textContent = "";
+    cellCtx.forEach(function(c){ c.mode = "all"; drawCell(c); });
+    flags(true);
+    segTest(true);
+    setTimeout(function(){
+      cellCtx.forEach(function(c){ c.mode = "blank"; drawCell(c); });
+      flags(false);
+      segTest(false);
+    }, 470);
+    setTimeout(bootDone, 780);
   }
 
   /* ============================ sound ============================ */
@@ -793,12 +873,17 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     if(S.spins < 8 || S.varHits < 3) return null;
     return (S.hits - S.expHits)/Math.sqrt(S.varHits);
   }
+  /* K averaged over ALIGNED triples: q1q2 + q2q3 - q1q3 takes only the values 1
+     and -3, so this estimator obeys the macrorealist bound K <= 1 exactly. Taking
+     C1 and C2 over different sample sets, as is tempting, does not. */
   function leggettGarg(){
-    var q = S.q, n = q.length, i, c1 = 0, c2 = 0, n1 = 0, n2 = 0;
+    var q = S.q, n = q.length, i, sum = 0, m = 0;
     if(n < 12) return null;
-    for(i=0;i+1<n;i++){ c1 += q[i]*q[i+1]; n1++; }
-    for(i=0;i+2<n;i++){ c2 += q[i]*q[i+2]; n2++; }
-    return 2*(c1/n1) - (c2/n2);
+    for(i=0;i+2<n;i++){
+      sum += q[i]*q[i+1] + q[i+1]*q[i+2] - q[i]*q[i+2];
+      m++;
+    }
+    return m ? sum/m : null;
   }
   function verdict(z){
     if(z >= 2)  return {t:"ANOMALOUS +", c:"warm"};
@@ -883,12 +968,14 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     announce(res);
     renderAll();
     save();
+    celebrate(res.kind);
     if(res.kind === "trio") fanfare();
     else if(res.kind === "pair") beep(1318, .09, .04);
     if(burstLeft > 0){
       burstLeft--;
       setTimeout(function(){ go(true); }, 110);
     }else{
+      burstActive = false;
       busy = false;
       setKeys(false);
     }
@@ -904,6 +991,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       txt = "NO MATCH · " + res.out.map(function(k){ return SYMBOLS[k].taxon; }).join(" ");
     }
     if(zeno) txt += " · ZENO GAP " + res.gap.toFixed(2) + "s";
+    if(burstActive) txt = "BURST " + (10 - burstLeft) + "/10 · " + txt;
+    if(S.spins === 2 && !S.hinted){
+      S.hinted = 1;
+      txt += " · TIP: OBSERVE AGAIN QUICKLY AND THE REELS STICK";
+    }
     el("msg").textContent = txt;
   }
 
@@ -912,12 +1004,14 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     el("lever").disabled = disabled;
   }
 
-  function go(fast){
-    if(anim) return;
+  function go(fast, fromDrag){
+    if(anim || booting) return;
     busy = true; setKeys(true);
-    var lever = el("lever");
-    lever.classList.add("pulled");
-    setTimeout(function(){ lever.classList.remove("pulled"); }, fast ? 150 : 360);
+    if(!fromDrag){
+      var lever = el("lever");
+      lever.classList.add("pulled");
+      setTimeout(function(){ lever.classList.remove("pulled"); }, fast ? 150 : 360);
+    }
     var res = measure();
     if(reduced){
       res.out.forEach(function(k,i){ setCell(i, k, true); });
@@ -945,6 +1039,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     el("sLG").textContent = K === null ? "—" : (K >= 0 ? "+" : "−") + Math.abs(K).toFixed(3);
     el("lifetime").textContent = "lifetime " + S.lifetime;
 
+    if(booting) return;
     el("segSpins").innerHTML = segText(Math.min(S.spins,999), 3);
     el("segHits").innerHTML = segText(Math.min(S.hits,999), 3);
     var z = zScore();
@@ -1037,9 +1132,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     el("stateAge").textContent = "t = " + age.toFixed(1) + " s";
     el("modeLabel").textContent = "T+" + (age < 99 ? age.toFixed(1) : "99.9") + "S";
     sessionClock();
-    el("fCoh").classList.toggle("on", coh > 0.45);
-    el("fEnt").classList.toggle("on", ent > 0.25);
-    el("fZeno").classList.toggle("on", zeno && (performance.now() - lastMeasure) < 2500);
+    if(!booting){
+      el("fCoh").classList.toggle("on", coh > 0.45);
+      el("fEnt").classList.toggle("on", ent > 0.25);
+      el("fZeno").classList.toggle("on", zeno && (performance.now() - lastMeasure) < 2500);
+    }
     return coh;
   }
   function renderAll(){ renderStats(); renderVerdict(); renderChart(); }
@@ -1174,42 +1271,146 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       drawHyper(dt, coherence);
     }
     stepAnim(now);
+    flashTick(now);
     liveAcc += dt;
     if(liveAcc > 0.12){ liveAcc = 0; coherence = renderLive(); drawPhasors(); }
     requestAnimationFrame(frame);
   }
 
   /* ============================ events ============================ */
-  el("bSpin").addEventListener("click", function(){ if(!busy) go(false); });
-  el("lever").addEventListener("click", function(){ if(!busy) go(false); });
-  el("bBurst").addEventListener("click", function(){
-    if(busy || anim) return;
-    burstLeft = 9;
+  function startBurst(){
+    if(busy || anim || booting) return;
+    burstLeft = 9; burstActive = true;
     go(true);
-  });
+  }
+
+  el("bSpin").addEventListener("click", function(){ if(!busy) go(false); });
+  el("bBurst").addEventListener("click", startBurst);
+
   el("bSound").addEventListener("click", function(){
     sound = !sound;
     this.setAttribute("aria-pressed", String(sound));
-    this.textContent = sound ? "Sound ✓" : "Sound";
+    this.textContent = sound ? "Sound on" : "Sound off";
     if(sound) beep(1568, .08, .05);
   });
+
+  /* Reset asks twice. Clearing a log by brushing one key would be rude. */
+  var armedAt = 0, armTimer = null;
+  function disarm(){
+    armedAt = 0;
+    var b = el("bReset");
+    b.textContent = "Reset"; b.classList.remove("armed");
+  }
   el("bReset").addEventListener("click", function(){
-    var life = S.lifetime;
-    S.spins = S.hits = S.trios = 0;
-    S.expHits = S.varHits = S.expTrios = 0;
-    S.run = S.bestRun = S.dry = S.longestDry = 0;
-    S.drift = []; S.q = []; S.lifetime = life;
-    hover = null;
-    el("msg").textContent = "LOG CLEARED — STATE VECTOR UNTOUCHED";
-    renderAll(); save();
+    if(booting) return;
+    if(armedAt && Date.now() - armedAt < 5000){
+      clearTimeout(armTimer); disarm();
+      var life = S.lifetime;
+      S.spins = S.hits = S.trios = 0;
+      S.expHits = S.varHits = S.expTrios = 0;
+      S.run = S.bestRun = S.dry = S.longestDry = 0;
+      S.drift = []; S.q = []; S.lifetime = life;
+      hover = null;
+      el("msg").textContent = "LOG CLEARED \u2014 STATE VECTOR UNTOUCHED";
+      beep(660, .12, .05);
+      renderAll(); save();
+      return;
+    }
+    armedAt = Date.now();
+    this.textContent = "Confirm";
+    this.classList.add("armed");
+    el("msg").textContent = "PRESS CONFIRM TO CLEAR THE OBSERVATION LOG \u00B7 IGNORE TO KEEP IT";
+    clearTimeout(armTimer);
+    armTimer = setTimeout(disarm, 5000);
   });
+
+  /* The lever can be pressed, or dragged down like the real thing. */
+  (function(){
+    var lever = el("lever"), arm = lever.querySelector(".lever-arm");
+    var MAX = 74, TRAVEL = 130, THRESHOLD = 0.55;
+    var dragging = false, moved = false, startY = 0, angle = 0, swallowClick = false;
+
+    function setAngle(a, animate){
+      arm.style.transition = animate ? "" : "none";
+      arm.style.transform = "translateY(-100%) rotate(" + a + "deg)";
+    }
+    function letGo(){
+      arm.style.transition = "";
+      arm.style.transform = "";
+    }
+    lever.addEventListener("pointerdown", function(e){
+      if(lever.disabled || busy || booting) return;
+      dragging = true; moved = false; startY = e.clientY; angle = 0;
+      lever.classList.add("dragging");
+      try{ lever.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    lever.addEventListener("pointermove", function(e){
+      if(!dragging) return;
+      var dy = e.clientY - startY;
+      if(Math.abs(dy) > 4) moved = true;
+      angle = Math.max(0, Math.min(MAX, dy/TRAVEL*MAX));
+      setAngle(angle, false);
+    });
+    function release(){
+      if(!dragging) return;
+      dragging = false;
+      lever.classList.remove("dragging");
+      if(!moved){ letGo(); return; }        /* a tap: let the click handler take it */
+      swallowClick = true;
+      setTimeout(function(){ swallowClick = false; }, 350);
+      if(angle >= MAX*THRESHOLD && !busy){
+        setAngle(MAX, true);
+        go(false, true);
+        setTimeout(letGo, 240);
+      }else{
+        letGo();                            /* released short of the catch */
+      }
+    }
+    lever.addEventListener("pointerup", release);
+    lever.addEventListener("pointercancel", release);
+    lever.addEventListener("click", function(){
+      if(swallowClick || busy || booting) return;
+      go(false);
+    });
+  })();
+
+  /* Inline glossary: every instrument on the panel explains itself. */
+  var DEFS = {
+    coh:"How much superposition reel one has left. It is exactly zero the instant you observe, and climbs as the state spreads back out. Formally the l\u2081-norm of coherence, (\u03A3|\u03C8\u1D62|)\u00B2\u22121, scaled to 0\u20131.",
+    ent:"How entangled reels two and three are, as 1\u2212Tr \u03C1\u00B2 of one reel's reduced state: 0 when they are independent, 1 when knowing one tells you everything about the other. Observing them destroys it; waiting rebuilds it.",
+    phit:"The chance the next observation shows at least two alike \u2014 computed exactly from the joint state as it stands this instant, not a long-run average. It moves while you watch.",
+    eta:"Detector efficiency. Each species is read out by a detector of different sensitivity, which is what tilts the reels toward cherries and away from vanilla. p(next) is |\u03C8|\u00B2 weighted by \u03B7 and renormalised.",
+    ev:"Accumulated evidence, \u03A3p(1\u2212p). A spin that was nearly certain adds almost nothing to it, which is why freezing the reels with Burst does not unlock the luck index no matter how many times you pull.",
+    lg:"Leggett\u2013Garg K averages q\u2081q\u2082+q\u2082q\u2083\u2212q\u2081q\u2083 over consecutive triples of your hit sequence, where q is +1 for a match and \u22121 for a miss. Macrorealism caps it at 1, and this estimator hits the bound exactly: K = 1 \u2212 4f, with f the fraction of your triples that alternate. A fair coin sits near 0. Zeno-locked reels push it toward 1. Nothing you can do pushes it past."
+  };
+  [].forEach.call(document.querySelectorAll(".term"), function(btn){
+    btn.addEventListener("click", function(){
+      var panel = btn.closest(".panel"), box = panel.querySelector(".def");
+      var open = btn.getAttribute("aria-expanded") === "true";
+      [].forEach.call(panel.querySelectorAll(".term"), function(o){ o.setAttribute("aria-expanded","false"); });
+      if(open){ box.hidden = true; return; }
+      btn.setAttribute("aria-expanded","true");
+      box.textContent = DEFS[btn.dataset.def];
+      box.hidden = false;
+    });
+  });
+
   document.addEventListener("keydown", function(e){
-    if(e.code !== "Space" && e.key !== " ") return;
-    var t = e.target;
-    if(t && (t.tagName === "BUTTON" || t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
-    e.preventDefault();
-    if(!busy) go(false);
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target, tag = t && t.tagName;
+    if(tag === "INPUT" || tag === "TEXTAREA") return;
+    if(e.code === "Space" || e.key === " "){
+      if(tag === "BUTTON") return;                 /* let the focused key handle it */
+      e.preventDefault();
+      if(!busy) go(false);
+      return;
+    }
+    var k = (e.key || "").toLowerCase();
+    if(k === "b"){ e.preventDefault(); startBurst(); }
+    else if(k === "s"){ e.preventDefault(); el("bSound").click(); }
+    else if(k === "r"){ e.preventDefault(); el("bReset").click(); }
   });
+
   (function(){
     var svg = el("chart");
     function move(e){
@@ -1222,6 +1423,19 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     svg.addEventListener("pointermove", move);
     svg.addEventListener("pointerdown", move);
     svg.addEventListener("pointerleave", function(){ if(hover !== null){ hover = null; renderChart(); } });
+    svg.addEventListener("keydown", function(e){
+      var n = S.drift.length;
+      if(n < 2) return;
+      var at = hover === null ? n-1 : hover, next = at;
+      if(e.key === "ArrowLeft") next = Math.max(0, at-1);
+      else if(e.key === "ArrowRight") next = Math.min(n-1, at+1);
+      else if(e.key === "Home") next = 0;
+      else if(e.key === "End") next = n-1;
+      else return;
+      e.preventDefault();
+      hover = next; renderChart();
+    });
+    svg.addEventListener("blur", function(){ if(hover !== null){ hover = null; renderChart(); } });
   })();
   var rt = null;
   window.addEventListener("resize", function(){
@@ -1237,6 +1451,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   renderAll();
   renderLive();
   if(reduced){ drawRain(0.016); drawHyper(0.016, 0.4); drawPhasors(); }
+  boot();
   requestAnimationFrame(frame);
 
   /* Poke at the machine from the console if you like. */
