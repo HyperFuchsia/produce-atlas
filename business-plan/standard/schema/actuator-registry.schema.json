@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ungoverned-automation.org/schema/actuator-registry/v0.1",
+  "title": "UAS Actuator Registry",
+  "description": "Machine-readable actuator registry per UAS-1:v0.1 Clause 4 and Annex D.",
+  "type": "object",
+  "required": ["uas_version", "registry_version", "deployment", "actuators"],
+  "additionalProperties": false,
+
+  "properties": {
+    "uas_version": {
+      "description": "Version of the standard this registry is written against.",
+      "const": "0.1"
+    },
+    "registry_version": {
+      "description": "Monotonic version of this registry. Recorded in every evidence record per Clause 9.1.2(h).",
+      "type": "string",
+      "minLength": 1
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["id", "organisation", "system", "last_review"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "organisation": { "type": "string", "minLength": 1 },
+        "system": {
+          "description": "The automated decision system this registry scopes.",
+          "type": "string",
+          "minLength": 1
+        },
+        "site": { "type": "string" },
+        "last_review": {
+          "description": "Date of last registry review. Interval must not exceed 90 days (Clause 4.3.1).",
+          "type": "string",
+          "format": "date"
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "actuators": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/actuator" }
+    }
+  },
+
+  "$defs": {
+    "actuator": {
+      "type": "object",
+      "required": [
+        "id", "description", "class", "consequence_tier",
+        "control", "provenance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "description": "Stable identifier. Referenced by the governor and by every evidence record."
+        },
+        "description": { "type": "string", "minLength": 1 },
+
+        "class": {
+          "enum": ["physical", "financial", "data", "communication", "access", "legal"],
+          "description": "Clause 5.2. Class does not determine tier."
+        },
+
+        "consequence_tier": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Clause 5.1. Assigned tier is the higher of single-operation and aggregate."
+        },
+        "tier_rationale": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "worst_credible_outcome": { "type": "string" },
+            "single_operation_tier": { "type": "integer", "minimum": 1, "maximum": 4 },
+            "aggregate_tier": {
+              "type": "integer", "minimum": 1, "maximum": 4,
+              "description": "Clause 5.1.2 — tier reached by repeated operation within the rated window."
+            }
+          }
+        },
+
+        "reachable_via": {
+          "description": "Clause 4.2.1 — how system output reaches this actuator.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "downstream_of": {
+          "description": "Clause 4.2.2 — actuator ids inherited transitively through a consuming system.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+
+        "control": { "$ref": "#/$defs/control" },
+        "rated_capacity": { "$ref": "#/$defs/rated_capacity" },
+        "provenance": { "$ref": "#/$defs/provenance" },
+        "verification": { "$ref": "#/$defs/verification" }
+      },
+
+      "allOf": [
+        {
+          "description": "Clause 8.3.1 — Tier 1 and 2 actuators require a signature.",
+          "if": {
+            "properties": { "consequence_tier": { "enum": [1, 2] } },
+            "required": ["consequence_tier"]
+          },
+          "then": {
+            "properties": {
+              "control": { "required": ["requires_signature"] }
+            }
+          }
+        },
+        {
+          "description": "Clause 7.4.1 — governed actuators must declare a rated capacity.",
+          "if": {
+            "properties": {
+              "control": {
+                "properties": { "level": { "enum": [3] } },
+                "required": ["level"]
+              }
+            },
+            "required": ["control"]
+          },
+          "then": { "required": ["rated_capacity"] }
+        }
+      ]
+    },
+
+    "control": {
+      "type": "object",
+      "required": ["level"],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Clause 6.1. 5=elimination 4=substitution 3=engineering 2=administrative 1=warning 0=none"
+        },
+        "mechanism": {
+          "type": "string",
+          "description": "What the control actually is, in plain language."
+        },
+        "governor_properties": {
+          "description": "Clause 7.2. All six must be true to claim level 3. Scoring tool demotes to 2 otherwise.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "non_inferential":            { "type": "boolean" },
+            "independent_failure_domain": { "type": "boolean" },
+            "resource_denial":            { "type": "boolean" },
+            "fail_closed":                { "type": "boolean" },
+            "deterministic":              { "type": "boolean" },
+            "inspectable_policy":         { "type": "boolean" }
+          }
+        },
+        "trip_action": {
+          "enum": ["alarm", "trip", "lockout"],
+          "description": "Clause 7.5."
+        },
+        "requires_signature": {
+          "type": "boolean",
+          "description": "Clause 8.3 — signature is a precondition of execution, not an after-the-fact log."
+        },
+        "two_person": {
+          "type": "boolean",
+          "description": "Clause 8.4 — mandatory for tier 1 at conformance level 3."
+        },
+        "statistical_detection": {
+          "description": "Clause 7.6. Reported separately; never the sole control on tier 1 or 2.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "false_positive_rate": {
+              "type": ["number", "null"],
+              "minimum": 0,
+              "maximum": 1,
+              "description": "null means unmeasured, which is a finding under Clause 7.6.2. It is not an error in the registry."
+            },
+            "observation_period_days": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+
+    "rated_capacity": {
+      "type": "object",
+      "required": ["max_rate", "approved_by", "approved_on"],
+      "additionalProperties": false,
+      "properties": {
+        "max_rate": {
+          "type": "string",
+          "description": "e.g. '40/hour', '1/minute'. Clause 7.4.1."
+        },
+        "max_magnitude": {
+          "type": "string",
+          "description": "e.g. 'USD 5000', '1.2 m/s', '500 rows'. Omit where magnitude is not meaningful."
+        },
+        "permitted_window": {
+          "type": "string",
+          "description": "e.g. 'Mon-Fri 0600-2200 site local'."
+        },
+        "configuration": {
+          "type": "string",
+          "description": "Clause 7.4.2 — the configuration under which this rating holds. A rating without its configuration is not a rating."
+        },
+        "alarm_threshold_pct": {
+          "type": "number", "minimum": 0, "maximum": 100,
+          "description": "Clause 7.5.2, default 80."
+        },
+        "approved_by": { "type": "string", "minLength": 1 },
+        "approved_on": { "type": "string", "format": "date" }
+      }
+    },
+
+    "provenance": {
+      "description": "Clause 8.2. All four attributions. A field may be empty or null where no attribution could be established during enumeration — that is precisely the condition an assessment exists to surface, and the scoring tool raises it as a finding. The keys must be present so that an unattributed actuator is a recorded fact rather than an omission.",
+      "type": "object",
+      "required": ["built_by", "authorised_by", "operated_by", "funded_by"],
+      "additionalProperties": false,
+      "properties": {
+        "built_by":      { "$ref": "#/$defs/attribution" },
+        "authorised_by": { "$ref": "#/$defs/attribution" },
+        "operated_by":   { "$ref": "#/$defs/attribution" },
+        "funded_by":     { "$ref": "#/$defs/attribution" },
+        "authorised_on": { "type": ["string", "null"], "format": "date" }
+      }
+    },
+
+    "attribution": {
+      "description": "A named person, role, or budget authority. Empty string or null records that none could be established.",
+      "type": ["string", "null"]
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "last_proof_test": {
+          "type": ["string", "null"],
+          "description": "Date, or null if never tested. Clause 7.8.4 demotes never-tested functions to level 2."
+        },
+        "proof_test_result": { "enum": ["pass", "fail", "never"] },
+        "response_time_p99_ms": {
+          "type": ["number", "null"],
+          "description": "Clause 7.7. null means UNMEASURED and is reported as such — never estimated."
+        },
+        "iso13855_verified": {
+          "type": ["boolean", "null"],
+          "description": "Physical actuators only. Clause 7.7.2 — by measurement, not calculation alone."
+        }
+      }
+    }
+  }
+}

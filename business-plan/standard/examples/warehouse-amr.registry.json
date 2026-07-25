@@ -1,0 +1,339 @@
+{
+  "uas_version": "0.1",
+  "registry_version": "2026-07-14.3",
+  "deployment": {
+    "id": "DC-04-AMR-FLEET",
+    "organisation": "Example Regional Distribution (illustrative)",
+    "system": "Fleet coordination and slotting model, vendor-hosted, tool-calling enabled",
+    "site": "Distribution Centre 04",
+    "last_review": "2026-07-14",
+    "notes": "Illustrative worked example for UAS-1:v0.1. Not a real deployment. Represents a mid-market fulfilment site typical of the beachhead segment: AMRs sharing floor space with pickers, a conveyor line, and the model additionally wired to several business systems that nobody thought of as safety-relevant until enumeration."
+  },
+  "actuators": [
+    {
+      "id": "amr.motion.dispatch",
+      "description": "Issues movement commands to the autonomous mobile robot fleet in aisles shared with human pickers.",
+      "class": "physical",
+      "consequence_tier": 1,
+      "tier_rationale": {
+        "worst_credible_outcome": "AMR strikes a picker at speed in a shared aisle. Crush or impact injury; fatality credible with a loaded unit.",
+        "single_operation_tier": 1,
+        "aggregate_tier": 1
+      },
+      "reachable_via": ["fleet_manager.dispatch()", "REST /v2/fleet/move"],
+      "control": {
+        "level": 3,
+        "mechanism": "Safety PLC in series with fleet e-stop circuit. Speed and zone limits enforced by the PLC; the model can request motion but cannot raise the ceiling.",
+        "governor_properties": {
+          "non_inferential": true,
+          "independent_failure_domain": true,
+          "resource_denial": true,
+          "fail_closed": true,
+          "deterministic": true,
+          "inspectable_policy": true
+        },
+        "trip_action": "lockout",
+        "requires_signature": true,
+        "two_person": true
+      },
+      "rated_capacity": {
+        "max_rate": "continuous",
+        "max_magnitude": "1.2 m/s in shared zones; 0.3 m/s within 2 m of a detected human",
+        "permitted_window": "Mon-Sat 0500-2300 site local",
+        "configuration": "Loaded unit up to 400 kg, floor condition dry, zone map v11. Rating does not hold for wet floor or map revision.",
+        "alarm_threshold_pct": 80,
+        "approved_by": "R. Okonkwo, PE (Controls)",
+        "approved_on": "2026-05-02"
+      },
+      "provenance": {
+        "built_by": "Integration vendor — Northline Controls",
+        "authorised_by": "R. Okonkwo, PE (Controls)",
+        "operated_by": "DC-04 Shift Operations Lead",
+        "funded_by": "CAPEX-2025-114 Automation Phase 2",
+        "authorised_on": "2026-05-02"
+      },
+      "verification": {
+        "last_proof_test": "2026-06-20",
+        "proof_test_result": "pass",
+        "response_time_p99_ms": 42,
+        "iso13855_verified": true
+      }
+    },
+
+    {
+      "id": "conveyor.speed.setpoint",
+      "description": "Adjusts main sortation conveyor speed in response to predicted inbound volume.",
+      "class": "physical",
+      "consequence_tier": 1,
+      "tier_rationale": {
+        "worst_credible_outcome": "Speed increase during a manual clearance task. Entanglement or amputation at the transfer point.",
+        "single_operation_tier": 1,
+        "aggregate_tier": 1
+      },
+      "reachable_via": ["scada_bridge.set_speed()"],
+      "control": {
+        "level": 3,
+        "mechanism": "Rate limiter in the SCADA bridge. Rejects setpoints above the configured ceiling.",
+        "governor_properties": {
+          "non_inferential": true,
+          "independent_failure_domain": false,
+          "resource_denial": true,
+          "fail_closed": true,
+          "deterministic": true,
+          "inspectable_policy": true
+        },
+        "trip_action": "lockout",
+        "requires_signature": true,
+        "two_person": false
+      },
+      "rated_capacity": {
+        "max_rate": "4 changes/hour",
+        "max_magnitude": "1.8 m/s",
+        "permitted_window": "production hours only",
+        "configuration": "Standard tote profile. Rating does not hold for oversize handling.",
+        "approved_by": "R. Okonkwo, PE (Controls)",
+        "approved_on": "2026-05-02"
+      },
+      "provenance": {
+        "built_by": "In-house — Controls Engineering",
+        "authorised_by": "R. Okonkwo, PE (Controls)",
+        "operated_by": "DC-04 Shift Operations Lead",
+        "funded_by": "CAPEX-2025-114 Automation Phase 2",
+        "authorised_on": "2026-05-02"
+      },
+      "verification": {
+        "last_proof_test": "2026-01-08",
+        "proof_test_result": "pass",
+        "response_time_p99_ms": 180,
+        "iso13855_verified": false
+      }
+    },
+
+    {
+      "id": "dock.door.release",
+      "description": "Releases trailer restraints and signals dock door operation on completion of load.",
+      "class": "physical",
+      "consequence_tier": 1,
+      "tier_rationale": {
+        "worst_credible_outcome": "Restraint released while a forklift is in the trailer. Trailer creep; forklift and operator fall from dock.",
+        "single_operation_tier": 1,
+        "aggregate_tier": 1
+      },
+      "reachable_via": ["wms.close_load()", "downstream of yard scheduling model"],
+      "downstream_of": ["yard.slot.assign"],
+      "control": {
+        "level": 2,
+        "mechanism": "Standard operating procedure requires visual confirmation before the model's close-load signal is honoured. Not enforced by any interlock.",
+        "trip_action": "alarm",
+        "requires_signature": false,
+        "two_person": false
+      },
+      "provenance": {
+        "built_by": "WMS vendor integration",
+        "authorised_by": "",
+        "operated_by": "Dock Supervisor",
+        "funded_by": "OPEX-2026-DC04-WMS"
+      },
+      "verification": {
+        "last_proof_test": null,
+        "proof_test_result": "never",
+        "response_time_p99_ms": null,
+        "iso13855_verified": null
+      }
+    },
+
+    {
+      "id": "labour.shift.assign",
+      "description": "Assigns pickers to zones and sets hourly rate targets.",
+      "class": "legal",
+      "consequence_tier": 2,
+      "tier_rationale": {
+        "worst_credible_outcome": "Sustained assignment above safe ergonomic rate; repetitive strain injury requiring treatment. Aggregate effect over a shift, not a single assignment.",
+        "single_operation_tier": 4,
+        "aggregate_tier": 2
+      },
+      "reachable_via": ["wfm.assign()", "wfm.set_target()"],
+      "control": {
+        "level": 2,
+        "mechanism": "Rate targets bounded by a value in the model's system prompt.",
+        "requires_signature": false,
+        "two_person": false,
+        "statistical_detection": {
+          "enabled": true,
+          "false_positive_rate": null,
+          "observation_period_days": 30
+        }
+      },
+      "provenance": {
+        "built_by": "In-house — Workforce Analytics",
+        "authorised_by": "DC-04 General Manager",
+        "operated_by": "Shift Operations Lead",
+        "funded_by": "OPEX-2026-DC04-WFM",
+        "authorised_on": "2026-03-11"
+      },
+      "verification": {
+        "last_proof_test": null,
+        "proof_test_result": "never",
+        "response_time_p99_ms": null
+      }
+    },
+
+    {
+      "id": "carrier.payment.release",
+      "description": "Releases payment to carriers on delivery confirmation.",
+      "class": "financial",
+      "consequence_tier": 2,
+      "tier_rationale": {
+        "worst_credible_outcome": "Erroneous release of unrecoverable funds at scale.",
+        "single_operation_tier": 3,
+        "aggregate_tier": 2
+      },
+      "reachable_via": ["ap.release_payment()"],
+      "control": {
+        "level": 3,
+        "mechanism": "Payment gateway enforces per-transaction and daily ceilings independently of the requesting system. Short-lived scoped credential issued per approved release.",
+        "governor_properties": {
+          "non_inferential": true,
+          "independent_failure_domain": true,
+          "resource_denial": true,
+          "fail_closed": true,
+          "deterministic": true,
+          "inspectable_policy": true
+        },
+        "trip_action": "trip",
+        "requires_signature": true,
+        "two_person": false
+      },
+      "rated_capacity": {
+        "max_rate": "200/day",
+        "max_magnitude": "USD 25,000 per transaction; USD 400,000 per day",
+        "permitted_window": "Mon-Fri 0700-1900 ET",
+        "configuration": "Applies to carriers on the approved vendor list. New vendors are out of rating.",
+        "approved_by": "M. Delacroix, Controller",
+        "approved_on": "2026-04-19"
+      },
+      "provenance": {
+        "built_by": "In-house — Finance Systems",
+        "authorised_by": "M. Delacroix, Controller",
+        "operated_by": "Accounts Payable Manager",
+        "funded_by": "OPEX-2026-FIN-AUTOMATION",
+        "authorised_on": "2026-04-19"
+      },
+      "verification": {
+        "last_proof_test": "2026-05-30",
+        "proof_test_result": "pass",
+        "response_time_p99_ms": 61
+      }
+    },
+
+    {
+      "id": "yard.slot.assign",
+      "description": "Assigns inbound trailers to yard slots and dock doors. Output consumed by dock.door.release.",
+      "class": "data",
+      "consequence_tier": 2,
+      "tier_rationale": {
+        "worst_credible_outcome": "Inherits tier from downstream physical actuator per Clause 4.2.2. No governed boundary exists between this and dock.door.release.",
+        "single_operation_tier": 4,
+        "aggregate_tier": 2
+      },
+      "reachable_via": ["yms.assign_slot()"],
+      "control": {
+        "level": 2,
+        "mechanism": "Slot validity checked against a table in application code. Runs in the same process as the model integration.",
+        "requires_signature": false,
+        "two_person": false
+      },
+      "provenance": {
+        "built_by": "In-house — Logistics Engineering",
+        "authorised_by": "Yard Operations Manager",
+        "operated_by": "Yard Operations Manager",
+        "funded_by": "OPEX-2026-DC04-YMS",
+        "authorised_on": "2026-02-27"
+      },
+      "verification": {
+        "last_proof_test": null,
+        "proof_test_result": "never",
+        "response_time_p99_ms": null
+      }
+    },
+
+    {
+      "id": "notify.driver.sms",
+      "description": "Sends arrival and dock assignment messages to drivers.",
+      "class": "communication",
+      "consequence_tier": 3,
+      "tier_rationale": {
+        "worst_credible_outcome": "Incorrect dock assignment sent; wasted movement and delay. Recoverable.",
+        "single_operation_tier": 3,
+        "aggregate_tier": 3
+      },
+      "reachable_via": ["sms_gateway.send()"],
+      "control": {
+        "level": 3,
+        "mechanism": "Gateway enforces rate ceiling and a recipient allowlist restricted to registered driver numbers.",
+        "governor_properties": {
+          "non_inferential": true,
+          "independent_failure_domain": true,
+          "resource_denial": true,
+          "fail_closed": true,
+          "deterministic": true,
+          "inspectable_policy": true
+        },
+        "trip_action": "trip",
+        "requires_signature": false,
+        "two_person": false
+      },
+      "rated_capacity": {
+        "max_rate": "600/hour",
+        "max_magnitude": "1 message per driver per event",
+        "permitted_window": "0500-2300 site local",
+        "configuration": "Registered driver numbers only.",
+        "approved_by": "Yard Operations Manager",
+        "approved_on": "2026-04-02"
+      },
+      "provenance": {
+        "built_by": "In-house — Logistics Engineering",
+        "authorised_by": "Yard Operations Manager",
+        "operated_by": "Yard Operations Manager",
+        "funded_by": "OPEX-2026-DC04-YMS",
+        "authorised_on": "2026-04-02"
+      },
+      "verification": {
+        "last_proof_test": "2026-06-11",
+        "proof_test_result": "pass",
+        "response_time_p99_ms": 88
+      }
+    },
+
+    {
+      "id": "inventory.adjust.write",
+      "description": "Writes stock count corrections to the inventory master.",
+      "class": "data",
+      "consequence_tier": 3,
+      "tier_rationale": {
+        "worst_credible_outcome": "Corrupted stock positions; recoverable from backup with operational disruption.",
+        "single_operation_tier": 4,
+        "aggregate_tier": 3
+      },
+      "reachable_via": ["wms.adjust_count()"],
+      "control": {
+        "level": 1,
+        "mechanism": "Adjustments over a threshold generate an email to the inventory controller. No capacity to prevent the write.",
+        "requires_signature": false,
+        "two_person": false
+      },
+      "provenance": {
+        "built_by": "WMS vendor integration",
+        "authorised_by": "Inventory Controller",
+        "operated_by": "Inventory Controller",
+        "funded_by": "OPEX-2026-DC04-WMS",
+        "authorised_on": "2026-01-15"
+      },
+      "verification": {
+        "last_proof_test": null,
+        "proof_test_result": "never",
+        "response_time_p99_ms": null
+      }
+    }
+  ]
+}
