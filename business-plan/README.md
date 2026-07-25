@@ -16,10 +16,23 @@ Working thesis, in one line:
 
 | File | Contents |
 |---|---|
-| [`00-DECISIONS.md`](00-DECISIONS.md) | The ten open questions, each forced to a recommendation. Start here. |
-| [`01-CORRECTIONS.md`](01-CORRECTIONS.md) | Everything in the source doctrine that fails on contact with an engineer, lawyer, or underwriter. Fix before publishing anything. |
+| [`00-DECISIONS.md`](00-DECISIONS.md) | Eleven open questions, each forced to a recommendation. Start here. |
+| [`01-CORRECTIONS.md`](01-CORRECTIONS.md) | What failed scrutiny in the source doctrine, and why. All items now applied — retained as the reasoning record. |
 | [`02-BUILD-SEQUENCE.md`](02-BUILD-SEQUENCE.md) | Month 0–18 operating plan, sequenced against real constraints. |
 | [`03-PRODUCT-SPEC.md`](03-PRODUCT-SPEC.md) | The Digital Governor, v0. Buildable specification. |
+| [`04-DOCTRINE.md`](04-DOCTRINE.md) | **Canonical.** Four pillars, controlled glossary, and the argument register — every claim with its evidentiary strength and its strongest counter. Source of truth for all external writing. |
+| [`standard/`](standard/) | UAS-1:v0.1 — the standard, registry schema, conformance scorer, worked examples. |
+| [`tools/doctrine_lint.py`](tools/doctrine_lint.py) | Enforces the §5 language rules mechanically. Run before publishing anything. |
+
+```bash
+python3 business-plan/tools/doctrine_lint.py     # 0 clean · 1 violations · 2 nothing scanned
+```
+
+The linter exists because C-1 observes that the pull toward "100%" resurfaces
+in every draft — it is what a nervous buyer wants to hear. A written rule
+against overclaiming is an administrative control. This is the engineering one.
+It understands negation, so the sentence that *forbids* the claim doesn't trip
+it, and it scopes negation per sentence so one can't launder the next.
 
 ---
 

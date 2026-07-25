@@ -293,3 +293,45 @@ Indicative ladder:
 
 The Fortune 500 numbers in the source material are not wrong. They are just
 year three.
+
+---
+
+## D-10. CISO or EHS director — two buyers, one account
+
+**Recommendation: EHS/operations leads the sale. The CISO is a co-signer at the
+same account, not a second beachhead.**
+
+The source material addresses a CISO and enterprise engineers. The targeting
+call in D-0 addresses an EHS director. Both are correct, and the resolution is
+that they sit at the same site on opposite halves of the actuator registry.
+
+| | Physical actuators | Digital actuators |
+|---|---|---|
+| **Owner** | EHS / operations / controls engineering | CISO / security / platform |
+| **Registry classes** | `physical` | `data`, `access`, `financial`, `communication` |
+| **Their existing vocabulary** | Hierarchy of controls, LOTO, ISO 13855, machine guarding | Least privilege, default deny, segmentation, IEC 62443 |
+| **Budget** | Safety capital, workers' comp exposure | Security operating budget |
+| **What lands** | "A Tier 1 actuator is governed by a procedure" | "The safety layer shares a failure domain with the thing it governs" |
+
+Both already believe the doctrine in their own dialect. Least privilege *is*
+default-deny. Network segmentation *is* independent failure domain. The
+security profession arrived at the same conclusions as the safety profession
+through different history, which is why Clause 7.2 reads as obvious to both.
+
+**Why EHS still leads:**
+
+1. The physical actuators produce Tier 1 findings, and Tier 1 findings are what
+   make the assessment unignorable. A critical finding on a dock restraint
+   moves a budget; a major finding on payment scope gets triaged.
+2. Workers' comp and equipment breakdown are the insurance channel (D-4, Phase
+   3). Cyber is a different carrier, a different underwriter, and a more
+   crowded one.
+3. AI governance sold to CISOs is a crowded market. Sold to EHS it is empty.
+
+**Practical consequence:** the assessment covers both halves from day one — the
+registry does not care who owns which entry — but the meeting is booked with
+operations and the CISO is brought in for the digital actuators. Selling the
+CISO first inverts the advantage and puts you in the crowded market.
+
+Do not pursue security-only accounts in year one. That is a distraction wearing
+the costume of an adjacent opportunity.

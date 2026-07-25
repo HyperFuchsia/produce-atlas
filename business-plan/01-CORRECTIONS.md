@@ -4,8 +4,45 @@ The doctrine assembled in the source material is strong. These are the specific
 items that will fail on contact with an engineer, a lawyer, or an underwriter.
 Every one of them is a small edit with a large consequence.
 
-Fix these **at the source** — in the master blueprint — because everything
-downstream inherits from it.
+---
+
+## Status: applied
+
+**All items below are applied in [`04-DOCTRINE.md`](04-DOCTRINE.md)**, which is
+now the canonical doctrine and supersedes every prior formulation. This file is
+retained as the reasoning record — it explains *why* each change was made, which
+matters when someone proposes reverting one.
+
+| Item | Where applied |
+|---|---|
+| C-1 the "100%" claim | Doctrine §3.2 retired; standard Clause 10.5.2 makes it binding on the certifying body |
+| C-2 deterministic vs statistical | Standard Clause 7.6; scorer enforces 7.6.3 |
+| C-3 "legally binding seal" | Decisions D-5; standard Clause 11.2 uses certificate withdrawal instead |
+| C-4 corporate veil | Doctrine §3.2 |
+| C-5 unverified quotations | Doctrine §5 rule 2; argument register A7 |
+| C-6 "Predictive Drift" | Doctrine §3 glossary → *Fabricated output* |
+| C-7 "High-Velocity Compilation" | Doctrine §3 glossary → *High-velocity pattern matching* |
+| C-8 UL not OSHA | Doctrine §3.2 |
+| C-9 CapEx → OpEx | Doctrine §3.2 |
+| C-10 decision tree → action space | Doctrine §3.2 |
+| C-11 "statistical calculator" | Doctrine §2, §3.2 — concede capability, deny agency |
+| C-12 toaster understates consequence | Doctrine §5 rule 5 |
+| C-13 framework count drift | Doctrine §1 — four pillars canonical |
+| C-14 zero-state vs downgrade | Standard Clause 7.5 — alarm / trip / lockout |
+| C-15 three glossaries | Doctrine §3 — single controlled glossary |
+| C-16 doom-as-legal-warning | Argument register A7, with the counter stated explicitly |
+| C-17 discoverable evidence | Argument register A3; decisions D-5; engagement terms remain a task for the attorney |
+
+Two further corrections arose after this list was written and are also applied:
+
+| Item | Where applied |
+|---|---|
+| Human reaction time (~250 ms) is the wrong comparator | Standard Clause 7.7.6; doctrine §3.2. Compliance judgement is tens of seconds to minutes — the real figure is two orders of magnitude better for the argument |
+| Biological framing applied to non-physical actuators | Doctrine §2.2; decisions D-10. Use it where an actuator can injure a person; elsewhere use privacy, financial loss, unlawful processing |
+
+---
+
+## Reasoning record
 
 ---
 
