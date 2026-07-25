@@ -35,6 +35,16 @@ correlated. Freezing the reels raises matches and expectation equally. Better, a
 locked reel has p near 0 or 1, so it contributes almost no variance, which is why
 the index unlocks on accumulated evidence (Σp(1−p) ≥ 3) rather than on spin count.
 
+### Responsible-use commitments
+
+A full-width disclaimer heads the operating manual, in three parts: **none of it is
+real** (not hardware, not a measuring instrument, not a fortune teller — luck is not
+a quantity anyone possesses, so nothing here can read or predict it), **built to be
+put down** (no currency, credits, wagers, prizes, payouts, streaks, daily bonus,
+countdowns, notifications, leaderboards or unlocks — nothing is lost by closing the
+tab), and **your time is the only stake**. A session clock runs in the header as the
+page's only honest score, and every quarter hour the LCD says so out loud.
+
 ### Everything else
 
 Matrix glyph rain and a rotating tesseract (16 vertices, 32 edges, turned in the xw
@@ -43,6 +53,7 @@ to the live coherence. Reel symbols are hand-drawn 16×16 LCD sprites, counters 
 true seven-segment, and the beeps are square-wave piezo.
 
 Single self-contained file, no build step and no dependencies — open `index.html`.
-Session statistics persist in `localStorage`; keyboard (space to observe) and
+No network calls and no collection of any kind; session statistics persist in `localStorage` on the user's own machine and Reset clears them.
+keyboard (space to observe) and
 `prefers-reduced-motion` are supported, and `window.QA77` exposes the live state
 vector for poking at from the console.

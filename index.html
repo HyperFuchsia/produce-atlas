@@ -46,16 +46,16 @@ canvas.bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
   position:fixed;inset:0;z-index:1;pointer-events:none;
   background:radial-gradient(ellipse 78% 62% at 50% 42%,rgba(4,7,10,0) 0%,rgba(4,7,10,.7) 58%,rgba(4,7,10,.95) 100%);
 }
-.wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:22px 20px 80px;display:flex;flex-direction:column;gap:30px}
+.wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:22px}
 
 /* ---------- hud + title ---------- */
 .hud{
-  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  display:flex;justify-content:space-between;gap:8px 20px;flex-wrap:wrap;
   font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
   border-bottom:1px solid var(--panel-line);padding-bottom:10px;
 }
 .hud b{color:var(--hud);font-weight:400}
-.titleblock{display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+.titleblock{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;margin-bottom:2px}
 h1{
   margin:0;font-family:var(--mono);font-weight:700;
   font-size:clamp(20px,4.2vw,34px);letter-spacing:.24em;line-height:1.3;color:#E9FFF4;
@@ -166,20 +166,20 @@ h1 span{color:var(--rain)}
 .lever:focus-visible{outline:2px solid var(--hud);outline-offset:4px;border-radius:8px}
 .lever:disabled{cursor:not-allowed}
 
-/* ---------- panels ---------- */
-.panels{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:20px;align-items:start}
-.panels > *{min-width:0}
-@media (max-width:900px){.panels{grid-template-columns:1fr}}
-.panel{
-  background:var(--panel);border:1px solid var(--panel-line);border-radius:4px;padding:18px;
-  display:flex;flex-direction:column;gap:16px;
+/* ---------- console: two readouts sharing one frame ---------- */
+.console{
+  display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:1px;
+  background:var(--panel-line);border:1px solid var(--panel-line);
 }
-.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--panel-line);padding-bottom:9px}
-.panel-head h2{margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--hud);font-weight:400}
+.console > *{min-width:0}
+@media (max-width:900px){.console{grid-template-columns:1fr}}
+.panel{background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:14px;align-content:start}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--panel-line);padding-bottom:8px}
+.panel-head h2{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--hud);font-weight:400}
 .panel-head span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}
 
-.index-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
-.zval{font-family:var(--mono);font-size:38px;line-height:1.1;font-variant-numeric:tabular-nums;color:#E9FFF4}
+.index-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+.zval{font-family:var(--mono);font-size:36px;line-height:1;font-variant-numeric:tabular-nums;color:#E9FFF4}
 .zval.warm{color:var(--rain)}
 .zval.cold{color:var(--amber)}
 .chip{
@@ -188,27 +188,26 @@ h1 span{color:var(--rain)}
 }
 .chip.warm{border-color:var(--rain);color:var(--rain)}
 .chip.cold{border-color:var(--amber);color:var(--amber)}
-.explain{margin:6px 0 0;font-size:13.5px;color:var(--muted);max-width:46ch}
+.explain{margin:8px 0 0;font-size:13px;color:var(--muted);max-width:46ch}
 
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line);border:1px solid var(--panel-line);margin:0}
-.stat{background:rgba(5,10,9,.92);padding:9px 10px;display:flex;flex-direction:column;gap:1px}
+.stat{background:rgba(5,10,9,.92);padding:8px 10px;display:flex;flex-direction:column;gap:1px}
 .stat dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
-.stat dd{margin:0;font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;color:var(--text)}
+.stat dd{margin:0;font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;color:var(--text)}
 .stat dd small{font-size:10px;color:var(--muted)}
 
-.chartwrap{display:flex;flex-direction:column;gap:6px}
-.chart{width:100%;height:78px;display:block;cursor:crosshair;touch-action:none}
+.chartwrap{display:flex;flex-direction:column;gap:5px}
+.chart{width:100%;height:72px;display:block;cursor:crosshair;touch-action:none}
 .chart .zero{stroke:var(--panel-line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
 .chart .trace{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
 .chart .area{stroke:none;opacity:.16}
 .chart .cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
-.cap{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);min-height:16px}
+.cap{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);min-height:15px}
 .cap b{color:var(--text);font-weight:400}
 
-/* state vector panel */
-.phasor-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
-#phasor{width:150px;height:150px;flex:none;border:1px solid var(--panel-line);border-radius:50%}
-.meters{display:flex;flex-direction:column;gap:11px;flex:1;min-width:150px}
+.phasor-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+#phasor{width:136px;height:136px;flex:none;border:1px solid var(--panel-line);border-radius:50%}
+.meters{display:flex;flex-direction:column;gap:10px;flex:1;min-width:148px}
 .meter{display:flex;flex-direction:column;gap:4px}
 .meter-top{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
 .meter-top b{color:var(--text);font-weight:400;font-variant-numeric:tabular-nums}
@@ -222,7 +221,7 @@ h1 span{color:var(--rain)}
   padding:0 0 5px;border-bottom:1px solid var(--panel-line);
 }
 .ptable th:first-child,.ptable td:first-child{text-align:left}
-.ptable td{padding:4px 0;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.ptable td{padding:3px 0;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
 .ptable td.sp{color:var(--muted)}
 .ptable td.sp span{display:flex;align-items:center;gap:7px}
 .ptable td.sp canvas{width:16px;height:16px;image-rendering:pixelated;opacity:.9}
@@ -231,16 +230,39 @@ h1 span{color:var(--rain)}
 .pbar{position:relative;display:block;width:100%;height:3px;background:rgba(43,224,124,.13)}
 .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--rain);opacity:.7}
 
-/* notes */
-.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:18px}
-.note{border:1px solid var(--panel-line);background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
-.note h3{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--hud);font-weight:400}
-.note p{margin:0;font-size:13.5px;color:var(--muted)}
-.note b{color:var(--text);font-weight:600}
-footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;border-top:1px solid var(--panel-line);padding-top:16px}
+/* ---------- manual: one sheet, hairline seams ---------- */
+.manual{border:1px solid var(--panel-line);display:flex;flex-direction:column}
+.manual-head{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;
+  background:var(--panel);padding:11px 18px;border-bottom:1px solid var(--panel-line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+}
+.manual-head b{color:var(--hud);font-weight:400}
+.manual-head span{color:var(--muted)}
+.manual-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line)}
+@media (max-width:900px){.manual-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:640px){.manual-grid{grid-template-columns:1fr}}
+.entry{background:var(--panel);padding:15px 18px 17px;display:flex;flex-direction:column;gap:7px}
+.entry h3{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--hud);font-weight:400}
+.entry p{margin:0;font-size:13px;color:var(--muted)}
+.entry b{color:var(--text);font-weight:600}
+
+.warn{grid-column:1/-1;background:rgba(24,16,4,.72);border-left:2px solid var(--amber);padding:0}
+.warn-head{
+  padding:12px 18px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);
+}
+.warn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 26px;padding:10px 18px 16px}
+@media (max-width:900px){.warn-grid{grid-template-columns:1fr;gap:14px}}
+.warn-grid section{display:flex;flex-direction:column;gap:6px}
+.warn-grid h3{margin:0;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#F5D08A;font-weight:400}
+.warn-grid p{margin:0;font-size:13px;color:#C6B695}
+.warn-grid b{color:#FBE9C6;font-weight:600}
+
+footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:2}
 
 @media (max-width:640px){
-  .wrap{padding:16px 12px 60px;gap:24px}
+  .wrap{padding:14px 12px 40px;gap:18px}
+  .hud{flex-direction:column;gap:3px}
   .lever{width:48px}
   .lever-arm{left:9px;height:116px}
   .lever-mount{width:24px;height:78px}
@@ -266,7 +288,8 @@ footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transfor
 
   <div class="hud">
     <span>Produce Atlas · Apparatus <b>QA-77</b></span>
-    <span>No stake · No payout · No credits</span>
+    <span>Session <b id="clock">0:00</b> · the only real score</span>
+    <span>Simulation · nothing here is real</span>
   </div>
 
   <div class="titleblock">
@@ -327,7 +350,7 @@ footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transfor
     </div>
   </section>
 
-  <section class="panels">
+  <section class="console">
     <div class="panel">
       <div class="panel-head"><h2>Observation log</h2><span id="lifetime">lifetime 0</span></div>
 
@@ -384,34 +407,63 @@ footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transfor
     </div>
   </section>
 
-  <section class="notes">
-    <div class="note">
-      <h3>What is actually running</h3>
-      <p>Reel one holds a 7-dimensional complex state vector; reels two and three share a single 49-dimensional one. Between observations it evolves under a fixed unitary — two-level rotations on a ring plus per-site phases — so the odds are never the same twice. The lever applies the <b>Born rule</b>: the chance of an outcome is |ψᵢ|², weighted by a per-species detector efficiency η, and the reel then collapses onto whatever you saw.</p>
-    </div>
-    <div class="note">
-      <h3>The Zeno trap</h3>
-      <p>Collapse leaves a reel sitting in a single basis state. Observe again immediately and it has barely evolved, so it repeats — the <b>quantum Zeno effect</b> (Misra &amp; Sudarshan, 1977). Burst mode sits deep in that regime and the reels visibly stick. It feels like a cheat. It is not: see the next card.</p>
-    </div>
-    <div class="note">
-      <h3>Why you cannot game the index</h3>
-      <p>Your match count minus its running expectation is a <b>martingale</b>. Each spin's probability is computed from the state as it stood just before that spin, so the variances still add — Σp(1−p) — even though Zeno makes consecutive spins strongly correlated. Freezing the reels raises your matches and your expectation by exactly the same amount. Better still, a locked reel has p near 0 or 1, so p(1−p) ≈ 0 and it adds almost no evidence — which is why the index is gated on Σp(1−p) rather than on how many times you pulled the lever.</p>
-    </div>
-    <div class="note">
-      <h3>Instruments on the panel</h3>
-      <p><b>l₁ coherence</b> (Baumgratz, Cramer &amp; Plenio, 2014) is zero the instant you measure and climbs as the state spreads back out. <b>Entanglement</b> is the real thing: reels two and three share one 49-dimensional state, coupled by a phase that will not separate, and the meter is 1−Tr ρ² of one reel's reduced state. <b>Leggett–Garg K</b> tests your hit sequence against macrorealism, bound at K ≤ 1 — and no sequence you can produce will break it.</p>
-    </div>
-    <div class="note">
-      <h3>The background</h3>
-      <p>Behind the glass turns a <b>tesseract</b>: a 4-cube of 16 vertices and 32 edges, rotated in the xw and zw planes and projected 4→3→2. Its rate is tied to the live coherence, so when the machine decoheres the fourth dimension slows down with it. The falling glyphs are the alphabet the state is written in.</p>
-    </div>
-    <div class="note">
-      <h3>Honest disclosure</h3>
-      <p>This simulates the formalism; it is not quantum hardware. The randomness is your browser's PRNG and the amplitudes are floating point. Everything described above is genuinely computed and nothing is faked for effect — and there is no stake, credit, wager or payout anywhere in it.</p>
+  <section class="manual">
+    <div class="manual-head"><b>Operating manual</b><span>QA-77 · read before use</span></div>
+
+    <div class="manual-grid">
+
+      <div class="warn">
+        <div class="warn-head">Read this first</div>
+        <div class="warn-grid">
+          <section>
+            <h3>None of it is real</h3>
+            <p>QA-77 is not quantum hardware, not a measuring instrument and not a fortune teller. The mathematics is genuinely computed, but what it computes is the behaviour of your browser's random number generator — and a random number generator knows nothing about you. <b>Luck and fortune are not quantities you possess</b>, so nothing here can read, improve or predict them. Every verdict, anomaly and reading on this page is fabricated for entertainment. Take none of it seriously and act on none of it.</p>
+          </section>
+          <section>
+            <h3>Built to be put down</h3>
+            <p>The illustrations exist to make the physics legible, <b>not to hold you</b>. There is deliberately nothing here designed to capture you: no currency, credits, wagers, prizes or payouts; no streaks to protect, no daily bonus, no countdowns, no notifications, no leaderboard, no unlocks and no reason at all to come back tomorrow. Closing the tab mid-session costs you nothing — the stored numbers are counters, and they matter to nobody, this machine included.</p>
+          </section>
+          <section>
+            <h3>Your time is the only stake</h3>
+            <p>The session clock at the top of the page runs whether or not you are enjoying yourself, and it is the only honest score here. <b>You cannot get that time back.</b> If you notice you are pulling the lever without having decided to, that is the moment to stop: this is a page about probability, and the probability that one more spin tells you something new is zero.</p>
+          </section>
+        </div>
+      </div>
+
+      <div class="entry">
+        <h3>What is actually running</h3>
+        <p>Reel one holds a 7-dimensional complex state vector; reels two and three share a single 49-dimensional one. Between observations it evolves under a fixed unitary — two-level rotations on a ring plus per-site phases — so the odds are never the same twice. The lever applies the <b>Born rule</b>: the chance of an outcome is |ψᵢ|², weighted by a per-species detector efficiency η, and the reel then collapses onto whatever you saw.</p>
+      </div>
+
+      <div class="entry">
+        <h3>The Zeno trap</h3>
+        <p>Collapse leaves a reel sitting in a single basis state. Observe again immediately and it has barely evolved, so it repeats — the <b>quantum Zeno effect</b> (Misra &amp; Sudarshan, 1977). Burst mode sits deep in that regime and the reels visibly stick. It feels like a cheat. It is not: see the next entry.</p>
+      </div>
+
+      <div class="entry">
+        <h3>Why you cannot game the index</h3>
+        <p>Your match count minus its running expectation is a <b>martingale</b>. Each spin's probability is computed from the state as it stood just before that spin, so the variances still add — Σp(1−p) — even though Zeno makes consecutive spins strongly correlated. A locked reel has p near 0 or 1, so p(1−p) ≈ 0 and it buys almost no evidence, which is why the index is gated on Σp(1−p) rather than on how many times you pulled the lever.</p>
+      </div>
+
+      <div class="entry">
+        <h3>Instruments on the panel</h3>
+        <p><b>l₁ coherence</b> (Baumgratz, Cramer &amp; Plenio, 2014) is zero the instant you measure and climbs as the state spreads back out. <b>Entanglement</b> is the real thing: reels two and three share one 49-dimensional state, coupled by a phase that will not separate, and the meter is 1−Tr ρ² of one reel's reduced state. <b>Leggett–Garg K</b> tests your hit sequence against macrorealism, bound at K ≤ 1 — and no sequence you can produce will break it.</p>
+      </div>
+
+      <div class="entry">
+        <h3>The background</h3>
+        <p>Behind the glass turns a <b>tesseract</b>: a 4-cube of 16 vertices and 32 edges, rotated in the xw and zw planes and projected 4→3→2. Its rate is tied to the live coherence, so when the machine decoheres the fourth dimension slows down with it. The falling glyphs are the alphabet the state is written in. Both are decoration, and both stop if your system asks for reduced motion.</p>
+      </div>
+
+      <div class="entry">
+        <h3>Under the lid</h3>
+        <p>One self-contained HTML file, no dependencies and no network calls. Nothing leaves your browser and nothing is collected: the counters live in <b>localStorage</b> on your own machine and Reset clears them. <b>window.QA77</b> exposes the live state vector if you would rather read the numbers than pull the lever.</p>
+      </div>
+
     </div>
   </section>
 
-  <footer>Produce Atlas · QA-77 · no stake · no payout · your luck is the only observable</footer>
+  <footer>Produce Atlas · QA-77 · a simulation, fabricated throughout · no stake, no payout, no credits<br>be careful with your time — it is the one thing this machine can actually take from you</footer>
 </div>
 
 <script>
@@ -984,12 +1036,27 @@ footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transfor
     var age = (performance.now() - lastMeasure)/1000;
     el("stateAge").textContent = "t = " + age.toFixed(1) + " s";
     el("modeLabel").textContent = "T+" + (age < 99 ? age.toFixed(1) : "99.9") + "S";
+    sessionClock();
     el("fCoh").classList.toggle("on", coh > 0.45);
     el("fEnt").classList.toggle("on", ent > 0.25);
     el("fZeno").classList.toggle("on", zeno && (performance.now() - lastMeasure) < 2500);
     return coh;
   }
   function renderAll(){ renderStats(); renderVerdict(); renderChart(); }
+
+  /* The session clock is the one score on this page that means anything. It counts
+     up, it is never gamified, and every quarter hour it says so on the LCD. */
+  var started = Date.now(), lastNudge = 0;
+  function sessionClock(){
+    var secs = Math.floor((Date.now() - started)/1000);
+    var mins = Math.floor(secs/60);
+    el("clock").textContent = mins + ":" + ("0" + (secs % 60)).slice(-2);
+    var quarter = Math.floor(mins/15);
+    if(quarter > lastNudge && !busy && !anim){
+      lastNudge = quarter;
+      el("msg").textContent = "YOU HAVE BEEN HERE " + (quarter*15) + " MINUTES. NOTHING FURTHER WILL BE REVEALED.";
+    }
+  }
 
   /* ============================ phasors ============================ */
   var phCv = el("phasor"), phCtx = phCv.getContext("2d");
