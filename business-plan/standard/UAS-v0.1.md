@@ -417,20 +417,128 @@ or Tier 2 actuator.
 > this standard because they carry different guarantees. Combining them under a
 > single claim inflates the weaker and devalues the stronger.
 
-### 7.7 Response time
+### 7.7 Enforcement topology and timing
 
-**7.7.1** For digital actuators, the interval from receipt of request to
-enforcement decision **shall not** exceed 100 ms at the 99th percentile.
-**[PE-REVIEW]**
+#### 7.7.1 Topology
 
-**7.7.2** For physical actuators, the total system response time — detection to
-safe state — **shall** satisfy the separation requirements of ISO 13855 for
-the installation, and **shall** be verified by measurement, not calculation
-alone.
+**7.7.1.1** Every governor **shall** be classified as one of:
 
-**7.7.3** Measured response time **shall** be recorded in the conformance
-report. An unmeasured response time **shall** be reported as unmeasured, and
-**shall not** be estimated.
+- **Inline** — the governor occupies the critical path. The action cannot
+  execute unless the governor permits it.
+- **Out-of-band** — the governor observes the action after initiation and
+  interdicts it in progress.
+
+**7.7.1.2** Tier 1 and Tier 2 actuators **shall** be governed inline.
+Out-of-band interdiction **shall not** be the sole control on a Tier 1 or
+Tier 2 actuator.
+
+> **Note on 7.7.1.2 — why this is the most important requirement in
+> Clause 7.**
+>
+> Out-of-band interdiction is a race between the governor and the action it
+> is trying to stop. A race has a probability of being lost, however small,
+> and that probability is not eliminated by making the governor faster — it
+> is only reduced. A governor that wins by a factor of a thousand still
+> loses on the tail: a scheduling delay, a garbage collection pause, a
+> dropped packet, a burst that arrives while the observer is between polls.
+>
+> Inline enforcement has no such probability. The action does not begin
+> until the decision is made. Latency becomes a **cost to throughput**, not
+> a **risk to safety** — and those are different quantities, priced by
+> different people, on different budgets.
+>
+> A governor that is merely fast is probabilistic. A governor that is in the
+> path is deterministic. Speed is the wrong axis, and optimising it can lead
+> an implementer to the weaker architecture while believing they have
+> strengthened it.
+
+#### 7.7.2 Latency budget — inline governors
+
+**7.7.2.1** An inline governor **shall** declare and measure the latency it
+adds to the governed operation, at the 99th percentile.
+
+**7.7.2.2** Added latency is an operational cost and **shall not** be
+represented as a safety property.
+
+**7.7.2.3** Where added latency is unacceptable to the business, the
+permitted remedies are to narrow the policy, move enforcement to a faster
+layer per 7.7.3, or accept a lower conformance level. Converting an inline
+governor to out-of-band to recover latency **shall** be recorded as a
+reduction in control level for Tier 1 and Tier 2 actuators.
+
+#### 7.7.3 Tiered enforcement
+
+**7.7.3.1** Where no single enforcement point can satisfy both the latency
+budget and the policy richness required, enforcement **may** be tiered.
+
+| Layer | Enforces | Typical position | Feasible p99 |
+|---|---|---|---|
+| **A — Transport** | Rate, payload size, destination and path allowlist, connection ceilings | NIC, kernel packet filter, eBPF/XDP, syscall filter, LSM | 1–100 µs |
+| **B — Semantic** | Actuator identity, magnitude, temporal window, sequence constraints, signature verification, tier logic | Policy engine, credential broker, API gateway | 1–50 ms |
+| **C — Physical** | Enable signal, interlock, contactor | Safety PLC, safety relay | Governed by 7.7.4 |
+
+**7.7.3.2** Each layer **shall** be declared and rated separately.
+
+**7.7.3.3** A layer **shall not** be credited with enforcing a control it is
+incapable of evaluating. A packet filter cannot verify a signature; a
+transport-layer control **shall not** be recorded as satisfying Clause 8.3.
+
+> **Note.** This constraint is the whole reason tiering exists. The fast
+> layer is structurally unable to make rich decisions and the rich layer is
+> structurally unable to be fast. Implementations that claim both from one
+> component have usually measured the fast path and described the rich one.
+
+**7.7.3.4** Where tiered, the layer enforcing the binding constraint for a
+given actuator **shall** be identified in the registry.
+
+#### 7.7.4 Physical actuators
+
+**7.7.4.1** For physical actuators, total system response time — from
+detection to safe state — **shall** satisfy the separation requirements of
+ISO 13855 for the installation.
+
+**7.7.4.2** Total system response time **shall** be verified by measurement.
+Calculation alone does not satisfy this clause.
+
+**7.7.4.3** Total system response time includes mechanical stopping time,
+which typically dominates. Decision latency is usually not the binding
+constraint for a physical actuator, and a governor decision measured in
+microseconds confers no benefit where the mechanism requires hundreds of
+milliseconds to reach a safe state.
+
+#### 7.7.5 Out-of-band governors
+
+**7.7.5.1** Where an out-of-band governor is used on a Tier 3 or Tier 4
+actuator, the registry **shall** record the measured interdiction window and
+the resulting **exposure window** — the interval during which the action is
+in progress and not yet interdicted.
+
+**7.7.5.2** The exposure window **shall** be stated in the residual risk
+statement (Clause 10.5).
+
+#### 7.7.6 Human review is not a timing control
+
+**7.7.6.1** Where a human evaluates each individual action before it
+executes, the actuator falls outside the scope of this standard per Clause
+1.2(b), and Clause 7.7 does not apply.
+
+**7.7.6.2** Where a human is notified of an action but the action proceeds
+without their approval, the control **shall** be classified Level 1
+(warning) per Clause 6.1, irrespective of notification speed.
+
+> **Note.** Human decision latency for a compliance judgement is measured in
+> tens of seconds to minutes, not in the ~250 ms of simple visual reaction.
+> Reaction time is the wrong figure and understates the gap by two to three
+> orders of magnitude. The case for engineering controls over human review
+> does not need the smaller number.
+
+#### 7.7.7 Recording
+
+**7.7.7.1** Measured timings **shall** be recorded in the conformance report.
+
+**7.7.7.2** An unmeasured timing **shall** be reported as unmeasured. It
+**shall not** be estimated, inferred from a vendor specification, or carried
+forward from a different configuration.
 
 ### 7.8 Proof testing
 

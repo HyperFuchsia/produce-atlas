@@ -127,6 +127,33 @@ guaranteed. Anomaly detection is rated with a false-positive rate. Merging them
 inflates the weaker and devalues the stronger, so Clause 7.6 keeps them apart
 and forbids statistical detection as the sole control on Tier 1 or Tier 2.
 
+**Inline beats fast, and this is the one that traps people.** Clause 7.7.1.2
+requires Tier 1 and Tier 2 actuators to be governed *inline* — on the critical
+path, so the action cannot begin until a decision is made. The intuitive
+alternative is to make the governor extremely fast and have it interdict
+actions already in flight, and the numbers are seductive: microsecond
+interdiction against millisecond execution looks like a thousandfold margin of
+safety.
+
+It is a race. A race has a probability of being lost, and speed reduces that
+probability without ever removing it — a scheduling delay, a GC pause, a
+dropped packet, a burst arriving between polls. Inline enforcement has no such
+probability, because nothing starts until the decision exists. Latency becomes
+a cost to throughput rather than a risk to safety, and those are different
+quantities on different budgets.
+
+A governor that is merely fast is probabilistic. A governor that is in the path
+is deterministic. Optimising for speed can walk an implementer into the weaker
+architecture while they believe they have strengthened it.
+
+**A layer cannot be credited with controls it cannot evaluate.** Clause 7.7.3.3.
+The fast layer is structurally unable to make rich decisions; the rich layer is
+structurally unable to be fast. A packet filter enforces rate and payload size
+in microseconds and cannot verify a signature. Implementations that claim both
+from one component have usually measured the fast path and described the rich
+one. The scorer treats a signature credited to a transport-layer control as an
+*unmet* Clause 8.3 requirement, not a clerical error.
+
 **An untested trip is a belief about a trip.** Clause 7.8.4 demotes any
 never-proof-tested governor function to Level 2. Untested safety functions are
 the most common finding in mature safety programmes in every other industry.

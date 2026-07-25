@@ -41,6 +41,41 @@ Availability is explicitly subordinate to safety. This must be stated in the
 sales conversation, because it is a real operational cost and the buyer should
 choose it knowingly.
 
+### A-6. Inline, not fast
+The governor sits **on the critical path**. The action does not begin until the
+decision exists.
+
+The tempting alternative is an extremely fast out-of-band governor that
+interdicts actions already in flight — microsecond severance against
+millisecond execution, a thousandfold margin. It is a race, and a race has a
+loss probability that speed reduces but never eliminates: a scheduling delay, a
+GC pause, a dropped packet, a burst arriving between polls.
+
+Inline enforcement has no such probability. Latency becomes a **cost to
+throughput**, not a **risk to safety** — different quantities, different
+budgets, different people signing. Sell it as the former.
+
+Out-of-band interdiction is permitted for Tier 3 and Tier 4 actuators, where
+the exposure window must be measured and declared. Never as the sole control on
+Tier 1 or Tier 2.
+
+### A-7. Tiered enforcement, honestly labelled
+The fast layer is structurally dumb and the rich layer is structurally slow.
+
+| Layer | Enforces | Position | p99 |
+|---|---|---|---|
+| Transport | rate, payload size, destination allowlist | eBPF/XDP, packet filter, seccomp, LSM | 1–100 µs |
+| Semantic | actuator identity, magnitude, window, sequence, signature | policy engine, credential broker | 1–50 ms |
+| Physical | enable signal, interlock, contactor | safety PLC / relay | per ISO 13855 |
+
+A layer is never credited with a control it cannot evaluate. A packet filter
+cannot verify a signature. Products claiming microsecond enforcement of rich
+policy have measured the fast path and described the rich one — and that is a
+specific, checkable claim you can use against competitors.
+
+For physical actuators, mechanical stopping time dominates. A microsecond
+decision confers nothing on a conveyor that needs 800 ms to reach a safe state.
+
 ### A-5. Deterministic and statistical controls are separate tiers
 Hard limits are guaranteed. Anomaly detection is rated with a false-positive
 rate. They never ship under one claim. (See `01-CORRECTIONS.md` C-2.)

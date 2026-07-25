@@ -37,7 +37,9 @@
         },
         "trip_action": "lockout",
         "requires_signature": true,
-        "two_person": true
+        "two_person": true,
+        "topology": "inline",
+        "enforcement_layer": "physical"
       },
       "rated_capacity": {
         "max_rate": "continuous",
@@ -88,7 +90,9 @@
         },
         "trip_action": "lockout",
         "requires_signature": true,
-        "two_person": true
+        "two_person": true,
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "rated_capacity": {
         "max_rate": "4 changes/hour",
@@ -142,7 +146,9 @@
         },
         "trip_action": "lockout",
         "requires_signature": true,
-        "two_person": true
+        "two_person": true,
+        "topology": "inline",
+        "enforcement_layer": "physical"
       },
       "provenance": {
         "built_by": "Integration vendor \u2014 Northline Controls",
@@ -198,7 +204,9 @@
           "enabled": true,
           "false_positive_rate": 0.031,
           "observation_period_days": 60
-        }
+        },
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "provenance": {
         "built_by": "In-house \u2014 Workforce Analytics",
@@ -247,7 +255,9 @@
         },
         "trip_action": "trip",
         "requires_signature": true,
-        "two_person": false
+        "two_person": false,
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "rated_capacity": {
         "max_rate": "200/day",
@@ -296,7 +306,9 @@
         },
         "trip_action": "trip",
         "requires_signature": true,
-        "two_person": false
+        "two_person": false,
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "provenance": {
         "built_by": "In-house \u2014 Logistics Engineering",
@@ -345,7 +357,10 @@
         },
         "trip_action": "trip",
         "requires_signature": false,
-        "two_person": false
+        "two_person": false,
+        "topology": "out_of_band",
+        "enforcement_layer": "transport",
+        "exposure_window_ms": 340
       },
       "rated_capacity": {
         "max_rate": "600/hour",

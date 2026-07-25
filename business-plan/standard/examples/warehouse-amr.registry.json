@@ -20,7 +20,10 @@
         "single_operation_tier": 1,
         "aggregate_tier": 1
       },
-      "reachable_via": ["fleet_manager.dispatch()", "REST /v2/fleet/move"],
+      "reachable_via": [
+        "fleet_manager.dispatch()",
+        "REST /v2/fleet/move"
+      ],
       "control": {
         "level": 3,
         "mechanism": "Safety PLC in series with fleet e-stop circuit. Speed and zone limits enforced by the PLC; the model can request motion but cannot raise the ceiling.",
@@ -34,7 +37,9 @@
         },
         "trip_action": "lockout",
         "requires_signature": true,
-        "two_person": true
+        "two_person": true,
+        "topology": "inline",
+        "enforcement_layer": "physical"
       },
       "rated_capacity": {
         "max_rate": "continuous",
@@ -46,7 +51,7 @@
         "approved_on": "2026-05-02"
       },
       "provenance": {
-        "built_by": "Integration vendor — Northline Controls",
+        "built_by": "Integration vendor \u2014 Northline Controls",
         "authorised_by": "R. Okonkwo, PE (Controls)",
         "operated_by": "DC-04 Shift Operations Lead",
         "funded_by": "CAPEX-2025-114 Automation Phase 2",
@@ -59,7 +64,6 @@
         "iso13855_verified": true
       }
     },
-
     {
       "id": "conveyor.speed.setpoint",
       "description": "Adjusts main sortation conveyor speed in response to predicted inbound volume.",
@@ -70,7 +74,9 @@
         "single_operation_tier": 1,
         "aggregate_tier": 1
       },
-      "reachable_via": ["scada_bridge.set_speed()"],
+      "reachable_via": [
+        "scada_bridge.set_speed()"
+      ],
       "control": {
         "level": 3,
         "mechanism": "Rate limiter in the SCADA bridge. Rejects setpoints above the configured ceiling.",
@@ -84,7 +90,9 @@
         },
         "trip_action": "lockout",
         "requires_signature": true,
-        "two_person": false
+        "two_person": false,
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "rated_capacity": {
         "max_rate": "4 changes/hour",
@@ -95,7 +103,7 @@
         "approved_on": "2026-05-02"
       },
       "provenance": {
-        "built_by": "In-house — Controls Engineering",
+        "built_by": "In-house \u2014 Controls Engineering",
         "authorised_by": "R. Okonkwo, PE (Controls)",
         "operated_by": "DC-04 Shift Operations Lead",
         "funded_by": "CAPEX-2025-114 Automation Phase 2",
@@ -108,7 +116,6 @@
         "iso13855_verified": false
       }
     },
-
     {
       "id": "dock.door.release",
       "description": "Releases trailer restraints and signals dock door operation on completion of load.",
@@ -119,8 +126,13 @@
         "single_operation_tier": 1,
         "aggregate_tier": 1
       },
-      "reachable_via": ["wms.close_load()", "downstream of yard scheduling model"],
-      "downstream_of": ["yard.slot.assign"],
+      "reachable_via": [
+        "wms.close_load()",
+        "downstream of yard scheduling model"
+      ],
+      "downstream_of": [
+        "yard.slot.assign"
+      ],
       "control": {
         "level": 2,
         "mechanism": "Standard operating procedure requires visual confirmation before the model's close-load signal is honoured. Not enforced by any interlock.",
@@ -141,7 +153,6 @@
         "iso13855_verified": null
       }
     },
-
     {
       "id": "labour.shift.assign",
       "description": "Assigns pickers to zones and sets hourly rate targets.",
@@ -152,7 +163,10 @@
         "single_operation_tier": 4,
         "aggregate_tier": 2
       },
-      "reachable_via": ["wfm.assign()", "wfm.set_target()"],
+      "reachable_via": [
+        "wfm.assign()",
+        "wfm.set_target()"
+      ],
       "control": {
         "level": 2,
         "mechanism": "Rate targets bounded by a value in the model's system prompt.",
@@ -165,7 +179,7 @@
         }
       },
       "provenance": {
-        "built_by": "In-house — Workforce Analytics",
+        "built_by": "In-house \u2014 Workforce Analytics",
         "authorised_by": "DC-04 General Manager",
         "operated_by": "Shift Operations Lead",
         "funded_by": "OPEX-2026-DC04-WFM",
@@ -177,7 +191,6 @@
         "response_time_p99_ms": null
       }
     },
-
     {
       "id": "carrier.payment.release",
       "description": "Releases payment to carriers on delivery confirmation.",
@@ -188,7 +201,9 @@
         "single_operation_tier": 3,
         "aggregate_tier": 2
       },
-      "reachable_via": ["ap.release_payment()"],
+      "reachable_via": [
+        "ap.release_payment()"
+      ],
       "control": {
         "level": 3,
         "mechanism": "Payment gateway enforces per-transaction and daily ceilings independently of the requesting system. Short-lived scoped credential issued per approved release.",
@@ -202,7 +217,9 @@
         },
         "trip_action": "trip",
         "requires_signature": true,
-        "two_person": false
+        "two_person": false,
+        "topology": "inline",
+        "enforcement_layer": "semantic"
       },
       "rated_capacity": {
         "max_rate": "200/day",
@@ -213,7 +230,7 @@
         "approved_on": "2026-04-19"
       },
       "provenance": {
-        "built_by": "In-house — Finance Systems",
+        "built_by": "In-house \u2014 Finance Systems",
         "authorised_by": "M. Delacroix, Controller",
         "operated_by": "Accounts Payable Manager",
         "funded_by": "OPEX-2026-FIN-AUTOMATION",
@@ -225,7 +242,6 @@
         "response_time_p99_ms": 61
       }
     },
-
     {
       "id": "yard.slot.assign",
       "description": "Assigns inbound trailers to yard slots and dock doors. Output consumed by dock.door.release.",
@@ -236,7 +252,9 @@
         "single_operation_tier": 4,
         "aggregate_tier": 2
       },
-      "reachable_via": ["yms.assign_slot()"],
+      "reachable_via": [
+        "yms.assign_slot()"
+      ],
       "control": {
         "level": 2,
         "mechanism": "Slot validity checked against a table in application code. Runs in the same process as the model integration.",
@@ -244,7 +262,7 @@
         "two_person": false
       },
       "provenance": {
-        "built_by": "In-house — Logistics Engineering",
+        "built_by": "In-house \u2014 Logistics Engineering",
         "authorised_by": "Yard Operations Manager",
         "operated_by": "Yard Operations Manager",
         "funded_by": "OPEX-2026-DC04-YMS",
@@ -256,7 +274,6 @@
         "response_time_p99_ms": null
       }
     },
-
     {
       "id": "notify.driver.sms",
       "description": "Sends arrival and dock assignment messages to drivers.",
@@ -267,7 +284,9 @@
         "single_operation_tier": 3,
         "aggregate_tier": 3
       },
-      "reachable_via": ["sms_gateway.send()"],
+      "reachable_via": [
+        "sms_gateway.send()"
+      ],
       "control": {
         "level": 3,
         "mechanism": "Gateway enforces rate ceiling and a recipient allowlist restricted to registered driver numbers.",
@@ -281,7 +300,10 @@
         },
         "trip_action": "trip",
         "requires_signature": false,
-        "two_person": false
+        "two_person": false,
+        "topology": "out_of_band",
+        "enforcement_layer": "transport",
+        "exposure_window_ms": 340
       },
       "rated_capacity": {
         "max_rate": "600/hour",
@@ -292,7 +314,7 @@
         "approved_on": "2026-04-02"
       },
       "provenance": {
-        "built_by": "In-house — Logistics Engineering",
+        "built_by": "In-house \u2014 Logistics Engineering",
         "authorised_by": "Yard Operations Manager",
         "operated_by": "Yard Operations Manager",
         "funded_by": "OPEX-2026-DC04-YMS",
@@ -304,7 +326,6 @@
         "response_time_p99_ms": 88
       }
     },
-
     {
       "id": "inventory.adjust.write",
       "description": "Writes stock count corrections to the inventory master.",
@@ -315,7 +336,9 @@
         "single_operation_tier": 4,
         "aggregate_tier": 3
       },
-      "reachable_via": ["wms.adjust_count()"],
+      "reachable_via": [
+        "wms.adjust_count()"
+      ],
       "control": {
         "level": 1,
         "mechanism": "Adjustments over a threshold generate an email to the inventory controller. No capacity to prevent the write.",

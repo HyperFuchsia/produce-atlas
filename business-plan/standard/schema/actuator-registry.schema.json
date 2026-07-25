@@ -159,6 +159,18 @@
             "inspectable_policy":         { "type": "boolean" }
           }
         },
+        "topology": {
+          "enum": ["inline", "out_of_band"],
+          "description": "Clause 7.7.1. Inline = the governor is on the critical path and the action cannot execute unless permitted. Out-of-band = the governor observes and interdicts after initiation, which is a race and therefore probabilistic. Tier 1 and 2 must be inline (7.7.1.2)."
+        },
+        "enforcement_layer": {
+          "enum": ["transport", "semantic", "physical"],
+          "description": "Clause 7.7.3.4 — the layer enforcing the binding constraint for this actuator. A transport-layer control cannot be credited with signature verification (7.7.3.3)."
+        },
+        "exposure_window_ms": {
+          "type": ["number", "null"],
+          "description": "Clause 7.7.5.1 — out-of-band governors only. Interval during which the action is in progress and not yet interdicted. Must appear in the residual risk statement."
+        },
         "trip_action": {
           "enum": ["alarm", "trip", "lockout"],
           "description": "Clause 7.5."

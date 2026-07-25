@@ -302,6 +302,52 @@ def check_actuator(
             )
         )
 
+    # Clause 7.7.1.2 — tier 1 and 2 must be governed inline.
+    # Out-of-band interdiction is a race, and a race has a loss probability
+    # that speed reduces but never eliminates.
+    if lvl >= 3:
+        topology = control.get("topology")
+        if topology is None:
+            out.append(
+                Finding(
+                    MINOR, "7.7.1.1", aid,
+                    "Enforcement topology not declared.",
+                    "Declare 'inline' or 'out_of_band'.",
+                )
+            )
+        elif topology == "out_of_band" and tier in (1, 2):
+            out.append(
+                Finding(
+                    CRITICAL if tier == 1 else MAJOR, "7.7.1.2", aid,
+                    f"Tier {tier} actuator governed out-of-band. Interdiction "
+                    "after initiation is a race; the exposure window is a "
+                    "probability of failure that no increase in speed removes.",
+                    "Move enforcement inline so the action cannot begin "
+                    "without a decision.",
+                )
+            )
+        elif topology == "out_of_band" and control.get("exposure_window_ms") is None:
+            out.append(
+                Finding(
+                    MINOR, "7.7.5.1", aid,
+                    "Out-of-band governor with no measured exposure window.",
+                    "Measure and record the exposure window; it belongs in the "
+                    "residual risk statement.",
+                )
+            )
+
+    # Clause 7.7.3.3 — a layer may not be credited with controls it cannot evaluate
+    if control.get("enforcement_layer") == "transport" and control.get("requires_signature"):
+        out.append(
+            Finding(
+                MAJOR, "7.7.3.3", aid,
+                "Signature verification credited to a transport-layer control. "
+                "A packet filter cannot verify a signature.",
+                "Identify the semantic layer that performs verification and "
+                "record it as the binding constraint.",
+            )
+        )
+
     # Clause 8.3 — signature requirement
     if tier in (1, 2) and not control.get("requires_signature"):
         out.append(
@@ -461,6 +507,21 @@ def conformance_level(
                 blocked[2].append(f"{aid}: no trip tier (10.2(d))")
         if tiers.get(aid) in (1, 2) and not control.get("requires_signature"):
             blocked[2].append(f"{aid}: no signature requirement (10.2(f))")
+        elif (
+            tiers.get(aid) in (1, 2)
+            and control.get("enforcement_layer") == "transport"
+        ):
+            # 7.7.3.3 — the transport layer cannot satisfy Clause 8.3, so a
+            # signature credited to it leaves the requirement unmet.
+            blocked[2].append(
+                f"{aid}: signature credited to a layer that cannot verify it "
+                f"(7.7.3.3, 10.2(f))"
+            )
+        if tiers.get(aid) in (1, 2) and levels.get(aid, 0) >= 3:
+            if control.get("topology") != "inline":
+                blocked[2].append(
+                    f"{aid}: tier {tiers[aid]} not governed inline (7.7.1.2)"
+                )
         verification = act.get("verification") or {}
         if levels.get(aid, 0) >= 3 and verification.get("proof_test_result") != "pass":
             blocked[2].append(f"{aid}: proof test not passed (10.2(g))")
