@@ -6,110 +6,162 @@
 <title>QA-77 — The Quantum Fruit Machine</title>
 <style>
 :root{
-  --void:#04070A;
-  --rain:#2BE07C;
-  --hyper:#7FE9FF;
-  --hud:#7FE3B0;
-  --amber:#F2B33D;
+  --void:#0A0C0C;
+  --panel:rgba(15,18,18,.86);
+  --line:#242A28;
+  --line-soft:#1A201E;
+  --text:#B4BDB9;
+  --dim:#6A7470;
+  --bright:#E4EAE7;
 
-  --shell:#33383C;
-  --shell-hi:#4A5054;
-  --shell-lo:#1C2023;
-  --key:#D9552F;
-  --key-lo:#8E3117;
-  --grey-key:#565D62;
-  --grey-key-lo:#31373B;
+  --paper:#D5D3CA;
+  --paper-2:#C9C7BE;
+  --paper-line:#B0AEA4;
+  --paper-ink:#191D1B;
+  --paper-dim:#5C615E;
+  --paper-dim:#5C615F;
 
-  --lcd:#A6B682;
-  --lcd-dim:#8FA06D;
-  --ink:#10170B;
-  --ink-ghost:rgba(16,23,11,.08);
+  --shell:#2E3231;
+  --shell-hi:#454948;
+  --shell-lo:#181B1A;
+  --metal:#9BA19E;
+  --key:#565C5A;
+  --key-lo:#2F3433;
+  --key-face:#D3D9D6;
 
-  --panel:rgba(8,15,14,.82);
-  --panel-line:#1C3A31;
-  --text:#C9E8D7;
-  --muted:#6C8F80;
+  --lcd:#949A8B;
+  --lcd-dim:#7E8476;
+  --ink:#14170F;
+  --ink-ghost:rgba(20,23,15,.09);
 
   --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
-  --sans:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
 body{
-  background:var(--void);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.55;
+  background:var(--void);color:var(--text);font-family:var(--serif);font-size:16px;line-height:1.6;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
 canvas.bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
-#rain{opacity:.4}
-#hyper{opacity:.8}
+#rain{opacity:.20}
+#hyper{opacity:.55}
 .vignette{
   position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(ellipse 78% 62% at 50% 42%,rgba(4,7,10,0) 0%,rgba(4,7,10,.7) 58%,rgba(4,7,10,.95) 100%);
+  background:radial-gradient(ellipse 80% 64% at 50% 40%,rgba(10,12,12,0) 0%,rgba(10,12,12,.74) 56%,rgba(10,12,12,.97) 100%);
 }
 .wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:18px 20px 48px;display:flex;flex-direction:column;gap:22px}
 
-/* ---------- hud + title ---------- */
+/* ---------- hud + masthead ---------- */
 .hud{
   display:flex;justify-content:space-between;gap:8px 20px;flex-wrap:wrap;
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
-  border-bottom:1px solid var(--panel-line);padding-bottom:10px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.17em;text-transform:uppercase;color:var(--dim);
+  border-bottom:1px solid var(--line);padding-bottom:10px;
 }
-.hud b{color:var(--hud);font-weight:400}
-.titleblock{display:flex;flex-direction:column;gap:10px;align-items:center;text-align:center;margin-bottom:2px}
+.hud b{color:var(--text);font-weight:400}
+.titleblock{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
+.office{font-family:var(--mono);font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--dim);margin:0}
 h1{
-  margin:0;font-family:var(--mono);font-weight:700;
-  font-size:clamp(20px,4.2vw,34px);letter-spacing:.24em;line-height:1.3;color:#E9FFF4;
-  text-shadow:0 0 18px rgba(43,224,124,.35);text-wrap:balance;
+  margin:0;font-family:var(--serif);font-weight:400;font-style:normal;
+  font-size:clamp(26px,4.6vw,42px);letter-spacing:.01em;line-height:1.12;color:var(--bright);text-wrap:balance;
 }
-h1 span{color:var(--rain)}
-.deck{margin:0;max-width:62ch;color:var(--muted);font-size:15px;text-wrap:balance}
+.formno{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0}
+.deck{margin:6px 0 0;max-width:62ch;color:var(--dim);font-size:15.5px;text-wrap:balance}
 
-/* ---------- the device ---------- */
+/* ---------- paper documents ---------- */
+.paper{
+  background:linear-gradient(175deg,var(--paper) 0%,var(--paper-2) 100%);
+  color:var(--paper-ink);border:1px solid #8E8C83;
+  box-shadow:0 18px 40px -26px #000, inset 0 1px 0 rgba(255,255,255,.4);
+  font-family:var(--mono);
+}
+.paper-head{
+  display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;
+  padding:10px 16px;border-bottom:1px solid var(--paper-line);
+  font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+}
+.paper-head b{font-weight:700}
+.paper-head span{color:var(--paper-dim)}
+
+/* filing form */
+.filing-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.filing-label{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-dim);margin:0}
+#question{
+  width:100%;font-family:var(--mono);font-size:14px;line-height:1.5;color:var(--paper-ink);
+  background:rgba(255,255,255,.28);border:0;border-bottom:1px solid var(--paper-ink);
+  padding:8px 6px;resize:none;min-height:56px;
+}
+#question:focus{outline:2px solid var(--paper-ink);outline-offset:1px;background:rgba(255,255,255,.42)}
+#question::placeholder{color:#7C817E}
+.filing-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.qcount{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-dim);font-variant-numeric:tabular-nums}
+.pbtn{
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  padding:9px 16px;border:1px solid var(--paper-ink);background:transparent;color:var(--paper-ink);cursor:pointer;
+}
+.pbtn:hover:not(:disabled){background:var(--paper-ink);color:var(--paper)}
+.pbtn:disabled{opacity:.4;cursor:not-allowed}
+.pbtn:focus-visible{outline:2px solid var(--paper-ink);outline-offset:2px}
+.pbtn.ghost{border-style:dashed}
+
+/* determination certificate */
+.doc-body{padding:14px 16px 16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 18px;align-items:start}
+@media (max-width:640px){.doc-body{grid-template-columns:1fr}}
+.doc-fields{display:flex;flex-direction:column;gap:9px;min-width:0}
+.doc-row{display:grid;grid-template-columns:132px minmax(0,1fr);gap:10px;align-items:baseline;font-size:12px}
+@media (max-width:520px){.doc-row{grid-template-columns:1fr}}
+.doc-row dt{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper-dim);margin:0}
+.doc-row dd{margin:0;font-variant-numeric:tabular-nums;word-break:break-word}
+.doc-row dd.big{font-size:17px;letter-spacing:.06em;font-weight:700;text-transform:uppercase}
+.doc-row dd.q{font-family:var(--serif);font-size:14.5px;font-style:italic}
+.stamp{
+  align-self:start;justify-self:end;border:2px solid var(--paper-ink);padding:8px 12px;text-align:center;
+  transform:rotate(-6deg);opacity:.78;
+}
+.stamp b{display:block;font-size:13px;letter-spacing:.14em;font-weight:700;text-transform:uppercase}
+.stamp span{display:block;font-size:8px;letter-spacing:.16em;text-transform:uppercase;margin-top:2px}
+.stamp.void{opacity:.5}
+.doc-note{
+  grid-column:1/-1;border-top:1px solid var(--paper-line);padding-top:10px;margin:0;
+  font-size:11px;line-height:1.6;color:#3A403D;
+}
+.doc-note b{text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+.doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- device ---------- */
 .device{display:flex;justify-content:center}
-.rig{display:flex;align-items:stretch;filter:drop-shadow(0 40px 60px rgba(0,0,0,.75))}
+.rig{display:flex;align-items:stretch;filter:drop-shadow(0 34px 54px rgba(0,0,0,.8))}
 .shell{
   width:min(560px,100%);
   background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 14%,var(--shell) 78%,var(--shell-lo) 100%);
-  border:1px solid #14181A;
-  border-radius:22px 10px 10px 22px;
-  padding:16px 18px 18px;
+  border:1px solid #101312;border-radius:20px 8px 8px 20px;padding:16px 18px 18px;
   display:flex;flex-direction:column;gap:13px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 6px rgba(0,0,0,.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 6px rgba(0,0,0,.55);
 }
 .plate{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.brand{
-  font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#E4E8E9;font-weight:700;
-  text-shadow:0 1px 0 rgba(0,0,0,.6);white-space:nowrap;
-}
-.brand em{font-style:normal;color:var(--key)}
-.model{font-family:var(--mono);font-size:8.5px;letter-spacing:.15em;color:#9AA1A5;text-transform:uppercase;text-align:right;line-height:1.5}
+.brand{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;color:#D3D8D6;font-weight:700;white-space:nowrap}
+.brand em{font-style:normal;color:#8C918F}
+.model{font-family:var(--mono);font-size:8.5px;letter-spacing:.15em;color:#8B918E;text-transform:uppercase;text-align:right;line-height:1.5}
 
-/* screen */
-.screen{
-  background:linear-gradient(180deg,#8E9498,#C2C7C9 8%,#9BA1A4 92%,#6E7478);
-  padding:9px;border-radius:7px;box-shadow:inset 0 2px 5px rgba(0,0,0,.55);
-}
+.screen{background:linear-gradient(180deg,#84898C,#B4B9BA 8%,#8F9496 92%,#63686A);padding:9px;border-radius:6px;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
 .lcd{
   background:linear-gradient(180deg,var(--lcd-dim),var(--lcd) 22%,var(--lcd) 78%,var(--lcd-dim));
-  border-radius:3px;padding:9px 10px 10px;display:flex;flex-direction:column;gap:8px;
-  box-shadow:inset 0 0 22px rgba(16,23,11,.28);
-  font-family:var(--mono);color:var(--ink);
+  border-radius:2px;padding:9px 10px 10px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:inset 0 0 22px rgba(20,23,15,.3);font-family:var(--mono);color:var(--ink);
 }
 .lcd-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:9px;letter-spacing:.13em}
 .flags{display:flex;gap:9px;flex-wrap:wrap}
 .flag{color:var(--ink-ghost)}
 .flag.on{color:var(--ink)}
 .mode{opacity:.55;white-space:nowrap}
-
 .cells{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 .cell{display:flex;flex-direction:column;align-items:center;gap:4px}
 .cell canvas{width:100%;height:auto;display:block;image-rendering:pixelated}
-.cell .taxon{font-size:8.5px;letter-spacing:.12em;text-align:center;line-height:1.2;min-height:11px;opacity:.55}
+.cell .taxon{font-size:8.5px;letter-spacing:.12em;text-align:center;line-height:1.2;min-height:11px;opacity:.5}
 .cell.locked .taxon{opacity:1;font-weight:700}
-
 .msg{
   font-size:10.5px;letter-spacing:.04em;min-height:2.6em;line-height:1.3;margin:0;
-  border-top:1px solid rgba(16,23,11,.22);border-bottom:1px solid rgba(16,23,11,.22);padding:6px 0;
+  border-top:1px solid rgba(20,23,15,.22);border-bottom:1px solid rgba(20,23,15,.22);padding:6px 0;
   display:flex;align-items:center;
 }
 .readouts{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
@@ -118,169 +170,159 @@ h1 span{color:var(--rain)}
 .readout svg{display:block}
 .readout.right{align-items:flex-end}
 
-/* keys */
 .keys{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .key{
   font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
-  color:#20120C;border:0;cursor:pointer;padding:11px 15px;border-radius:5px;
-  background:linear-gradient(180deg,#F2793F,var(--key) 55%,var(--key-lo));
-  box-shadow:0 3px 0 #6E2411, inset 0 1px 0 rgba(255,255,255,.4);
+  color:#141716;border:0;cursor:pointer;padding:11px 15px;border-radius:3px;
+  background:linear-gradient(180deg,#E6EBE8,var(--key-face) 55%,#A9AFAC);
+  box-shadow:0 3px 0 #4A4F4D, inset 0 1px 0 rgba(255,255,255,.7);
   transition:transform .05s linear, box-shadow .05s linear;
 }
-.key.grey{
-  color:#DDE3E6;background:linear-gradient(180deg,#6A7176,var(--grey-key) 55%,var(--grey-key-lo));
-  box-shadow:0 3px 0 #1D2225, inset 0 1px 0 rgba(255,255,255,.22);
-}
+.key.grey{color:#DCE1DF;background:linear-gradient(180deg,#6A706E,var(--key) 55%,var(--key-lo));box-shadow:0 3px 0 #1B1F1E, inset 0 1px 0 rgba(255,255,255,.18)}
 .key:active:not(:disabled){transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
-.key:disabled{opacity:.45;cursor:not-allowed}
-.key:focus-visible{outline:2px solid var(--hud);outline-offset:3px}
-.keyhint{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.13em;color:#899094;text-transform:uppercase;text-align:right}
-.keyhint b{color:#C6CCCF;font-weight:400}
-.key.armed{
-  color:#1E1403;background:linear-gradient(180deg,#F7CE7A,var(--amber) 55%,#A0742010);
-  background:linear-gradient(180deg,#F7CE7A,var(--amber) 55%,#9C7420);
-  box-shadow:0 3px 0 #6B4E12, inset 0 1px 0 rgba(255,255,255,.45);
-}
+.key:disabled{opacity:.42;cursor:not-allowed}
+.key:focus-visible{outline:2px solid var(--bright);outline-offset:3px}
+.key.armed{color:#141716;background:repeating-linear-gradient(135deg,#E6EBE8 0 6px,#B9BFBC 6px 12px);box-shadow:0 3px 0 #4A4F4D, inset 0 1px 0 rgba(255,255,255,.6)}
+.keyhint{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.13em;color:#868C8A;text-transform:uppercase;text-align:right}
+.keyhint b{color:#BFC5C2;font-weight:400}
 .grille{display:flex;gap:4px}
-.grille i{width:4px;height:4px;border-radius:50%;background:#191D20;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.grille i{width:4px;height:4px;border-radius:50%;background:#161918;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 
-/* lever */
 .lever{position:relative;width:66px;border:0;padding:0;background:none;flex:none;cursor:grab;touch-action:none}
 .lever.dragging{cursor:grabbing}
 .lever-mount{
-  position:absolute;left:0;top:50%;transform:translateY(-50%);
-  width:30px;height:98px;border-radius:0 7px 7px 0;
+  position:absolute;left:0;top:50%;transform:translateY(-50%);width:30px;height:98px;border-radius:0 6px 6px 0;
   background:linear-gradient(180deg,var(--shell-hi),var(--shell) 30%,var(--shell-lo));
-  border:1px solid #14181A;border-left:0;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset -2px 0 5px rgba(0,0,0,.45);
+  border:1px solid #101312;border-left:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset -2px 0 5px rgba(0,0,0,.5);
 }
-.lever-mount::after{
-  content:"";position:absolute;left:7px;top:14px;bottom:14px;width:12px;border-radius:6px;
-  background:linear-gradient(180deg,#0C0F11,#191E21);box-shadow:inset 0 2px 4px rgba(0,0,0,.8);
-}
+.lever-mount::after{content:"";position:absolute;left:7px;top:14px;bottom:14px;width:12px;border-radius:6px;background:linear-gradient(180deg,#0A0C0C,#161A19);box-shadow:inset 0 2px 4px rgba(0,0,0,.85)}
 .lever-arm{
   position:absolute;left:12px;top:50%;width:11px;height:150px;transform-origin:50% 100%;z-index:1;
   transform:translateY(-100%) rotate(0deg);border-radius:5px;
-  background:linear-gradient(90deg,#5C6367,#E2E7E9 38%,#6E7579 78%,#4C5357);
+  background:linear-gradient(90deg,#565C5A,#C9CFCC 38%,#666C6A 78%,#414645);
   transition:transform .5s cubic-bezier(.2,.85,.3,1);
 }
 .lever-ball{
   position:absolute;left:-11px;top:-18px;width:33px;height:33px;border-radius:50%;
-  background:radial-gradient(circle at 34% 30%,#F79B6D,var(--key) 46%,#7C2A12);
-  box-shadow:0 3px 8px rgba(0,0,0,.6);
+  background:radial-gradient(circle at 34% 30%,#6E7472,#2A2E2D 52%,#0D0F0F 100%);
+  box-shadow:0 3px 8px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12);
 }
 .lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg)}
-.lever:focus-visible{outline:2px solid var(--hud);outline-offset:4px;border-radius:8px}
+.lever:focus-visible{outline:2px solid var(--bright);outline-offset:4px;border-radius:8px}
 .lever:disabled{cursor:not-allowed}
 
-/* ---------- console: two readouts sharing one frame ---------- */
-.console{
-  display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:1px;
-  background:var(--panel-line);border:1px solid var(--panel-line);
-}
+/* ---------- schedules ---------- */
+.console{display:grid;grid-template-columns:minmax(0,1.06fr) minmax(0,.94fr);gap:1px;background:var(--line);border:1px solid var(--line)}
 .console > *{min-width:0}
 @media (max-width:900px){.console{grid-template-columns:1fr}}
 .panel{background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:14px;align-content:start}
-.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--panel-line);padding-bottom:8px}
-.panel-head h2{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--hud);font-weight:400}
-.panel-head span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:8px}
+.panel-head h2{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--text);font-weight:400}
+.panel-head span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;color:var(--dim);text-transform:uppercase}
 
 .index-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
-.zval{font-family:var(--mono);font-size:36px;line-height:1;font-variant-numeric:tabular-nums;color:#E9FFF4}
-.zval.warm{color:var(--rain)}
-.zval.cold{color:var(--amber)}
-.chip{
-  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
-  padding:4px 8px;border:1px solid var(--panel-line);color:var(--muted);white-space:nowrap;
-}
-.chip.warm{border-color:var(--rain);color:var(--rain)}
-.chip.cold{border-color:var(--amber);color:var(--amber)}
-.explain{margin:8px 0 0;font-size:13px;color:var(--muted);max-width:46ch}
+.zval{font-family:var(--mono);font-size:36px;line-height:1;font-variant-numeric:tabular-nums;color:var(--bright)}
+.chip{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--line);color:var(--dim);white-space:nowrap}
+.chip.warm,.chip.cold{border-color:var(--text);color:var(--text)}
+.explain{margin:8px 0 0;font-size:14px;color:var(--dim);max-width:46ch}
 
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line);border:1px solid var(--panel-line);margin:0}
-.stat{background:rgba(5,10,9,.92);padding:8px 10px;display:flex;flex-direction:column;gap:1px}
-.stat dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin:0}
+.stat{background:rgba(10,12,12,.92);padding:8px 10px;display:flex;flex-direction:column;gap:1px}
+.stat dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim)}
 .stat dd{margin:0;font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;color:var(--text)}
-.stat dd small{font-size:10px;color:var(--muted)}
+.stat dd small{font-size:10px;color:var(--dim)}
 
 .chartwrap{display:flex;flex-direction:column;gap:5px}
 .chart{width:100%;height:72px;display:block;cursor:crosshair;touch-action:none}
-.chart:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
-.chart .zero{stroke:var(--panel-line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
-.chart .trace{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
-.chart .area{stroke:none;opacity:.16}
-.chart .cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
-.cap{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);min-height:15px}
+.chart:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+.chart .zero{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.chart .trace{fill:none;stroke-width:1.5;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke:var(--text)}
+.chart .area{stroke:none;fill:var(--text);opacity:.11}
+.chart .cursor{stroke:var(--dim);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
+.cap{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--dim);min-height:15px}
 .cap b{color:var(--text);font-weight:400}
 
 .phasor-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-#phasor{width:136px;height:136px;flex:none;border:1px solid var(--panel-line);border-radius:50%}
-.meters{display:flex;flex-direction:column;gap:10px;flex:1;min-width:148px}
+#phasor{width:136px;height:136px;flex:none;border:1px solid var(--line);border-radius:50%}
+.meters{display:flex;flex-direction:column;gap:11px;flex:1;min-width:148px}
 .meter{display:flex;flex-direction:column;gap:4px}
-.meter-top{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.meter-top{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
 .meter-top b{color:var(--text);font-weight:400;font-variant-numeric:tabular-nums}
-.bar{height:5px;background:rgba(43,224,124,.12);overflow:hidden}
-.bar i{display:block;height:100%;background:var(--rain);transition:width .16s linear}
-.bar.amber i{background:var(--amber)}
+.bar{height:5px;background:rgba(180,189,185,.1);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--text);transition:width .16s linear}
+.bar.amber i{background:repeating-linear-gradient(90deg,var(--text) 0 3px,transparent 3px 6px)}
 
 .ptable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
-.ptable th{
-  text-align:right;font-weight:400;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);
-  padding:0 0 5px;border-bottom:1px solid var(--panel-line);
-}
+.ptable th{text-align:right;font-weight:400;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--dim);padding:0 0 5px;border-bottom:1px solid var(--line)}
 .ptable th:first-child,.ptable td:first-child{text-align:left}
 .ptable td{padding:3px 0;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
-.ptable td.sp{color:var(--muted)}
+.ptable td.sp{color:var(--dim)}
 .ptable td.sp span{display:flex;align-items:center;gap:7px}
-.ptable td.sp canvas{width:16px;height:16px;image-rendering:pixelated;opacity:.9}
-.ptable tr.hot td{color:var(--rain)}
+.ptable td.sp canvas{width:16px;height:16px;image-rendering:pixelated;opacity:.85}
+.ptable tr.hot td{color:var(--bright)}
 .ptable td.barcell{width:36%;padding-left:12px}
-.pbar{position:relative;display:block;width:100%;height:3px;background:rgba(43,224,124,.13)}
-.pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--rain);opacity:.7}
+.pbar{position:relative;display:block;width:100%;height:3px;background:rgba(180,189,185,.11)}
+.pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--text);opacity:.7}
 
-/* inline glossary */
-.term{
-  font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;text-align:left;
-  border-bottom:1px dotted var(--muted);letter-spacing:inherit;text-transform:inherit;
+/* register */
+.register{border:1px solid var(--line);background:var(--panel)}
+.reg-wrap{overflow-x:auto}
+.reg{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11.5px;min-width:560px}
+.reg th{
+  text-align:left;font-weight:400;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
+  padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap;
 }
+.reg td{padding:8px 14px;border-bottom:1px solid var(--line-soft);color:var(--text);vertical-align:top}
+.reg tr:last-child td{border-bottom:0}
+.reg td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.reg td.q{font-family:var(--serif);font-style:italic;font-size:13px;color:var(--dim);max-width:34ch}
+.reg td.det{letter-spacing:.08em;text-transform:uppercase;font-size:10px;white-space:nowrap}
+.reg .none{color:var(--dim)}
+.reg-empty{padding:14px;margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--dim);text-transform:uppercase}
+.minibtn{
+  font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;
+  background:none;border:1px solid var(--line);color:var(--dim);padding:3px 7px;cursor:pointer;white-space:nowrap;
+}
+.minibtn:hover:not(:disabled){border-color:var(--text);color:var(--text)}
+.minibtn:disabled{opacity:.35;cursor:not-allowed}
+.minibtn:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+
+/* glossary */
+.term{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;text-align:left;border-bottom:1px dotted var(--dim);letter-spacing:inherit;text-transform:inherit}
 .term:hover{color:var(--text);border-bottom-color:var(--text)}
-.term[aria-expanded="true"]{color:var(--rain);border-bottom-color:var(--rain)}
-.term:focus-visible{outline:2px solid var(--hud);outline-offset:2px}
-.def{
-  margin:0;padding:9px 11px;font-size:12.5px;line-height:1.5;color:var(--text);
-  background:rgba(43,224,124,.06);border-left:2px solid var(--rain);
-}
+.term[aria-expanded="true"]{color:var(--bright);border-bottom-color:var(--bright)}
+.term:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+.def{margin:0;padding:9px 11px;font-size:12.5px;line-height:1.55;color:var(--text);background:rgba(180,189,185,.05);border-left:2px solid var(--text);font-family:var(--serif)}
 .def[hidden]{display:none}
 
-/* ---------- manual: one sheet, hairline seams ---------- */
-.manual{border:1px solid var(--panel-line);display:flex;flex-direction:column}
+/* manual */
+.manual{border:1px solid var(--line);display:flex;flex-direction:column}
 .manual-head{
   display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;
-  background:var(--panel);padding:11px 18px;border-bottom:1px solid var(--panel-line);
+  background:var(--panel);padding:11px 18px;border-bottom:1px solid var(--line);
   font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
 }
-.manual-head b{color:var(--hud);font-weight:400}
-.manual-head span{color:var(--muted)}
-.manual-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line)}
+.manual-head b{color:var(--text);font-weight:400}
+.manual-head span{color:var(--dim)}
+.manual-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line)}
 @media (max-width:900px){.manual-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.manual-grid{grid-template-columns:1fr}}
 .entry{background:var(--panel);padding:15px 18px 17px;display:flex;flex-direction:column;gap:7px}
-.entry h3{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--hud);font-weight:400}
-.entry p{margin:0;font-size:13px;color:var(--muted)}
+.entry h3{margin:0;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text);font-weight:400}
+.entry p{margin:0;font-size:13.5px;color:var(--dim)}
 .entry b{color:var(--text);font-weight:600}
 
-.warn{grid-column:1/-1;background:rgba(24,16,4,.72);border-left:2px solid var(--amber);padding:0}
-.warn-head{
-  padding:12px 18px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--amber);
-}
+.warn{grid-column:1/-1;padding:0;background:linear-gradient(175deg,var(--paper) 0%,var(--paper-2) 100%);color:var(--paper-ink)}
+.warn-head{padding:12px 18px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
 .warn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 26px;padding:10px 18px 16px}
 @media (max-width:900px){.warn-grid{grid-template-columns:1fr;gap:14px}}
 .warn-grid section{display:flex;flex-direction:column;gap:6px}
-.warn-grid h3{margin:0;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#F5D08A;font-weight:400}
-.warn-grid p{margin:0;font-size:13px;color:#C6B695}
-.warn-grid b{color:#FBE9C6;font-weight:600}
+.warn-grid h3{margin:0;font-family:var(--mono);font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:#41474400;color:#414744;font-weight:700}
+.warn-grid p{margin:0;font-size:13.5px;color:#33383600;color:#333836}
+.warn-grid b{color:#000;font-weight:700}
 
-footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;line-height:2}
+footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);text-align:center;line-height:2}
 
 @media (max-width:640px){
   .wrap{padding:14px 12px 40px;gap:18px}
@@ -289,7 +331,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   .lever-arm{left:9px;height:116px}
   .lever-mount{width:24px;height:78px}
   .lever-mount::after{left:6px;width:9px}
-  .shell{padding:13px 12px 15px;border-radius:16px 8px 8px 16px}
+  .shell{padding:13px 12px 15px;border-radius:14px 6px 6px 14px}
   .stats{grid-template-columns:repeat(2,1fr)}
   .keyhint{display:none}
   .model{font-size:7.5px}
@@ -309,22 +351,42 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 <div class="wrap">
 
   <div class="hud">
-    <span>Produce Atlas · Apparatus <b>QA-77</b></span>
-    <span>Session <b id="clock">0:00</b> · the only real score</span>
+    <span>Produce Atlas · Office of Probabilistic Determinations</span>
+    <span>Session <b id="clock">0:00</b> · elapsed, unrecoverable</span>
     <span>Simulation · nothing here is real</span>
   </div>
 
   <div class="titleblock">
-    <h1>The <span>Quantum</span> Fruit Machine</h1>
-    <p class="deck">A handheld holding seven cultivated species in superposition. The lever performs a measurement, the measurement collapses the state, and the state evolves again while you sit there deciding what to do next. Nothing is staked and nothing is paid — the machine only measures how your luck compares with what the amplitudes predicted.</p>
+    <p class="office">Office of Probabilistic Determinations</p>
+    <h1>The Quantum Fruit Machine</h1>
+    <p class="formno">Apparatus QA-77 · Form QA-77/B · rev. 4</p>
+    <p class="deck">Seven cultivated species are held in superposition. You may file a question. The apparatus will not answer it. It will observe its own state, record what the state did, and issue a determination whose relationship to your question is nil. Determinations are final. Determinations are also meaningless. Both statements are operative.</p>
   </div>
+
+  <section class="paper filing" aria-labelledby="filingHead">
+    <div class="paper-head">
+      <b id="filingHead">Form QA-77/B · Application for a determination</b>
+      <span id="filingStatus">No matter pending</span>
+    </div>
+    <div class="filing-body">
+      <label class="filing-label" for="question">Part 1 — State the matter to be determined</label>
+      <textarea id="question" maxlength="140" rows="2" placeholder="e.g. Should I take the job in Leeds?" aria-describedby="qcount"></textarea>
+      <div class="filing-foot">
+        <span class="qcount" id="qcount">0 / 140 characters permitted</span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="pbtn ghost" id="bWithdraw" disabled>Withdraw</button>
+          <button class="pbtn" id="bFile">File the matter</button>
+        </span>
+      </div>
+    </div>
+  </section>
 
   <section class="device">
     <div class="rig">
       <div class="shell">
         <div class="plate">
           <span class="brand">ATLAS<em>·</em>ELECTRONICS</span>
-          <span class="model">QA-77 quantum fruit machine<br>7-state · one payline · unitary</span>
+          <span class="model">QA-77 determination apparatus<br>7-state · one payline · unitary</span>
         </div>
 
         <div class="screen">
@@ -335,6 +397,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
                 <span class="flag" id="fEnt">ENTANGLED</span>
                 <span class="flag" id="fCoh">COHERENT</span>
                 <span class="flag" id="fMeas">MEASURING</span>
+                <span class="flag" id="fCase">MATTER PENDING</span>
               </div>
               <span class="mode" id="modeLabel">T+0.0S</span>
             </div>
@@ -345,7 +408,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
               <div class="cell"><canvas></canvas><span class="taxon">—</span></div>
             </div>
 
-            <p class="msg" id="msg" role="status" aria-live="polite">PULL LEVER TO COLLAPSE THE WAVEFUNCTION</p>
+            <p class="msg" id="msg" role="status" aria-live="polite">READY. NO MATTER PENDING.</p>
 
             <div class="readouts">
               <div class="readout"><span class="lab">OBSERVATIONS</span><span id="segSpins"></span></div>
@@ -372,9 +435,32 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     </div>
   </section>
 
+  <section class="paper doc" id="doc" hidden aria-live="polite" aria-labelledby="docHead">
+    <div class="paper-head">
+      <b id="docHead">Certificate of determination</b>
+      <span id="docRef">—</span>
+    </div>
+    <div class="doc-body">
+      <dl class="doc-fields">
+        <div class="doc-row"><dt>Matter filed</dt><dd class="q" id="docQ">—</dd></div>
+        <div class="doc-row"><dt>Determination</dt><dd class="big" id="docDet">—</dd></div>
+        <div class="doc-row"><dt>Configuration</dt><dd id="docCfg">—</dd></div>
+        <div class="doc-row"><dt>P(determination)</dt><dd id="docPc">—</dd></div>
+        <div class="doc-row"><dt>P(configuration)</dt><dd id="docPx">—</dd></div>
+        <div class="doc-row"><dt>Issued</dt><dd id="docTime">—</dd></div>
+      </dl>
+      <div class="stamp" id="docStamp"><b>Issued</b><span>QA-77</span></div>
+      <p class="doc-note"><b>Notice.</b> The determination above concerns the configuration of the apparatus at the instant of observation. It has no relationship of any kind to the matter you filed, and none can be constructed. The probabilities are exact and describe the apparatus only. No inference may be drawn. This office does not answer questions; it records that they were asked.</p>
+      <div class="doc-actions">
+        <button class="pbtn" id="bCopy">Issue certified copy</button>
+        <button class="pbtn ghost" id="bAppeal">Lodge an appeal</button>
+      </div>
+    </div>
+  </section>
+
   <section class="console">
     <div class="panel">
-      <div class="panel-head"><h2>Observation log</h2><span id="lifetime">lifetime 0</span></div>
+      <div class="panel-head"><h2>Schedule A · Observation log</h2><span id="lifetime">lifetime 0</span></div>
 
       <div>
         <div class="index-row">
@@ -403,7 +489,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     </div>
 
     <div class="panel">
-      <div class="panel-head"><h2>State vector</h2><span id="stateAge">t = 0.0 s</span></div>
+      <div class="panel-head"><h2>Schedule B · State vector</h2><span id="stateAge">t = 0.0 s</span></div>
 
       <div class="phasor-row">
         <canvas id="phasor" width="300" height="300" aria-label="Argand diagram of the seven complex amplitudes on reel one"></canvas>
@@ -434,8 +520,21 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     </div>
   </section>
 
+  <section class="register" aria-labelledby="regHead">
+    <div class="manual-head"><b id="regHead">Schedule C · Register of determinations</b><span id="regCount">0 matters</span></div>
+    <div class="reg-wrap">
+      <table class="reg" id="regTable">
+        <thead>
+          <tr><th>Case</th><th>Matter</th><th>Determination</th><th>P(det.)</th><th>P(cfg.)</th><th>Filed</th><th></th></tr>
+        </thead>
+        <tbody id="regBody"></tbody>
+      </table>
+      <p class="reg-empty" id="regEmpty">No matters have been determined. The register is empty.</p>
+    </div>
+  </section>
+
   <section class="manual">
-    <div class="manual-head"><b>Operating manual</b><span>QA-77 · read before use</span></div>
+    <div class="manual-head"><b>Schedule D · Notes for the operator</b><span>QA-77 · read before use</span></div>
 
     <div class="manual-grid">
 
@@ -444,7 +543,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <div class="warn-grid">
           <section>
             <h3>None of it is real</h3>
-            <p>QA-77 is not quantum hardware, not a measuring instrument and not a fortune teller. The mathematics is genuinely computed, but what it computes is the behaviour of your browser's random number generator — and a random number generator knows nothing about you. <b>Luck and fortune are not quantities you possess</b>, so nothing here can read, improve or predict them. Every verdict, anomaly and reading on this page is fabricated for entertainment. Take none of it seriously and act on none of it.</p>
+            <p>QA-77 is not quantum hardware, not a measuring instrument and not a fortune teller. The mathematics is genuinely computed, but what it computes is the behaviour of your browser's random number generator — and a random number generator knows nothing about you. <b>Luck and fortune are not quantities you possess</b>, so nothing here can read, improve or predict them. Above all: <b>a determination is not an answer to the matter you filed.</b> The apparatus never reads your question, cannot parse it, and does not pass it to anything that could. Every verdict and probability on this page is fabricated for entertainment. Take none of it seriously and act on none of it.</p>
           </section>
           <section>
             <h3>Built to be put down</h3>
@@ -455,6 +554,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             <p>The session clock at the top of the page runs whether or not you are enjoying yourself, and it is the only honest score here. <b>You cannot get that time back.</b> If you notice you are pulling the lever without having decided to, that is the moment to stop: this is a page about probability, and the probability that one more spin tells you something new is zero.</p>
           </section>
         </div>
+      </div>
+
+      <div class="entry">
+        <h3>How a matter is determined</h3>
+        <p>Filing stores your text and a case number, nothing more. The lever then observes the apparatus, and the <b>majority of the three reels</b> decides: each species carries a fixed disposition, and two alike are enough to issue one. Three different species produce <b>no determination at all</b> — which happens on most filings, and is why the register fills with matters that must be refiled. The probabilities printed on the certificate are exact, enumerated over all 343 configurations of the state as it stood at the instant of observation.</p>
       </div>
 
       <div class="entry">
@@ -483,6 +587,16 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       </div>
 
       <div class="entry">
+        <h3>On appeals</h3>
+        <p>An appeal refiles the identical matter under a new case number, cross-referenced to the original. It is then determined by the same procedure, from the same apparatus, with the same probabilities. <b>Appeals therefore succeed at exactly the rate first filings do.</b> The right of appeal is unlimited and entirely without effect, which distinguishes it from no known appeals process.</p>
+      </div>
+
+      <div class="entry">
+        <h3>Why fruit</h3>
+        <p>The symbols are not arbitrary. When American slot machines met anti-gambling law in the 1910s, several manufacturers rebuilt them as chewing-gum vendors: a spin paid out a stick of gum, and the cherry, lemon or plum on the payline named the flavour. The BAR still seen on modern reels is widely traced to the Bell-Fruit Gum Company's wrapper. A century on, British machines are still called fruit machines. <b>This apparatus continues the tradition of paying out nothing at all.</b></p>
+      </div>
+
+      <div class="entry">
         <h3>Under the lid</h3>
         <p>One self-contained HTML file, no dependencies and no network calls. Nothing leaves your browser and nothing is collected: the counters live in <b>localStorage</b> on your own machine and Reset clears them. <b>window.QA77</b> exposes the live state vector if you would rather read the numbers than pull the lever.</p>
       </div>
@@ -490,7 +604,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     </div>
   </section>
 
-  <footer>Produce Atlas · QA-77 · a simulation, fabricated throughout · no stake, no payout, no credits<br>be careful with your time — it is the one thing this machine can actually take from you</footer>
+  <footer>Office of Probabilistic Determinations · Apparatus QA-77 · a simulation, fabricated throughout<br>no stake · no payout · no credits · this office does not answer questions, it records that they were asked<br>be careful with your time — it is the one thing this machine can actually take from you</footer>
 </div>
 
 <script>
@@ -702,13 +816,54 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     return {hit:1 - distinct, trio:trio};
   }
 
+  /* ============================ determinations ============================ */
+  /* One disposition per species. The majority of the three reels decides; three
+     different species produce no determination at all, which is by some distance
+     the most common outcome. */
+  var DISPOSITIONS = [
+    "GRANTED", "DENIED", "DEFERRED", "REFERRED TO SUBCOMMITTEE",
+    "PARTIALLY GRANTED", "INADMISSIBLE", "EXCEPTIONAL RELIEF"
+  ];
+  function majorityOf(out){
+    if(out[0] === out[1] || out[0] === out[2]) return out[0];
+    if(out[1] === out[2]) return out[1];
+    return -1;
+  }
+  /* Exact probability of each disposition given the joint state, by enumeration. */
+  function determinationStats(p1, pjk){
+    var classes = [], none = 0, i, j, k, pj, pr, maj;
+    for(i=0;i<N;i++) classes.push(0);
+    for(j=0;j<N;j++) for(k=0;k<N;k++){
+      pj = pjk[j*N + k];
+      if(pj <= 0) continue;
+      for(i=0;i<N;i++){
+        pr = p1[i]*pj;
+        maj = (i === j || i === k) ? i : (j === k ? j : -1);
+        if(maj < 0) none += pr; else classes[maj] += pr;
+      }
+    }
+    return {classes:classes, none:none};
+  }
+  function caseRef(n){
+    var t = "0000" + n;
+    return "QA-77/" + t.slice(-4);
+  }
+  function stamp(t){
+    var d = new Date(t);
+    function z(v){ return ("0" + v).slice(-2); }
+    return d.getFullYear() + "-" + z(d.getMonth()+1) + "-" + z(d.getDate()) + " " +
+           z(d.getHours()) + ":" + z(d.getMinutes()) + ":" + z(d.getSeconds());
+  }
+  function pct(v){ return (v*100).toFixed(2) + "%"; }
+
   /* ============================ session ============================ */
   var STORE = "produce-atlas.qa77.v1";
   var S = {
     spins:0, hits:0, trios:0,
     expHits:0, varHits:0, expTrios:0,
     run:0, bestRun:0, dry:0, longestDry:0,
-    drift:[], q:[], lifetime:0, hinted:0
+    drift:[], q:[], lifetime:0, hinted:0,
+    cases:[], caseSeq:0, pending:null
   };
   var busy = false, sound = false, burstLeft = 0, burstActive = false, audio = null, anim = null;
   var lastMeasure = performance.now(), entangled = false, zeno = false;
@@ -825,7 +980,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     cellCtx.forEach(function(c){ c.mode = "normal"; drawCell(c); });
     flags(false);
     renderStats();
-    el("msg").textContent = "QA-77 READY \u00B7 PULL THE LEVER TO COLLAPSE THE WAVEFUNCTION";
+    el("msg").textContent = S.pending
+      ? "QA-77 READY \u00B7 CASE " + S.pending.ref + " PENDING \u00B7 PULL LEVER TO DETERMINE"
+      : "QA-77 READY \u00B7 NO MATTER PENDING";
     setKeys(false);
   }
   function boot(){
@@ -886,11 +1043,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     return m ? sum/m : null;
   }
   function verdict(z){
-    if(z >= 2)  return {t:"ANOMALOUS +", c:"warm"};
-    if(z >= 1)  return {t:"RUNNING WARM", c:"warm"};
-    if(z > -1)  return {t:"SQUARELY AVERAGE", c:""};
-    if(z > -2)  return {t:"RUNNING COLD", c:"cold"};
-    return {t:"ANOMALOUS −", c:"cold"};
+    if(z >= 2)  return {t:"ANOMALOUS \u2014 HIGH", c:"warm"};
+    if(z >= 1)  return {t:"ELEVATED", c:"warm"};
+    if(z > -1)  return {t:"WITHIN TOLERANCE", c:""};
+    if(z > -2)  return {t:"DEPRESSED", c:"cold"};
+    return {t:"ANOMALOUS \u2014 LOW", c:"cold"};
   }
 
   /* ============================ measurement ============================ */
@@ -903,9 +1060,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     var ent = P.entanglement();
     entangled = ent > 0.25;
     var js = jointStats(p1, pjk);
+    var ds = determinationStats(p1, pjk);
 
     var i1 = sample(p1, N), ijk = sample(pjk, N*N);
     var out = [i1, (ijk/N)|0, ijk % N];
+    var pConfig = p1[i1]*pjk[ijk];
     A.collapse(i1);
     P.collapse(out[1], out[2]);
 
@@ -935,7 +1094,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     S.drift.push(prev + ((hit ? 1 : 0) - js.hit));
     if(S.drift.length > 200) S.drift = S.drift.slice(-200);
 
-    return {out:out, kind:kind, top:top, pHit:js.hit, gap:gap, ent:entangled, entVal:ent};
+    return {out:out, kind:kind, top:top, pHit:js.hit, gap:gap, ent:entangled, entVal:ent,
+            ds:ds, pConfig:pConfig};
   }
 
   function stepAnim(now){
@@ -966,6 +1126,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
   function finish(res){
     announce(res);
+    if(S.pending) issue(res);
     renderAll();
     save();
     celebrate(res.kind);
@@ -1024,6 +1185,142 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     }
   }
 
+  /* ============================ the filing bureau ============================ */
+  function renderFiling(){
+    var pend = S.pending;
+    el("filingStatus").textContent = pend
+      ? "Case " + pend.ref + " pending determination"
+      : "No matter pending";
+    el("bWithdraw").disabled = !pend;
+    el("bFile").textContent = pend ? "Refile (replaces)" : "File the matter";
+    el("fCase").classList.toggle("on", !!pend);
+    var q = el("question");
+    el("qcount").textContent = q.value.length + " / 140 characters permitted";
+  }
+
+  function fileMatter(text, appealOf){
+    text = (text || "").trim().replace(/\s+/g, " ");
+    if(!text){
+      el("msg").textContent = "NO MATTER STATED. FILING REJECTED.";
+      el("question").focus();
+      return false;
+    }
+    S.caseSeq++;
+    S.pending = {no:S.caseSeq, ref:caseRef(S.caseSeq), q:text, filed:Date.now(), appealOf:appealOf || null};
+    save(); renderFiling();
+    el("msg").textContent = "CASE " + S.pending.ref + " FILED" +
+      (appealOf ? " AS APPEAL OF " + appealOf : "") + ". PULL LEVER TO DETERMINE.";
+    beep(1180, .06, .04);
+    return true;
+  }
+
+  function issue(res){
+    var c = S.pending, maj = majorityOf(res.out);
+    S.pending = null;
+    c.det = maj < 0 ? null : DISPOSITIONS[maj];
+    c.cfg = res.out.map(function(k){ return SYMBOLS[k].taxon; }).join(" · ");
+    c.pClass = maj < 0 ? res.ds.none : res.ds.classes[maj];
+    c.pConfig = res.pConfig;
+    c.issued = Date.now();
+    S.cases.unshift(c);
+    if(S.cases.length > 40) S.cases.length = 40;
+    renderDoc(c);
+    renderRegister();
+    renderFiling();
+    save();
+    el("msg").textContent = "CASE " + c.ref + " · " +
+      (c.det ? "DETERMINATION: " + c.det : "NO DETERMINATION \u2014 REFILE REQUIRED") +
+      " · P=" + pct(c.pClass);
+  }
+
+  var shownCase = null;
+  function renderDoc(c){
+    shownCase = c;
+    el("doc").hidden = false;
+    el("docRef").textContent = c.ref + (c.appealOf ? " · appeal of " + c.appealOf : "");
+    el("docQ").textContent = "\u201C" + c.q + "\u201D";
+    el("docDet").textContent = c.det || "No determination \u2014 refile required";
+    el("docCfg").textContent = c.cfg;
+    el("docPc").textContent = pct(c.pClass) + (c.det ? " of filings yield this determination" : " of filings yield none");
+    el("docPx").textContent = pct(c.pConfig) + " for this exact configuration";
+    el("docTime").textContent = stamp(c.issued);
+    var st = el("docStamp");
+    st.innerHTML = c.det
+      ? "<b>Issued</b><span>QA-77</span>"
+      : "<b>Refile</b><span>no majority</span>";
+    st.classList.toggle("void", !c.det);
+    el("bCopy").textContent = "Issue certified copy";
+  }
+
+  function renderRegister(){
+    var body = el("regBody"), rows = S.cases;
+    el("regCount").textContent = rows.length + (rows.length === 1 ? " matter" : " matters");
+    el("regEmpty").hidden = rows.length > 0;
+    el("regTable").hidden = rows.length === 0;
+    body.innerHTML = rows.map(function(c, i){
+      return "<tr>" +
+        '<td class="num">' + c.ref + (c.appealOf ? "<br><span class=\"none\">appeal of " + c.appealOf + "</span>" : "") + "</td>" +
+        '<td class="q">' + esc(c.q) + "</td>" +
+        '<td class="det">' + (c.det || '<span class="none">no determination</span>') + "</td>" +
+        '<td class="num">' + pct(c.pClass) + "</td>" +
+        '<td class="num">' + pct(c.pConfig) + "</td>" +
+        '<td class="num">' + stamp(c.issued).slice(11) + "</td>" +
+        '<td><button class="minibtn" data-appeal="' + i + '">Appeal</button></td>' +
+      "</tr>";
+    }).join("");
+  }
+  function esc(t){
+    return String(t).replace(/[&<>"]/g, function(ch){
+      return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch];
+    });
+  }
+
+  function certificate(c){
+    return [
+      "OFFICE OF PROBABILISTIC DETERMINATIONS",
+      "CERTIFICATE OF DETERMINATION \u00B7 APPARATUS QA-77 \u00B7 FORM QA-77/B",
+      "",
+      "CASE               " + c.ref + (c.appealOf ? "  (appeal of " + c.appealOf + ")" : ""),
+      "MATTER FILED       " + c.q,
+      "DETERMINATION      " + (c.det || "NO DETERMINATION \u2014 REFILE REQUIRED"),
+      "CONFIGURATION      " + c.cfg,
+      "P(DETERMINATION)   " + pct(c.pClass),
+      "P(CONFIGURATION)   " + pct(c.pConfig),
+      "FILED              " + stamp(c.filed),
+      "ISSUED             " + stamp(c.issued),
+      "",
+      "NOTICE. This determination concerns the configuration of the apparatus at",
+      "the instant of observation. It has no relationship of any kind to the matter",
+      "filed, and none can be constructed. The probabilities are exact and describe",
+      "the apparatus only. No inference may be drawn. This office does not answer",
+      "questions; it records that they were asked."
+    ].join("\n");
+  }
+  function copyCertificate(){
+    if(!shownCase) return;
+    var text = certificate(shownCase), btn = el("bCopy");
+    function done(ok){
+      btn.textContent = ok ? "Copy issued" : "Copy refused";
+      el("msg").textContent = ok
+        ? "CERTIFIED COPY OF " + shownCase.ref + " ISSUED TO CLIPBOARD."
+        : "CLIPBOARD UNAVAILABLE. COPY THE CERTIFICATE BY HAND.";
+      setTimeout(function(){ btn.textContent = "Issue certified copy"; }, 2200);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ done(true); }, function(){ fallback(); });
+    }else{ fallback(); }
+    function fallback(){
+      try{
+        var ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        done(ok);
+      }catch(e){ done(false); }
+    }
+  }
+
   /* ============================ rendering ============================ */
   function fmt(n,d){ return n.toFixed(d === undefined ? 1 : d); }
 
@@ -1051,7 +1348,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     zv.classList.remove("warm","cold"); chip.classList.remove("warm","cold");
     if(z === null){
       zv.textContent = "—";
-      chip.textContent = S.spins ? "gathering evidence" : "no data";
+      chip.textContent = S.spins ? "insufficient evidence" : "no observations";
       ex.textContent = S.spins
         ? "The index needs eight observations and Σp(1−p) ≥ 3.00 of accumulated evidence; you have "
           + S.spins + " and " + S.varHits.toFixed(2) + ". Frozen reels barely add to that second number, which is the whole point."
@@ -1107,7 +1404,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     ptableRows = [].slice.call(tb.querySelectorAll("tr"));
     ptableRows.forEach(function(tr, i){
       var ctx = tr.querySelector("canvas").getContext("2d"), g = SYMBOLS[i].grid, k;
-      ctx.fillStyle = "#2BE07C";
+      ctx.fillStyle = "#AEB7B3";
       for(k=0;k<GRID*GRID;k++) if(g[k]) ctx.fillRect(k % GRID, (k/GRID)|0, 1, 1);
     });
   }
@@ -1151,7 +1448,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     var quarter = Math.floor(mins/15);
     if(quarter > lastNudge && !busy && !anim){
       lastNudge = quarter;
-      el("msg").textContent = "YOU HAVE BEEN HERE " + (quarter*15) + " MINUTES. NOTHING FURTHER WILL BE REVEALED.";
+      el("msg").textContent = "OPERATOR PRESENT " + (quarter*15) + " MINUTES. NO FURTHER DISCLOSURE IS AVAILABLE.";
     }
   }
 
@@ -1160,7 +1457,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   function drawPhasors(){
     var w = phCv.width, h = phCv.height, cx = w/2, cy = h/2, R = w*0.42, i;
     phCtx.clearRect(0,0,w,h);
-    phCtx.strokeStyle = "rgba(43,224,124,.18)"; phCtx.lineWidth = 2;
+    phCtx.strokeStyle = "rgba(180,189,185,.16)"; phCtx.lineWidth = 2;
     phCtx.beginPath(); phCtx.arc(cx,cy,R,0,Math.PI*2); phCtx.stroke();
     phCtx.beginPath();
     phCtx.moveTo(cx-R,cy); phCtx.lineTo(cx+R,cy);
@@ -1170,10 +1467,10 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     for(i=0;i<N;i++){
       var mag = Math.sqrt(r.re[i]*r.re[i] + r.im[i]*r.im[i]);
       var x = cx + r.re[i]*R*1.55, y = cy - r.im[i]*R*1.55;
-      phCtx.strokeStyle = "rgba(43,224,124," + (0.22 + mag*0.7).toFixed(3) + ")";
+      phCtx.strokeStyle = "rgba(180,189,185," + (0.20 + mag*0.65).toFixed(3) + ")";
       phCtx.lineWidth = 1 + mag*5;
       phCtx.beginPath(); phCtx.moveTo(cx,cy); phCtx.lineTo(x,y); phCtx.stroke();
-      phCtx.fillStyle = "rgba(127,233,255," + (0.28 + mag*0.7).toFixed(3) + ")";
+      phCtx.fillStyle = "rgba(228,234,231," + (0.26 + mag*0.7).toFixed(3) + ")";
       phCtx.beginPath(); phCtx.arc(x,y,2.4 + mag*5,0,Math.PI*2); phCtx.fill();
     }
   }
@@ -1193,20 +1490,20 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     rctx.clearRect(0,0,rainW,rainH);
   }
   function drawRain(dt){
-    rctx.fillStyle = "rgba(4,7,10,.15)";
+    rctx.fillStyle = "rgba(10,12,12,.15)";
     rctx.fillRect(0,0,rainW,rainH);
     rctx.font = "12px ui-monospace,Menlo,monospace";
     for(var i=0;i<cols.length;i++){
       var c = cols[i], x = i*colW + 2, k, y;
       c.y += c.speed*dt;
       if(c.y > rainH + c.len*14){ c.y = -Math.random()*400; c.speed = 60 + Math.random()*150; }
-      rctx.fillStyle = "rgba(185,255,218,.85)";
+      rctx.fillStyle = "rgba(224,230,227,.80)";
       rctx.fillText(GLYPHS[(Math.random()*GLYPHS.length)|0], x, c.y);
       for(k=1;k<c.len;k++){
         y = c.y - k*14;
         if(y < -14) break;
         if(Math.random() < 0.22){
-          rctx.fillStyle = "rgba(43,224,124," + (0.42*(1 - k/c.len)).toFixed(3) + ")";
+          rctx.fillStyle = "rgba(150,160,156," + (0.40*(1 - k/c.len)).toFixed(3) + ")";
           rctx.fillText(GLYPHS[(Math.random()*GLYPHS.length)|0], x, y);
         }
       }
@@ -1249,11 +1546,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     pts = VERTS.map(project);
     for(i=0;i<EDGES.length;i++){
       var a = pts[EDGES[i][0]], b = pts[EDGES[i][1]], depth = (a[2] + b[2])/2;
-      hctx.strokeStyle = "rgba(127,233,255," + (0.07 + Math.min(.40, Math.max(0,(depth-0.7)*0.55))).toFixed(3) + ")";
+      hctx.strokeStyle = "rgba(168,178,174," + (0.07 + Math.min(.38, Math.max(0,(depth-0.7)*0.55))).toFixed(3) + ")";
       hctx.lineWidth = 0.6 + depth*0.9;
       hctx.beginPath(); hctx.moveTo(a[0],a[1]); hctx.lineTo(b[0],b[1]); hctx.stroke();
     }
-    hctx.fillStyle = "rgba(127,233,255,.28)";
+    hctx.fillStyle = "rgba(168,178,174,.26)";
     for(i=0;i<pts.length;i++){
       hctx.beginPath(); hctx.arc(pts[i][0], pts[i][1], 1.1 + pts[i][2], 0, Math.PI*2); hctx.fill();
     }
@@ -1284,6 +1581,36 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     go(true);
   }
 
+  var qbox = el("question");
+  qbox.addEventListener("input", function(){
+    el("qcount").textContent = this.value.length + " / 140 characters permitted";
+  });
+  qbox.addEventListener("keydown", function(e){
+    if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); el("bFile").click(); }
+  });
+  el("bFile").addEventListener("click", function(){
+    if(fileMatter(qbox.value)) qbox.value = "";
+    renderFiling();
+  });
+  el("bWithdraw").addEventListener("click", function(){
+    if(!S.pending) return;
+    el("msg").textContent = "CASE " + S.pending.ref + " WITHDRAWN. NO DETERMINATION WAS MADE.";
+    S.pending = null; save(); renderFiling();
+  });
+  el("bCopy").addEventListener("click", copyCertificate);
+  el("bAppeal").addEventListener("click", function(){
+    if(!shownCase) return;
+    fileMatter(shownCase.q, shownCase.ref);
+    el("question").value = "";
+    renderFiling();
+  });
+  el("regBody").addEventListener("click", function(e){
+    var btn = e.target.closest("[data-appeal]");
+    if(!btn) return;
+    var c = S.cases[+btn.dataset.appeal];
+    if(c) fileMatter(c.q, c.ref);
+  });
+
   el("bSpin").addEventListener("click", function(){ if(!busy) go(false); });
   el("bBurst").addEventListener("click", startBurst);
 
@@ -1311,7 +1638,10 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       S.run = S.bestRun = S.dry = S.longestDry = 0;
       S.drift = []; S.q = []; S.lifetime = life;
       hover = null;
-      el("msg").textContent = "LOG CLEARED \u2014 STATE VECTOR UNTOUCHED";
+      S.cases = []; S.pending = null;
+      renderRegister(); renderFiling();
+      el("doc").hidden = true; shownCase = null;
+      el("msg").textContent = "RECORD PURGED. STATE VECTOR UNTOUCHED.";
       beep(660, .12, .05);
       renderAll(); save();
       return;
@@ -1319,7 +1649,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     armedAt = Date.now();
     this.textContent = "Confirm";
     this.classList.add("armed");
-    el("msg").textContent = "PRESS CONFIRM TO CLEAR THE OBSERVATION LOG \u00B7 IGNORE TO KEEP IT";
+    el("msg").textContent = "PRESS CONFIRM TO PURGE THE LOG AND THE REGISTER \u00B7 IGNORE TO KEEP THEM";
     clearTimeout(armTimer);
     armTimer = setTimeout(disarm, 5000);
   });
@@ -1446,6 +1776,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   /* ============================ boot ============================ */
   load();
   buildPtable();
+  renderFiling();
+  renderRegister();
+  if(S.cases.length) renderDoc(S.cases[0]);
   sizeRain(); sizeHyper(); sizeCells();
   [0,3,1].forEach(function(k,i){ setCell(i, k, false); });
   renderAll();
@@ -1456,6 +1789,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
   /* Poke at the machine from the console if you like. */
   window.QA77 = {reelOne:A, pair:P, session:S, species:SYMBOLS, jointStats:jointStats,
+                 determinationStats:determinationStats, dispositions:DISPOSITIONS,
                  constants:{hopping:J, coupling:G, dim:N}};
 })();
 </script>

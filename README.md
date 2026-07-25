@@ -38,6 +38,28 @@ correlated. Freezing the reels raises matches and expectation equally. Better, a
 locked reel has p near 0 or 1, so it contributes almost no variance, which is why
 the index unlocks on accumulated evidence (Σp(1−p) ≥ 3) rather than on spin count.
 
+### Filing a matter
+
+The apparatus is operated as a small bureau. You file a question on **Form QA-77/B**
+and it is given a case number; the lever then observes the apparatus, and the
+**majority of the three reels** issues a determination — each species carries a fixed
+disposition (granted, denied, deferred, referred, partially granted, inadmissible,
+exceptional relief). Three different species produce **no determination at all**,
+which happens on most filings and is why the register fills with matters that must
+be refiled.
+
+Every certificate prints two exact probabilities, enumerated over all 343
+configurations of the joint state as it stood at the instant of observation: the
+chance of that determination, and the chance of that precise configuration. The
+dispositions plus the no-determination case sum to 1 exactly. Determinations can be
+copied out as plain-text certificates and appealed without limit; an appeal refiles
+the identical matter under a new case number and is determined by the same procedure
+with the same probabilities, so appeals succeed at exactly the rate first filings do.
+
+The certificate carries the only honest finding on the page: the determination
+concerns the apparatus, has no relationship to the matter filed, and no inference may
+be drawn. The apparatus never reads the question.
+
 ### Responsible-use commitments
 
 A full-width disclaimer heads the operating manual, in three parts: **none of it is
@@ -47,6 +69,12 @@ put down** (no currency, credits, wagers, prizes, payouts, streaks, daily bonus,
 countdowns, notifications, leaderboards or unlocks — nothing is lost by closing the
 tab), and **your time is the only stake**. A session clock runs in the header as the
 page's only honest score, and every quarter hour the LCD says so out loud.
+
+### Presentation
+
+Monochrome throughout — a dark bureau interior with light paper documents (the
+filing form, the certificate, the notice). Serif for prose, monospace for every
+label and figure. No colour is used to carry meaning anywhere.
 
 ### Interface
 
