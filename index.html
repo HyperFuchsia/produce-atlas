@@ -3,885 +3,1178 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The Fruit Machine — Produce Atlas</title>
+<title>QA-77 — The Quantum Fruit Machine</title>
 <style>
 :root{
-  --bg:#E6E7DF;
-  --surface:#F1F1E9;
-  --cabinet:#19211E;
-  --cabinet-edge:#0C110F;
-  --reel-bg:#F4F2E9;
-  --reel-ink:#1B2320;
-  --ink:#131A17;
-  --muted:#5C645E;
-  --line:#C9CBBF;
-  --line-soft:#DBDCD2;
-  --accent:#2E7D63;
-  --accent-ink:#1F5E49;
-  --clay:#A4503C;
-  --brass:#B08A4A;
-  --shadow:0 1px 2px rgba(12,17,15,.08), 0 12px 32px -18px rgba(12,17,15,.5);
+  --void:#04070A;
+  --rain:#2BE07C;
+  --hyper:#7FE9FF;
+  --hud:#7FE3B0;
+  --amber:#F2B33D;
 
-  --tile:300px;
-  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,ui-serif,serif;
+  --shell:#33383C;
+  --shell-hi:#4A5054;
+  --shell-lo:#1C2023;
+  --key:#D9552F;
+  --key-lo:#8E3117;
+  --grey-key:#565D62;
+  --grey-key-lo:#31373B;
+
+  --lcd:#A6B682;
+  --lcd-dim:#8FA06D;
+  --ink:#10170B;
+  --ink-ghost:rgba(16,23,11,.08);
+
+  --panel:rgba(8,15,14,.82);
+  --panel-line:#1C3A31;
+  --text:#C9E8D7;
+  --muted:#6C8F80;
+
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
   --sans:ui-sans-serif,system-ui,"Segoe UI",Helvetica,Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
 }
-@media (prefers-color-scheme: dark){
-  :root{
-    --bg:#0D1211;
-    --surface:#141B19;
-    --cabinet:#101715;
-    --cabinet-edge:#070B0A;
-    --reel-bg:#1B2320;
-    --reel-ink:#E6EAE2;
-    --ink:#E6EAE2;
-    --muted:#8E9891;
-    --line:#293330;
-    --line-soft:#1E2724;
-    --accent:#5FBE9A;
-    --accent-ink:#7FD3B3;
-    --clay:#D4795F;
-    --brass:#C79E5C;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.9);
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0D1211;
-  --surface:#141B19;
-  --cabinet:#101715;
-  --cabinet-edge:#070B0A;
-  --reel-bg:#1B2320;
-  --reel-ink:#E6EAE2;
-  --ink:#E6EAE2;
-  --muted:#8E9891;
-  --line:#293330;
-  --line-soft:#1E2724;
-  --accent:#5FBE9A;
-  --accent-ink:#7FD3B3;
-  --clay:#D4795F;
-  --brass:#C79E5C;
-  --shadow:0 1px 2px rgba(0,0,0,.4), 0 18px 40px -20px rgba(0,0,0,.9);
-}
-:root[data-theme="light"]{
-  --bg:#E6E7DF;
-  --surface:#F1F1E9;
-  --cabinet:#19211E;
-  --cabinet-edge:#0C110F;
-  --reel-bg:#F4F2E9;
-  --reel-ink:#1B2320;
-  --ink:#131A17;
-  --muted:#5C645E;
-  --line:#C9CBBF;
-  --line-soft:#DBDCD2;
-  --accent:#2E7D63;
-  --accent-ink:#1F5E49;
-  --clay:#A4503C;
-  --brass:#B08A4A;
-  --shadow:0 1px 2px rgba(12,17,15,.08), 0 12px 32px -18px rgba(12,17,15,.5);
-}
-
 *{box-sizing:border-box}
+html,body{margin:0}
 body{
-  margin:0;
-  background:var(--bg);
-  color:var(--ink);
-  font-family:var(--sans);
-  font-size:16px;
-  line-height:1.55;
-  -webkit-font-smoothing:antialiased;
+  background:var(--void);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-.sprite{position:absolute;width:0;height:0;overflow:hidden}
-.wrap{max-width:1060px;margin:0 auto;padding:40px 24px 72px;display:flex;flex-direction:column;gap:34px}
+canvas.bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
+#rain{opacity:.4}
+#hyper{opacity:.8}
+.vignette{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 78% 62% at 50% 42%,rgba(4,7,10,0) 0%,rgba(4,7,10,.7) 58%,rgba(4,7,10,.95) 100%);
+}
+.wrap{position:relative;z-index:2;max-width:1080px;margin:0 auto;padding:22px 20px 80px;display:flex;flex-direction:column;gap:30px}
 
-/* ---------- masthead ---------- */
-.masthead{display:flex;flex-direction:column;gap:12px;max-width:60ch}
-.eyebrow{
-  font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--muted);margin:0;
+/* ---------- hud + title ---------- */
+.hud{
+  display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);
+  border-bottom:1px solid var(--panel-line);padding-bottom:10px;
 }
-.masthead h1{
-  font-family:var(--serif);font-weight:400;font-size:clamp(34px,6vw,52px);
-  line-height:1.03;letter-spacing:-.015em;margin:0;text-wrap:balance;
+.hud b{color:var(--hud);font-weight:400}
+.titleblock{display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+h1{
+  margin:0;font-family:var(--mono);font-weight:700;
+  font-size:clamp(20px,4.2vw,34px);letter-spacing:.24em;line-height:1.3;color:#E9FFF4;
+  text-shadow:0 0 18px rgba(43,224,124,.35);text-wrap:balance;
 }
-.masthead h1 em{font-style:italic;color:var(--accent-ink)}
-.deck{margin:0;color:var(--muted);font-size:16.5px;max-width:56ch}
+h1 span{color:var(--rain)}
+.deck{margin:0;max-width:62ch;color:var(--muted);font-size:15px;text-wrap:balance}
 
-/* ---------- bench layout ---------- */
-.bench{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.9fr);gap:26px;align-items:start}
-.bench > *{min-width:0}
-@media (max-width:880px){.bench{grid-template-columns:1fr}}
+/* ---------- the device ---------- */
+.device{display:flex;justify-content:center}
+.rig{display:flex;align-items:stretch;filter:drop-shadow(0 40px 60px rgba(0,0,0,.75))}
+.shell{
+  width:min(560px,100%);
+  background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 14%,var(--shell) 78%,var(--shell-lo) 100%);
+  border:1px solid #14181A;
+  border-radius:22px 10px 10px 22px;
+  padding:16px 18px 18px;
+  display:flex;flex-direction:column;gap:13px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 -2px 6px rgba(0,0,0,.5);
+}
+.plate{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.brand{
+  font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#E4E8E9;font-weight:700;
+  text-shadow:0 1px 0 rgba(0,0,0,.6);white-space:nowrap;
+}
+.brand em{font-style:normal;color:var(--key)}
+.model{font-family:var(--mono);font-size:8.5px;letter-spacing:.15em;color:#9AA1A5;text-transform:uppercase;text-align:right;line-height:1.5}
 
-/* ---------- cabinet ---------- */
-.cabinet{
-  background:linear-gradient(180deg,var(--cabinet) 0%,var(--cabinet-edge) 100%);
-  border:1px solid rgba(255,255,255,.07);
-  border-radius:6px;padding:22px 22px 20px;box-shadow:var(--shadow);
-  display:flex;flex-direction:column;gap:18px;
+/* screen */
+.screen{
+  background:linear-gradient(180deg,#8E9498,#C2C7C9 8%,#9BA1A4 92%,#6E7478);
+  padding:9px;border-radius:7px;box-shadow:inset 0 2px 5px rgba(0,0,0,.55);
 }
-.cabinet-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
-.cabinet-mark{
-  font-family:var(--serif);font-size:15px;letter-spacing:.02em;color:#D8DCD2;margin:0;
+.lcd{
+  background:linear-gradient(180deg,var(--lcd-dim),var(--lcd) 22%,var(--lcd) 78%,var(--lcd-dim));
+  border-radius:3px;padding:9px 10px 10px;display:flex;flex-direction:column;gap:8px;
+  box-shadow:inset 0 0 22px rgba(16,23,11,.28);
+  font-family:var(--mono);color:var(--ink);
 }
-.cabinet-serial{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:#6E7A73;text-transform:uppercase}
+.lcd-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:9px;letter-spacing:.13em}
+.flags{display:flex;gap:9px;flex-wrap:wrap}
+.flag{color:var(--ink-ghost)}
+.flag.on{color:var(--ink)}
+.mode{opacity:.55;white-space:nowrap}
 
-.deck-row{display:flex;gap:16px;align-items:stretch;flex:none;height:var(--tile)}
-.glass{
-  position:relative;flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;
-  background:var(--line-soft);border:1px solid rgba(0,0,0,.55);border-radius:3px;overflow:hidden;
+.cells{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px}
+.cell canvas{width:100%;height:auto;display:block;image-rendering:pixelated}
+.cell .taxon{font-size:8.5px;letter-spacing:.12em;text-align:center;line-height:1.2;min-height:11px;opacity:.55}
+.cell.locked .taxon{opacity:1;font-weight:700}
+
+.msg{
+  font-size:10.5px;letter-spacing:.04em;min-height:2.6em;line-height:1.3;margin:0;
+  border-top:1px solid rgba(16,23,11,.22);border-bottom:1px solid rgba(16,23,11,.22);padding:6px 0;
+  display:flex;align-items:center;
 }
-.reel{position:relative;height:100%;background:var(--reel-bg);overflow:hidden}
-.reel::after{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(180deg,rgba(0,0,0,.16),rgba(0,0,0,0) 26%,rgba(0,0,0,0) 74%,rgba(0,0,0,.16));
+.readouts{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.readout{display:flex;flex-direction:column;gap:3px;align-items:flex-start}
+.readout .lab{font-size:7.5px;letter-spacing:.16em;opacity:.6}
+.readout svg{display:block}
+.readout.right{align-items:flex-end}
+
+/* keys */
+.keys{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.key{
+  font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:#20120C;border:0;cursor:pointer;padding:11px 15px;border-radius:5px;
+  background:linear-gradient(180deg,#F2793F,var(--key) 55%,var(--key-lo));
+  box-shadow:0 3px 0 #6E2411, inset 0 1px 0 rgba(255,255,255,.4);
+  transition:transform .05s linear, box-shadow .05s linear;
 }
-/* absolutely positioned so tile height can never feed back into the reel's own height */
-.strip{position:absolute;top:0;left:0;right:0;will-change:transform}
-.strip.blur{filter:blur(1.1px)}
-.tile{
-  height:var(--tileh,var(--tile));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
-  color:var(--reel-ink);
+.key.grey{
+  color:#DDE3E6;background:linear-gradient(180deg,#6A7176,var(--grey-key) 55%,var(--grey-key-lo));
+  box-shadow:0 3px 0 #1D2225, inset 0 1px 0 rgba(255,255,255,.22);
 }
-.tile svg{width:104px;height:104px;display:block}
-.tile .taxon{
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--muted);
-}
-.reel.is-hit .tile{color:var(--accent)}
-.reel.is-hit .taxon{color:var(--accent)}
-.reel.is-hit{background:color-mix(in srgb,var(--accent) 9%,var(--reel-bg))}
-/* the payline is marked at the glass edges rather than ruled across the specimens */
-.payline{position:absolute;inset:0;pointer-events:none}
-.payline::before,.payline::after{
-  content:"";position:absolute;top:45%;width:11px;height:2px;background:var(--brass);opacity:.85;
-}
-.payline::before{left:0}
-.payline::after{right:0}
+.key:active:not(:disabled){transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.key:disabled{opacity:.45;cursor:not-allowed}
+.key:focus-visible{outline:2px solid var(--hud);outline-offset:3px}
+.keyhint{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.14em;color:#9AA1A5;text-transform:uppercase}
+.grille{display:flex;gap:4px}
+.grille i{width:4px;height:4px;border-radius:50%;background:#191D20;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 
 /* lever */
-.lever{
-  width:52px;background:none;border:0;padding:0;cursor:pointer;position:relative;
-  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+.lever{position:relative;width:66px;border:0;padding:0;cursor:pointer;background:none;flex:none}
+.lever-mount{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:30px;height:98px;border-radius:0 7px 7px 0;
+  background:linear-gradient(180deg,var(--shell-hi),var(--shell) 30%,var(--shell-lo));
+  border:1px solid #14181A;border-left:0;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset -2px 0 5px rgba(0,0,0,.45);
 }
-.lever-post{position:absolute;top:16px;bottom:16px;width:7px;background:linear-gradient(90deg,#4E483E,var(--brass) 45%,#3C372F);border-radius:4px}
-.lever::after{
-  content:"";position:absolute;bottom:0;width:34px;height:11px;border-radius:3px;
-  background:linear-gradient(180deg,#4A443A,#22201B);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+.lever-mount::after{
+  content:"";position:absolute;left:7px;top:14px;bottom:14px;width:12px;border-radius:6px;
+  background:linear-gradient(180deg,#0C0F11,#191E21);box-shadow:inset 0 2px 4px rgba(0,0,0,.8);
 }
-.lever-knob{
-  width:34px;height:34px;border-radius:50%;position:relative;z-index:1;
-  background:radial-gradient(circle at 34% 30%,#E8B677,var(--brass) 45%,#6B5027 100%);
-  box-shadow:0 3px 8px rgba(0,0,0,.55);
-  transition:transform .45s cubic-bezier(.2,.9,.3,1);
+.lever-arm{
+  position:absolute;left:12px;top:50%;width:11px;height:150px;transform-origin:50% 100%;z-index:1;
+  transform:translateY(-100%) rotate(0deg);border-radius:5px;
+  background:linear-gradient(90deg,#5C6367,#E2E7E9 38%,#6E7579 78%,#4C5357);
+  transition:transform .5s cubic-bezier(.2,.85,.3,1);
 }
+.lever-ball{
+  position:absolute;left:-11px;top:-18px;width:33px;height:33px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%,#F79B6D,var(--key) 46%,#7C2A12);
+  box-shadow:0 3px 8px rgba(0,0,0,.6);
+}
+.lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg)}
+.lever:focus-visible{outline:2px solid var(--hud);outline-offset:4px;border-radius:8px}
 .lever:disabled{cursor:not-allowed}
-.lever.pulled .lever-knob{transform:translateY(calc(var(--tile) - 74px)) scale(.94)}
-.lever:focus-visible{outline:2px solid var(--brass);outline-offset:3px;border-radius:4px}
 
-/* controls */
-.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.btn{
-  font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  padding:11px 20px;border-radius:3px;border:1px solid var(--accent);
-  background:var(--accent);color:#08110D;cursor:pointer;transition:filter .15s ease,transform .08s ease;
+/* ---------- panels ---------- */
+.panels{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:20px;align-items:start}
+.panels > *{min-width:0}
+@media (max-width:900px){.panels{grid-template-columns:1fr}}
+.panel{
+  background:var(--panel);border:1px solid var(--panel-line);border-radius:4px;padding:18px;
+  display:flex;flex-direction:column;gap:16px;
 }
-.btn:hover:not(:disabled){filter:brightness(1.08)}
-.btn:active:not(:disabled){transform:translateY(1px)}
-.btn-ghost{background:transparent;color:#C3CAC3;border-color:#3A4541}
-.btn-ghost:hover:not(:disabled){border-color:#5C6A64;filter:none}
-.btn:disabled{opacity:.42;cursor:not-allowed}
-.btn:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
-.hint{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:#67736C;margin-left:auto}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-bottom:1px solid var(--panel-line);padding-bottom:9px}
+.panel-head h2{margin:0;font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--hud);font-weight:400}
+.panel-head span{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;color:var(--muted);text-transform:uppercase}
 
-.callout{
-  min-height:22px;font-family:var(--serif);font-size:16px;color:#C7CEC6;margin:0;
-}
-.callout.hit{color:var(--accent)}
-.callout .rare{color:var(--brass)}
-
-/* ---------- readout ---------- */
-.readout{
-  background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:22px;
-  display:flex;flex-direction:column;gap:20px;box-shadow:var(--shadow);
-}
-.panel-label{
-  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:0;
-}
-.verdict{display:flex;flex-direction:column;gap:6px}
-.index-row{display:flex;align-items:baseline;gap:12px}
-.index-value{
-  font-family:var(--mono);font-size:44px;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums;
-  color:var(--ink);
-}
-.index-value.warm{color:var(--accent-ink)}
-.index-value.cold{color:var(--clay)}
+.index-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.zval{font-family:var(--mono);font-size:38px;line-height:1.1;font-variant-numeric:tabular-nums;color:#E9FFF4}
+.zval.warm{color:var(--rain)}
+.zval.cold{color:var(--amber)}
 .chip{
-  font-family:var(--sans);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
-  padding:4px 9px;border-radius:2px;border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:4px 8px;border:1px solid var(--panel-line);color:var(--muted);white-space:nowrap;
 }
-.chip.warm{border-color:var(--accent);color:var(--accent-ink);background:color-mix(in srgb,var(--accent) 12%,transparent)}
-.chip.cold{border-color:var(--clay);color:var(--clay);background:color-mix(in srgb,var(--clay) 12%,transparent)}
-.verdict p{margin:0;font-size:14.5px;color:var(--muted);max-width:44ch}
+.chip.warm{border-color:var(--rain);color:var(--rain)}
+.chip.cold{border-color:var(--amber);color:var(--amber)}
+.explain{margin:6px 0 0;font-size:13.5px;color:var(--muted);max-width:46ch}
 
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:3px;overflow:hidden}
-.stat{background:var(--surface);padding:11px 12px;display:flex;flex-direction:column;gap:2px}
-.stat dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.stat dd{margin:0;font-family:var(--mono);font-size:19px;font-variant-numeric:tabular-nums;color:var(--ink)}
-.stat dd small{font-size:11px;color:var(--muted);letter-spacing:.02em}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--panel-line);border:1px solid var(--panel-line);margin:0}
+.stat{background:rgba(5,10,9,.92);padding:9px 10px;display:flex;flex-direction:column;gap:1px}
+.stat dt{font-family:var(--mono);font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+.stat dd{margin:0;font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;color:var(--text)}
+.stat dd small{font-size:10px;color:var(--muted)}
 
-.chart-block{display:flex;flex-direction:column;gap:7px}
-.chart-caption{font-size:13px;color:var(--muted);min-height:20px;margin:0}
-.chart-caption b{color:var(--ink);font-weight:600;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px}
-.chart{width:100%;height:92px;display:block;touch-action:none;cursor:crosshair}
-.chart .zero{stroke:var(--line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
-.chart .trace{fill:none;stroke-width:2;vector-effect:non-scaling-stroke;stroke-linejoin:round;stroke-linecap:round}
-.chart .area{stroke:none;opacity:.13}
-.chart .endpoint{stroke:var(--surface);stroke-width:2}
+.chartwrap{display:flex;flex-direction:column;gap:6px}
+.chart{width:100%;height:78px;display:block;cursor:crosshair;touch-action:none}
+.chart .zero{stroke:var(--panel-line);stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.chart .trace{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+.chart .area{stroke:none;opacity:.16}
 .chart .cursor{stroke:var(--muted);stroke-width:1;stroke-dasharray:2 3;vector-effect:non-scaling-stroke}
+.cap{margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted);min-height:16px}
+.cap b{color:var(--text);font-weight:400}
 
-/* spin ledger, inside the cabinet */
-.ledger{border-top:1px solid rgba(255,255,255,.08);padding-top:14px;display:flex;flex-direction:column;gap:9px}
-.ledger-label{
-  margin:0;font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:#67736C;
-  display:flex;justify-content:space-between;gap:10px;
+/* state vector panel */
+.phasor-row{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+#phasor{width:150px;height:150px;flex:none;border:1px solid var(--panel-line);border-radius:50%}
+.meters{display:flex;flex-direction:column;gap:11px;flex:1;min-width:150px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.meter-top{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.meter-top b{color:var(--text);font-weight:400;font-variant-numeric:tabular-nums}
+.bar{height:5px;background:rgba(43,224,124,.12);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--rain);transition:width .16s linear}
+.bar.amber i{background:var(--amber)}
+
+.ptable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.ptable th{
+  text-align:right;font-weight:400;font-size:8.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);
+  padding:0 0 5px;border-bottom:1px solid var(--panel-line);
 }
-.ledger-label span{color:#4C5852}
-.log-strip{display:flex;gap:6px;flex-wrap:wrap}
-.log-cell{
-  width:30px;height:30px;border:1px solid #2C3733;border-radius:2px;display:grid;place-items:center;
-  color:#727E77;background:rgba(255,255,255,.02);
-}
-.log-cell svg{width:17px;height:17px}
-.log-cell.pair{border-color:#41544C;color:#B9C2BB}
-.log-cell.trio{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent)}
-.log-empty{font-size:13.5px;color:#5D6963;margin:0;font-family:var(--serif)}
+.ptable th:first-child,.ptable td:first-child{text-align:left}
+.ptable td{padding:4px 0;text-align:right;font-variant-numeric:tabular-nums;color:var(--text)}
+.ptable td.sp{color:var(--muted)}
+.ptable td.sp span{display:flex;align-items:center;gap:7px}
+.ptable td.sp canvas{width:16px;height:16px;image-rendering:pixelated;opacity:.9}
+.ptable tr.hot td{color:var(--rain)}
+.ptable td.barcell{width:36%;padding-left:12px}
+.pbar{position:relative;display:block;width:100%;height:3px;background:rgba(43,224,124,.13)}
+.pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--rain);opacity:.7}
 
-.readout-foot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px 12px;border-top:1px solid var(--line);padding-top:14px}
-.lifetime{font-family:var(--mono);white-space:nowrap;font-size:11px;letter-spacing:.06em;color:var(--muted);font-variant-numeric:tabular-nums}
-.linkbtn{
-  background:none;border:0;padding:4px 2px;color:var(--muted);cursor:pointer;
-  font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
-  border-bottom:1px solid var(--line);
-}
-.linkbtn:hover{color:var(--ink);border-color:var(--muted)}
-.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* notes */
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:18px}
+.note{border:1px solid var(--panel-line);background:var(--panel);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.note h3{margin:0;font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--hud);font-weight:400}
+.note p{margin:0;font-size:13.5px;color:var(--muted)}
+.note b{color:var(--text);font-weight:600}
+footer{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:center;border-top:1px solid var(--panel-line);padding-top:16px}
 
-/* ---------- key ---------- */
-.key{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:26px;align-items:start}
-.key > *{min-width:0}
-@media (max-width:880px){.key{grid-template-columns:1fr}}
-.key-head{display:flex;flex-direction:column;gap:4px;margin-bottom:14px}
-.key-head h2{font-family:var(--serif);font-weight:400;font-size:24px;margin:0;letter-spacing:-.01em}
-.key-head p{margin:0;font-size:14px;color:var(--muted);max-width:52ch}
-.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--surface)}
-table{border-collapse:collapse;width:100%;min-width:420px;font-size:14px}
-th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
-tbody tr:last-child td{border-bottom:0}
-th{
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);
-  font-weight:400;border-bottom:1px solid var(--line);
-}
-td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px}
-.species{display:flex;align-items:center;gap:11px}
-.species svg{width:26px;height:26px;color:var(--ink);flex:none}
-.species .names{display:flex;flex-direction:column;line-height:1.3}
-.species .common{font-size:14px}
-.species .binomial{font-family:var(--serif);font-style:italic;font-size:12.5px;color:var(--muted)}
-tr.rarest td{background:color-mix(in srgb,var(--brass) 9%,transparent)}
-
-.note{
-  background:var(--surface);border:1px solid var(--line);border-left:2px solid var(--brass);
-  border-radius:4px;padding:18px 20px;display:flex;flex-direction:column;gap:10px;
-}
-.note h3{font-family:var(--serif);font-weight:400;font-size:18px;margin:0}
-.note p{margin:0;font-size:14px;color:var(--muted)}
-.note p + p{margin-top:2px}
-
-footer{border-top:1px solid var(--line);padding-top:16px;font-size:13px;color:var(--muted);max-width:64ch}
-
-@media (max-width:560px){
-  :root{--tile:190px}
-  .cabinet-serial{display:none}
-  th,td{padding:9px 11px}
-  .tile svg{width:68px;height:68px}
+@media (max-width:640px){
+  .wrap{padding:16px 12px 60px;gap:24px}
+  .lever{width:48px}
+  .lever-arm{left:9px;height:116px}
+  .lever-mount{width:24px;height:78px}
+  .lever-mount::after{left:6px;width:9px}
+  .shell{padding:13px 12px 15px;border-radius:16px 8px 8px 16px}
   .stats{grid-template-columns:repeat(2,1fr)}
-  .wrap{padding:28px 16px 56px}
+  .keyhint{display:none}
+  .model{font-size:7.5px}
+  .key{padding:10px 11px;font-size:9.5px}
 }
 @media (prefers-reduced-motion: reduce){
-  .lever-knob,.btn{transition:none}
-  .strip{transition:none !important}
+  .lever-arm,.key,.bar i{transition:none}
 }
 </style>
 </head>
 <body>
 
-<svg class="sprite" aria-hidden="true" focusable="false"><defs>
-  <g id="g-cherry" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M24 9c-4.5 6-8.5 11-10 17"/><path d="M24 9c2.5 6 5 10.5 6.5 15"/>
-    <path d="M24 9c3.5-2.6 8-2.2 10.5 1-3.6 2.6-8 2.2-10.5-1z" fill="currentColor" fill-opacity=".14"/>
-    <circle cx="14" cy="32" r="7" fill="currentColor" fill-opacity=".14"/>
-    <circle cx="32" cy="34" r="6.4" fill="currentColor" fill-opacity=".14"/>
-  </g>
-  <g id="g-lemon" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M5 24c4-7 10-11 19-11s15 4 19 11c-4 7-10 11-19 11S9 31 5 24z" fill="currentColor" fill-opacity=".14"/>
-    <path d="M13.5 20c2.8-2.4 6.2-3.8 10-4.2"/>
-  </g>
-  <g id="g-olive" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7 12h34"/>
-    <path d="M31 12c3.4-3.4 8-3.6 10.5-1.6-2.6 3.4-7 4.4-10.5 3"/>
-    <path d="M19 12v5"/>
-    <ellipse cx="19" cy="27.5" rx="7.5" ry="10.5" fill="currentColor" fill-opacity=".14"/>
-    <path d="M33 12v3"/>
-    <ellipse cx="33" cy="21.5" rx="4.6" ry="6.4" fill="currentColor" fill-opacity=".14"/>
-  </g>
-  <g id="g-fig" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M24 12.5c-2 4-5 7-8 9.5-4 3-6.5 6.5-6.5 10.5 0 6.5 6 11 14.5 11s14.5-4.5 14.5-11c0-4-2.5-7.5-6.5-10.5-3-2.5-6-5.5-8-9.5z" fill="currentColor" fill-opacity=".14"/>
-    <path d="M24 12.5V7.5"/>
-    <path d="M24 43.5v1.5"/>
-  </g>
-  <g id="g-grape" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <g fill="currentColor" fill-opacity=".14">
-      <circle cx="24" cy="20" r="4.3"/><circle cx="17.4" cy="26.4" r="4.3"/><circle cx="30.6" cy="26.4" r="4.3"/>
-      <circle cx="24" cy="29.6" r="4.3"/><circle cx="19.5" cy="35.8" r="4.3"/><circle cx="28.5" cy="35.8" r="4.3"/>
-    </g>
-    <path d="M24 15.7V10"/>
-    <path d="M24 11.5c3-3.2 7.4-3.8 10.6-2-1.6 3.4-5.2 5.4-9.2 5"/>
-  </g>
-  <g id="g-pomegranate" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="24" cy="31" r="11.5" fill="currentColor" fill-opacity=".14"/>
-    <path d="M18.6 20.4v-6.2l3.2 3-.2-7 2.4 5 2.4-5-.2 7 3.2-3v6.2"/>
-  </g>
-  <g id="g-vanilla" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18.5 16.5c-2.6 8.4-2.2 17.6 1 25.5" stroke-width="3.4" stroke-opacity=".85"/>
-    <path d="M28 17.5c2.8 8 3 16.8.6 24.5" stroke-width="3.4" stroke-opacity=".55"/>
-    <g stroke-width="1.6" fill="currentColor" fill-opacity=".14">
-      <ellipse cx="23.5" cy="10.5" rx="6.5" ry="3.4"/>
-      <ellipse cx="23.5" cy="10.5" rx="3.4" ry="6.5"/>
-    </g>
-  </g>
-</defs></svg>
+<canvas id="rain" class="bg" aria-hidden="true"></canvas>
+<canvas id="hyper" class="bg" aria-hidden="true"></canvas>
+<div class="vignette"></div>
 
 <div class="wrap">
 
-  <header class="masthead">
-    <p class="eyebrow">Produce Atlas · Apparatus №1</p>
-    <h1>The Fruit Machine, <em>measured</em></h1>
-    <p class="deck">Nothing is staked and nothing is paid. Three reels of cultivated fruit, one payline, and a running measurement of how far your luck has drifted from what the mathematics predicts.</p>
-  </header>
+  <div class="hud">
+    <span>Produce Atlas · Apparatus <b>QA-77</b></span>
+    <span>No stake · No payout · No credits</span>
+  </div>
 
-  <main class="bench">
+  <div class="titleblock">
+    <h1>The <span>Quantum</span> Fruit Machine</h1>
+    <p class="deck">A handheld holding seven cultivated species in superposition. The lever performs a measurement, the measurement collapses the state, and the state evolves again while you sit there deciding what to do next. Nothing is staked and nothing is paid — the machine only measures how your luck compares with what the amplitudes predicted.</p>
+  </div>
 
-    <section class="cabinet" aria-label="Fruit machine">
-      <div class="cabinet-head">
-        <p class="cabinet-mark">Bell &amp; Orchard · Three-Reel Bench Model</p>
-        <span class="cabinet-serial">No Stake · No Payout</span>
-      </div>
-
-      <div class="deck-row">
-        <div class="glass">
-          <div class="reel" data-reel="0"><div class="strip"></div></div>
-          <div class="reel" data-reel="1"><div class="strip"></div></div>
-          <div class="reel" data-reel="2"><div class="strip"></div></div>
-          <div class="payline"></div>
+  <section class="device">
+    <div class="rig">
+      <div class="shell">
+        <div class="plate">
+          <span class="brand">ATLAS<em>·</em>ELECTRONICS</span>
+          <span class="model">QA-77 quantum fruit machine<br>7-state · one payline · unitary</span>
         </div>
-        <button class="lever" id="lever" aria-label="Pull the lever to spin">
-          <span class="lever-post"></span>
-          <span class="lever-knob"></span>
-        </button>
-      </div>
 
-      <p class="callout" id="callout" role="status" aria-live="polite">Pull the lever and find out what kind of day this is.</p>
+        <div class="screen">
+          <div class="lcd">
+            <div class="lcd-row">
+              <div class="flags">
+                <span class="flag" id="fZeno">ZENO</span>
+                <span class="flag" id="fEnt">ENTANGLED</span>
+                <span class="flag" id="fCoh">COHERENT</span>
+                <span class="flag" id="fMeas">MEASURING</span>
+              </div>
+              <span class="mode" id="modeLabel">T+0.0S</span>
+            </div>
 
-      <div class="controls">
-        <button class="btn" id="spin">Spin</button>
-        <button class="btn btn-ghost" id="auto">Run ten</button>
-        <button class="btn btn-ghost" id="sound" aria-pressed="false">Sound off</button>
-        <span class="hint">Space to spin</span>
-      </div>
+            <div class="cells">
+              <div class="cell"><canvas></canvas><span class="taxon">—</span></div>
+              <div class="cell"><canvas></canvas><span class="taxon">—</span></div>
+              <div class="cell"><canvas></canvas><span class="taxon">—</span></div>
+            </div>
 
-      <div class="ledger">
-        <p class="ledger-label">Last twelve spins <span>oldest first</span></p>
-        <div class="log-strip" id="logStrip"><p class="log-empty">Nothing logged yet.</p></div>
-      </div>
-    </section>
+            <p class="msg" id="msg" role="status" aria-live="polite">PULL LEVER TO COLLAPSE THE WAVEFUNCTION</p>
 
-    <section class="readout" aria-label="Luck readout">
-      <div class="verdict">
-        <p class="panel-label">Luck index</p>
-        <div class="index-row">
-          <span class="index-value" id="zvalue">—</span>
-          <span class="chip" id="verdictChip">No data yet</span>
+            <div class="readouts">
+              <div class="readout"><span class="lab">OBSERVATIONS</span><span id="segSpins"></span></div>
+              <div class="readout"><span class="lab">MATCHES</span><span id="segHits"></span></div>
+              <div class="readout right"><span class="lab">LUCK σ</span><span id="segZ"></span></div>
+            </div>
+          </div>
         </div>
-        <p id="verdictText">Eight spins is the smallest sample worth reading. Below that, everything is noise wearing a costume.</p>
+
+        <div class="keys">
+          <button class="key" id="bSpin">Observe</button>
+          <button class="key grey" id="bBurst">Burst ×10</button>
+          <button class="key grey" id="bSound" aria-pressed="false">Sound</button>
+          <button class="key grey" id="bReset">Reset</button>
+          <span class="keyhint">space = observe</span>
+        </div>
+        <div class="grille" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
 
-      <dl class="stats">
-        <div class="stat"><dt>Spins</dt><dd id="sSpins">0</dd></div>
-        <div class="stat"><dt>Hits</dt><dd id="sHits">0 <small id="sHitsExp">of 0.0</small></dd></div>
-        <div class="stat"><dt>Three alike</dt><dd id="sTrios">0 <small id="sTriosExp">of 0.00</small></dd></div>
-        <div class="stat"><dt>Best run</dt><dd id="sRun">0</dd></div>
-        <div class="stat"><dt>Longest drought</dt><dd id="sDry">0</dd></div>
-        <div class="stat"><dt>Hit rate</dt><dd id="sRate">—</dd></div>
-      </dl>
-
-      <div class="chart-block">
-        <p class="panel-label">Drift from expectation</p>
-        <svg class="chart" id="chart" viewBox="0 0 320 92" preserveAspectRatio="none" role="img" aria-label="Cumulative drift of your hits away from the expected number"></svg>
-        <p class="chart-caption" id="chartCaption">The trace begins after your second spin.</p>
-      </div>
-
-      <div class="readout-foot">
-        <span class="lifetime" id="lifetime">Lifetime · 0 spins</span>
-        <button class="linkbtn" id="reset">Clear the log</button>
-      </div>
-    </section>
-  </main>
-
-  <section class="key">
-    <div>
-      <div class="key-head">
-        <h2>Key to the reels</h2>
-        <p>Each reel carries the same seven species at the same weights. Probabilities below are exact, enumerated from the weights when the page loads — not estimates.</p>
-      </div>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Species</th>
-              <th scope="col" class="num">Weight</th>
-              <th scope="col" class="num">Share of reel</th>
-              <th scope="col" class="num">Three alike</th>
-            </tr>
-          </thead>
-          <tbody id="keyBody"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <div style="display:flex;flex-direction:column;gap:18px">
-      <div class="note">
-        <h3>Why fruit?</h3>
-        <p>The symbols are not decoration. When American slot machines ran into anti-gambling law in the 1910s, several manufacturers rebuilt them as gum vendors: a spin paid out a stick of chewing gum, and the cherry, lemon or plum on the payline named the flavour you had won.</p>
-        <p>The BAR that still turns up on modern reels is widely traced to the wrapper of the Bell-Fruit Gum Company. A century on, British machines are still called fruit machines — the produce outlived the gum.</p>
-      </div>
-      <div class="note" style="border-left-color:var(--accent)">
-        <h3>What the index means</h3>
-        <p>Hits follow a binomial distribution, so your count can be scored against it. The index is <span style="font-family:var(--mono);font-size:13px">(hits − expected) ÷ standard deviation</span>: zero is exactly average luck, +2 is the top few percent, −2 the bottom few.</p>
-        <p>It drifts toward zero the longer you play. That is the house's only real edge here, and it costs you nothing.</p>
-      </div>
+      <button class="lever" id="lever" aria-label="Pull the lever to observe">
+        <span class="lever-mount"></span>
+        <span class="lever-arm"><span class="lever-ball"></span></span>
+      </button>
     </div>
   </section>
 
-  <footer>
-    Built for Produce Atlas. No currency, credits, wagers or purchases — the reels are a random number generator wearing botanical clothes, and the only thing at stake is your opinion of your own luck.
-  </footer>
+  <section class="panels">
+    <div class="panel">
+      <div class="panel-head"><h2>Observation log</h2><span id="lifetime">lifetime 0</span></div>
+
+      <div>
+        <div class="index-row">
+          <span class="zval" id="zval">—</span>
+          <span class="chip" id="chip">no data</span>
+        </div>
+        <p class="explain" id="explain">Eight observations is the smallest sample worth reading. Below that, everything is noise wearing a lab coat.</p>
+      </div>
+
+      <dl class="stats">
+        <div class="stat"><dt>Observations</dt><dd id="sSpins">0</dd></div>
+        <div class="stat"><dt>Matches</dt><dd id="sHits">0 <small id="sHitsExp">of 0.0</small></dd></div>
+        <div class="stat"><dt>Three alike</dt><dd id="sTrios">0 <small id="sTriosExp">of 0.00</small></dd></div>
+        <div class="stat"><dt>Best run</dt><dd id="sRun">0</dd></div>
+        <div class="stat"><dt>Evidence Σp(1−p)</dt><dd id="sEv">0.00</dd></div>
+        <div class="stat"><dt>Leggett–Garg K</dt><dd id="sLG">—</dd></div>
+      </dl>
+
+      <div class="chartwrap">
+        <svg class="chart" id="chart" viewBox="0 0 320 78" preserveAspectRatio="none" role="img" aria-label="Cumulative drift of matches away from the amplitudes' prediction"></svg>
+        <p class="cap" id="cap">DRIFT TRACE BEGINS AT OBSERVATION 2</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><h2>State vector</h2><span id="stateAge">t = 0.0 s</span></div>
+
+      <div class="phasor-row">
+        <canvas id="phasor" width="300" height="300" aria-label="Argand diagram of the seven complex amplitudes on reel one"></canvas>
+        <div class="meters">
+          <div class="meter">
+            <div class="meter-top"><span>l₁ coherence</span><b id="cohVal">0.00</b></div>
+            <div class="bar"><i id="cohBar" style="width:0%"></i></div>
+          </div>
+          <div class="meter">
+            <div class="meter-top"><span>entanglement 2·3</span><b id="fidVal">0.00</b></div>
+            <div class="bar amber"><i id="fidBar" style="width:0%"></i></div>
+          </div>
+          <div class="meter">
+            <div class="meter-top"><span>match probability</span><b id="phitVal">0.0%</b></div>
+            <div class="bar"><i id="phitBar" style="width:0%"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <table class="ptable">
+        <thead>
+          <tr><th>Species</th><th class="barcell">|ψ|² reel 1</th><th>η</th><th>p(next)</th></tr>
+        </thead>
+        <tbody id="ptable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="notes">
+    <div class="note">
+      <h3>What is actually running</h3>
+      <p>Reel one holds a 7-dimensional complex state vector; reels two and three share a single 49-dimensional one. Between observations it evolves under a fixed unitary — two-level rotations on a ring plus per-site phases — so the odds are never the same twice. The lever applies the <b>Born rule</b>: the chance of an outcome is |ψᵢ|², weighted by a per-species detector efficiency η, and the reel then collapses onto whatever you saw.</p>
+    </div>
+    <div class="note">
+      <h3>The Zeno trap</h3>
+      <p>Collapse leaves a reel sitting in a single basis state. Observe again immediately and it has barely evolved, so it repeats — the <b>quantum Zeno effect</b> (Misra &amp; Sudarshan, 1977). Burst mode sits deep in that regime and the reels visibly stick. It feels like a cheat. It is not: see the next card.</p>
+    </div>
+    <div class="note">
+      <h3>Why you cannot game the index</h3>
+      <p>Your match count minus its running expectation is a <b>martingale</b>. Each spin's probability is computed from the state as it stood just before that spin, so the variances still add — Σp(1−p) — even though Zeno makes consecutive spins strongly correlated. Freezing the reels raises your matches and your expectation by exactly the same amount. Better still, a locked reel has p near 0 or 1, so p(1−p) ≈ 0 and it adds almost no evidence — which is why the index is gated on Σp(1−p) rather than on how many times you pulled the lever.</p>
+    </div>
+    <div class="note">
+      <h3>Instruments on the panel</h3>
+      <p><b>l₁ coherence</b> (Baumgratz, Cramer &amp; Plenio, 2014) is zero the instant you measure and climbs as the state spreads back out. <b>Entanglement</b> is the real thing: reels two and three share one 49-dimensional state, coupled by a phase that will not separate, and the meter is 1−Tr ρ² of one reel's reduced state. <b>Leggett–Garg K</b> tests your hit sequence against macrorealism, bound at K ≤ 1 — and no sequence you can produce will break it.</p>
+    </div>
+    <div class="note">
+      <h3>The background</h3>
+      <p>Behind the glass turns a <b>tesseract</b>: a 4-cube of 16 vertices and 32 edges, rotated in the xw and zw planes and projected 4→3→2. Its rate is tied to the live coherence, so when the machine decoheres the fourth dimension slows down with it. The falling glyphs are the alphabet the state is written in.</p>
+    </div>
+    <div class="note">
+      <h3>Honest disclosure</h3>
+      <p>This simulates the formalism; it is not quantum hardware. The randomness is your browser's PRNG and the amplitudes are floating point. Everything described above is genuinely computed and nothing is faked for effect — and there is no stake, credit, wager or payout anywhere in it.</p>
+    </div>
+  </section>
+
+  <footer>Produce Atlas · QA-77 · no stake · no payout · your luck is the only observable</footer>
 </div>
 
 <script>
 (function(){
   "use strict";
 
+  /* ============================ species ============================ */
   var SYMBOLS = [
-    {id:"cherry",      common:"Sweet cherry", binomial:"Prunus avium",     taxon:"Prunus",  weight:6, glyph:"g-cherry"},
-    {id:"lemon",       common:"Lemon",        binomial:"Citrus limon",     taxon:"Citrus",  weight:5, glyph:"g-lemon"},
-    {id:"olive",       common:"Olive",        binomial:"Olea europaea",    taxon:"Olea",    weight:5, glyph:"g-olive"},
-    {id:"fig",         common:"Common fig",   binomial:"Ficus carica",     taxon:"Ficus",   weight:4, glyph:"g-fig"},
-    {id:"grape",       common:"Grape",        binomial:"Vitis vinifera",   taxon:"Vitis",   weight:3, glyph:"g-grape"},
-    {id:"pomegranate", common:"Pomegranate",  binomial:"Punica granatum",  taxon:"Punica",  weight:2, glyph:"g-pomegranate"},
-    {id:"vanilla",     common:"Vanilla",      binomial:"Vanilla planifolia",taxon:"Vanilla",weight:1, glyph:"g-vanilla"}
+    {id:"cherry", taxon:"PRUNUS", common:"sweet cherry", eta:6, px:["................","..........###...",".........###....","......#####.....",".....##.##......","....##..##......","...##...##......","..####..####....",".######.######..",".##.##..##.##...",".######.######..",".######.######..","..####...####...","................","................","................"]},
+    {id:"lemon", taxon:"CITRUS", common:"lemon", eta:5, px:["................","................","................","................","....########....","..############..",".##############.","###..##..##..###","###..##..##..###",".##############.","..############..","....########....","................","................","................","................"]},
+    {id:"olive", taxon:"OLEA", common:"olive", eta:5, px:["................","......#.........","......#..####...","......#.######..","....###.#####...","...#####........","..#######.......","..#.#.#.#.......","..#######.......","..#.#.#.#.......","..#######.......","..#.#.#.#.......","...#####........","....###.........","................","................"]},
+    {id:"fig", taxon:"FICUS", common:"common fig", eta:4, px:["................",".......##.......",".......##.......","......####......",".....######.....","....########....","...##########...","..############..","..#.#.#.#.#.##..",".##############.",".#.#.#.#.#.#.##.",".##############.","..############..","...##########...",".....######.....","................"]},
+    {id:"grape", taxon:"VITIS", common:"grape", eta:3, px:["........####....",".......#####....",".......#........","...###.###......","...#.#.#.#......","...###.###......",".###.###.###....",".#.#.#.#.#.#....",".###.###.###....","...###.###......","...#.#.#.#......","...###.###......",".....###........",".....#.#........",".....###........","................"]},
+    {id:"pomegranate", taxon:"PUNICA", common:"pomegranate", eta:2, px:["....#..#..#.....","....#.###.#.....","....##.#.##.....",".....#####......","...#########....","..###########...",".#.#.#.#.#.#.#..",".#############..",".#.#.#.#.#.#.#..",".#############..","..###########...","...#########....",".....#####......","................","................","................"]},
+    {id:"vanilla", taxon:"VANILLA", common:"vanilla", eta:1, px:["......####......",".....##..##.....","......####......","....#......#....","....#......#....","....##....##....","....##....##....","....##....##....","....##....##....","....##....##....","....##....##....",".....#....#.....",".....#....#.....",".....##..##.....","......####......","................"]}
   ];
+  var N = SYMBOLS.length, GRID = 16;
+  var ETA = SYMBOLS.map(function(s){ return s.eta; });
 
-  var TOTAL = SYMBOLS.reduce(function(a,s){return a+s.weight;},0);
-  SYMBOLS.forEach(function(s){ s.p = s.weight/TOTAL; });
+  /* LCD sprites, drawn on the panel's own 16x16 pixel grid. Solid outlines with
+     checkerboard interiors, the way a 1-bit panel shades a shape. */
+  function parseSprite(rows){
+    var g = [], r, i;
+    for(r=0;r<rows.length;r++) for(i=0;i<rows[r].length;i++) g.push(rows[r][i] === "#");
+    return g;
+  }
+  SYMBOLS.forEach(function(s){ s.grid = parseSprite(s.px); });
 
-  /* Exact probabilities by enumeration over all 7^3 outcomes. */
-  var P_TRIO = 0, P_HIT = 0;
-  (function(){
-    var pDistinct = 0;
-    for(var i=0;i<SYMBOLS.length;i++){
-      P_TRIO += Math.pow(SYMBOLS[i].p,3);
-      for(var j=0;j<SYMBOLS.length;j++){
-        for(var k=0;k<SYMBOLS.length;k++){
-          if(i!==j && j!==k && i!==k) pDistinct += SYMBOLS[i].p*SYMBOLS[j].p*SYMBOLS[k].p;
-        }
+  /* ============================ quantum state ============================ */
+  var J = 0.62,        /* hopping strength, rad/s — sets how fast the odds drift */
+      G = 0.95,        /* reel 2-3 entangling coupling, rad/s */
+      WSUM = ETA.reduce(function(a,b){ return a+b; }, 0);
+
+  function makeEps(seed){
+    var e = [], i;
+    for(i=0;i<N;i++) e.push(0.42 + 0.66*Math.sin(seed*2.3 + i*1.31));
+    return e;
+  }
+
+  function Reel(seed){
+    this.re = []; this.im = [];
+    this.eps = makeEps(seed);
+    for(var i=0;i<N;i++){
+      var r = Math.sqrt(ETA[i]/WSUM), th = Math.random()*Math.PI*2;
+      this.re.push(r*Math.cos(th)); this.im.push(r*Math.sin(th));
+    }
+  }
+  Reel.prototype.evolve = function(dt){
+    var i, a, b, c, s, ar, ai, br, bi, th;
+    for(i=0;i<N;i++){                             /* diagonal phases exp(-i eps dt) */
+      th = -this.eps[i]*dt; c = Math.cos(th); s = Math.sin(th);
+      ar = this.re[i]; ai = this.im[i];
+      this.re[i] = ar*c - ai*s; this.im[i] = ar*s + ai*c;
+    }
+    th = J*dt; c = Math.cos(th); s = Math.sin(th);
+    for(i=0;i<N;i++){                             /* ring of two-level rotations */
+      a = i; b = (i+1)%N;
+      ar = this.re[a]; ai = this.im[a]; br = this.re[b]; bi = this.im[b];
+      this.re[a] = c*ar - s*br; this.im[a] = c*ai - s*bi;
+      this.re[b] = s*ar + c*br; this.im[b] = s*ai + c*bi;
+    }
+    this.normalise();
+  };
+  Reel.prototype.normalise = function(){
+    var n = 0, i;
+    for(i=0;i<N;i++) n += this.re[i]*this.re[i] + this.im[i]*this.im[i];
+    n = Math.sqrt(n) || 1;
+    for(i=0;i<N;i++){ this.re[i] /= n; this.im[i] /= n; }
+  };
+  Reel.prototype.psi2 = function(){
+    var p = [], i;
+    for(i=0;i<N;i++) p.push(this.re[i]*this.re[i] + this.im[i]*this.im[i]);
+    return p;
+  };
+  /* Born rule read out through detectors of species-dependent efficiency,
+     renormalised over detections. */
+  Reel.prototype.probs = function(){
+    var p = this.psi2(), out = [], sum = 0, i;
+    for(i=0;i<N;i++){ out.push(p[i]*ETA[i]); sum += out[i]; }
+    if(!(sum > 0)) return ETA.map(function(){ return 1/N; });
+    for(i=0;i<N;i++) out[i] /= sum;
+    return out;
+  };
+  Reel.prototype.collapse = function(k){
+    for(var i=0;i<N;i++){ this.re[i] = (i === k) ? 1 : 0; this.im[i] = 0; }
+  };
+  Reel.prototype.coherence = function(){          /* l1-norm coherence, scaled to [0,1] */
+    var s = 0, i;
+    for(i=0;i<N;i++) s += Math.sqrt(this.re[i]*this.re[i] + this.im[i]*this.im[i]);
+    return Math.max(0, Math.min(1, (s*s - 1)/(N-1)));
+  };
+
+  /* Reels two and three are not two separate vectors — they are one 49-dimensional
+     joint state, so they can be genuinely entangled rather than merely correlated.
+     Index into it is j*N + k. */
+  function Pair(seed){
+    this.re = new Float64Array(N*N);
+    this.im = new Float64Array(N*N);
+    this.eps2 = makeEps(seed);
+    this.eps3 = makeEps(seed + 7.7);
+    var a = new Reel(seed + 1), b = new Reel(seed + 2), j, k, idx;
+    for(j=0;j<N;j++) for(k=0;k<N;k++){          /* start as a product state */
+      idx = j*N + k;
+      this.re[idx] = a.re[j]*b.re[k] - a.im[j]*b.im[k];
+      this.im[idx] = a.re[j]*b.im[k] + a.im[j]*b.re[k];
+    }
+  }
+  /* one reel's unitary acting on its own factor: axis 0 = reel two, 1 = reel three */
+  Pair.prototype.local = function(axis, eps, dt){
+    var j, k, i, idx, th, c, s, ar, ai, br, bi, ia, ib;
+    for(j=0;j<N;j++) for(k=0;k<N;k++){
+      idx = j*N + k;
+      th = -eps[axis ? k : j]*dt; c = Math.cos(th); s = Math.sin(th);
+      ar = this.re[idx]; ai = this.im[idx];
+      this.re[idx] = ar*c - ai*s; this.im[idx] = ar*s + ai*c;
+    }
+    th = J*dt; c = Math.cos(th); s = Math.sin(th);
+    for(i=0;i<N;i++) for(k=0;k<N;k++){
+      if(axis){ ia = k*N + i; ib = k*N + (i+1)%N; }
+      else     { ia = i*N + k; ib = ((i+1)%N)*N + k; }
+      ar = this.re[ia]; ai = this.im[ia]; br = this.re[ib]; bi = this.im[ib];
+      this.re[ia] = c*ar - s*br; this.im[ia] = c*ai - s*bi;
+      this.re[ib] = s*ar + c*br; this.im[ib] = s*ai + c*bi;
+    }
+  };
+  /* a phase that does not separate into f(j)+g(k) — this is what entangles them */
+  Pair.prototype.couple = function(dt){
+    var j, k, idx, th, c, s, ar, ai;
+    for(j=0;j<N;j++) for(k=0;k<N;k++){
+      idx = j*N + k;
+      th = -G*dt*Math.cos(2*Math.PI*(j-k)/N);
+      c = Math.cos(th); s = Math.sin(th);
+      ar = this.re[idx]; ai = this.im[idx];
+      this.re[idx] = ar*c - ai*s; this.im[idx] = ar*s + ai*c;
+    }
+  };
+  Pair.prototype.evolve = function(dt){
+    this.local(0, this.eps2, dt);
+    this.local(1, this.eps3, dt);
+    this.couple(dt);
+    var n = 0, i;
+    for(i=0;i<N*N;i++) n += this.re[i]*this.re[i] + this.im[i]*this.im[i];
+    n = Math.sqrt(n) || 1;
+    for(i=0;i<N*N;i++){ this.re[i] /= n; this.im[i] /= n; }
+  };
+  Pair.prototype.joint = function(){              /* |C_jk|^2 */
+    var p = new Float64Array(N*N), i;
+    for(i=0;i<N*N;i++) p[i] = this.re[i]*this.re[i] + this.im[i]*this.im[i];
+    return p;
+  };
+  Pair.prototype.jointProbs = function(){         /* through the η detectors */
+    var p = this.joint(), out = new Float64Array(N*N), sum = 0, j, k, idx;
+    for(j=0;j<N;j++) for(k=0;k<N;k++){
+      idx = j*N + k; out[idx] = p[idx]*ETA[j]*ETA[k]; sum += out[idx];
+    }
+    if(!(sum > 0)){ for(idx=0;idx<N*N;idx++) out[idx] = 1/(N*N); return out; }
+    for(idx=0;idx<N*N;idx++) out[idx] /= sum;
+    return out;
+  };
+  Pair.prototype.marginal = function(axis){
+    var p = this.joint(), m = [], j, k, s;
+    for(j=0;j<N;j++){
+      s = 0;
+      for(k=0;k<N;k++) s += axis ? p[k*N + j] : p[j*N + k];
+      m.push(s);
+    }
+    return m;
+  };
+  /* entanglement of the pure joint state, via the purity of one reduced state:
+     E = (1 - Tr ρ²) · N/(N-1), which is 0 for a product state and 1 for maximal. */
+  Pair.prototype.entanglement = function(){
+    var a, b, k, rr, ri, tr2 = 0, ia, ib;
+    for(a=0;a<N;a++) for(b=0;b<N;b++){
+      rr = 0; ri = 0;
+      for(k=0;k<N;k++){
+        ia = a*N + k; ib = b*N + k;
+        rr += this.re[ia]*this.re[ib] + this.im[ia]*this.im[ib];
+        ri += this.im[ia]*this.re[ib] - this.re[ia]*this.im[ib];
+      }
+      tr2 += rr*rr + ri*ri;
+    }
+    return Math.max(0, Math.min(1, (1 - tr2)*N/(N-1)));
+  };
+  Pair.prototype.collapse = function(j, k){
+    var i;
+    for(i=0;i<N*N;i++){ this.re[i] = 0; this.im[i] = 0; }
+    this.re[j*N + k] = 1;
+  };
+
+  var A = new Reel(1), P = new Pair(4);
+
+  function sample(p, n){
+    var r = Math.random(), acc = 0, i;
+    for(i=0;i<n;i++){ acc += p[i]; if(r < acc) return i; }
+    return n-1;
+  }
+  /* exact match and three-alike probabilities for the current joint state of all
+     three reels: reel one is independent, reels two and three are not */
+  function jointStats(p1, pjk){
+    var i, j, k, distinct = 0, trio = 0, pj;
+    for(j=0;j<N;j++) for(k=0;k<N;k++){
+      pj = pjk[j*N + k];
+      if(pj <= 0) continue;
+      for(i=0;i<N;i++){
+        if(i !== j && j !== k && i !== k) distinct += p1[i]*pj;
+        else if(i === j && j === k) trio += p1[i]*pj;
       }
     }
-    P_HIT = 1 - pDistinct;   /* two alike or better */
-  })();
+    return {hit:1 - distinct, trio:trio};
+  }
 
-  var SD_UNIT = Math.sqrt(P_HIT*(1-P_HIT));
-  var MIN_SAMPLE = 8;
-  var STORE = "produce-atlas.fruit-machine.v1";
-
-  var el = function(id){ return document.getElementById(id); };
-  var reels = [].slice.call(document.querySelectorAll(".reel"));
-
-  var state = {
-    spins:0, hits:0, trios:0, pairs:0,
+  /* ============================ session ============================ */
+  var STORE = "produce-atlas.qa77.v1";
+  var S = {
+    spins:0, hits:0, trios:0,
+    expHits:0, varHits:0, expTrios:0,
     run:0, bestRun:0, dry:0, longestDry:0,
-    drift:[], log:[],
-    lifetimeSpins:0, lifetimeTrios:0
+    drift:[], q:[], lifetime:0
   };
-  var busy = false, soundOn = false, audio = null;
+  var busy = false, sound = false, burstLeft = 0, audio = null, anim = null;
+  var lastMeasure = performance.now(), entangled = false, zeno = false;
 
-  /* ---------- persistence ---------- */
   function load(){
     try{
       var raw = localStorage.getItem(STORE);
       if(!raw) return;
-      var saved = JSON.parse(raw);
-      Object.keys(state).forEach(function(k){
-        if(saved[k] !== undefined && saved[k] !== null) state[k] = saved[k];
-      });
-    }catch(e){ /* private mode or corrupt entry — start fresh */ }
-  }
-  function save(){
-    try{ localStorage.setItem(STORE, JSON.stringify(state)); }catch(e){}
-  }
-
-  /* ---------- reels ---------- */
-  function pick(){
-    var r = Math.random()*TOTAL, acc = 0;
-    for(var i=0;i<SYMBOLS.length;i++){
-      acc += SYMBOLS[i].weight;
-      if(r < acc) return SYMBOLS[i];
-    }
-    return SYMBOLS[SYMBOLS.length-1];
-  }
-  function tileHTML(s){
-    return '<div class="tile"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#'+s.glyph+'"></use></svg>'
-         + '<span class="taxon">'+s.taxon+'</span></div>';
-  }
-  /* The reel window stretches with the cabinet, so tiles are sized to it at spin time. */
-  function tileHeight(reel){
-    var h = Math.round(reel.getBoundingClientRect().height);
-    if(!h){ h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tile")) || 172; }
-    reel.style.setProperty("--tileh", h + "px");
-    return h;
-  }
-  function reduced(){
-    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  }
-
-  function settle(reel, symbol){
-    tileHeight(reel);
-    var strip = reel.querySelector(".strip");
-    strip.innerHTML = tileHTML(symbol);
-    strip.style.transform = "translate3d(0,0,0)";
-  }
-
-  function spinReel(reel, target, duration){
-    var strip = reel.querySelector(".strip");
-    reel.classList.remove("is-hit");
-    if(reduced() || duration === 0){
-      settle(reel, target);
-      return Promise.resolve();
-    }
-    var h = tileHeight(reel), n = 22, items = [];
-    for(var i=0;i<n-1;i++) items.push(pick());
-    items.push(target);
-    strip.style.transition = "none";
-    strip.style.transform = "translate3d(0,0,0)";
-    strip.innerHTML = items.map(tileHTML).join("");
-    strip.classList.add("blur");
-    void strip.offsetHeight;                       /* force reflow before animating */
-    strip.style.transition = "transform "+duration+"ms cubic-bezier(.16,.84,.3,1)";
-    strip.style.transform = "translate3d(0,"+(-(n-1)*h)+"px,0)";
-    return new Promise(function(resolve){
-      window.setTimeout(function(){
-        strip.classList.remove("blur");
-        settle(reel, target);
-        strip.style.transition = "none";
-        click();
-        resolve();
-      }, duration);
-    });
-  }
-
-  /* ---------- sound ---------- */
-  function tone(freq, dur, gain){
-    if(!soundOn) return;
-    try{
-      if(!audio) audio = new (window.AudioContext||window.webkitAudioContext)();
-      var o = audio.createOscillator(), g = audio.createGain();
-      o.type = "triangle"; o.frequency.value = freq;
-      g.gain.setValueAtTime(gain, audio.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime+dur);
-      o.connect(g); g.connect(audio.destination);
-      o.start(); o.stop(audio.currentTime+dur);
+      var o = JSON.parse(raw);
+      Object.keys(S).forEach(function(k){ if(o[k] !== undefined && o[k] !== null) S[k] = o[k]; });
     }catch(e){}
   }
-  function click(){ tone(220, .06, .07); }
-  function chime(){ [523.25,659.25,783.99].forEach(function(f,i){ window.setTimeout(function(){ tone(f,.5,.09); }, i*90); }); }
+  function save(){ try{ localStorage.setItem(STORE, JSON.stringify(S)); }catch(e){} }
 
-  /* ---------- statistics ---------- */
+  var el = function(id){ return document.getElementById(id); };
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ============================ seven-segment ============================ */
+  var SEG = {"0":"abcdef","1":"bc","2":"abdeg","3":"abcdg","4":"bcfg","5":"acdfg",
+             "6":"acdefg","7":"abc","8":"abcdefg","9":"abcdfg","-":"g"," ":""};
+  function segDigit(ch, x){
+    var w = 11, h = 20, t = 2.4, on = SEG[ch] === undefined ? "" : SEG[ch];
+    var seg = {
+      a:[x+t,0,w-2*t,t], b:[x+w-t,t,t,h/2-t*1.2], c:[x+w-t,h/2+t*0.2,t,h/2-t*1.2],
+      d:[x+t,h-t,w-2*t,t], e:[x,h/2+t*0.2,t,h/2-t*1.2], f:[x,t,t,h/2-t*1.2],
+      g:[x+t,h/2-t/2,w-2*t,t]
+    };
+    var out = "", k;
+    for(k in seg){
+      var r = seg[k], lit = on.indexOf(k) >= 0;
+      out += '<rect x="'+r[0].toFixed(1)+'" y="'+r[1].toFixed(1)+'" width="'+r[2].toFixed(1)+
+             '" height="'+r[3].toFixed(1)+'" fill="currentColor" opacity="'+(lit ? 1 : 0.08)+'"></rect>';
+    }
+    return out;
+  }
+  function segText(str, pad){
+    var s = String(str), x = 0, body = "", i;
+    while(pad && s.length < pad) s = " " + s;
+    for(i=0;i<s.length;i++){
+      if(s[i] === "."){
+        body += '<rect x="'+(x-2.5)+'" y="17.6" width="2.4" height="2.4" fill="currentColor"></rect>';
+        continue;
+      }
+      body += segDigit(s[i], x); x += 13.5;
+    }
+    var w = Math.max(x, 1);
+    return '<svg viewBox="0 0 '+w+' 20" width="'+w+'" height="20" aria-hidden="true">'+body+'</svg>';
+  }
+
+  /* ============================ LCD cells ============================ */
+  var cellCtx = [].slice.call(document.querySelectorAll(".cell")).map(function(c){
+    var cv = c.querySelector("canvas");
+    return {el:c, cv:cv, ctx:cv.getContext("2d"), taxon:c.querySelector(".taxon"), shown:0, px:8};
+  });
+  function sizeCells(){
+    cellCtx.forEach(function(c){
+      var w = Math.max(36, Math.floor(c.cv.parentNode.getBoundingClientRect().width));
+      var dpr = Math.min(2, window.devicePixelRatio || 1);
+      c.cv.width = Math.floor(w*dpr); c.cv.height = Math.floor(w*dpr);
+      c.cv.style.height = w + "px";
+      c.px = w*dpr/GRID;
+      drawCell(c);
+    });
+  }
+  function drawCell(c){
+    var ctx = c.ctx, g = SYMBOLS[c.shown].grid, px = c.px, i, x, y;
+    ctx.clearRect(0,0,c.cv.width,c.cv.height);
+    for(i=0;i<GRID*GRID;i++){
+      x = (i % GRID)*px; y = ((i/GRID)|0)*px;
+      ctx.fillStyle = g[i] ? "rgba(16,23,11,.94)" : "rgba(16,23,11,.06)";
+      ctx.fillRect(x + px*0.06, y + px*0.06, px*0.88, px*0.88);
+    }
+  }
+  function setCell(i, sym, locked){
+    var c = cellCtx[i];
+    c.shown = sym;
+    c.taxon.textContent = SYMBOLS[sym].taxon;
+    c.el.classList.toggle("locked", !!locked);
+    drawCell(c);
+  }
+
+  /* ============================ sound ============================ */
+  function beep(freq, dur, vol, type){
+    if(!sound) return;
+    try{
+      if(!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = type || "square"; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol || .04, audio.currentTime);
+      g.gain.exponentialRampToValueAtTime(.0001, audio.currentTime + dur);
+      o.connect(g); g.connect(audio.destination);
+      o.start(); o.stop(audio.currentTime + dur);
+    }catch(e){}
+  }
+  function tick(){ beep(1760, .03, .022); }
+  function clack(){ beep(920, .06, .045); }
+  function fanfare(){ [1046,1318,1568,2093].forEach(function(f,i){ setTimeout(function(){ beep(f,.14,.05); }, i*70); }); }
+
+  /* ============================ statistics ============================ */
   function erf(x){
     var s = x < 0 ? -1 : 1; x = Math.abs(x);
-    var t = 1/(1+0.3275911*x);
+    var t = 1/(1 + 0.3275911*x);
     var y = 1 - (((((1.061405429*t - 1.453152027)*t) + 1.421413741)*t - 0.284496736)*t + 0.254829592)*t*Math.exp(-x*x);
     return s*y;
   }
-  function phi(z){ return 0.5*(1+erf(z/Math.SQRT2)); }
-
+  function phi(z){ return 0.5*(1 + erf(z/Math.SQRT2)); }
   function zScore(){
-    if(state.spins < MIN_SAMPLE) return null;
-    var expected = state.spins*P_HIT;
-    return (state.hits - expected)/(SD_UNIT*Math.sqrt(state.spins));
+    /* the gate is accumulated evidence, not spin count: frozen spins buy almost none */
+    if(S.spins < 8 || S.varHits < 3) return null;
+    return (S.hits - S.expHits)/Math.sqrt(S.varHits);
+  }
+  function leggettGarg(){
+    var q = S.q, n = q.length, i, c1 = 0, c2 = 0, n1 = 0, n2 = 0;
+    if(n < 12) return null;
+    for(i=0;i+1<n;i++){ c1 += q[i]*q[i+1]; n1++; }
+    for(i=0;i+2<n;i++){ c2 += q[i]*q[i+2]; n2++; }
+    return 2*(c1/n1) - (c2/n2);
+  }
+  function verdict(z){
+    if(z >= 2)  return {t:"ANOMALOUS +", c:"warm"};
+    if(z >= 1)  return {t:"RUNNING WARM", c:"warm"};
+    if(z > -1)  return {t:"SQUARELY AVERAGE", c:""};
+    if(z > -2)  return {t:"RUNNING COLD", c:"cold"};
+    return {t:"ANOMALOUS −", c:"cold"};
   }
 
-  function verdictFor(z){
-    if(z >= 2)  return {label:"Statistically blessed", tone:"warm"};
-    if(z >= 1)  return {label:"Running warm",          tone:"warm"};
-    if(z > -1)  return {label:"Squarely average",      tone:""};
-    if(z > -2)  return {label:"Running cold",          tone:"cold"};
-    return             {label:"Statistically cursed",  tone:"cold"};
+  /* ============================ measurement ============================ */
+  function measure(){
+    var now = performance.now(), gap = (now - lastMeasure)/1000;
+    lastMeasure = now;
+    zeno = gap < 0.75;
+
+    var p1 = A.probs(), pjk = P.jointProbs();
+    var ent = P.entanglement();
+    entangled = ent > 0.25;
+    var js = jointStats(p1, pjk);
+
+    var i1 = sample(p1, N), ijk = sample(pjk, N*N);
+    var out = [i1, (ijk/N)|0, ijk % N];
+    A.collapse(i1);
+    P.collapse(out[1], out[2]);
+
+    /* Expectation is taken from the state as it stood immediately before this
+       measurement, so hits − expHits is a martingale even when Zeno makes
+       consecutive observations strongly correlated. */
+    S.expHits += js.hit;
+    S.varHits += js.hit*(1 - js.hit);
+    S.expTrios += js.trio;
+
+    var counts = {}, best = 0, top = out[0];
+    out.forEach(function(k){
+      counts[k] = (counts[k] || 0) + 1;
+      if(counts[k] > best){ best = counts[k]; top = k; }
+    });
+    var kind = best === 3 ? "trio" : best === 2 ? "pair" : "miss", hit = kind !== "miss";
+
+    S.spins++; S.lifetime++;
+    if(hit){
+      S.hits++; S.run++; S.bestRun = Math.max(S.bestRun, S.run); S.dry = 0;
+      if(kind === "trio") S.trios++;
+    }else{
+      S.run = 0; S.dry++; S.longestDry = Math.max(S.longestDry, S.dry);
+    }
+    S.q.push(hit ? 1 : -1); if(S.q.length > 400) S.q = S.q.slice(-400);
+    var prev = S.drift.length ? S.drift[S.drift.length-1] : 0;
+    S.drift.push(prev + ((hit ? 1 : 0) - js.hit));
+    if(S.drift.length > 200) S.drift = S.drift.slice(-200);
+
+    return {out:out, kind:kind, top:top, pHit:js.hit, gap:gap, ent:entangled, entVal:ent};
   }
 
-  /* ---------- rendering ---------- */
-  function fmt(n, d){ return n.toFixed(d === undefined ? 1 : d); }
+  function stepAnim(now){
+    if(!anim) return;
+    var done = 0, i, elapsed = now - anim.t0;
+    for(i=0;i<3;i++){
+      if(anim.done[i]){ done++; continue; }
+      if(elapsed >= anim.stops[i]){
+        anim.done[i] = true; done++;
+        setCell(i, anim.res.out[i], true);
+        clack();
+        continue;
+      }
+      if(now >= anim.next[i]){
+        var frac = elapsed/anim.stops[i];
+        anim.next[i] = now + 34 + 90*frac*frac;
+        setCell(i, (cellCtx[i].shown + 1 + ((Math.random()*3)|0)) % N, false);
+        if(!anim.fast) tick();
+      }
+    }
+    if(done === 3){
+      var res = anim.res;
+      anim = null;
+      el("fMeas").classList.remove("on");
+      finish(res);
+    }
+  }
+
+  function finish(res){
+    announce(res);
+    renderAll();
+    save();
+    if(res.kind === "trio") fanfare();
+    else if(res.kind === "pair") beep(1318, .09, .04);
+    if(burstLeft > 0){
+      burstLeft--;
+      setTimeout(function(){ go(true); }, 110);
+    }else{
+      busy = false;
+      setKeys(false);
+    }
+  }
+
+  function announce(res){
+    var sym = SYMBOLS[res.top], txt;
+    if(res.kind === "trio"){
+      txt = "THREE " + sym.taxon + " — p(MATCH) WAS " + (res.pHit*100).toFixed(0) + "%";
+    }else if(res.kind === "pair"){
+      txt = "PAIR OF " + sym.taxon + (res.ent ? " — REELS 2·3 WERE ENTANGLED, S=" + res.entVal.toFixed(2) : "");
+    }else{
+      txt = "NO MATCH · " + res.out.map(function(k){ return SYMBOLS[k].taxon; }).join(" ");
+    }
+    if(zeno) txt += " · ZENO GAP " + res.gap.toFixed(2) + "s";
+    el("msg").textContent = txt;
+  }
+
+  function setKeys(disabled){
+    ["bSpin","bBurst","bReset"].forEach(function(id){ el(id).disabled = disabled; });
+    el("lever").disabled = disabled;
+  }
+
+  function go(fast){
+    if(anim) return;
+    busy = true; setKeys(true);
+    var lever = el("lever");
+    lever.classList.add("pulled");
+    setTimeout(function(){ lever.classList.remove("pulled"); }, fast ? 150 : 360);
+    var res = measure();
+    if(reduced){
+      res.out.forEach(function(k,i){ setCell(i, k, true); });
+      finish(res);
+    }else{
+      el("fMeas").classList.add("on");
+      cellCtx.forEach(function(c){ c.el.classList.remove("locked"); });
+      anim = {t0:performance.now(), stops: fast ? [130,195,260] : [420,600,780],
+              res:res, next:[0,0,0], done:[false,false,false], fast:fast};
+    }
+  }
+
+  /* ============================ rendering ============================ */
+  function fmt(n,d){ return n.toFixed(d === undefined ? 1 : d); }
 
   function renderStats(){
-    el("sSpins").textContent = state.spins;
-    el("sHits").firstChild.nodeValue = state.hits + " ";
-    el("sHitsExp").textContent = "of " + fmt(state.spins*P_HIT,1);
-    el("sTrios").firstChild.nodeValue = state.trios + " ";
-    el("sTriosExp").textContent = "of " + fmt(state.spins*P_TRIO,2);
-    el("sRun").textContent = state.bestRun;
-    el("sDry").textContent = state.longestDry;
-    el("sRate").textContent = state.spins ? Math.round(100*state.hits/state.spins) + "%" : "—";
-    el("lifetime").textContent = "Lifetime · " + state.lifetimeSpins + " spins · " + state.lifetimeTrios + " three-alike";
+    el("sSpins").textContent = S.spins;
+    el("sHits").firstChild.nodeValue = S.hits + " ";
+    el("sHitsExp").textContent = "of " + fmt(S.expHits,1);
+    el("sTrios").firstChild.nodeValue = S.trios + " ";
+    el("sTriosExp").textContent = "of " + fmt(S.expTrios,2);
+    el("sRun").textContent = S.bestRun;
+    el("sEv").textContent = S.varHits.toFixed(2);
+    var K = leggettGarg();
+    el("sLG").textContent = K === null ? "—" : (K >= 0 ? "+" : "−") + Math.abs(K).toFixed(3);
+    el("lifetime").textContent = "lifetime " + S.lifetime;
+
+    el("segSpins").innerHTML = segText(Math.min(S.spins,999), 3);
+    el("segHits").innerHTML = segText(Math.min(S.hits,999), 3);
+    var z = zScore();
+    el("segZ").innerHTML = segText(z === null ? "---" : (z < 0 ? "-" : "") + Math.min(9.9, Math.abs(z)).toFixed(1), 4);
   }
 
   function renderVerdict(){
-    var z = zScore(), vEl = el("zvalue"), chip = el("verdictChip"), text = el("verdictText");
-    vEl.classList.remove("warm","cold"); chip.classList.remove("warm","cold");
+    var z = zScore(), zv = el("zval"), chip = el("chip"), ex = el("explain");
+    zv.classList.remove("warm","cold"); chip.classList.remove("warm","cold");
     if(z === null){
-      vEl.textContent = "—";
-      chip.textContent = state.spins ? (MIN_SAMPLE - state.spins) + " more spins" : "No data yet";
-      text.textContent = "Eight spins is the smallest sample worth reading. Below that, everything is noise wearing a costume.";
+      zv.textContent = "—";
+      chip.textContent = S.spins ? "gathering evidence" : "no data";
+      ex.textContent = S.spins
+        ? "The index needs eight observations and Σp(1−p) ≥ 3.00 of accumulated evidence; you have "
+          + S.spins + " and " + S.varHits.toFixed(2) + ". Frozen reels barely add to that second number, which is the whole point."
+        : "Nothing observed yet. The index unlocks at eight observations and Σp(1−p) ≥ 3.00 of accumulated evidence.";
       return;
     }
-    var v = verdictFor(z);
-    vEl.textContent = (z >= 0 ? "+" : "−") + Math.abs(z).toFixed(2) + "σ";
-    if(v.tone){ vEl.classList.add(v.tone); chip.classList.add(v.tone); }
-    chip.textContent = v.label;
-
-    var tail = z >= 0 ? (1-phi(z)) : phi(z);
-    var pct = Math.max(0.1, tail*100);
-    var side = z >= 0 ? "lucky" : "unlucky";
-    var gap = state.hits - state.spins*P_HIT;
-    text.textContent = "You are " + (gap >= 0 ? "+" : "−") + fmt(Math.abs(gap),1) + " hits against expectation over "
-      + state.spins + " spins. Chance alone produces a session at least this " + side + " about "
-      + (pct >= 10 ? Math.round(pct) : pct.toFixed(1)) + "% of the time.";
+    var v = verdict(z);
+    zv.textContent = (z >= 0 ? "+" : "−") + Math.abs(z).toFixed(2) + "σ";
+    if(v.c){ zv.classList.add(v.c); chip.classList.add(v.c); }
+    chip.textContent = v.t;
+    var tail = z >= 0 ? 1 - phi(z) : phi(z), pct = Math.max(0.1, tail*100);
+    var gap = S.hits - S.expHits;
+    ex.textContent = "You are " + (gap >= 0 ? "+" : "−") + fmt(Math.abs(gap),1)
+      + " matches against what the amplitudes predicted over " + S.spins
+      + " observations. Chance alone lands a session at least this "
+      + (z >= 0 ? "lucky" : "unlucky") + " about "
+      + (pct >= 10 ? Math.round(pct) : pct.toFixed(1)) + "% of the time — normal approximation, by the martingale CLT.";
   }
 
-  var chartHover = null;
+  var hover = null;
   function renderChart(){
-    var svg = el("chart"), d = state.drift, H = 92, PAD = 8;
-    /* Match the viewBox to the rendered box so marks stay circular and unstretched. */
+    var svg = el("chart"), d = S.drift, H = 78, PAD = 7, i;
     var W = Math.max(160, Math.round(svg.getBoundingClientRect().width) || 320);
-    svg.setAttribute("viewBox", "0 0 "+W+" "+H);
-    if(d.length < 2){
-      svg.innerHTML = "";
-      el("chartCaption").textContent = "The trace begins after your second spin.";
-      return;
-    }
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+    if(d.length < 2){ svg.innerHTML = ""; el("cap").textContent = "DRIFT TRACE BEGINS AT OBSERVATION 2"; return; }
     var max = 1;
-    for(var i=0;i<d.length;i++) max = Math.max(max, Math.abs(d[i]));
-    max = max*1.15;
-    var x = function(i){ return PAD + (W-2*PAD)*(d.length === 1 ? 0 : i/(d.length-1)); };
-    var y = function(v){ return H/2 - (v/max)*(H/2 - PAD); };
-
-    var pts = d.map(function(v,i){ return x(i).toFixed(2)+","+y(v).toFixed(2); }).join(" ");
-    var last = d[d.length-1];
-    var stroke = last >= 0 ? "var(--accent)" : "var(--clay)";
-    var area = "M"+x(0).toFixed(2)+","+(H/2)+" L"+pts.split(" ").join(" L")+" L"+x(d.length-1).toFixed(2)+","+(H/2)+" Z";
-
+    for(i=0;i<d.length;i++) max = Math.max(max, Math.abs(d[i]));
+    max *= 1.15;
+    var X = function(i){ return PAD + (W - 2*PAD)*(i/(d.length-1)); };
+    var Y = function(v){ return H/2 - (v/max)*(H/2 - PAD); };
+    var pts = d.map(function(v,i){ return X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join(" ");
+    var last = d[d.length-1], col = last >= 0 ? "var(--rain)" : "var(--amber)";
+    var area = "M" + X(0).toFixed(1) + "," + (H/2) + " L" + pts.split(" ").join(" L") + " L" + X(d.length-1).toFixed(1) + "," + (H/2) + " Z";
+    var idx = hover !== null ? Math.min(hover, d.length-1) : d.length-1;
     svg.innerHTML =
-      '<path class="area" d="'+area+'" fill="'+stroke+'"></path>'+
-      '<line class="zero" x1="'+PAD+'" y1="'+(H/2)+'" x2="'+(W-PAD)+'" y2="'+(H/2)+'"></line>'+
-      '<polyline class="trace" points="'+pts+'" stroke="'+stroke+'"></polyline>'+
-      (chartHover !== null ? '<line class="cursor" x1="'+x(chartHover).toFixed(2)+'" y1="'+PAD+'" x2="'+x(chartHover).toFixed(2)+'" y2="'+(H-PAD)+'"></line>' : "")+
-      '<circle class="endpoint" cx="'+x(chartHover !== null ? chartHover : d.length-1).toFixed(2)+'" cy="'+y(chartHover !== null ? d[chartHover] : last).toFixed(2)+'" r="4.5" fill="'+stroke+'"></circle>';
-
-    var idx = chartHover !== null ? chartHover : d.length-1;
-    var val = d[idx];
-    el("chartCaption").innerHTML = "After spin <b>" + (idx+1) + "</b> you were <b>"
-      + (val >= 0 ? "+" : "−") + fmt(Math.abs(val),1) + "</b> hits "
-      + (val >= 0 ? "ahead of" : "behind") + " expectation.";
+      '<path class="area" d="' + area + '" fill="' + col + '"></path>' +
+      '<line class="zero" x1="' + PAD + '" y1="' + (H/2) + '" x2="' + (W-PAD) + '" y2="' + (H/2) + '"></line>' +
+      '<polyline class="trace" points="' + pts + '" stroke="' + col + '"></polyline>' +
+      (hover !== null ? '<line class="cursor" x1="' + X(idx).toFixed(1) + '" y1="' + PAD + '" x2="' + X(idx).toFixed(1) + '" y2="' + (H-PAD) + '"></line>' : "") +
+      '<circle cx="' + X(idx).toFixed(1) + '" cy="' + Y(d[idx]).toFixed(1) + '" r="3.2" fill="' + col + '"></circle>';
+    el("cap").innerHTML = "AT OBSERVATION <b>" + (idx+1) + "</b> · DRIFT <b>"
+      + (d[idx] >= 0 ? "+" : "−") + fmt(Math.abs(d[idx]),1) + "</b> MATCHES";
   }
 
-  function renderLog(){
-    var strip = el("logStrip");
-    if(!state.log.length){ strip.innerHTML = '<p class="log-empty">Nothing logged yet.</p>'; return; }
-    strip.innerHTML = state.log.slice(-12).map(function(entry){
-      var s = SYMBOLS.filter(function(x){ return x.id === entry.top; })[0] || SYMBOLS[0];
-      var cls = entry.kind === "trio" ? "trio" : entry.kind === "pair" ? "pair" : "";
-      var title = (entry.kind === "trio" ? "Three alike" : entry.kind === "pair" ? "Two alike" : "No match") + " — " + s.common;
-      return '<span class="log-cell '+cls+'" title="'+title+'"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#'+s.glyph+'"></use></svg></span>';
+  var ptableRows = null;
+  function buildPtable(){
+    var tb = el("ptable");
+    tb.innerHTML = SYMBOLS.map(function(s){
+      return '<tr><td class="sp"><span><canvas width="' + GRID + '" height="' + GRID + '"></canvas>' + s.taxon + '</span></td>'
+           + '<td class="barcell"><span class="pbar"><i style="width:0%"></i></span></td>'
+           + '<td>' + s.eta + '</td><td class="pn">0.0%</td></tr>';
     }).join("");
-  }
-
-  function renderAll(){ renderStats(); renderVerdict(); renderChart(); renderLog(); }
-
-  function renderKey(){
-    el("keyBody").innerHTML = SYMBOLS.map(function(s){
-      var trio = Math.pow(s.p,3);
-      return '<tr'+(s.weight === 1 ? ' class="rarest"' : '')+'>'
-        + '<td><span class="species"><svg viewBox="0 0 48 48" aria-hidden="true"><use href="#'+s.glyph+'"></use></svg>'
-        + '<span class="names"><span class="common">'+s.common+'</span><span class="binomial">'+s.binomial+'</span></span></span></td>'
-        + '<td class="num">'+s.weight+'</td>'
-        + '<td class="num">'+(s.p*100).toFixed(1)+'%</td>'
-        + '<td class="num">1 in '+Math.round(1/trio).toLocaleString()+'</td>'
-        + '</tr>';
-    }).join("")
-    + '<tr><td><strong>Any three alike</strong></td><td class="num">—</td><td class="num">—</td><td class="num">1 in '+Math.round(1/P_TRIO)+'</td></tr>'
-    + '<tr><td><strong>Two alike or better</strong></td><td class="num">—</td><td class="num">—</td><td class="num">'+(P_HIT*100).toFixed(1)+'%</td></tr>';
-  }
-
-  /* ---------- one spin ---------- */
-  function evaluate(result){
-    var counts = {}, top = result[0].id, best = 0;
-    result.forEach(function(s){
-      counts[s.id] = (counts[s.id]||0)+1;
-      if(counts[s.id] > best){ best = counts[s.id]; top = s.id; }
+    ptableRows = [].slice.call(tb.querySelectorAll("tr"));
+    ptableRows.forEach(function(tr, i){
+      var ctx = tr.querySelector("canvas").getContext("2d"), g = SYMBOLS[i].grid, k;
+      ctx.fillStyle = "#2BE07C";
+      for(k=0;k<GRID*GRID;k++) if(g[k]) ctx.fillRect(k % GRID, (k/GRID)|0, 1, 1);
     });
-    return {kind: best === 3 ? "trio" : best === 2 ? "pair" : "miss", top: top, count: best};
   }
+  function renderLive(){
+    var psi = A.psi2(), pr = A.probs(), i, hot = 0;
+    for(i=1;i<N;i++) if(pr[i] > pr[hot]) hot = i;
+    ptableRows.forEach(function(tr, i){
+      tr.querySelector(".pbar i").style.width = (psi[i]*100).toFixed(1) + "%";
+      tr.querySelector(".pn").textContent = (pr[i]*100).toFixed(1) + "%";
+      tr.classList.toggle("hot", i === hot);
+    });
+    var coh = A.coherence();
+    var ent = P.entanglement();
+    var js = jointStats(pr, P.jointProbs());
+    el("cohVal").textContent = coh.toFixed(2);
+    el("cohBar").style.width = (coh*100).toFixed(0) + "%";
+    el("fidVal").textContent = ent.toFixed(2);
+    el("fidBar").style.width = (ent*100).toFixed(0) + "%";
+    el("phitVal").textContent = (js.hit*100).toFixed(1) + "%";
+    el("phitBar").style.width = (js.hit*100).toFixed(0) + "%";
+    var age = (performance.now() - lastMeasure)/1000;
+    el("stateAge").textContent = "t = " + age.toFixed(1) + " s";
+    el("modeLabel").textContent = "T+" + (age < 99 ? age.toFixed(1) : "99.9") + "S";
+    el("fCoh").classList.toggle("on", coh > 0.45);
+    el("fEnt").classList.toggle("on", ent > 0.25);
+    el("fZeno").classList.toggle("on", zeno && (performance.now() - lastMeasure) < 2500);
+    return coh;
+  }
+  function renderAll(){ renderStats(); renderVerdict(); renderChart(); }
 
-  function record(outcome){
-    var hit = outcome.kind !== "miss";
-    state.spins++; state.lifetimeSpins++;
-    if(hit){
-      state.hits++;
-      state.run++; state.bestRun = Math.max(state.bestRun, state.run);
-      state.dry = 0;
-      if(outcome.kind === "trio"){ state.trios++; state.lifetimeTrios++; } else { state.pairs++; }
-    }else{
-      state.run = 0;
-      state.dry++; state.longestDry = Math.max(state.longestDry, state.dry);
+  /* ============================ phasors ============================ */
+  var phCv = el("phasor"), phCtx = phCv.getContext("2d");
+  function drawPhasors(){
+    var w = phCv.width, h = phCv.height, cx = w/2, cy = h/2, R = w*0.42, i;
+    phCtx.clearRect(0,0,w,h);
+    phCtx.strokeStyle = "rgba(43,224,124,.18)"; phCtx.lineWidth = 2;
+    phCtx.beginPath(); phCtx.arc(cx,cy,R,0,Math.PI*2); phCtx.stroke();
+    phCtx.beginPath();
+    phCtx.moveTo(cx-R,cy); phCtx.lineTo(cx+R,cy);
+    phCtx.moveTo(cx,cy-R); phCtx.lineTo(cx,cy+R);
+    phCtx.stroke();
+    var r = A;
+    for(i=0;i<N;i++){
+      var mag = Math.sqrt(r.re[i]*r.re[i] + r.im[i]*r.im[i]);
+      var x = cx + r.re[i]*R*1.55, y = cy - r.im[i]*R*1.55;
+      phCtx.strokeStyle = "rgba(43,224,124," + (0.22 + mag*0.7).toFixed(3) + ")";
+      phCtx.lineWidth = 1 + mag*5;
+      phCtx.beginPath(); phCtx.moveTo(cx,cy); phCtx.lineTo(x,y); phCtx.stroke();
+      phCtx.fillStyle = "rgba(127,233,255," + (0.28 + mag*0.7).toFixed(3) + ")";
+      phCtx.beginPath(); phCtx.arc(x,y,2.4 + mag*5,0,Math.PI*2); phCtx.fill();
     }
-    var prev = state.drift.length ? state.drift[state.drift.length-1] : 0;
-    state.drift.push(prev + ((hit?1:0) - P_HIT));
-    if(state.drift.length > 200) state.drift = state.drift.slice(-200);
-    state.log.push({kind: outcome.kind, top: outcome.top});
-    if(state.log.length > 40) state.log = state.log.slice(-40);
   }
 
-  function announce(outcome, result){
-    var c = el("callout");
-    c.classList.toggle("hit", outcome.kind !== "miss");
-    var sym = SYMBOLS.filter(function(x){ return x.id === outcome.top; })[0];
-    if(outcome.kind === "trio"){
-      c.innerHTML = 'Three <em>' + sym.binomial + '</em>. <span class="rare">One in ' + Math.round(1/Math.pow(sym.p,3)) + ' spins lands that.</span>';
-      chime();
-    }else if(outcome.kind === "pair"){
-      c.innerHTML = 'A pair of ' + sym.common.toLowerCase() + ' — the reels are being agreeable.';
-    }else{
-      c.textContent = result.map(function(s){ return s.common.toLowerCase(); }).join(", ") + ". Nothing agrees.";
+  /* ============================ matrix rain ============================ */
+  var rain = el("rain"), rctx = rain.getContext("2d"), cols = [], colW = 15, rainW = 0, rainH = 0;
+  var GLYPHS = "01ψΨħ⟨⟩|⊗ΣΔθφλμπ∫√≠≤∞0123456789ABCDEF+-*/=<>[]{}.:;".split("");
+  function sizeRain(){
+    var dpr = Math.min(2, window.devicePixelRatio || 1), i;
+    rainW = window.innerWidth; rainH = window.innerHeight;
+    rain.width = Math.floor(rainW*dpr); rain.height = Math.floor(rainH*dpr);
+    rctx.setTransform(dpr,0,0,dpr,0,0);
+    cols = [];
+    for(i=0;i<Math.ceil(rainW/colW);i++){
+      cols.push({y: Math.random()*rainH, speed: 60 + Math.random()*150, len: 6 + ((Math.random()*18)|0)});
     }
+    rctx.clearRect(0,0,rainW,rainH);
   }
-
-  function setBusy(v){
-    busy = v;
-    el("spin").disabled = v; el("auto").disabled = v; el("lever").disabled = v;
-  }
-
-  function doSpin(fast){
-    var lever = el("lever");
-    lever.classList.add("pulled");
-    window.setTimeout(function(){ lever.classList.remove("pulled"); }, 450);
-
-    var result = [pick(), pick(), pick()];
-    var base = fast ? 460 : 820, step = fast ? 150 : 240;
-    return Promise.all(reels.map(function(reel, i){
-      return spinReel(reel, result[i], base + i*step);
-    })).then(function(){
-      var outcome = evaluate(result);
-      if(outcome.kind !== "miss"){
-        var counts = {};
-        result.forEach(function(s){ counts[s.id] = (counts[s.id]||0)+1; });
-        reels.forEach(function(reel,i){ if(counts[result[i].id] >= 2) reel.classList.add("is-hit"); });
+  function drawRain(dt){
+    rctx.fillStyle = "rgba(4,7,10,.15)";
+    rctx.fillRect(0,0,rainW,rainH);
+    rctx.font = "12px ui-monospace,Menlo,monospace";
+    for(var i=0;i<cols.length;i++){
+      var c = cols[i], x = i*colW + 2, k, y;
+      c.y += c.speed*dt;
+      if(c.y > rainH + c.len*14){ c.y = -Math.random()*400; c.speed = 60 + Math.random()*150; }
+      rctx.fillStyle = "rgba(185,255,218,.85)";
+      rctx.fillText(GLYPHS[(Math.random()*GLYPHS.length)|0], x, c.y);
+      for(k=1;k<c.len;k++){
+        y = c.y - k*14;
+        if(y < -14) break;
+        if(Math.random() < 0.22){
+          rctx.fillStyle = "rgba(43,224,124," + (0.42*(1 - k/c.len)).toFixed(3) + ")";
+          rctx.fillText(GLYPHS[(Math.random()*GLYPHS.length)|0], x, y);
+        }
       }
-      record(outcome);
-      announce(outcome, result);
-      chartHover = null;
-      renderAll();
-      save();
-    });
+    }
   }
 
-  /* Runs n spins back to back; controls stay locked for the whole sequence. */
-  function run(n, fast){
-    if(busy) return;
-    setBusy(true);
-    var i = 0;
-    (function next(){
-      if(i++ >= n){ setBusy(false); return; }
-      doSpin(fast).then(function(){ window.setTimeout(next, n > 1 ? 130 : 0); });
-    })();
+  /* ============================ tesseract ============================ */
+  var hy = el("hyper"), hctx = hy.getContext("2d"), hyW = 0, hyH = 0;
+  var VERTS = [], EDGES = [];
+  (function(){
+    var i, a, b, k, diff;
+    for(i=0;i<16;i++) VERTS.push([(i&1)?1:-1,(i&2)?1:-1,(i&4)?1:-1,(i&8)?1:-1]);
+    for(a=0;a<16;a++) for(b=a+1;b<16;b++){
+      diff = 0;
+      for(k=0;k<4;k++) if(VERTS[a][k] !== VERTS[b][k]) diff++;
+      if(diff === 1) EDGES.push([a,b]);
+    }
+  })();
+  var ang = {xw:0, zw:0, xy:0};
+  function sizeHyper(){
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    hyW = window.innerWidth; hyH = window.innerHeight;
+    hy.width = Math.floor(hyW*dpr); hy.height = Math.floor(hyH*dpr);
+    hctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  function project(v){
+    var x = v[0], y = v[1], z = v[2], w = v[3], c, s, t;
+    c = Math.cos(ang.xw); s = Math.sin(ang.xw); t = x*c - w*s; w = x*s + w*c; x = t;
+    c = Math.cos(ang.zw); s = Math.sin(ang.zw); t = z*c - w*s; w = z*s + w*c; z = t;
+    c = Math.cos(ang.xy); s = Math.sin(ang.xy); t = x*c - y*s; y = x*s + y*c; x = t;
+    var k4 = 2.6/(3.0 - w);
+    x *= k4; y *= k4; z *= k4;
+    var k3 = 3.4/(4.2 - z), scale = Math.min(hyW, hyH)*0.46;
+    return [hyW/2 + x*k3*scale, hyH/2 + y*k3*scale, k4];
+  }
+  function drawHyper(dt, coh){
+    hctx.clearRect(0,0,hyW,hyH);
+    var rate = 0.10 + coh*0.42, i, pts;
+    ang.xw += dt*rate; ang.zw += dt*rate*0.62; ang.xy += dt*rate*0.28;
+    pts = VERTS.map(project);
+    for(i=0;i<EDGES.length;i++){
+      var a = pts[EDGES[i][0]], b = pts[EDGES[i][1]], depth = (a[2] + b[2])/2;
+      hctx.strokeStyle = "rgba(127,233,255," + (0.07 + Math.min(.40, Math.max(0,(depth-0.7)*0.55))).toFixed(3) + ")";
+      hctx.lineWidth = 0.6 + depth*0.9;
+      hctx.beginPath(); hctx.moveTo(a[0],a[1]); hctx.lineTo(b[0],b[1]); hctx.stroke();
+    }
+    hctx.fillStyle = "rgba(127,233,255,.28)";
+    for(i=0;i<pts.length;i++){
+      hctx.beginPath(); hctx.arc(pts[i][0], pts[i][1], 1.1 + pts[i][2], 0, Math.PI*2); hctx.fill();
+    }
   }
 
-  /* ---------- events ---------- */
-  el("spin").addEventListener("click", function(){ run(1, false); });
-  el("lever").addEventListener("click", function(){ run(1, false); });
-  el("auto").addEventListener("click", function(){ run(10, true); });
+  /* ============================ main loop ============================ */
+  var last = performance.now(), liveAcc = 0, coherence = 0;
+  function frame(now){
+    var dt = Math.min(0.1, (now - last)/1000);
+    last = now;
+    /* the state always evolves — reduced motion suppresses decoration, not physics */
+    A.evolve(dt); P.evolve(dt);
+    if(!reduced){
+      drawRain(dt);
+      drawHyper(dt, coherence);
+    }
+    stepAnim(now);
+    liveAcc += dt;
+    if(liveAcc > 0.12){ liveAcc = 0; coherence = renderLive(); drawPhasors(); }
+    requestAnimationFrame(frame);
+  }
 
-  el("sound").addEventListener("click", function(){
-    soundOn = !soundOn;
-    this.textContent = soundOn ? "Sound on" : "Sound off";
-    this.setAttribute("aria-pressed", String(soundOn));
-    if(soundOn) click();
+  /* ============================ events ============================ */
+  el("bSpin").addEventListener("click", function(){ if(!busy) go(false); });
+  el("lever").addEventListener("click", function(){ if(!busy) go(false); });
+  el("bBurst").addEventListener("click", function(){
+    if(busy || anim) return;
+    burstLeft = 9;
+    go(true);
   });
-
-  el("reset").addEventListener("click", function(){
-    var lifeSpins = state.lifetimeSpins, lifeTrios = state.lifetimeTrios;
-    state = {spins:0,hits:0,trios:0,pairs:0,run:0,bestRun:0,dry:0,longestDry:0,drift:[],log:[],
-             lifetimeSpins:lifeSpins, lifetimeTrios:lifeTrios};
-    chartHover = null;
-    el("callout").classList.remove("hit");
-    el("callout").textContent = "Log cleared. The next spin starts a fresh sample.";
+  el("bSound").addEventListener("click", function(){
+    sound = !sound;
+    this.setAttribute("aria-pressed", String(sound));
+    this.textContent = sound ? "Sound ✓" : "Sound";
+    if(sound) beep(1568, .08, .05);
+  });
+  el("bReset").addEventListener("click", function(){
+    var life = S.lifetime;
+    S.spins = S.hits = S.trios = 0;
+    S.expHits = S.varHits = S.expTrios = 0;
+    S.run = S.bestRun = S.dry = S.longestDry = 0;
+    S.drift = []; S.q = []; S.lifetime = life;
+    hover = null;
+    el("msg").textContent = "LOG CLEARED — STATE VECTOR UNTOUCHED";
     renderAll(); save();
   });
-
   document.addEventListener("keydown", function(e){
     if(e.code !== "Space" && e.key !== " ") return;
     var t = e.target;
     if(t && (t.tagName === "BUTTON" || t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
     e.preventDefault();
-    run(1, false);
+    if(!busy) go(false);
   });
-
-  (function chartInteraction(){
+  (function(){
     var svg = el("chart");
     function move(e){
-      if(state.drift.length < 2) return;
+      if(S.drift.length < 2) return;
       var r = svg.getBoundingClientRect();
-      var t = (e.clientX - r.left)/r.width;
-      t = Math.min(1, Math.max(0, t));
-      var idx = Math.round(t*(state.drift.length-1));
-      if(idx !== chartHover){ chartHover = idx; renderChart(); }
+      var t = Math.min(1, Math.max(0, (e.clientX - r.left)/r.width));
+      var idx = Math.round(t*(S.drift.length-1));
+      if(idx !== hover){ hover = idx; renderChart(); }
     }
     svg.addEventListener("pointermove", move);
     svg.addEventListener("pointerdown", move);
-    svg.addEventListener("pointerleave", function(){
-      if(chartHover !== null){ chartHover = null; renderChart(); }
-    });
-    var t = null;
-    window.addEventListener("resize", function(){
-      window.clearTimeout(t);
-      t = window.setTimeout(function(){
-        renderChart();
-        if(!busy) reels.forEach(function(reel){ tileHeight(reel); });
-      }, 120);
-    });
+    svg.addEventListener("pointerleave", function(){ if(hover !== null){ hover = null; renderChart(); } });
   })();
+  var rt = null;
+  window.addEventListener("resize", function(){
+    clearTimeout(rt);
+    rt = setTimeout(function(){ sizeRain(); sizeHyper(); sizeCells(); renderChart(); }, 140);
+  });
 
-  /* ---------- boot ---------- */
+  /* ============================ boot ============================ */
   load();
-  renderKey();
+  buildPtable();
+  sizeRain(); sizeHyper(); sizeCells();
+  [0,3,1].forEach(function(k,i){ setCell(i, k, false); });
   renderAll();
-  reels.forEach(function(reel,i){ settle(reel, SYMBOLS[[0,3,1][i]]); });
+  renderLive();
+  if(reduced){ drawRain(0.016); drawHyper(0.016, 0.4); drawPhasors(); }
+  requestAnimationFrame(frame);
+
+  /* Poke at the machine from the console if you like. */
+  window.QA77 = {reelOne:A, pair:P, session:S, species:SYMBOLS, jointStats:jointStats,
+                 constants:{hopping:J, coupling:G, dim:N}};
 })();
 </script>
 </body>
