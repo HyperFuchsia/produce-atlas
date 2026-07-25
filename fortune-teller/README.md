@@ -19,11 +19,32 @@ ticket stubs live in memory for the length of the visit.
 Readings live in the `BOOK` array in `index.html`. Each of the nine aspects — attention,
 work, people, rest, money, decisions, change, craft, yourself — carries its own openers,
 counsel, actions and a "favors" line, so a drawn ticket stays internally coherent instead of
-mixing an opener about money with advice about sleep. A draw picks an aspect (never the same
-one twice in a row), then samples one line from each of its pools.
+mixing an opener about money with advice about sleep. A draw picks an aspect, then samples one
+line from each of its pools.
 
 To add material, add entries to the pools of an existing aspect or append a new aspect object
 with the same shape.
+
+## What brings you in?
+
+Before pulling, you can tell the machine what you came in about — work, someone, a choice,
+money, yourself, or "don't ask, just tell me." Each subject in `SUBJECTS` maps to a few
+aspects and leans the draw toward them, but never guarantees them: about four tickets in five
+land on the subject you named, and the fifth prints `the machine changed the subject` in the
+footer instead of a colophon. That miss is deliberate. A machine that only ever gives you what
+you asked for is a vending machine, not an oracle — and the advice you did not ask for is
+often the advice worth reading.
+
+Two constants control this:
+
+- `LEAN` (24) — how much weight an on-subject aspect gets over an off-subject one.
+- `RECENCY` (0.3) — how much the aspect drawn last time is damped, so free draws do not
+  repeat themselves. It applies **only** to off-subject aspects: if you named a subject, a
+  repeat is what you asked for, and damping it would quietly cancel out the lean.
+
+Choosing "don't ask" clears the lean entirely and the draw is uniform across all nine aspects.
+
+Your last twelve stubs stay on the page; older ones fall out of the pocket.
 
 ## The economy
 

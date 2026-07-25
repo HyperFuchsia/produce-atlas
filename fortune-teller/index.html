@@ -7,7 +7,7 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; }
   body, h1, h2, p { margin: 0; }
-  button { font: inherit; color: inherit; }
+  button, input { font: inherit; color: inherit; }
   canvas, img { max-width: 100%; }
 </style>
 <title>Madame Automata — One Fictional Dollar</title>
@@ -221,6 +221,65 @@
     text-shadow: 0 0 12px rgba(62, 145, 135, 0.55);
   }
 
+  /* ── The question ──────────────────────────────────────── */
+
+  .ask {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .ask .prompt {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--brass-dim);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    justify-content: center;
+  }
+
+  .chip {
+    position: relative;
+    font-size: 0.84rem;
+    color: #9FB0AB;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(176, 135, 63, 0.32);
+    border-radius: 2px;
+    padding: 0.35rem 0.75rem;
+    cursor: pointer;
+    transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+  }
+
+  .chip input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .chip:hover { color: var(--brass); border-color: rgba(176, 135, 63, 0.6); }
+
+  .chip:has(input:checked) {
+    color: #0B1211;
+    background: linear-gradient(180deg, #C89A50, var(--brass-dim));
+    border-color: var(--brass);
+  }
+
+  .chip:has(input:focus-visible) {
+    outline: 2px solid var(--verdigris);
+    outline-offset: 2px;
+  }
+
+  .chip:has(input:disabled) { opacity: 0.45; cursor: not-allowed; }
+
   /* ── Console ───────────────────────────────────────────── */
 
   .console {
@@ -380,7 +439,8 @@
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    gap: 1rem;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
     font-family: var(--font-mono);
     font-size: 0.6rem;
     letter-spacing: 0.22em;
@@ -520,7 +580,7 @@
   <header class="marquee">
     <span class="rule">Coin-operated</span>
     <h1>Madame&nbsp;Automata</h1>
-    <p>One fictional dollar, one printed ticket. The machine cannot see your future — it has never claimed to. It only prints things that were already true of you, and one small thing to do about it.</p>
+    <p>One fictional dollar, one printed ticket. Tell it what you came in about, or don't. The machine cannot see your future — it has never claimed to. It only prints things that were already true of you, and one small thing to do about it.</p>
   </header>
 
   <section class="cabinet" aria-label="The fortune machine">
@@ -529,6 +589,11 @@
     <div class="glass">
       <canvas id="orb" width="720" height="300" aria-hidden="true"></canvas>
       <p class="status" id="status" role="status" aria-live="polite">Awaiting coin</p>
+    </div>
+
+    <div class="ask">
+      <span class="prompt" id="ask-label">What brings you in?</span>
+      <div class="chips" id="chips" role="radiogroup" aria-labelledby="ask-label"></div>
     </div>
 
     <div class="slot-row">
@@ -552,6 +617,7 @@
       <article class="ticket" id="ticket">
         <div class="ticket-head">
           <span id="t-aspect">On attention</span>
+          <span id="t-asked"></span>
           <span id="t-serial">No. 0000</span>
         </div>
         <p class="opener" id="t-opener"></p>
@@ -790,6 +856,29 @@
     "Printing"
   ];
 
+  const PATTER_ASKED = [
+    "Coin accepted",
+    "Your question, considered",
+    "Setting the type",
+    "Printing"
+  ];
+
+  /* What you can walk in about. Each subject leans the draw toward
+     a few aspects without ever guaranteeing them — the machine is
+     allowed to change the subject, and sometimes should.          */
+
+  const SUBJECTS = [
+    { id: "work",   label: "Work",     aspects: ["On work", "On craft", "On attention"] },
+    { id: "someone",label: "Someone",  aspects: ["On people"] },
+    { id: "choice", label: "A choice", aspects: ["On decisions", "On change"] },
+    { id: "money",  label: "Money",    aspects: ["On money"] },
+    { id: "myself", label: "Myself",   aspects: ["On yourself", "On rest"] },
+    { id: "any",    label: "Don't ask — just tell me", aspects: [] }
+  ];
+
+  const LEAN = 24;      // how hard a chosen subject pulls the draw
+  const RECENCY = 0.3;  // how much the last aspect drawn is damped
+
   /* ── State ───────────────────────────────────────────── */
 
   const $ = (id) => document.getElementById(id);
@@ -798,24 +887,39 @@
   let wallet = 7;
   let serial = 412;
   let busy = false;
+  let chosen = "any";
   const stubs = [];
   const recent = { aspect: -1 };
 
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
-  function drawAspect() {
-    if (BOOK.length < 2) return 0;
-    let i = Math.floor(Math.random() * BOOK.length);
-    if (i === recent.aspect) i = (i + 1 + Math.floor(Math.random() * (BOOK.length - 1))) % BOOK.length;
+  function drawAspect(subject) {
+    const weights = BOOK.map((entry, i) => {
+      const onSubject = subject.aspects.includes(entry.aspect);
+      // Damping stops the machine repeating itself when it is choosing
+      // freely. If you named a subject, a repeat is what you asked for.
+      const damp = i === recent.aspect && !onSubject ? RECENCY : 1;
+      return (onSubject ? LEAN : 1) * damp;
+    });
+
+    let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
+    let i = 0;
+    for (; i < weights.length - 1; i++) {
+      roll -= weights[i];
+      if (roll <= 0) break;
+    }
     recent.aspect = i;
     return i;
   }
 
-  function compose() {
-    const entry = BOOK[drawAspect()];
+  function compose(subject) {
+    const entry = BOOK[drawAspect(subject)];
+    const offSubject = subject.aspects.length > 0 && !subject.aspects.includes(entry.aspect);
     serial += 1 + Math.floor(Math.random() * 5);
     return {
       aspect: entry.aspect,
+      asked: subject.aspects.length ? "asked: " + subject.label.toLowerCase() : "",
+      offSubject,
       opener: pick(entry.openers),
       counsel: pick(entry.counsel),
       action: pick(entry.actions),
@@ -823,12 +927,13 @@
       serial: "No. " + String(serial).padStart(4, "0"),
       date: new Date().toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }).toUpperCase(),
       number: pick(HOURS),
-      colophon: pick(COLOPHONS)
+      colophon: offSubject ? "the machine changed the subject" : pick(COLOPHONS)
     };
   }
 
   function render(t, { current = true } = {}) {
     $("t-aspect").textContent = t.aspect;
+    $("t-asked").textContent = t.asked;
     $("t-serial").textContent = t.serial;
     $("t-opener").textContent = t.opener;
     $("t-counsel").textContent = t.counsel;
@@ -847,6 +952,8 @@
     }
   }
 
+  const MAX_STUBS = 12;   // the pocket only holds so many
+
   function addStub(t) {
     stubs.unshift(t);
     const grid = $("stub-grid");
@@ -857,6 +964,10 @@
     btn.textContent = t.serial + " · " + t.aspect.replace(/^On /, "");
     btn.addEventListener("click", () => { if (!busy) render(t); });
     grid.prepend(btn);
+    while (stubs.length > MAX_STUBS) {
+      stubs.pop();
+      grid.lastElementChild.remove();
+    }
     $("stubs").hidden = false;
   }
 
@@ -890,6 +1001,7 @@
     }
 
     busy = true;
+    lockChips(true);
     wallet -= 1;
     updateWallet();
 
@@ -901,19 +1013,21 @@
     $("tray").classList.remove("out");
     spin(true);
 
+    const subject = SUBJECTS.find((s) => s.id === chosen) || SUBJECTS[SUBJECTS.length - 1];
     const beat = reduced ? 60 : 620;
-    for (const line of PATTER) {
+    for (const line of (subject.aspects.length ? PATTER_ASKED : PATTER)) {
       say(line);
       await wait(beat);
     }
 
-    const ticket = compose();
+    const ticket = compose(subject);
     render(ticket);
     addStub(ticket);
     markStub(ticket.serial);
     spin(false);
     say(wallet > 0 ? "Ready" : "Coin return, then");
     busy = false;
+    lockChips(false);
     updateWallet();
   }
 
@@ -964,6 +1078,24 @@
   }
 
   /* ── Wiring ──────────────────────────────────────────── */
+
+  const chips = $("chips");
+  for (const subject of SUBJECTS) {
+    const label = document.createElement("label");
+    label.className = "chip";
+    const input = document.createElement("input");
+    input.type = "radio";
+    input.name = "subject";
+    input.value = subject.id;
+    input.checked = subject.id === chosen;
+    input.addEventListener("change", () => { chosen = subject.id; });
+    label.append(input, document.createTextNode(subject.label));
+    chips.append(label);
+  }
+
+  function lockChips(locked) {
+    for (const input of chips.querySelectorAll("input")) input.disabled = locked;
+  }
 
   $("pull").addEventListener("click", pull);
 
