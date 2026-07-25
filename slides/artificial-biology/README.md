@@ -110,6 +110,26 @@ gives you a tab-separated `timecode / duration / act` table to paste into an edi
 
 Sources for every factual claim are listed at the bottom of that panel.
 
+## The one-sheet
+
+`onesheet.html` is the whole piece on a single page — for reviewing the argument, writing the
+description, or reading the script while recording. It carries the act spine as a duration-proportional
+bar, the argument distilled into five moves, plates 17/18 side by side, and every plate's on-screen
+text and voiceover line with timecodes, plus the palette, type roles, art keys and sources.
+
+It is **generated from `index.html`**, so it cannot drift out of sync:
+
+```bash
+node build-onesheet.mjs      # re-run after editing any plate
+```
+
+Unlike the sequence — which commits to one dark visual world because it's a film frame — the
+one-sheet is a document and is fully theme-aware. Its chart marks are deliberately *not* the identity
+accents: they're the nearest steps that pass the categorical colour checks against each mode's
+surface (identity violet `#8B7FEE` falls under the light-mode contrast floor, and identity orange
+`#E4783C` sits above the dark-mode lightness ceiling of 0.67). Worst adjacent colour-blind separation
+is ΔE 26.2, well clear of the ≥8 target.
+
 ## Structure
 
 | Plates | Act | Beat |
