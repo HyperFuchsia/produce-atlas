@@ -1819,6 +1819,7 @@ function newFlight(){
   sim.haz=seedHazards(sim.field);
   sim.seenHaz={};
   sim.stalker=null; sim.dead=null; sim.over=false; sim.log=[]; sim.taughtPlot=false;
+  sim.wasOutside=false;
   sim.systems={}; sim.view='CHART';
   sim.aid={rng:false, brg:false, elv:false};
   sim.standing={}; for(const k in RACES) sim.standing[k]=0;
@@ -1875,7 +1876,11 @@ function stalkerAdvance(){
   const s=sim.stalker; if(!s||sim.over) return;
   const h=here();
   const gap=len3(sub3(h.p,s.p));
-  const step=Math.min(gap, 2.0+Math.min(sim.heat,12)*0.35);
+  /* Outside the policy limit there is no cover of any kind — no filed route,
+     no recovery, nobody looking. The registry states this at power-on, the
+     chart draws the boundary, and this is where it costs you. */
+  const outside=len3(h.p)>POLICY_LY;
+  const step=Math.min(gap, (2.0+Math.min(sim.heat,12)*0.35)*(outside?1.45:1));
   s.p=add3(s.p, mul3(nrm3(sub3(h.p,s.p)), step));
   s.close=len3(sub3(h.p,s.p));
   if(s.close<0.35){
@@ -2122,6 +2127,16 @@ function plotExecute(){
 }
 
 /* Called when the jump animation finishes. */
+/* Crossing the boundary is worth announcing once, in each direction. */
+function checkPolicy(){
+  const out=len3(here().p)>POLICY_LY;
+  if(out===sim.wasOutside) return;
+  sim.wasOutside=out;
+  logLine(out ? 'BEYOND POLICY LIMIT — NO COVER, NO RECOVERY'
+              : 'INSIDE POLICY LIMIT — COVER REINSTATED');
+  if(out) sndAlarm();
+}
+
 function plotArrive(j){
   if(j.band==='CLEAN'){
     sim.at=j.to; sim.pos=null;
@@ -2139,6 +2154,7 @@ function plotArrive(j){
     sndAlarm();
   }
   stalkerAdvance();
+  checkPolicy();
   plot.dirty=true;
 }
 
@@ -2457,7 +2473,13 @@ function beginFrame(){
    persistence fade so each one twinkles rather than blinking. */
 function drawSparkle(){
   const rad=Math.min(W,H)*0.55;
-  for(let i=0;i<70;i++){
+  /* Phosphor grain is real, but how much of it there is reports something:
+     an unregulated supply excites the coating unevenly, so a holed vessel
+     grains up. Same source as the jitter and the tearing, so all three move
+     together and the operator reads the hull off the picture. */
+  const flt=faultLevel();
+  const N=Math.round(70*(1+flt*2.2));
+  for(let i=0;i<N;i++){
     const a=Math.random()*6.283185;
     const r=Math.sqrt(Math.random())*rad;
     const x=(CX+Math.cos(a)*r)|0, y=(CY+Math.sin(a)*r)|0;
@@ -2470,7 +2492,7 @@ function drawSparkle(){
     if(big) ctx.shadowBlur=0;
   }
   /* A few specks anywhere on the tube, so the corners are not dead. */
-  for(let i=0;i<22;i++){
+  for(let i=0;i<Math.round(22*(1+flt*2.2));i++){
     ctx.fillStyle=SPARK[(Math.random()*SPARK.length)|0];
     ctx.globalAlpha=0.15+Math.random()*0.5;
     ctx.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);
@@ -2504,16 +2526,72 @@ function drawBloom(){
   bloomCtx.filter='none';
 }
 
-let stars=[];
+/* --- the sky -------------------------------------------------------------
+   The background used to be a hundred and sixty dots at random screen
+   positions. They did not move when the camera did, which meant they were not
+   in the world at all — the one thing a starfield is for.
+
+   These are directions on the celestial sphere, at infinity, so they carry no
+   parallax and rotate with the camera exactly as the real sky would. That
+   makes the background do a job: it is the only continuous readout of which
+   way the chart is facing, and it is the frame every coordinate in the game is
+   quoted in. The catalogue's α and δ, the plot's bearing and elevation and the
+   graticule below are all measured against these axes, so the axes are drawn.
+   -------------------------------------------------------------------------- */
+let sky=[];
 function seedStars(){
-  stars=[];
-  for(let i=0;i<160;i++) stars.push({x:Math.random(),y:Math.random(),a:0.2+Math.random()*0.7});
+  sky=[];
+  /* A deterministic spiral over the sphere — even coverage without clumping,
+     and the same sky every run, because it is the same sky. */
+  const N=340;
+  for(let i=0;i<N;i++){
+    const y=1-2*(i+0.5)/N;
+    const r=Math.sqrt(Math.max(0,1-y*y));
+    const th=i*2.399963229728653;              // golden angle
+    sky.push({d:[Math.cos(th)*r, y, Math.sin(th)*r],
+              a:0.18+((i*2654435761)%1000)/1000*0.55});
+  }
+}
+
+/* Rotation only: a direction at infinity has no position to translate. */
+function projectSky(d){
+  const cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
+  const cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
+  const x1= d[0]*cy + d[2]*sy;
+  const z1=-d[0]*sy + d[2]*cy;
+  const y2= d[1]*cp - z1*sp;
+  const z2= d[1]*sp + z1*cp;
+  if(z2>=-0.02) return null;                   // behind the eye
+  const s=F/(-z2);
+  return {x:CX+x1*s, y:CY-y2*s};
 }
 
 function drawStars(){
-  for(const s of stars){
-    ctx.fillStyle='rgba(140,230,255,'+(s.a*0.5).toFixed(3)+')';
-    ctx.fillRect(s.x*W, s.y*H, 1, 1);
+  for(const s of sky){
+    const q=projectSky(s.d);
+    if(!q||q.x<0||q.x>W||q.y<0||q.y>H) continue;
+    ctx.fillStyle='rgba(140,230,255,'+(s.a*0.45).toFixed(3)+')';
+    ctx.fillRect(q.x|0, q.y|0, 1, 1);
+  }
+  /* The frame itself. Everything in this console is quoted against these
+     three directions, so they are marked on the sky rather than assumed:
+     the equatorial poles, and the origin of right ascension, which is the
+     direction bearing zero points along. */
+  const marks=[
+    {d:[0,1,0],  t:'+90° DEC', c:'rgba(61,139,255,0.55)'},
+    {d:[0,-1,0], t:'−90° DEC', c:'rgba(61,139,255,0.55)'},
+    {d:[1,0,0],  t:'α 0h · BRG 000', c:'rgba(216,255,60,0.6)'},
+    {d:[0,0,1],  t:'BRG 090', c:'rgba(61,139,255,0.4)'}
+  ];
+  for(const m of marks){
+    const q=projectSky(m.d);
+    if(!q||q.x<-40||q.x>W+40||q.y<-20||q.y>H+20) continue;
+    ctx.strokeStyle=m.c; ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(q.x-5,q.y); ctx.lineTo(q.x+5,q.y);
+    ctx.moveTo(q.x,q.y-5); ctx.lineTo(q.x,q.y+5);
+    ctx.stroke();
+    if(q.x>4&&q.x<W-70&&q.y>10&&q.y<H-10) label(m.t, q.x+8, q.y, m.c, false);
   }
 }
 
@@ -2527,7 +2605,13 @@ function drawStars(){
    the arrangement legible.
    ========================================================================== */
 
+/* Distance from Sol, in light years. Two of these are not decoration: 9.0 is
+   the furthest single jump the drive will make, and 25 is where the operating
+   licence stops covering the vehicle — which the registry states at power-on
+   and which the game enforces. The rest are decade marks so the catalogue can
+   be read off the plane. */
 const PLANE_RINGS=[5,10,15,20,25];
+const POLICY_LY=25;
 
 /* Screen-space label placement. Seventy stars inside a nine-light-year ball
    all want to write their name in the same forty pixels, so labels are
@@ -2551,26 +2635,72 @@ function claimLabel(text,x,y,colour,boxed){
 
 function chartPlane(){
   const c='rgba(61,139,255,';
-  /* Range rings on the reference plane, labelled in light years. */
-  for(const r of PLANE_RINGS){
+  const ring=(R,col,w)=>{
     const pts=[];
     for(let i=0;i<=64;i++){
       const a=i/64*6.2832;
-      pts.push([Math.cos(a)*r, 0, Math.sin(a)*r]);
+      pts.push([Math.cos(a)*R, 0, Math.sin(a)*R]);
     }
-    const proj=pts.map(p=>inFront(p)?project(p):null);
-    strokePolyline(flatten(proj), c+(r===10?0.30:0.16)+')', 1, 0);
+    strokePolyline(pts.map(p=>inFront(p)?project(p):null), col, w||1, 0);
+  };
+
+  /* Distance from Sol. */
+  for(const r of PLANE_RINGS){
+    if(r===POLICY_LY) continue;
+    ring(r, c+0.14+')');
     const lp=project([r,0,0]);
-    if(lp && inFront([r,0,0])) label(r+' LY', lp.x+4, lp.y, 'rgba(61,139,255,0.5)', false);
+    if(lp && inFront([r,0,0])) label(r+' LY', lp.x+4, lp.y, 'rgba(61,139,255,0.45)', false);
   }
-  /* Spokes every thirty degrees. */
-  for(let a=0;a<360;a+=30){
-    const t=a*RA_D, R=PLANE_RINGS[PLANE_RINGS.length-1];
-    const p0=[0,0,0], p1=[Math.cos(t)*R,0,Math.sin(t)*R];
-    if(inFront(p0)&&inFront(p1)){
-      const q0=project(p0), q1=project(p1);
-      if(q0&&q1) strokePolyline([q0,q1],'rgba(61,139,255,0.10)',1,0);
+
+  /* The policy limit. Past it nothing is coming for you, and the console says
+     so on the plate rather than only in the small print at power-on. */
+  const out=len3(here().p)>POLICY_LY;
+  ring(POLICY_LY, out?'rgba(255,58,44,0.55)':'rgba(255,154,31,0.34)', 1.3);
+  const pl=project([POLICY_LY,0,0]);
+  if(pl && inFront([POLICY_LY,0,0]))
+    label(POLICY_LY+' LY · POLICY LIMIT', pl.x+5, pl.y,
+          out?'rgba(255,58,44,0.8)':'rgba(255,154,31,0.6)', out);
+
+  /* What the drive can reach in one jump, drawn around the vehicle rather than
+     around Sol, because that is the question the operator is actually asking.
+     Anything outside it needs a stepping stone. */
+  const h=here();
+  const jr=[];
+  for(let i=0;i<=64;i++){
+    const a=i/64*6.2832;
+    jr.push([h.p[0]+Math.cos(a)*JUMP_MAX, h.p[1], h.p[2]+Math.sin(a)*JUMP_MAX]);
+  }
+  strokePolyline(jr.map(p=>inFront(p)?project(p):null),'rgba(34,255,136,0.22)',1,0);
+  const jl=[h.p[0]+JUMP_MAX, h.p[1], h.p[2]];
+  const jq=project(jl);
+  if(jq && inFront(jl)) label('JUMP '+JUMP_MAX.toFixed(1)+' LY', jq.x+5, jq.y, 'rgba(34,255,136,0.5)', false);
+  /* And what the tank can pay for, which is usually the tighter of the two. */
+  if(sim.fuel<JUMP_MAX-0.05){
+    const fr=[];
+    for(let i=0;i<=64;i++){
+      const a=i/64*6.2832;
+      fr.push([h.p[0]+Math.cos(a)*sim.fuel, h.p[1], h.p[2]+Math.sin(a)*sim.fuel]);
     }
+    strokePolyline(fr.map(p=>inFront(p)?project(p):null),'rgba(255,210,61,0.34)',1,0);
+    const fl=[h.p[0]+sim.fuel, h.p[1], h.p[2]], fq=project(fl);
+    if(fq && inFront(fl)) label('FUEL '+sim.fuel.toFixed(1)+' LY', fq.x+5, fq.y+11, 'rgba(255,210,61,0.6)', false);
+  }
+
+  /* Spokes every thirty degrees, labelled with the bearing they are — the
+     same bearing the plot asks for, so a heading can be read straight off the
+     plane instead of guessed at. */
+  const R=PLANE_RINGS[PLANE_RINGS.length-1];
+  for(let a=0;a<360;a+=30){
+    const t=a*RA_D;
+    const p0=[0,0,0], p1=[Math.cos(t)*R,0,Math.sin(t)*R];
+    if(!inFront(p0)||!inFront(p1)) continue;
+    const q0=project(p0), q1=project(p1);
+    if(!q0||!q1) continue;
+    strokePolyline([q0,q1],'rgba(61,139,255,0.09)',1,0);
+    const lp=[Math.cos(t)*R*1.04,0,Math.sin(t)*R*1.04];
+    if(!inFront(lp)) continue;
+    const lq=project(lp);
+    if(lq) claimLabel(String(a).padStart(3,'0'), lq.x, lq.y, 'rgba(61,139,255,0.42)', false);
   }
 }
 
@@ -2838,15 +2968,25 @@ function drawLocal(){
   const si=sim.at;
   const st=si>=0?STARS[si]:null;
 
-  /* The reference plane, so orbits read as orbits and not as loops in a
-     void. Same graticule idiom as the chart, one scale down. */
+  /* The reference plane. The rings are not decade marks — they are the
+     approach envelope: the altitude bands the descent dial works in, drawn at
+     the same scale the panel quotes, so what ALT 0.40 means is visible on the
+     plate rather than only in a number. The spokes are bearings in the same
+     convention the chart uses. */
   for(const R of [2,4,6,8,10]){
     const pts=[];
     for(let i=0;i<=48;i++){
       const a=i/48*6.2832;
       pts.push(project([Math.cos(a)*R,0,Math.sin(a)*R]));
     }
-    strokePolyline(pts,'rgba(61,139,255,0.13)',1,0,true);
+    strokePolyline(pts,'rgba(61,139,255,0.11)',1,0,true);
+    const lq=project([R,0,0]);
+    if(lq) claimLabel(R.toFixed(0)+' AU', lq.x+4, lq.y, 'rgba(61,139,255,0.34)', false);
+  }
+  for(let a=0;a<360;a+=45){
+    const t=a*RA_D;
+    const q0=project([0,0,0]), q1=project([Math.cos(t)*10,0,Math.sin(t)*10]);
+    if(q0&&q1) strokePolyline([q0,q1],'rgba(61,139,255,0.07)',1,0);
   }
 
   if(!st){
@@ -2915,6 +3055,15 @@ function drawLocal(){
     claimLabel(b.id+(b.taken?' · WORKED':' · '+B.label), q.x+rr+6, q.y, live?B.col:'#12386E', sel);
   }
 
+  /* Wrecks are drawn as wrecks. An anomaly is somebody else's vessel and the
+     console has a bitmap for that; using a circle for it would be throwing
+     away the one piece of identification the sensor actually returns. */
+  for(const b of systemAt(si)){
+    if(b.k!=='anom') continue;
+    const q=project(bodyPos(b));
+    if(q) drawSprite(SPRITES.derelict, q.x, q.y, Math.max(1,q.s*0.030), BODY.anom.col, 5);
+  }
+
   /* Anything transmitting from this system sits off the plane, because it is
      a station and not a world. */
   const ali=ALIENS.find(a=>st&&a.star===st.n);
@@ -2949,6 +3098,19 @@ function drawShipLocal(){
       }
       const d=approachDamage(approach.body, approach.alt);
       strokePolyline(pts, d>0?'#FF3A2C':'#22FF88', 1.3, 6);
+      /* The hold altitude and the floor, drawn as two spheres around the body
+         at their real radii. Which of the two is inside the other is the whole
+         decision, and it is a picture rather than a comparison of digits. */
+      const bd=approach.body;
+      for(const [rr,col] of [[bd.rad+floorEstimate(bd),'rgba(255,58,44,0.5)'],
+                             [bd.rad+approach.alt, d>0?'rgba(255,58,44,0.8)':'rgba(34,255,136,0.7)']]){
+        const ring=[];
+        for(let i=0;i<=28;i++){
+          const a=i/28*6.2832;
+          ring.push(project([t[0]+Math.cos(a)*rr, t[1], t[2]+Math.sin(a)*rr]));
+        }
+        strokePolyline(ring,col,1,0,true);
+      }
     }
   }
   return q;
@@ -3248,19 +3410,34 @@ function drawFrame(){
   const m=Math.min(W,H);
   const cs=clamp(m*0.055,14,30);
   const inset=clamp(m*0.07,20,54);
-  drawCross(inset,inset,cs,'#3D8BFF');
-  drawCross(W-inset,inset,cs,'#3D8BFF');
-  drawCross(inset,H-inset,cs,'#3D8BFF');
-  drawCross(W-inset,H-inset,cs,'#3D8BFF');
+  const h=here();
+  const local=sim.view==='LOCAL';
+  /* Registration marks, and what each one registers. A cross in a corner with
+     nothing written against it is a sticker; a cross with the camera's own
+     attitude against it is a fiducial, which is what these are shaped like.
+     Top left carries the frame, top right the attitude, bottom left the
+     scale, bottom right the state. */
+  const corner=(x,y,c)=>drawCross(x,y,cs,c);
+  const brg=((-cam.yaw*DEG)%360+360)%360;
+  corner(inset,inset,'#3D8BFF');
+  corner(W-inset,inset,'#3D8BFF');
+  corner(inset,H-inset,'#3D8BFF');
+  corner(W-inset,H-inset,'#3D8BFF');
 
   const gut=inset+cs+10;
-  const h=here();
-  label(sim.view==='LOCAL'
-        ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')+' · SYSTEM SCALE'
-        : 'CHART · EQUATORIAL · '+cam.dist.toFixed(0)+' LY FIELD',
+  label(local ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')
+              : 'CHART · EQUATORIAL · EPOCH J2000',
         gut, 14, '#8CE6FF', true);
-  label('P.O.R.  '+h.n+'  '+h.sp, gut, H-14, '#8CE6FF', false);
-  label(sim.jumping?'JUMP':'IDLE', W-gut, H-14, '#3D8BFF', false, 'right');
+  /* Camera attitude: the chart is a projection and the operator is entitled
+     to know which way it is pointed, in the same units the plot takes. */
+  label('AZ '+brg.toFixed(0).padStart(3,'0')+'  EL '+(cam.pitch*DEG).toFixed(0).padStart(3,'0'),
+        W-gut, 14, '#8CE6FF', true, 'right');
+  label(local ? 'GRID 2 AU · '+(sim.at>=0?systemAt(sim.at).filter(b=>!b.taken).length+' UNWORKED':'NO PRIMARY')
+              : 'FIELD '+cam.dist.toFixed(0)+' LY · GRID 5 LY',
+        gut, H-14, '#8CE6FF', false);
+  label((sim.jumping?'JUMP':sim.phase)+
+        (local?'':'  ·  '+len3(h.p).toFixed(1)+' LY FROM SOL'),
+        W-gut, H-14, len3(h.p)>POLICY_LY?'#FF3A2C':'#3D8BFF', false, 'right');
 }
 
 function render(){
@@ -4367,17 +4544,35 @@ function drawFace(){
   drawFaceMouth(t, comms.mouth);
   drawFaceEyes(t);
 
-  /* A framing bracket, so the face reads as a picture the console is
-     receiving rather than a thing in the room. */
-  c.strokeStyle=rgba(0.28); c.lineWidth=1;
-  const b=Math.min(comms.W,comms.H)*0.46, bx=comms.ox, by=comms.oy;
+  /* The bracket is the receiver's frame, and it reports on the link it is
+     framing: the arm length is the signal strength, so a weak channel closes
+     the brackets in, and the corners carry what the channel actually knows —
+     the band, the range, and how much of what is being said is getting
+     through. Nothing here is a border. */
+  const sig=clamp((comms.sig||0)/100,0.12,1);
+  const bw=Math.min(comms.W,comms.H)*0.47;
+  const bx=comms.W/2, by=comms.H/2;
+  const arm=bw*(0.12+0.22*sig);
+  c.strokeStyle=rgba(0.20+0.30*sig); c.lineWidth=1;
   for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
     c.beginPath();
-    c.moveTo(bx+sx*b, by+sy*b - sy*b*0.22);
-    c.lineTo(bx+sx*b, by+sy*b);
-    c.lineTo(bx+sx*b - sx*b*0.22, by+sy*b);
+    c.moveTo(bx+sx*bw, by+sy*bw - sy*arm);
+    c.lineTo(bx+sx*bw, by+sy*bw);
+    c.lineTo(bx+sx*bw - sx*arm, by+sy*bw);
     c.stroke();
   }
+  c.font='8px '+getComputedStyle(document.body).fontFamily;
+  c.fillStyle=rgba(0.5);
+  const comp=Math.round(comprehension(comms.alien.race)*100);
+  const si2=STARS.findIndex(st=>st.n===comms.alien.star);
+  const ly=si2<0?0:starDist(here(),STARS[si2]);
+  c.textAlign='left';
+  c.fillText(r.band, bx-bw+3, by-bw-4);
+  c.fillText('RNG '+ly.toFixed(2)+' LY', bx-bw+3, by+bw+10);
+  c.textAlign='right';
+  c.fillText('SIG '+(comms.sig||0)+'%', bx+bw-3, by-bw-4);
+  c.fillText('DECODED '+comp+'%', bx+bw-3, by+bw+10);
+  c.textAlign='left';
   c.restore();
 }
 
