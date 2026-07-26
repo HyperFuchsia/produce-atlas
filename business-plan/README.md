@@ -36,6 +36,7 @@ the site walk and the documents.
 | [`01-CORRECTIONS.md`](01-CORRECTIONS.md) | What failed scrutiny in the source doctrine, and why. All items now applied — retained as the reasoning record. |
 | [`02-BUILD-SEQUENCE.md`](02-BUILD-SEQUENCE.md) | Month 0–18 operating plan, sequenced against real constraints. |
 | [`03-PRODUCT-SPEC.md`](03-PRODUCT-SPEC.md) | The Digital Governor, v0. Buildable specification. |
+| [`source/THE-CASE.md`](source/THE-CASE.md) | **The founding argument**, compiled from the original material into one continuous document. Read this to understand what the business is. |
 | [`04-DOCTRINE.md`](04-DOCTRINE.md) | **Canonical.** Four pillars, controlled glossary, and the argument register — every claim with its evidentiary strength and its strongest counter. Source of truth for all external writing. |
 | [`standard/`](standard/) | UAS-1:v0.1 — the standard, registry schema, conformance scorer, worked examples. |
 | [`kit/`](kit/) | **Delivery kit.** Everything to run one paid engagement: field guide, engagement scope, findings letter, certificate. |

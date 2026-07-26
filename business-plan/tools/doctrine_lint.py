@@ -80,11 +80,17 @@ def is_negated(line: str, match: re.Match) -> bool:
     return bool(NEGATION.search(before[sentence_start + 1 :]))
 
 
-def is_quoted(line: str, match: re.Match) -> bool:
+def is_quoted(line: str, match: re.Match, prefix: str = "") -> bool:
     """True if the match sits inside quotation marks, a table cell listing
-    retired terms, or a markdown blockquote — i.e. it is being cited."""
+    retired terms, or a markdown blockquote — i.e. it is being cited.
+
+    `prefix` carries the earlier lines of the same paragraph. Quote parity has
+    to be tracked across the whole paragraph: a quotation that wraps a line
+    break leaves an even count on its own line and would otherwise read as
+    unquoted usage.
+    """
     s, e = match.span()
-    before, after = line[:s], line[e:]
+    before, after = prefix + line[:s], line[e:]
     if before.count('"') % 2 or before.count("“") > before.count("”"):
         return True
     for q in ('"', "'", "“", "”", "`", "*"):
@@ -101,10 +107,13 @@ def scan(root: pathlib.Path) -> tuple[list[str], int]:
         rel = str(path.relative_to(root))
         meta = pathlib.Path(rel).name in META_FILES
 
+        para = ""   # earlier lines of the current paragraph, for quote parity
         for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                para = ""
             for pattern, why in ABSOLUTE:
                 for m in re.finditer(pattern, line, re.I):
-                    if meta or is_quoted(line, m) or is_negated(line, m):
+                    if meta or is_quoted(line, m, para) or is_negated(line, m):
                         continue
                     violations.append(
                         f"{rel}:{n}  ABSOLUTE CLAIM  {m.group(0)!r}\n"
@@ -114,7 +123,7 @@ def scan(root: pathlib.Path) -> tuple[list[str], int]:
                 continue
             for pattern, why in RETIRED:
                 for m in re.finditer(pattern, line, re.I):
-                    if is_quoted(line, m):
+                    if is_quoted(line, m, para):
                         continue
                     violations.append(
                         f"{rel}:{n}  RETIRED TERM  {m.group(0)!r}\n"
@@ -129,6 +138,7 @@ def scan(root: pathlib.Path) -> tuple[list[str], int]:
                     f"{rel}:{n}  SOURCING  quoted statement attributed to a person\n"
                     f"    §5 rule 2 — verify against a primary transcript or cut"
                 )
+            para += line + " "
 
     # broken internal links
     for path in files:
