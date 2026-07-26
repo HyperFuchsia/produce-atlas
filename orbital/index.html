@@ -93,7 +93,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   grid-area:head;
   display:flex;
   align-items:center;
-  gap:6px;
+  flex-wrap:wrap;          /* four annunciators plus a title will not fit a phone on one line */
+  gap:5px;
   border:var(--hair) solid var(--frame);
   padding:5px 7px;
   min-width:0;
@@ -107,7 +108,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   overflow:hidden;
   text-overflow:clip;
 }
-#head .spacer{flex:1}
+#head .spacer{flex:1 1 auto;min-width:0}
 #met{color:var(--white);font-size:11px}
 #phase{font-size:10px}
 
@@ -420,7 +421,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   <header id="head">
     <span id="title">DEORBITAL DESCENT</span>
     <span class="box" id="phase">ORBIT</span>
-    <span class="box box--ship" id="scan">SCAN 00/16</span>
+    <span class="box box--ship" id="scan">SCAN 00/28</span>
+    <span class="box" id="limbstat">VACUUM</span>
     <span class="spacer"></span>
     <span class="box" id="met">T+00:00:00</span>
   </header>
@@ -1297,6 +1299,140 @@ function drawConic(){
 }
 
 /* ==========================================================================
+   ATMOSPHERIC LIMB ANNUNCIATOR
+   --------------------------------------------------------------------------
+   The outline of the planet is not drawn as decoration. The limb is the
+   atmosphere seen edge-on, so it is given the job of reporting the entry
+   corridor, and it is legible from across the room without reading a single
+   digit:
+
+     FILL   the arc lit clockwise from the top is how far the trajectory
+            reaches into the atmosphere. Nothing lit means periapsis is in
+            vacuum. A full ring means it intersects the ground.
+     RATE   the strobe frequency is deceleration load. A slow half-hertz
+            heartbeat in orbit, a hard eight-hertz strobe at peak g.
+     COLOUR ice for vacuum, amber for a good corridor, red when the burn is
+            committed to something too steep or the vehicle is over 8 g.
+     WIDTH  thickens with dynamic pressure, so the outline visibly hardens
+            as the air does.
+
+   A second ring outside it is the atmosphere shell itself at 130 km, drawn
+   only once the trajectory reaches it. You can fly the entire deorbit burn
+   watching the outline alone — that is the test this has to pass.
+   ========================================================================== */
+
+/* Apparent screen radius of the limb of a sphere of radius a, under the same
+   perspective the rest of the scene uses. For a camera at distance d the
+   horizon sits at depth a²/d, not at the sphere's centre — using the centre
+   would draw the outline slightly too large and it would not sit on the
+   coastlines. */
+function limbRadius(a){
+  const d=cam.dist;
+  if(d<=a) return null;
+  const x=a*Math.sqrt(1-(a*a)/(d*d));
+  const depth=d-(a*a)/d;
+  return F*x/depth;
+}
+
+function limbState(){
+  const el=elements();
+  const alt=el.alt;
+  const inAtm=alt<ATM_TOP;
+
+  /* How far the trajectory reaches into the atmosphere, 0 to 1. */
+  const fill = el.pe>=ATM_TOP ? 0 : clamp((ATM_TOP-el.pe)/ATM_TOP,0,1);
+
+  /* Committed to a corridor that will overload the vehicle, but not there
+     yet — the warning that is worth having before it is too late to fix. */
+  const steep = !inAtm && el.pe<25;
+  const overG = sim.g>8;
+
+  const rho=density(alt), vms=el.vm*1000;
+  const q=0.5*rho*vms*vms;                       // dynamic pressure, Pa
+
+  return {
+    fill, steep, overG, q, inAtm,
+    load: clamp(sim.g/10,0,1),
+    colour: (steep||overG) ? [255,58,44] : fill>0 ? [255,210,61] : [140,230,255],
+    /* Short enough to sit in a phone header next to three other boxes. */
+    caption: overG      ? 'LOAD '+sim.g.toFixed(1)+' G'
+           : steep      ? 'TOO STEEP'
+           : inAtm      ? 'IFACE Q '+Math.round(q)+' PA'
+           : fill>0     ? 'IFACE PE '+Math.round(el.pe)+' KM'
+           :              'VACUUM'
+  };
+}
+
+function drawLimb(){
+  const st=limbState();
+  const rl=limbRadius(1.0);
+  if(!rl) return;
+  const c=st.colour;
+  const rgb=(al)=>'rgba('+c[0]+','+c[1]+','+c[2]+','+al+')';
+
+  /* Strobe. Rate is load; in vacuum it settles to a slow heartbeat so the
+     annunciator still reads as powered rather than failed. */
+  const rate = 0.5 + st.load*7.5 + (st.inAtm?1.0:0);
+  const duty = 0.58 - st.load*0.18;
+  const lit  = (((performance.now()/1000)*rate)%1) < duty;
+
+  const width = 1.2 + clamp(st.q/9000,0,1)*2.6;
+  const SEG=60, GAP=0.16;                        // 60 arcs with a hairline gap
+  const step=2*Math.PI/SEG;
+  const nLit=Math.round(st.fill*SEG);
+
+  ctx.save();
+  ctx.lineCap='butt';
+
+  /* The atmosphere shell, drawn only once the trajectory reaches it. */
+  if(st.fill>0){
+    const ra=limbRadius(1+ATM_TOP/R_P);
+    if(ra){
+      ctx.setLineDash([4,5]);
+      ctx.strokeStyle=rgb(0.18+0.3*st.fill);
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(CX,CY,ra,0,2*Math.PI); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  }
+
+  for(let i=0;i<SEG;i++){
+    const a0=-Math.PI/2+i*step+GAP*step*0.5;
+    const a1=a0+step-GAP*step;
+    const on=i<nLit;
+    ctx.beginPath();
+    ctx.arc(CX,CY,rl,a0,a1);
+    if(on){
+      ctx.strokeStyle=rgb(lit?0.95:0.3);
+      ctx.lineWidth=width;
+      if(lit){ ctx.shadowColor=rgb(1); ctx.shadowBlur=10; }
+    }else{
+      ctx.strokeStyle='rgba(140,230,255,0.34)';
+      ctx.lineWidth=1.1;
+      ctx.shadowBlur=0;
+    }
+    ctx.stroke();
+    ctx.shadowBlur=0;
+  }
+
+  /* Four index marks. These carry the slow heartbeat that says the
+     annunciator is powered even when nothing is lit. */
+  const beat=0.55+0.45*Math.abs(Math.sin(performance.now()/900));
+  ctx.strokeStyle=st.fill>0?rgb(0.9):'rgba(140,230,255,'+(0.45*beat).toFixed(2)+')';
+  ctx.lineWidth=1.6;
+  for(let k=0;k<4;k++){
+    const a=-Math.PI/2+k*Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(CX+Math.cos(a)*(rl-6), CY+Math.sin(a)*(rl-6));
+    ctx.lineTo(CX+Math.cos(a)*(rl+7), CY+Math.sin(a)*(rl+7));
+    ctx.stroke();
+  }
+
+  ctx.textAlign='left';
+  ctx.restore();
+}
+
+/* ==========================================================================
    SENSOR SWEEP
    The footprint is the vehicle's true horizon circle — acos(R/(R+h)) — so it
    genuinely widens as you climb and collapses on entry. A bearing line
@@ -1618,6 +1754,7 @@ function render(){
   drawGraticule();
   drawCoasts();
   drawHazards();
+  drawLimb();
   drawFootprint();
   drawZone();
   drawPings();
@@ -1715,6 +1852,14 @@ function refresh(){
   el.cPer.textContent = isFinite(e.T)? fmtDur(e.T) : '—';
 
   $('scan').textContent='SCAN '+pad(sim.found.length,2)+'/'+pad(EMITTERS.length,2);
+
+  /* The limb is the lamp; this is its legend. Same colour, same words, so
+     the outline is readable rather than merely atmospheric. */
+  const ls=limbState();
+  const lst=$('limbstat');
+  lst.textContent=ls.caption;
+  lst.style.color='rgb('+ls.colour.join(',')+')';
+  lst.style.borderColor='rgb('+ls.colour.join(',')+')';
   $('btn-scan').dataset.on=sim.scanOn?'1':'';
 
   const rows=$('sensorrows');
