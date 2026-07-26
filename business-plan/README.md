@@ -22,6 +22,9 @@ Working thesis, in one line:
 | [`03-PRODUCT-SPEC.md`](03-PRODUCT-SPEC.md) | The Digital Governor, v0. Buildable specification. |
 | [`04-DOCTRINE.md`](04-DOCTRINE.md) | **Canonical.** Four pillars, controlled glossary, and the argument register — every claim with its evidentiary strength and its strongest counter. Source of truth for all external writing. |
 | [`standard/`](standard/) | UAS-1:v0.1 — the standard, registry schema, conformance scorer, worked examples. |
+| [`kit/`](kit/) | **Delivery kit.** Everything to run one paid engagement: field guide, engagement scope, findings letter, certificate. |
+| [`checklist.html`](checklist.html) | Free 4-minute self-assessment. The funnel — runs entirely client-side. |
+| [`plan.html`](plan.html) | Visual business layout. **Internal** — shows a prospect you have no customers. |
 | [`tools/doctrine_lint.py`](tools/doctrine_lint.py) | Enforces the §5 language rules mechanically. Run before publishing anything. |
 
 ```bash

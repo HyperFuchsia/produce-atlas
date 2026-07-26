@@ -635,6 +635,180 @@ def render(report: Report) -> str:
     return "\n".join(L)
 
 
+SEVERITY_LABEL = {
+    CRITICAL: "Critical", MAJOR: "Major", MINOR: "Minor", OBSERVATION: "Observation",
+}
+REMEDIATION_WINDOW = {
+    CRITICAL: "Immediate — certificate withheld or withdrawn",
+    MAJOR: "30 days",
+    MINOR: "90 days",
+    OBSERVATION: "None",
+}
+LEVEL_NAME = {
+    0: "Non-conforming", 1: "Level 1 — Inventoried",
+    2: "Level 2 — Governed", 3: "Level 3 — Certified",
+}
+
+
+def render_report(report: Report, registry: dict[str, Any], today: dt.date) -> str:
+    """Client-deliverable assessment report, generated from the registry.
+
+    The report is generated rather than hand-written so that no finding can be
+    softened, dropped, or forgotten between the assessment and the document.
+    """
+    dep = registry.get("deployment") or {}
+    acts = {a["id"]: a for a in registry["actuators"] if "id" in a}
+    L: list[str] = []
+
+    L.append(f"# Conformance Assessment Report")
+    L.append("")
+    L.append(f"**{dep.get('organisation', '')}** — {dep.get('site') or dep.get('id', '')}")
+    L.append("")
+    L.append("| | |")
+    L.append("|---|---|")
+    L.append(f"| Standard | UAS-1:v{UAS_VERSION} |")
+    L.append(f"| System assessed | {dep.get('system', '—')} |")
+    L.append(f"| Registry version | `{report.registry_version}` |")
+    L.append(f"| Assessment date | {today.isoformat()} |")
+    L.append(f"| **Result** | **{LEVEL_NAME[report.level]}** |")
+    L.append("")
+
+    # ---- 1 summary
+    L.append("## 1. Summary")
+    L.append("")
+    counts = {s: sum(1 for f in report.findings if f.severity == s)
+              for s in (CRITICAL, MAJOR, MINOR, OBSERVATION)}
+    crit, maj = counts[CRITICAL], counts[MAJOR]
+    t1 = report.gar_by_tier.get(1)
+
+    if report.level == 0:
+        L.append(f"This deployment does not currently meet any conformance level "
+                 f"under UAS-1:v{UAS_VERSION}.")
+    else:
+        L.append(f"This deployment meets **{LEVEL_NAME[report.level]}**.")
+    L.append("")
+    L.append(f"{report.total_actuators} actuators were enumerated. "
+             f"{int(round(report.gar * report.total_actuators))} of them "
+             f"({report.gar:.1%}) carry an engineering control; the remainder are "
+             f"governed by administrative controls, warnings, or nothing.")
+    L.append("")
+    if t1 is not None and t1 < 1.0:
+        n1 = report.counts_by_tier.get(1, 0)
+        ungoverned = [a for a in acts if (acts[a].get("consequence_tier") == 1)]
+        L.append(f"> **{n1 - int(round(t1 * n1))} of {n1} Tier 1 actuators are "
+                 f"ungoverned.** A Tier 1 actuator is one whose erroneous operation "
+                 f"can cause death or permanent disabling injury. This is the finding "
+                 f"that determines the result; nothing else in this report outranks it.")
+        L.append("")
+    if crit or maj:
+        L.append(f"{crit} critical and {maj} major non-conformances were raised. "
+                 f"Critical findings require immediate remediation.")
+        L.append("")
+
+    # ---- 2 scope
+    L.append("## 2. Scope and limitations")
+    L.append("")
+    L.append("This assessment covers the actuators listed under *Actuators assessed* "
+             "below. It does not assess model quality, accuracy, or fairness within "
+             "rated capacity, and provides no assurance regarding actuators not "
+             "enumerated.")
+    L.append("")
+    L.append("**Enumeration quality is the dominant determinant of protection, and "
+             "enumeration is performed by people.** An actuator absent from the "
+             "registry is absent from this report.")
+    L.append("")
+    L.append(f"No conformance level under this standard eliminates risk "
+             f"(Clause 10.5.2).")
+    L.append("")
+
+    # ---- 3 governed actuator ratio
+    L.append("## 3. Governed Actuator Ratio")
+    L.append("")
+    L.append("| Scope | Actuators | Governed | GAR |")
+    L.append("|---|---:|---:|---:|")
+    gov_total = int(round(report.gar * report.total_actuators))
+    L.append(f"| **Overall** | {report.total_actuators} | {gov_total} | "
+             f"**{report.gar:.1%}** |")
+    for t in (1, 2, 3, 4):
+        n = report.counts_by_tier.get(t, 0)
+        if not n:
+            continue
+        g = report.gar_by_tier.get(t, 0.0)
+        flag = "  ⚠" if t == 1 and g < 1.0 else ""
+        L.append(f"| Tier {t} | {n} | {int(round(g * n))} | {g:.1%}{flag} |")
+    L.append("")
+
+    # ---- 4 demotions
+    if report.demotions:
+        L.append("## 4. Controls claimed but not credited")
+        L.append("")
+        L.append("The following controls were declared as engineering controls but do "
+                 "not satisfy the requirements of Clause 7.2 or 7.8. They are scored "
+                 "at the level they actually achieve.")
+        L.append("")
+        for d in report.demotions:
+            L.append(f"- **`{d['actuator']}`** — claimed Level {d['claimed']}, "
+                     f"credited Level {d['effective']}.  \n  {d['reason']}")
+        L.append("")
+
+    # ---- 5 findings
+    n = 5 if report.demotions else 4
+    L.append(f"## {n}. Findings")
+    L.append("")
+    if not report.findings:
+        L.append("No non-conformances were raised.")
+        L.append("")
+    else:
+        L.append("| # | Severity | Clause | Actuator | Observation | Remediation | Due |")
+        L.append("|---:|---|---|---|---|---|---|")
+        for i, f in enumerate(report.findings, 1):
+            L.append(
+                f"| {i} | **{SEVERITY_LABEL[f.severity]}** | {f.clause} | "
+                f"`{f.actuator or '—'}` | {f.observation} | {f.remediation} | "
+                f"{REMEDIATION_WINDOW[f.severity]} |"
+            )
+        L.append("")
+
+    # ---- 6 registry
+    L.append(f"## {n + 1}. Actuators assessed")
+    L.append("")
+    L.append("| Actuator | Class | Tier | Control | Topology | Authorised by |")
+    L.append("|---|---|---:|---:|---|---|")
+    for aid in sorted(acts):
+        a = acts[aid]
+        c = a.get("control") or {}
+        lvl, _ = effective_level(a, today)
+        prov = a.get("provenance") or {}
+        auth = prov.get("authorised_by") or "**not established**"
+        L.append(f"| `{aid}` | {a.get('class','—')} | {a.get('consequence_tier','—')} | "
+                 f"L{lvl} | {c.get('topology','—')} | {auth} |")
+    L.append("")
+
+    # ---- 7 next
+    L.append(f"## {n + 2}. Path to the next conformance level")
+    L.append("")
+    nxt = report.level + 1
+    if nxt > 3:
+        L.append("This deployment holds the highest level defined by this standard.")
+    else:
+        blocking = list(dict.fromkeys(report.blocked_by.get(nxt, [])))
+        L.append(f"To reach **{LEVEL_NAME[nxt]}**, the following must be resolved:")
+        L.append("")
+        for b in blocking:
+            L.append(f"- {b}")
+    L.append("")
+    L.append("---")
+    L.append("")
+    L.append(f"*Generated from registry `{report.registry_version}` by "
+             f"`uas_score` against UAS-1:v{UAS_VERSION}. Findings are derived "
+             f"mechanically from the registry; they are not editorial.*")
+    L.append("")
+    L.append("*A Level 3 certificate additionally requires independent verification "
+             "and the signature of a licensed professional engineer competent in "
+             "functional safety. This tool does not and cannot supply either.*")
+    return "\n".join(L)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         prog="uas_score",
@@ -642,15 +816,20 @@ def main() -> int:
     )
     ap.add_argument("registry", help="path to actuator registry JSON")
     ap.add_argument("--json", action="store_true", help="emit machine-readable output")
+    ap.add_argument("--report", action="store_true",
+                    help="emit the client-deliverable assessment report (markdown)")
     ap.add_argument("--strict", action="store_true",
                     help="exit non-zero unless Level 3 is achieved")
     ap.add_argument("--date", help="evaluate as of this date (YYYY-MM-DD), for testing")
     args = ap.parse_args()
 
     today = parse_date(args.date) or dt.date.today()
-    report = score(load_registry(args.registry), today)
+    registry = load_registry(args.registry)
+    report = score(registry, today)
 
-    if args.json:
+    if args.report:
+        print(render_report(report, registry, today))
+    elif args.json:
         print(json.dumps({
             "uas_version": UAS_VERSION,
             "organisation": report.organisation,

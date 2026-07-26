@@ -56,11 +56,25 @@ Seven reasons this is the right beachhead:
    collaborative robots), IEC 61508 / 62061 (functional safety), IEC 62443
    (industrial network segmentation), ANSI/RIA R15.06, OSHA 1910.212 (machine
    guarding) and 1910.147 (lockout/tagout).
-7. **The competition is looking the other way.** The entire AI governance
+7. **The competition appears to be looking the other way.** The AI governance
    industry is focused on LLMs, bias, privacy, and white-collar workflows.
-   Almost nobody is applying it where a misfire breaks a femur. That is an
-   uncontested position and it is the one your doctrine was accidentally built
-   for.
+   Almost nobody appears to be applying it where a misfire breaks a femur.
+
+   > **⚠ UNVERIFIED — this is reasoning, not research, and it is load-bearing.**
+   >
+   > Item 7 is the only claim in this decision that rests on an assertion about
+   > the market rather than on the structure of the doctrine. If it is wrong —
+   > if functional safety consultancies are already extending into AI-driven
+   > machinery, or a robotics integrator ships a governor as standard — the
+   > targeting still works but the positioning and pricing change substantially.
+   >
+   > **Verify before committing a year to it.** Check: TÜV / DEKRA / UL Solutions
+   > service lines for AI safety in machinery; the ISO 10218 revision's treatment
+   > of AI-driven motion; AMR vendor safety architectures (do they already ship an
+   > independent interlock?); and whether any equipment-breakdown carrier already
+   > asks about automated decision systems on its inspection forms. That last one
+   > is the single most informative check, because it also tells you whether the
+   > channel in D-4 is open.
 
 ### Why not the alternatives
 

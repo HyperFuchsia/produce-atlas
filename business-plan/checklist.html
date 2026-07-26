@@ -1,0 +1,426 @@
+<title>What stops your automation? — 4-minute self-assessment</title>
+
+<style>
+  :root {
+    --paper:#EFF2F5; --panel:#F7F9FA; --ink:#111820; --steel:#5A6875;
+    --hairline:#C9D2DA; --hairline-2:#DDE4EA;
+    --accent:#0D7A84; --accent-ink:#095C64; --accent-wash:#DCEBEC;
+    --critical:#B23A32; --major:#C67C1E; --minor:#2F6BA8; --good:#0D7A84;
+    --serif: ui-serif,"Iowan Old Style",Georgia,"Times New Roman",serif;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --mono: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#0D1114; --panel:#151B20; --ink:#E2E8EC; --steel:#93A2AF;
+      --hairline:#2C363E; --hairline-2:#212A31;
+      --accent:#2FA3AE; --accent-ink:#55BEC8; --accent-wash:#122A2D;
+      --critical:#E2607F; --major:#B08327; --minor:#5F97D8; --good:#2FA3AE;
+    }
+  }
+  :root[data-theme="dark"]{--paper:#0D1114;--panel:#151B20;--ink:#E2E8EC;--steel:#93A2AF;--hairline:#2C363E;--hairline-2:#212A31;--accent:#2FA3AE;--accent-ink:#55BEC8;--accent-wash:#122A2D;--critical:#E2607F;--major:#B08327;--minor:#5F97D8;--good:#2FA3AE;}
+  :root[data-theme="light"]{--paper:#EFF2F5;--panel:#F7F9FA;--ink:#111820;--steel:#5A6875;--hairline:#C9D2DA;--hairline-2:#DDE4EA;--accent:#0D7A84;--accent-ink:#095C64;--accent-wash:#DCEBEC;--critical:#B23A32;--major:#C67C1E;--minor:#2F6BA8;--good:#0D7A84;}
+
+  body { background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:50rem; margin:0 auto; padding:clamp(1.25rem,4vw,3rem) clamp(1rem,4vw,2rem) 5rem; display:flex; flex-direction:column; gap:2rem; }
+
+  header.top { border:2px solid var(--ink); background:var(--panel); padding:clamp(1.25rem,3vw,2rem); display:flex; flex-direction:column; gap:.85rem; }
+  .eyebrow { font-family:var(--mono); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; color:var(--steel); }
+  h1 { font-family:var(--serif); font-size:clamp(1.7rem,5vw,2.6rem); line-height:1.08; font-weight:600; letter-spacing:-.015em; text-wrap:balance; }
+  .sub { color:var(--steel); max-width:56ch; text-wrap:pretty; }
+
+  fieldset { border:0; display:flex; flex-direction:column; gap:1rem; }
+  legend { font-family:var(--sans); font-size:.72rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--steel); padding-bottom:.4rem; border-bottom:2px solid var(--ink); width:100%; margin-bottom:.4rem; }
+
+  .q { background:var(--panel); border:1px solid var(--hairline); padding:1rem 1.1rem; display:flex; flex-direction:column; gap:.6rem; }
+  .q__n { font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; color:var(--accent); font-weight:700; }
+  .q__t { font-family:var(--serif); font-size:1.08rem; font-weight:600; line-height:1.3; text-wrap:pretty; }
+  .q__h { font-size:.85rem; color:var(--steel); max-width:60ch; }
+  select { font-family:var(--sans); font-size:.94rem; padding:.5rem .6rem; background:var(--paper); color:var(--ink); border:1px solid var(--hairline); width:100%; max-width:34rem; }
+  select:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+
+  button {
+    font-family:var(--sans); font-size:.95rem; font-weight:650; letter-spacing:.01em;
+    padding:.75rem 1.4rem; border:2px solid var(--ink); background:var(--ink); color:var(--paper);
+    cursor:pointer; align-self:flex-start;
+  }
+  button:hover { background:transparent; color:var(--ink); }
+  button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+  button.ghost { background:transparent; color:var(--ink); }
+  button.ghost:hover { background:var(--ink); color:var(--paper); }
+
+  .actions { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+  .warn { font-size:.85rem; color:var(--major); font-family:var(--mono); }
+
+  /* ---- results ---- */
+  #out { display:none; flex-direction:column; gap:1.5rem; }
+  #out[data-shown="1"] { display:flex; }
+  .verdictbox { border:2px solid var(--ink); background:var(--panel); }
+  .verdictbox__head { padding:1.1rem 1.25rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; border-bottom:2px solid var(--ink); }
+  .verdictbox__h { font-family:var(--serif); font-size:1.3rem; font-weight:600; }
+  .verdict { font-family:var(--mono); font-size:.75rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:.25rem .6rem; border:2px solid currentColor; white-space:nowrap; }
+  .v--bad{color:var(--critical);} .v--mid{color:var(--major);} .v--good{color:var(--good);}
+  .verdictbox__body { padding:1.1rem 1.25rem; display:flex; flex-direction:column; gap:1rem; }
+  .verdictbox__body p { max-width:62ch; text-wrap:pretty; }
+
+  .meter { display:grid; grid-template-columns:8.5rem 1fr 3.4rem; align-items:center; gap:.7rem; }
+  .meter__lab { font-family:var(--mono); font-size:.74rem; color:var(--steel); }
+  .meter__track { height:11px; background:var(--hairline-2); border-radius:2px; overflow:hidden; }
+  .meter__fill { height:100%; border-radius:0 4px 4px 0; }
+  .meter__val { font-family:var(--mono); font-size:.84rem; font-weight:600; font-variant-numeric:tabular-nums; text-align:right; }
+
+  .finding { border-left:3px solid var(--hairline); background:var(--panel); padding:.85rem 1rem; display:flex; flex-direction:column; gap:.35rem; }
+  .finding--critical{border-left-color:var(--critical);}
+  .finding--major{border-left-color:var(--major);}
+  .finding--minor{border-left-color:var(--minor);}
+  .finding__top { display:flex; gap:.6rem; align-items:baseline; flex-wrap:wrap; }
+  .chip { font-family:var(--mono); font-size:.65rem; letter-spacing:.08em; text-transform:uppercase; font-weight:700; padding:.12rem .45rem; border:1px solid currentColor; }
+  .chip--critical{color:var(--critical);} .chip--major{color:var(--major);} .chip--minor{color:var(--minor);}
+  .finding__t { font-weight:650; font-size:.96rem; }
+  .finding__b { font-size:.9rem; color:var(--steel); max-width:62ch; }
+  .finding__b b { color:var(--ink); font-weight:650; }
+
+  .callout { border-left:3px solid var(--accent); background:var(--accent-wash); padding:1rem 1.15rem; display:flex; flex-direction:column; gap:.5rem; }
+  .callout__k { font-family:var(--mono); font-size:.66rem; letter-spacing:.13em; text-transform:uppercase; color:var(--accent-ink); font-weight:700; }
+  .callout p { max-width:62ch; font-size:.94rem; }
+
+  .foot { border-top:2px solid var(--ink); padding-top:1rem; font-size:.83rem; color:var(--steel); display:flex; flex-direction:column; gap:.45rem; max-width:64ch; }
+  h2.res { font-family:var(--sans); font-size:.72rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--steel); }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+
+<div class="wrap">
+
+  <header class="top">
+    <span class="eyebrow">Free self-assessment · UAS-1:v0.1 · ~4 minutes</span>
+    <h1>What stops your automation?</h1>
+    <p class="sub">
+      Nine questions about the automated systems on your site — no preparation
+      needed, nothing recorded, nothing sent anywhere. It runs entirely in your
+      browser.
+    </p>
+    <p class="sub">
+      You will get an estimate of how many of your automated actions are held by
+      an <strong>engineering control</strong> rather than a policy, and which
+      ones are not.
+    </p>
+  </header>
+
+  <form id="f">
+    <fieldset>
+      <legend>Part 1 — What can it reach, and what stops it?</legend>
+
+      <div class="q">
+        <span class="q__n">Q1 · machinery</span>
+        <span class="q__t">Can an automated system cause machinery to move — robots, conveyors, doors, restraints, lifts, gates?</span>
+        <span class="q__h">Count anything that issues the command without a person approving that specific movement.</span>
+        <select id="q1" name="q1">
+          <option value="na">No — nothing automated touches moving machinery</option>
+          <option value="0">Yes — nothing stops it, or I don't know what would</option>
+          <option value="1">Yes — it alerts someone, but the movement still happens</option>
+          <option value="2">Yes — a procedure, training, or a rule written into the software's instructions</option>
+          <option value="2s">Yes — a check inside the same software that issues the command</option>
+          <option value="3">Yes — a separate interlock, safety PLC, or independent system that can physically refuse</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q2 · money</span>
+        <span class="q__t">Can an automated system move money — payments, refunds, purchase orders, releases to suppliers or carriers?</span>
+        <select id="q2" name="q2">
+          <option value="na">No</option>
+          <option value="0">Yes — nothing stops it, or I don't know</option>
+          <option value="1">Yes — it notifies finance afterwards</option>
+          <option value="2">Yes — an approval policy or a limit written into its instructions</option>
+          <option value="2s">Yes — a check inside the same system</option>
+          <option value="3">Yes — the payment gateway itself enforces ceilings independently</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q3 · people</span>
+        <span class="q__t">Can an automated system set what people do — shift assignment, zone allocation, rate or quota targets, scheduling?</span>
+        <span class="q__h">Consider the effect across a whole shift, not one assignment.</span>
+        <select id="q3" name="q3">
+          <option value="na">No</option>
+          <option value="0">Yes — nothing bounds it</option>
+          <option value="1">Yes — a report someone reviews later</option>
+          <option value="2">Yes — a policy, or a limit in the system's instructions</option>
+          <option value="2s">Yes — a check inside the same system</option>
+          <option value="3">Yes — an independent service rejects assignments over the ceiling</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q4 · records</span>
+        <span class="q__t">Can an automated system write to, change, or delete records — inventory, orders, customer or personnel data?</span>
+        <select id="q4" name="q4">
+          <option value="na">No</option>
+          <option value="0">Yes — unrestricted</option>
+          <option value="1">Yes — large changes trigger an email</option>
+          <option value="2">Yes — a policy governs what it should touch</option>
+          <option value="2s">Yes — the application checks itself before writing</option>
+          <option value="3">Yes — permissions and ceilings enforced outside the application</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q5 · messages</span>
+        <span class="q__t">Can an automated system send messages outside the company without a person reading them first — to customers, drivers, suppliers, regulators?</span>
+        <select id="q5" name="q5">
+          <option value="na">No</option>
+          <option value="0">Yes — no limits</option>
+          <option value="1">Yes — copies go to a shared inbox</option>
+          <option value="2">Yes — tone and content rules in its instructions</option>
+          <option value="2s">Yes — the same system screens its own output</option>
+          <option value="3">Yes — the gateway enforces rate limits and a recipient allowlist</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <fieldset style="margin-top:2rem">
+      <legend>Part 2 — Four questions about the controls themselves</legend>
+
+      <div class="q">
+        <span class="q__n">Q6 · attribution</span>
+        <span class="q__t">Can you name the person who approved the limits each system runs under?</span>
+        <select id="q6" name="q6">
+          <option value="y">Yes — a named person, on a dated record, for each</option>
+          <option value="part">For some of them</option>
+          <option value="n">No — or it's a team, a vendor, or nobody in particular</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q7 · evidence</span>
+        <span class="q__t">Is there a log of every action taken, written somewhere the system itself cannot alter?</span>
+        <select id="q7" name="q7">
+          <option value="y">Yes — append-only, outside the system's reach</option>
+          <option value="part">There are logs, but the system writes them and could change them</option>
+          <option value="n">No, or only partial logs</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q8 · proof</span>
+        <span class="q__t">Has anything that is supposed to stop it ever been tested by deliberately trying to exceed the limit?</span>
+        <span class="q__h">Not reviewed, not documented — actually tested, by triggering it on purpose.</span>
+        <select id="q8" name="q8">
+          <option value="y">Yes, within the last 90 days</option>
+          <option value="old">Yes, but more than a year ago</option>
+          <option value="n">No, or not that I know of</option>
+        </select>
+      </div>
+
+      <div class="q">
+        <span class="q__n">Q9 · failure mode</span>
+        <span class="q__t">If the thing doing the checking is offline or broken, does the action still go through?</span>
+        <select id="q9" name="q9">
+          <option value="closed">No — the action is refused if the check can't run</option>
+          <option value="unknown">I don't know</option>
+          <option value="open">Yes — it carries on</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <div class="actions" style="margin-top:1.75rem">
+      <button type="submit">Show my result</button>
+      <button type="button" class="ghost" id="reset">Reset</button>
+      <span class="warn" id="warn" hidden>Answer every question first.</span>
+    </div>
+  </form>
+
+  <div id="out"></div>
+
+  <div class="foot">
+    <div>This is an estimate from nine questions, not an assessment. A real assessment enumerates every actuator individually — most sites have between 20 and 60, and the ones that matter are usually the integrations nobody thinks of as AI.</div>
+    <div>Scored against <strong>UAS-1:v0.1</strong>, a free and public draft standard. Your answers stay in your browser and are not transmitted anywhere.</div>
+    <div>No level of conformance under this standard eliminates risk.</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('f');
+  var out  = document.getElementById('out');
+  var warn = document.getElementById('warn');
+
+  // Domain definitions. tier drives severity; 2s is the "check inside the same
+  // system" answer, which is still an administrative control (Clause 6.2.2/6.2.3)
+  // because it shares a failure domain with the thing it governs.
+  var DOMAINS = [
+    { id:'q1', name:'Machinery',  tier:1, what:'moving machinery' },
+    { id:'q2', name:'Money',      tier:2, what:'payments' },
+    { id:'q3', name:'People',     tier:2, what:'work assignment' },
+    { id:'q4', name:'Records',    tier:3, what:'data writes' },
+    { id:'q5', name:'Messages',   tier:3, what:'outbound messages' }
+  ];
+
+  var LEVEL = { '0':0, '1':1, '2':2, '2s':2, '3':3 };
+
+  function esc(s){ return String(s).replace(/[&<>]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+  function meter(label, pct, color) {
+    return '<div class="meter"><span class="meter__lab">' + esc(label) + '</span>' +
+      '<div class="meter__track"><div class="meter__fill" style="width:' +
+      pct.toFixed(1) + '%;background:var(--' + color + ')"></div></div>' +
+      '<span class="meter__val">' + pct.toFixed(0) + '%</span></div>';
+  }
+
+  function finding(sev, title, body) {
+    return '<div class="finding finding--' + sev + '"><div class="finding__top">' +
+      '<span class="chip chip--' + sev + '">' + sev + '</span>' +
+      '<span class="finding__t">' + title + '</span></div>' +
+      '<div class="finding__b">' + body + '</div></div>';
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var ids = ['q1','q2','q3','q4','q5','q6','q7','q8','q9'], vals = {}, missing = false;
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el.value) missing = true;
+      vals[id] = el.value;
+    });
+    if (missing) { warn.hidden = false; return; }
+    warn.hidden = true;
+
+    var applicable = [], governed = 0, findings = [], selfCheck = [];
+
+    DOMAINS.forEach(function (d) {
+      var v = vals[d.id];
+      if (v === 'na') return;
+      var lvl = LEVEL[v];
+      applicable.push({ d:d, lvl:lvl, raw:v });
+      if (lvl >= 3) governed++;
+      if (v === '2s') selfCheck.push(d);
+
+      if (lvl < 3) {
+        var sev = d.tier === 1 ? 'critical' : (d.tier === 2 ? 'major' : 'minor');
+        var desc = lvl === 0
+          ? 'nothing identified'
+          : lvl === 1 ? 'a notification, which cannot prevent anything'
+          : (v === '2s'
+              ? 'a check running inside the same system that issues the command'
+              : 'a policy, procedure, or instruction');
+        findings.push(finding(sev,
+          d.name + ' — held by ' + (lvl >= 2 ? 'an administrative control' : (lvl === 1 ? 'a warning' : 'nothing')),
+          'What stops it: <b>' + desc + '</b>. Under the hierarchy of controls that ranks ' +
+          (lvl >= 2 ? 'fourth of five' : 'below fourth') +
+          '. For ' + d.what + ' at consequence tier ' + d.tier +
+          ', an engineering control — something outside the system that can refuse — is the expected standard.'));
+      }
+    });
+
+    var gar = applicable.length ? governed / applicable.length : 0;
+    var tier1 = applicable.filter(function (a) { return a.d.tier === 1; });
+    var tier1Ungoverned = tier1.some(function (a) { return a.lvl < 3; });
+
+    // cross-cutting
+    if (vals.q6 !== 'y') {
+      findings.push(finding(vals.q6 === 'n' ? 'major' : 'minor',
+        'Actions are not attributable to a named person',
+        'Every automated action should trace to the individual who approved the limits it ran under. ' +
+        (vals.q6 === 'n'
+          ? 'Without that, "the system did it" is the only account available after an incident — which is exactly the account that does not survive an inquiry.'
+          : 'Partial attribution leaves the gaps where they are least convenient.')));
+    }
+    if (vals.q7 !== 'y') {
+      findings.push(finding('major', 'No tamper-evident record',
+        vals.q7 === 'part'
+          ? 'A log the system writes and could alter is not evidence. It needs to be append-only and outside the system\'s reach.'
+          : 'Without a complete record there is no way to reconstruct what happened, or to show what the limits were at the time.'));
+    }
+    if (vals.q8 !== 'y') {
+      findings.push(finding(vals.q8 === 'n' ? 'major' : 'minor',
+        'The stopping mechanism is untested',
+        vals.q8 === 'n'
+          ? 'An untested trip is a belief about a trip. Until it has been fired deliberately, it counts as an administrative control regardless of how it was built — this is the most common finding in mature safety programmes in every industry.'
+          : 'Testing has lapsed. Tier 1 functions warrant proof testing at least every 90 days.'));
+    }
+    if (vals.q9 !== 'closed') {
+      findings.push(finding(vals.q9 === 'open' ? 'critical' : 'major',
+        'The control does not fail closed',
+        vals.q9 === 'open'
+          ? 'If the action proceeds when the check cannot run, then the check is advisory. Every outage becomes an ungoverned window, and outages are exactly when things go wrong.'
+          : 'If nobody knows, assume it fails open — that is the default in almost every system that was not deliberately built otherwise.'));
+    }
+
+    if (selfCheck.length) {
+      findings.push(finding('major', 'A control that shares fate with what it governs',
+        'A check running inside the same system it governs — ' +
+        selfCheck.map(function (d) { return '<b>' + d.name.toLowerCase() + '</b>'; }).join(', ') +
+        ' — fails when that system fails, and can often be reached through the same channel. ' +
+        'The rule may be perfectly correct; the problem is where it lives. This is usually fixed by moving it, not by buying anything.'));
+    }
+
+    var order = { critical:0, major:1, minor:2 };
+    findings.sort(function (a, b) {
+      var ka = a.match(/finding--(\w+)/)[1], kb = b.match(/finding--(\w+)/)[1];
+      return order[ka] - order[kb];
+    });
+
+    // verdict
+    var vClass, vText, headline;
+    if (tier1Ungoverned) {
+      vClass = 'v--bad'; vText = 'Critical';
+      headline = 'Machinery that can injure someone is governed by a policy.';
+    } else if (gar < 0.5) {
+      vClass = 'v--bad'; vText = 'Substantially ungoverned';
+      headline = 'Most of what your automation can do is held by procedure, not by a control.';
+    } else if (gar < 1 || findings.length) {
+      vClass = 'v--mid'; vText = 'Partially governed';
+      headline = 'Real controls are in place, with specific gaps.';
+    } else {
+      vClass = 'v--good'; vText = 'Well governed';
+      headline = 'This is genuinely better than most sites.';
+    }
+
+    var html = '';
+    html += '<div class="verdictbox"><div class="verdictbox__head">' +
+            '<span class="verdictbox__h">' + headline + '</span>' +
+            '<span class="verdict ' + vClass + '">' + vText + '</span></div>' +
+            '<div class="verdictbox__body">';
+
+    if (!applicable.length) {
+      html += '<p>You reported no automated system reaching any actuator. If that is accurate, this standard has nothing to govern — and that is a legitimate answer. It is worth re-checking scheduling, slotting, and dispatch tools, which are frequently automated without being thought of as such.</p>';
+    } else {
+      html += meter('Estimated GAR', gar * 100, gar >= 0.99 ? 'good' : (gar < 0.5 ? 'critical' : 'major'));
+      if (tier1.length) {
+        var t1g = tier1.filter(function (a) { return a.lvl >= 3; }).length / tier1.length;
+        html += meter('Tier 1 only', t1g * 100, t1g >= 0.99 ? 'good' : 'critical');
+      }
+      html += '<p><b>' + governed + ' of ' + applicable.length + '</b> automation domains you reported are held by an engineering control — something outside the system that can refuse the action. The rest rely on policies, notifications, or nothing.</p>';
+      if (tier1Ungoverned) {
+        html += '<p style="color:var(--critical)"><b>The machinery finding outranks everything else here.</b> A procedure is a fourth-tier control. You would not guard a press brake with a memo — and the reason you would not is the same reason this matters.</p>';
+      }
+    }
+    html += '</div></div>';
+
+    if (findings.length) {
+      html += '<h2 class="res">' + findings.length + ' finding' + (findings.length > 1 ? 's' : '') + '</h2>';
+      html += findings.join('');
+    } else if (applicable.length) {
+      html += '<div class="callout"><span class="callout__k">No findings</span>' +
+              '<p>Nothing in these nine questions raises a finding. That is uncommon, and it means the coarse questions have run out of resolution rather than that the site is clear — a real assessment enumerates 20 to 60 actuators individually, and the interesting ones are usually two or three hops downstream of anything anyone calls AI.</p></div>';
+    }
+
+    html += '<div class="callout"><span class="callout__k">What this is and is not</span>' +
+            '<p>Nine questions cannot substitute for enumeration. This estimates five broad domains; an assessment traces every path from each system to every effect it can cause, including the ones it causes indirectly through another automated system. That second category is where most findings actually live, and no questionnaire can reach it.</p></div>';
+
+    out.innerHTML = html;
+    out.setAttribute('data-shown', '1');
+    out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  document.getElementById('reset').addEventListener('click', function () {
+    form.reset();
+    out.removeAttribute('data-shown');
+    out.innerHTML = '';
+    warn.hidden = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>

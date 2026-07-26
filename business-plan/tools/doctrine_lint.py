@@ -120,7 +120,11 @@ def scan(root: pathlib.Path) -> tuple[list[str], int]:
                         f"{rel}:{n}  RETIRED TERM  {m.group(0)!r}\n"
                         f"    {why}"
                     )
-            if QUOTED_ATTRIBUTION.search(line):
+            # Table rows and blockquotes carry illustrative phrasing — the
+            # things an assessor might hear on site, sample letter copy. The
+            # rule targets a quote attributed to a real person, not a specimen.
+            stripped = line.lstrip()
+            if not stripped.startswith(("|", ">")) and QUOTED_ATTRIBUTION.search(line):
                 violations.append(
                     f"{rel}:{n}  SOURCING  quoted statement attributed to a person\n"
                     f"    §5 rule 2 — verify against a primary transcript or cut"
