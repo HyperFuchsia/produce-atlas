@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en" data-channel="viridian">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Produce Atlas — Origins Console</title>
+<meta name="description" content="An evidence-led atlas of the origins, domestication and movement of cultivated food plants, rendered on a vector instrument display.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23000'/%3E%3Cg fill='none' stroke='%2322F07E' stroke-width='1.6'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Ccircle cx='12' cy='12' r='1.4'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="interface/tokens.css">
+<link rel="stylesheet" href="interface/base.css">
+<link rel="stylesheet" href="interface/effects.css">
+<link rel="stylesheet" href="interface/layout.css">
+<link rel="stylesheet" href="interface/components.css">
+</head>
+<body>
+
+<!-- ==========================================================================
+     SEMIOTIC STANDARD FOR CULTIVATED PLANT RECORDS
+     A 24-unit stroke-only icon grid. Ron Cobb drew both the Nostromo's
+     displays and its warning-label system; this set follows the same logic —
+     one idea per glyph, no fills, legible at 12px.
+     ========================================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="g-origin" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>
+      <path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
+    </symbol>
+    <symbol id="g-progenitor" viewBox="0 0 24 24">
+      <path d="M12 23v-9M12 14 5 5M12 14l7-9M12 14v-6"/>
+      <path d="M5 5 3 2M19 5l2-3"/>
+    </symbol>
+    <symbol id="g-domestication" viewBox="0 0 24 24">
+      <path d="M3 9h18v13H3zM8 9v13M16 9v13"/>
+      <path d="M12 6a3 3 0 0 0 0-5 3 3 0 0 0 0 5z"/>
+    </symbol>
+    <symbol id="g-vector" viewBox="0 0 24 24">
+      <path d="M1 12h7M13 12h9M17 7l5 5-5 5"/>
+    </symbol>
+    <symbol id="g-genome" viewBox="0 0 24 24">
+      <path d="M8 2v20M16 2v20M8 6h8M8 11h8M8 16h8"/>
+    </symbol>
+    <symbol id="g-season" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 3v9l7 4"/>
+    </symbol>
+    <symbol id="g-output" viewBox="0 0 24 24">
+      <path d="M4 22V9l8-6 8 6v13z"/><path d="M4 15h16M4 18.5h16"/>
+    </symbol>
+    <symbol id="g-evidence" viewBox="0 0 24 24">
+      <path d="M2 6h20M2 12h20M2 18h20M2 22h20"/>
+      <circle cx="14" cy="15" r="2"/>
+    </symbol>
+    <symbol id="g-reticle" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="7"/><path d="M16 16l6 6M11 1v4M11 17v4M1 11h4M17 11h4"/>
+    </symbol>
+    <symbol id="g-hazard" viewBox="0 0 24 24">
+      <path d="M12 2 1 22h22z"/><path d="M12 9v6M12 18.5v.5"/>
+    </symbol>
+    <symbol id="g-maritime" viewBox="0 0 24 24">
+      <path d="M1 16c3-3 5-3 8 0s5 3 8 0 3-2 6 0"/>
+      <path d="M1 21c3-3 5-3 8 0s5 3 8 0 3-2 6 0"/>
+      <path d="M12 3v8M12 3l5 3"/>
+    </symbol>
+    <symbol id="g-overland" viewBox="0 0 24 24">
+      <path d="M1 20 9 6l5 8 3-4 6 10z"/><path d="M6 15h5"/>
+    </symbol>
+    <symbol id="g-clone" viewBox="0 0 24 24">
+      <path d="M2 3h9v9H2zM13 12h9v9h-9zM11 7.5h2v9h-2z"/>
+    </symbol>
+    <symbol id="g-power" viewBox="0 0 24 24">
+      <path d="M12 2v9"/><path d="M6 5.5a9 9 0 1 0 12 0"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- The console lattice, behind everything -->
+<div class="lattice" aria-hidden="true"></div>
+
+<!-- ==========================================================================
+     CHASSIS — the instrument housing
+     ========================================================================== -->
+<div class="chassis" aria-hidden="true">
+  <span class="chassis__corner chassis__corner--tl"></span>
+  <span class="chassis__corner chassis__corner--tr"></span>
+  <span class="chassis__corner chassis__corner--bl"></span>
+  <span class="chassis__corner chassis__corner--br"></span>
+  <span class="chassis__ticks chassis__ticks--top"></span>
+  <span class="chassis__ticks chassis__ticks--bottom"></span>
+  <span class="chassis__ticks chassis__ticks--left"></span>
+  <span class="chassis__ticks chassis__ticks--right"></span>
+  <span class="chassis__stamp chassis__stamp--tl">SCI-STN 04 · TERMINAL A</span>
+  <span class="chassis__stamp chassis__stamp--tr">PHOSPHOR IFS 2.4</span>
+  <span class="chassis__stamp chassis__stamp--bl">DISPLAY P1 / 15.7 kHz</span>
+  <span class="chassis__stamp chassis__stamp--br">CAL BP · PRESENT = 1950</span>
+  <span class="chassis__stamp chassis__stamp--left">ORTHOGRAPHIC · GRATICULE 15°</span>
+</div>
+
+<!-- ==========================================================================
+     CONSOLE
+     ========================================================================== -->
+<div class="console crt-live">
+
+  <!-- DECK HEAD -->
+  <header class="console__head deck-head">
+    <div class="deck-head__mark">
+      <h1 class="t-title">Produce Atlas</h1>
+      <p class="deck-head__sub">Origins, domestication and movement of cultivated food plants</p>
+    </div>
+
+    <div class="deck-head__ops">
+      <div class="chan" role="tablist" aria-label="Display channel">
+        <button class="chan__btn" role="tab" data-channel="viridian" aria-selected="true"
+                style="--tab-ch:var(--p1-base)">P1</button>
+        <button class="chan__btn" role="tab" data-channel="amber" aria-selected="false"
+                style="--tab-ch:var(--p3-base)">P3</button>
+        <button class="chan__btn" role="tab" data-channel="ice" aria-selected="false"
+                style="--tab-ch:var(--p4-base)">P4</button>
+        <button class="chan__btn" role="tab" data-channel="xeno" aria-selected="false"
+                style="--tab-ch:var(--px-base)">PX</button>
+      </div>
+
+      <span class="lamp" data-state="ok"><span class="lamp__bulb"></span>Link</span>
+      <span class="lamp" data-state="idle"><span class="lamp__bulb"></span>Archive</span>
+
+      <div class="readout" style="text-align:right">
+        <span class="readout__label" style="justify-content:flex-end">Session</span>
+        <span class="readout__value" id="clock-elapsed" style="font-size:var(--t-body)">000:00:00</span>
+        <span class="readout__note" id="clock-wall"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- REGISTER -->
+  <section class="console__index module" aria-label="Taxon register">
+    <div class="module__head">
+      <span class="module__slug"><span class="module__addr">01</span>Register</span>
+      <span class="module__meta" id="register-count">—</span>
+    </div>
+    <div class="index">
+      <div class="index__search">
+        <svg class="glyph" style="color:var(--ch-mid)" aria-hidden="true"><use href="#g-reticle"/></svg>
+        <label class="sr-only" for="search">Search the register</label>
+        <input id="search" type="search" placeholder="Search — press /" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="index__list scroll-y" id="register" role="listbox" aria-label="Taxa"></div>
+    </div>
+    <div class="module__foot">
+      <span>↑ ↓ step</span>
+      <span>/ search</span>
+    </div>
+  </section>
+
+  <!-- VECTOR PLOT -->
+  <section class="console__viewport module module--live" aria-label="Vector plot">
+    <div class="module__head">
+      <span class="module__slug"><span class="module__addr">02</span>Vector plot</span>
+      <span class="module__meta" id="vp-legs">—</span>
+    </div>
+    <div class="module__body module__body--flush viewport">
+      <canvas id="globe" aria-label="Rotating globe showing the centre of origin and dispersal routes of the selected crop"></canvas>
+
+      <div class="viewport__hud">
+        <div class="reticle"></div>
+
+        <div class="viewport__tools">
+          <button class="btn btn--ghost" id="tool-spin" data-on="true">Rotate</button>
+          <button class="btn btn--ghost" id="tool-centres" data-on="true">Centres</button>
+          <button class="btn btn--ghost" id="tool-routes" data-on="true">Vectors</button>
+        </div>
+
+        <div class="viewport__corner viewport__corner--tl">
+          <div>TARGET</div>
+          <div class="lum-hi" id="vp-taxon" data-live>—</div>
+        </div>
+        <div class="viewport__corner viewport__corner--tr">
+          <div>ORIGIN FIX</div>
+          <div class="lum-hi" id="vp-coord" data-live>—</div>
+        </div>
+        <div class="viewport__corner viewport__corner--bl">
+          <div id="vp-centre" data-live>—</div>
+          <div>DRAG TO SLEW</div>
+        </div>
+        <div class="viewport__corner viewport__corner--br">
+          <div class="scalebar">
+            <span>0</span><span class="scalebar__span"></span><span>6371 km</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- READOUT STACK -->
+  <aside class="console__read scroll-y" aria-label="Record readout">
+    <div class="stack">
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">03</span>Identity</span>
+          <span class="module__meta">Nomenclature</span>
+        </div>
+        <div class="module__body" id="identity"></div>
+      </section>
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">04</span>Deep time</span>
+          <span class="module__meta">Calibrated BP</span>
+        </div>
+        <div class="module__body" id="domestication"></div>
+      </section>
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">05</span>Movement</span>
+          <span class="module__meta">Earliest arrival</span>
+        </div>
+        <div class="module__body module__body--tight scroll-x" id="movement"></div>
+      </section>
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">06</span>Availability</span>
+          <span class="module__meta">N. hemisphere</span>
+        </div>
+        <div class="module__body" id="availability"></div>
+      </section>
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">07</span>Output</span>
+          <span class="module__meta">Annual, FAO</span>
+        </div>
+        <div class="module__body" id="output"></div>
+      </section>
+
+      <section class="module">
+        <div class="module__head">
+          <span class="module__slug"><span class="module__addr">08</span>Note</span>
+        </div>
+        <div class="module__body" id="note"></div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- LOG -->
+  <section class="console__log module" aria-label="System log">
+    <div class="module__head">
+      <span class="module__slug"><span class="module__addr">09</span>Log</span>
+      <span class="module__meta">Append only</span>
+    </div>
+    <div class="module__body module__body--flush scroll-y" style="min-height:0">
+      <div class="term" id="log" role="log" aria-live="polite"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ==========================================================================
+     RASTER & GLASS — the tube itself
+     ========================================================================== -->
+<div class="raster" aria-hidden="true">
+  <div class="raster__grain"></div>
+  <div class="raster__scan"></div>
+  <div class="raster__grille"></div>
+  <div class="raster__interlace"></div>
+</div>
+
+<div class="glass" aria-hidden="true">
+  <div class="glass__vignette"></div>
+  <div class="glass__corners"></div>
+  <div class="glass__sheen"></div>
+</div>
+
+<div class="boot" id="boot" aria-hidden="true">
+  <div class="boot__degauss"></div>
+</div>
+
+<script src="interface/data/taxa.js"></script>
+<script src="interface/js/geo.js"></script>
+<script src="interface/js/charts.js"></script>
+<script src="interface/js/crt.js"></script>
+<script src="interface/js/globe.js"></script>
+<script src="interface/js/atlas.js"></script>
+</body>
+</html>

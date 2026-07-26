@@ -1,0 +1,288 @@
+/* ==========================================================================
+   PHOSPHOR — DESIGN TOKENS
+   produce-atlas interface system
+   --------------------------------------------------------------------------
+   Every value in this file is a decision. Components consume tokens only;
+   no component may hardcode a colour, a radius, or a duration.
+
+   The system has one theme. The display is a cathode-ray tube in a dark
+   compartment: light is emitted, never reflected. There is no light mode
+   because there is no ambient light.
+   ========================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---------------------------------------------------------------------
+     1. GROUND
+     True black. Not #0a0a0a, not #111. The unlit phosphor is off, and an
+     off phosphor is black. Every other surface is defined by how much
+     light it emits above this.
+     --------------------------------------------------------------------- */
+  --void:            #000000;
+  --hull:            #030504;  /* module interior — 1% lift, reads as depth */
+  --hull-deep:       #010202;  /* recessed wells, inputs, viewport backing */
+
+  /* ---------------------------------------------------------------------
+     2. PHOSPHOR CHANNELS
+     Five channels, each a luminance ramp of one emissive hue. Channels are
+     semantic, not decorative: you do not mix phosphors for visual interest,
+     you switch channel because the meaning changed.
+
+       core  — white-hot centre of a struck phosphor. Peak values only.
+       hi    — active text, selected state, live values
+       base  — the channel's resting voice; most text
+       mid   — secondary text, axis labels, inactive controls
+       low   — hairlines, rules, borders
+       ghost — grid, off-state, structure you should feel but not read
+     --------------------------------------------------------------------- */
+
+  /* P1 VIRIDIAN — primary data channel. Taxonomy, measurements, live read. */
+  --p1-core:  #D6FFE8;
+  --p1-hi:    #5CFF9D;
+  --p1-base:  #22F07E;
+  --p1-mid:   #12A85B;
+  --p1-low:   #0A5E34;
+  --p1-ghost: #053821;
+  --p1-rgb:   34, 240, 126;
+
+  /* P3 AMBER — historical channel. Deep time, domestication, provenance. */
+  --p3-core:  #FFF0D0;
+  --p3-hi:    #FFC24D;
+  --p3-base:  #FF9E14;
+  --p3-mid:   #B36A08;
+  --p3-low:   #5E3804;
+  --p3-ghost: #331F02;
+  --p3-rgb:   255, 158, 20;
+
+  /* P4 ICE — navigation and chassis. Geometry, chrome, coordinates. */
+  --p4-core:  #EAF6FF;
+  --p4-hi:    #9FD8FF;
+  --p4-base:  #5CB8F5;
+  --p4-mid:   #2A78A8;
+  --p4-low:   #12405C;
+  --p4-ghost: #0A2434;
+  --p4-rgb:   92, 184, 245;
+
+  /* XENO MAGENTA — the foreign. Introduced range, non-native, anomaly. */
+  --px-core:  #FFE0F6;
+  --px-hi:    #FF9BE3;
+  --px-base:  #FF5FD2;
+  --px-mid:   #B02D8E;
+  --px-low:   #5E1449;
+  --px-ghost: #330A28;
+  --px-rgb:   255, 95, 210;
+
+  /* ALARM — critical only. Never used for emphasis. */
+  --al-core:  #FFD9D5;
+  --al-hi:    #FF6A5C;
+  --al-base:  #FF2E1F;
+  --al-mid:   #A81A10;
+  --al-low:   #5C0D07;
+  --al-ghost: #2E0603;
+  --al-rgb:   255, 46, 31;
+
+  /* ---------------------------------------------------------------------
+     3. ACTIVE CHANNEL
+     Components paint with these. A container sets its channel by
+     reassigning them (see themes in components.css / [data-channel]),
+     which recolours every descendant without a single component knowing
+     which phosphor it is being rendered in.
+     --------------------------------------------------------------------- */
+  --ch-core:  var(--p1-core);
+  --ch-hi:    var(--p1-hi);
+  --ch-base:  var(--p1-base);
+  --ch-mid:   var(--p1-mid);
+  --ch-low:   var(--p1-low);
+  --ch-ghost: var(--p1-ghost);
+  --ch-rgb:   var(--p1-rgb);
+
+  /* Chassis is always ICE regardless of the active data channel: the
+     instrument housing does not change colour when the readout does. */
+  --chassis-line:  var(--p4-low);
+  --chassis-mark:  var(--p4-mid);
+  --chassis-text:  var(--p4-base);
+  --chassis-ghost: var(--p4-ghost);
+
+  /* ---------------------------------------------------------------------
+     4. BLOOM
+     A CRT does not render a sharp edge. Bright phosphor scatters in the
+     glass and blooms into its surroundings. Bloom is how this system
+     expresses elevation — there are no drop shadows, because nothing is
+     above anything. It is brighter or it is dimmer.
+     --------------------------------------------------------------------- */
+  --bloom-0:  none;
+  --bloom-1:  0 0 2px  rgba(var(--ch-rgb), .55);
+  --bloom-2:  0 0 4px  rgba(var(--ch-rgb), .50), 0 0 10px rgba(var(--ch-rgb), .22);
+  --bloom-3:  0 0 5px  rgba(var(--ch-rgb), .70), 0 0 16px rgba(var(--ch-rgb), .35),
+              0 0 34px rgba(var(--ch-rgb), .14);
+  --bloom-4:  0 0 6px  rgba(var(--ch-rgb), .95), 0 0 20px rgba(var(--ch-rgb), .55),
+              0 0 48px rgba(var(--ch-rgb), .28), 0 0 90px rgba(var(--ch-rgb), .12);
+
+  /* Box bloom — same physics, applied to strokes and panels rather than glyphs */
+  --box-bloom-1: 0 0 3px  rgba(var(--ch-rgb), .28);
+  --box-bloom-2: 0 0 6px  rgba(var(--ch-rgb), .34), inset 0 0 12px rgba(var(--ch-rgb), .07);
+  --box-bloom-3: 0 0 12px rgba(var(--ch-rgb), .42), inset 0 0 22px rgba(var(--ch-rgb), .10);
+
+  /* ---------------------------------------------------------------------
+     5. TYPE
+     Machine type. No webfonts: the CSP blocks font CDNs, and in any case
+     the authentic face for an instrument readout is whatever monospace the
+     terminal shipped with. The display voice is the body face tracked out
+     hard — the 1979 title-sequence move, where letters are so far apart
+     they read as a constellation before they read as a word.
+     --------------------------------------------------------------------- */
+  --f-mono: ui-monospace, "SF Mono", "SFMono-Regular", "Roboto Mono",
+            "DejaVu Sans Mono", Menlo, Consolas, monospace;
+  --f-display: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif;
+
+  /* Scale. This is an instrument panel: it runs small and dense. Steps are
+     deliberately close together — an instrument does not shout. */
+  --t-micro: 9px;    /* registration marks, coordinate pairs, corner IDs */
+  --t-label: 10px;   /* field labels, always caps, always tracked */
+  --t-fine:  11px;   /* dense tabular data, log lines */
+  --t-body:  12px;   /* running text, descriptions */
+  --t-read:  14px;   /* readout values */
+  --t-data:  19px;   /* primary numeric */
+  --t-lead:  27px;   /* module headline */
+  --t-hero:  40px;   /* the one big number on a screen */
+  --t-title: 15px;   /* wordmark — small point size, enormous tracking */
+
+  --lh-tight: 1.05;
+  --lh-data:  1.2;
+  --lh-body:  1.6;
+
+  --tr-title: 0.62em;  /* wordmark */
+  --tr-lead:  0.24em;  /* module headlines */
+  --tr-label: 0.18em;  /* field labels */
+  --tr-body:  0.01em;
+
+  --w-thin: 300;
+  --w-norm: 400;
+  --w-med:  500;
+  --w-bold: 700;
+
+  /* ---------------------------------------------------------------------
+     6. SPACE
+     8px module, 4px half-step. The console grid is visible, so spacing
+     that lands off-grid is legible as an error.
+     --------------------------------------------------------------------- */
+  --s-0:  0px;
+  --s-1:  2px;
+  --s-2:  4px;
+  --s-3:  6px;
+  --s-4:  8px;
+  --s-5:  12px;
+  --s-6:  16px;
+  --s-7:  24px;
+  --s-8:  32px;
+  --s-9:  48px;
+  --s-10: 64px;
+
+  --grid-cell: 8px;      /* baseline lattice */
+  --grid-module: 64px;   /* major lattice, drawn brighter */
+
+  /* ---------------------------------------------------------------------
+     7. STROKE
+     Everything is drawn with a stroke. There are no fills and no radii:
+     a vector display cannot draw a filled rounded rectangle cheaply, so
+     1979 didn't, so this doesn't.
+     --------------------------------------------------------------------- */
+  --hair: 1px;
+  --rule: 1px;
+  --heavy: 2px;
+  --radius: 0px;          /* deliberate. Do not change. */
+  --bracket: 12px;        /* corner bracket arm length */
+  --bracket-lg: 22px;
+
+  /* ---------------------------------------------------------------------
+     8. MOTION
+     Mechanical, not organic. Things step, sweep, snap and type. No spring,
+     no bounce, no ease-in-out — a servo does not overshoot for charm.
+     --------------------------------------------------------------------- */
+  --e-linear: linear;
+  --e-snap:   cubic-bezier(.2, 0, 0, 1);
+  --e-step-4: steps(4, end);
+  --e-step-8: steps(8, end);
+  --e-step-24: steps(24, end);
+
+  --d-instant: 60ms;
+  --d-quick:   140ms;
+  --d-state:   240ms;
+  --d-sweep:   900ms;
+  --d-scan:    5200ms;
+  --d-boot:    2600ms;
+
+  /* Phosphor persistence: how long a struck value takes to decay back to
+     its resting brightness. This is the single most characteristic motion
+     in the system — a value that changes flashes to core and falls off. */
+  --d-persist: 620ms;
+
+  /* ---------------------------------------------------------------------
+     9. RASTER
+     Physical properties of the tube itself. Consumed by effects.css.
+     --------------------------------------------------------------------- */
+  --scan-pitch: 3px;      /* scanline period */
+  --scan-weight: .30;     /* scanline opacity */
+  --grille-pitch: 3px;    /* aperture-grille (vertical) period */
+  --grille-weight: .10;
+  --interlace-weight: .035;
+  --noise-weight: .028;
+  --vignette-weight: .78;
+  --curvature: 1.6%;      /* barrel edge falloff reach */
+
+  /* ---------------------------------------------------------------------
+     10. LAYERS
+     --------------------------------------------------------------------- */
+  --z-grid: 0;
+  --z-content: 10;
+  --z-chassis: 40;
+  --z-raster: 60;      /* scanlines/grille sit above content */
+  --z-glass: 70;       /* vignette + curvature */
+  --z-overlay: 80;     /* modals, alerts */
+  --z-boot: 100;
+}
+
+/* --------------------------------------------------------------------------
+   CHANNEL ASSIGNMENT
+   Any element may retune its subtree to a different phosphor. This is the
+   only sanctioned way to change colour in the system.
+   -------------------------------------------------------------------------- */
+[data-channel="viridian"] {
+  --ch-core: var(--p1-core); --ch-hi: var(--p1-hi); --ch-base: var(--p1-base);
+  --ch-mid: var(--p1-mid); --ch-low: var(--p1-low); --ch-ghost: var(--p1-ghost);
+  --ch-rgb: var(--p1-rgb);
+}
+[data-channel="amber"] {
+  --ch-core: var(--p3-core); --ch-hi: var(--p3-hi); --ch-base: var(--p3-base);
+  --ch-mid: var(--p3-mid); --ch-low: var(--p3-low); --ch-ghost: var(--p3-ghost);
+  --ch-rgb: var(--p3-rgb);
+}
+[data-channel="ice"] {
+  --ch-core: var(--p4-core); --ch-hi: var(--p4-hi); --ch-base: var(--p4-base);
+  --ch-mid: var(--p4-mid); --ch-low: var(--p4-low); --ch-ghost: var(--p4-ghost);
+  --ch-rgb: var(--p4-rgb);
+}
+[data-channel="xeno"] {
+  --ch-core: var(--px-core); --ch-hi: var(--px-hi); --ch-base: var(--px-base);
+  --ch-mid: var(--px-mid); --ch-low: var(--px-low); --ch-ghost: var(--px-ghost);
+  --ch-rgb: var(--px-rgb);
+}
+[data-channel="alarm"] {
+  --ch-core: var(--al-core); --ch-hi: var(--al-hi); --ch-base: var(--al-base);
+  --ch-mid: var(--al-mid); --ch-low: var(--al-low); --ch-ghost: var(--al-ghost);
+  --ch-rgb: var(--al-rgb);
+}
+
+/* --------------------------------------------------------------------------
+   REDUCED MOTION
+   The tube stops moving. It does not stop being a tube — scanlines, bloom
+   and grille are static properties of the hardware, not animation.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --d-instant: 0ms; --d-quick: 0ms; --d-state: 0ms;
+    --d-sweep: 0ms; --d-scan: 0ms; --d-boot: 0ms; --d-persist: 0ms;
+    --interlace-weight: 0;
+  }
+}

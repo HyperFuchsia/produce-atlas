@@ -1,0 +1,225 @@
+/* ==========================================================================
+   PHOSPHOR — BASE
+   Reset, typography primitives, and the type utilities every component
+   is built from. Depends on tokens.css.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  background: var(--void);
+  /* The tube is a fixed instrument. It does not scroll; its modules do. */
+  overflow: hidden;
+}
+
+/* Document mode. A specification sheet is read rather than operated, so it
+   is allowed to scroll the whole tube. The only sanctioned exception. */
+html.doc, html.doc body { overflow: auto; height: auto; min-height: 100%; }
+
+body {
+  background: var(--void);
+  color: var(--ch-base);
+  font-family: var(--f-mono);
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  overflow: hidden;
+  /* Selecting text on an instrument panel is not a gesture that exists,
+     but blocking it entirely is hostile. Keep it, style it like a strike. */
+}
+
+::selection {
+  background: rgba(var(--ch-rgb), .28);
+  color: var(--ch-core);
+}
+
+h1, h2, h3, h4, h5, h6, p, figure, ul, ol, dl, dd { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  margin: 0;
+  letter-spacing: inherit;
+}
+
+button { cursor: pointer; text-align: left; }
+
+svg { display: block; }
+canvas { display: block; }
+
+/* --------------------------------------------------------------------------
+   FOCUS
+   Keyboard focus is a struck phosphor: the element goes to core brightness
+   and gains a bracket. Never an outline ring in a system colour.
+   -------------------------------------------------------------------------- */
+:focus { outline: none; }
+
+:focus-visible {
+  outline: var(--hair) solid var(--ch-hi);
+  outline-offset: 2px;
+  color: var(--ch-core);
+  text-shadow: var(--bloom-2);
+  box-shadow: var(--box-bloom-2);
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   Five voices. Every piece of text in the system is exactly one of them.
+   ========================================================================== */
+
+/* WORDMARK — small point size, enormous tracking. Letters read as a row of
+   separate lights that resolve into a word. The 1979 title move. */
+.t-title {
+  font-family: var(--f-display);
+  font-size: var(--t-title);
+  font-weight: var(--w-thin);
+  letter-spacing: var(--tr-title);
+  text-transform: uppercase;
+  line-height: var(--lh-tight);
+  /* tracking adds trailing space after the final glyph; pull it back so the
+     optical block aligns to the grid */
+  margin-right: calc(var(--tr-title) * -1);
+  color: var(--ch-hi);
+  text-shadow: var(--bloom-3);
+}
+
+/* LEAD — module headline */
+.t-lead {
+  font-family: var(--f-display);
+  font-size: var(--t-lead);
+  font-weight: var(--w-thin);
+  letter-spacing: var(--tr-lead);
+  text-transform: uppercase;
+  line-height: var(--lh-tight);
+  margin-right: calc(var(--tr-lead) * -1);
+  color: var(--ch-hi);
+  text-shadow: var(--bloom-2);
+}
+
+/* LABEL — field labels, column heads, module slugs. Always caps. */
+.t-label {
+  font-family: var(--f-mono);
+  font-size: var(--t-label);
+  font-weight: var(--w-norm);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  line-height: 1.3;
+  color: var(--ch-mid);
+}
+
+/* MICRO — captions, coordinates, corner identifiers. The quietest voice
+   that is still content, so it paints in the active channel. Housing text
+   is not this: the chassis has its own stamp style, tuned to ICE. */
+.t-micro {
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: var(--ch-mid);
+}
+
+/* DATA — numeric readout */
+.t-data {
+  font-family: var(--f-mono);
+  font-size: var(--t-data);
+  font-weight: var(--w-norm);
+  line-height: var(--lh-data);
+  font-variant-numeric: tabular-nums;
+  color: var(--ch-hi);
+  text-shadow: var(--bloom-2);
+}
+
+.t-hero {
+  font-family: var(--f-mono);
+  font-size: var(--t-hero);
+  font-weight: var(--w-thin);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ch-core);
+  text-shadow: var(--bloom-4);
+}
+
+/* BODY — running text. The only voice allowed a measure and a real leading. */
+.t-body {
+  font-size: var(--t-body);
+  line-height: var(--lh-body);
+  color: var(--ch-base);
+  max-width: 62ch;
+}
+
+.t-fine {
+  font-size: var(--t-fine);
+  line-height: 1.5;
+  color: var(--ch-mid);
+}
+
+/* Scientific names are the one place italic is permitted — it is a
+   nomenclatural requirement, not a design flourish. */
+.t-sci { font-style: italic; }
+.t-sci .rank { font-style: normal; color: var(--ch-mid); }
+
+/* --------------------------------------------------------------------------
+   LUMINANCE UTILITIES
+   Emphasis in this system is brightness. These are the only step values.
+   -------------------------------------------------------------------------- */
+.lum-core  { color: var(--ch-core); text-shadow: var(--bloom-4); }
+.lum-hi    { color: var(--ch-hi);   text-shadow: var(--bloom-3); }
+.lum-base  { color: var(--ch-base); text-shadow: var(--bloom-2); }
+.lum-mid   { color: var(--ch-mid);  text-shadow: var(--bloom-1); }
+.lum-low   { color: var(--ch-low);  text-shadow: none; }
+.lum-ghost { color: var(--ch-ghost); text-shadow: none; }
+
+/* --------------------------------------------------------------------------
+   PHOSPHOR PERSISTENCE
+   Add .struck to any element whose value just changed. It flashes to core
+   and decays. crt.js applies and removes this automatically for any node
+   marked [data-live].
+   -------------------------------------------------------------------------- */
+@keyframes persist {
+  0%   { color: var(--ch-core); text-shadow: var(--bloom-4); }
+  100% { color: inherit; text-shadow: inherit; }
+}
+.struck { animation: persist var(--d-persist) var(--e-linear) 1; }
+
+/* --------------------------------------------------------------------------
+   SCROLLING
+   Modules scroll internally. The scrollbar is part of the instrument.
+   -------------------------------------------------------------------------- */
+.scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ch-low) transparent;
+}
+.scroll-y::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-y::-webkit-scrollbar-track { background: transparent; }
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--ch-low);
+  border-radius: 0;
+}
+.scroll-y::-webkit-scrollbar-thumb:hover { background: var(--ch-mid); }
+
+/* Wide content never scrolls the chassis sideways. */
+.scroll-x { overflow-x: auto; overscroll-behavior-x: contain; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

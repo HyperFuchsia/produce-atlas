@@ -1,0 +1,208 @@
+/* ==========================================================================
+   PHOSPHOR — CHASSIS & CONSOLE GRID
+   --------------------------------------------------------------------------
+   The instrument housing and the layout it frames. The chassis is always
+   ICE phosphor: the housing does not change colour when the readout does.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   CHASSIS
+   The bezel. Corner brackets, edge rules, registration marks and the
+   coordinate labels that run the perimeter. This is deliberately non-
+   functional chrome — an instrument that shows its own construction.
+   -------------------------------------------------------------------------- */
+.chassis {
+  position: fixed;
+  inset: var(--s-5);
+  z-index: var(--z-chassis);
+  pointer-events: none;
+}
+
+/* Four L-brackets. Drawn as borders on absolutely-placed boxes so the arms
+   stay exactly --bracket-lg long at any viewport size. */
+.chassis__corner {
+  position: absolute;
+  width: var(--bracket-lg);
+  height: var(--bracket-lg);
+  border: var(--heavy) solid var(--chassis-mark);
+}
+.chassis__corner--tl { top: 0;    left: 0;  border-right: 0; border-bottom: 0; }
+.chassis__corner--tr { top: 0;    right: 0; border-left: 0;  border-bottom: 0; }
+.chassis__corner--bl { bottom: 0; left: 0;  border-right: 0; border-top: 0; }
+.chassis__corner--br { bottom: 0; right: 0; border-left: 0;  border-top: 0; }
+
+/* Tick rules along each edge. A ruler you never measure with. */
+.chassis__ticks {
+  position: absolute;
+  background-repeat: repeat-x;
+}
+.chassis__ticks--top,
+.chassis__ticks--bottom {
+  left: calc(var(--bracket-lg) + var(--s-5));
+  right: calc(var(--bracket-lg) + var(--s-5));
+  height: 6px;
+  background-image: linear-gradient(to right,
+    var(--chassis-line) var(--hair), transparent var(--hair));
+  background-size: var(--s-4) 6px;
+}
+.chassis__ticks--top    { top: 0; }
+.chassis__ticks--bottom { bottom: 0; }
+
+.chassis__ticks--left,
+.chassis__ticks--right {
+  top: calc(var(--bracket-lg) + var(--s-5));
+  bottom: calc(var(--bracket-lg) + var(--s-5));
+  width: 6px;
+  background-image: linear-gradient(to bottom,
+    var(--chassis-line) var(--hair), transparent var(--hair));
+  background-size: 6px var(--s-4);
+  background-repeat: repeat-y;
+}
+.chassis__ticks--left  { left: 0; }
+.chassis__ticks--right { right: 0; }
+
+/* Perimeter identifiers. Real values — hull code, deck, tube serial. */
+.chassis__stamp {
+  position: absolute;
+  font-family: var(--f-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--chassis-ghost);
+  white-space: nowrap;
+}
+.chassis__stamp--tl { top: -1px;  left: calc(var(--bracket-lg) + var(--s-6)); }
+.chassis__stamp--tr { top: -1px;  right: calc(var(--bracket-lg) + var(--s-6)); }
+.chassis__stamp--bl { bottom: -1px; left: calc(var(--bracket-lg) + var(--s-6)); }
+.chassis__stamp--br { bottom: -1px; right: calc(var(--bracket-lg) + var(--s-6)); }
+.chassis__stamp--left {
+  left: -1px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(-50%);
+  transform-origin: 0 0;
+}
+
+/* --------------------------------------------------------------------------
+   CONSOLE
+   The working area inside the chassis. Three columns, three rows.
+   Nothing here scrolls — the modules scroll internally.
+   -------------------------------------------------------------------------- */
+.console {
+  position: fixed;
+  inset: calc(var(--s-5) + var(--bracket-lg) + var(--s-2));
+  z-index: var(--z-content);
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr) 316px;
+  grid-template-rows: auto minmax(0, 1fr) 168px;
+  grid-template-areas:
+    "head  head     head"
+    "index viewport read"
+    "index log      read";
+  gap: var(--s-5);
+  min-height: 0;
+}
+
+.console__head     { grid-area: head; }
+.console__index    { grid-area: index; min-height: 0; }
+.console__viewport { grid-area: viewport; min-height: 0; }
+.console__read     { grid-area: read; min-height: 0; }
+.console__log      { grid-area: log; min-height: 0; }
+
+/* --------------------------------------------------------------------------
+   DECK HEAD
+   Wordmark, channel selector, and the always-on status strip.
+   -------------------------------------------------------------------------- */
+.deck-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-7);
+  padding-bottom: var(--s-4);
+  border-bottom: var(--hair) solid var(--chassis-line);
+}
+
+.deck-head__mark { display: flex; align-items: baseline; gap: var(--s-5); }
+.deck-head__sub {
+  font-size: var(--t-micro);
+  letter-spacing: var(--tr-label);
+  text-transform: uppercase;
+  color: var(--chassis-mark);
+  border-left: var(--hair) solid var(--chassis-line);
+  padding-left: var(--s-5);
+  max-width: 52ch;
+  line-height: 1.45;
+}
+@media (max-width: 1440px) { .deck-head__sub { max-width: 30ch; } }
+
+.deck-head__ops { display: flex; align-items: center; gap: var(--s-6); }
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE
+   The console degrades by dropping panels, not by reflowing into a document.
+   It is still an instrument at 380px, and it stays operable: the register is
+   never removed, because without it there is no way to choose a record.
+
+   Visibility rules are scoped through `.console >` deliberately. A bare
+   `.console__log` selector ties with `.module { display: flex }` from
+   components.css, which loads later and would silently win — leaving the
+   panel laying claim to a grid track it no longer has an area for.
+   -------------------------------------------------------------------------- */
+@media (max-width: 1180px) {
+  .console {
+    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) 148px;
+    grid-template-areas:
+      "head  head"
+      "index viewport"
+      "index read";
+  }
+  .console > .console__log { display: none; }
+}
+
+@media (max-width: 860px) {
+  .console {
+    inset: calc(var(--s-4) + var(--bracket) + var(--s-2));
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 200px) minmax(0, 42vh) minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "index"
+      "viewport"
+      "read";
+    gap: var(--s-4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .console > .console__log { display: none; }
+  .console > .console__read { overflow: visible; }
+
+  .chassis { inset: var(--s-4); }
+  .chassis__corner { width: var(--bracket); height: var(--bracket); }
+  /* Perimeter stamps sit on the chassis edge, which at this size is under
+     the deck head. Housing text is the first thing to go. */
+  .chassis__stamp { display: none; }
+
+  .console > .console__index { grid-area: index; }
+  .console > .console__index .index__list { max-height: 132px; }
+
+  .deck-head { flex-wrap: wrap; gap: var(--s-4); align-items: center; }
+  .deck-head__sub { display: none; }
+  .deck-head__ops { gap: var(--s-4); flex-wrap: wrap; }
+  .deck-head__ops .readout { text-align: left; }
+  .deck-head__ops .readout__label { justify-content: flex-start; }
+
+  /* The tool row and the top-right fix compete for the same strip of the
+     viewport. The fix goes: the identical coordinates are already printed
+     in the Identity panel, and the tools have nowhere else to live. */
+  .viewport__corner--tr { display: none; }
+  /* At 0.62em a two-word mark wraps mid-phrase. Tighten rather than shrink:
+     the letterform spacing is the identity, and it survives at 0.34em. */
+  .t-title { font-size: 13px; letter-spacing: .34em; margin-right: -.34em; }
+}
+
+/* Below the fold of a small phone the archive lamp is the first control to
+   lose its label; the bulb still carries the state. */
+@media (max-width: 480px) {
+  .deck-head .lamp { font-size: 0; gap: 0; }
+  .deck-head .lamp__bulb { width: 8px; height: 8px; }
+}

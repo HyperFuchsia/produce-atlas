@@ -1,0 +1,298 @@
+/* ==========================================================================
+   PHOSPHOR — RASTER & GLASS
+   --------------------------------------------------------------------------
+   The compositing stack that makes the page a cathode-ray tube rather than a
+   picture of one. Layers, bottom to top:
+
+     0  lattice      the console grid, drawn behind everything
+     10 content      the interface itself
+     60 scanlines    horizontal raster lines
+     61 grille       vertical aperture-grille mask
+     62 interlace    the drifting field band
+     63 grain        electron noise
+     70 glass        vignette, corner falloff, specular sheen
+     100 boot        power-on sequence
+
+   Every layer above the content is pointer-events:none. You are looking
+   through the tube, not at it.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   THE LATTICE
+   The console grid is visible because 1979 instrument displays showed their
+   own construction. Two frequencies: an 8px baseline cell and a 64px module.
+   -------------------------------------------------------------------------- */
+.lattice {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-grid);
+  pointer-events: none;
+  background-image:
+    /* module lattice — brighter */
+    linear-gradient(to right,  var(--p4-ghost) var(--hair), transparent var(--hair)),
+    linear-gradient(to bottom, var(--p4-ghost) var(--hair), transparent var(--hair)),
+    /* baseline lattice — barely there */
+    linear-gradient(to right,  rgba(var(--p4-rgb), .045) var(--hair), transparent var(--hair)),
+    linear-gradient(to bottom, rgba(var(--p4-rgb), .045) var(--hair), transparent var(--hair));
+  background-size:
+    var(--grid-module) var(--grid-module),
+    var(--grid-module) var(--grid-module),
+    var(--grid-cell)   var(--grid-cell),
+    var(--grid-cell)   var(--grid-cell);
+  /* the lattice is dimmest at the edges, like a tube's own falloff */
+  -webkit-mask-image: radial-gradient(120% 120% at 50% 45%, #000 30%, rgba(0,0,0,.35) 100%);
+          mask-image: radial-gradient(120% 120% at 50% 45%, #000 30%, rgba(0,0,0,.35) 100%);
+}
+
+/* --------------------------------------------------------------------------
+   RASTER
+   -------------------------------------------------------------------------- */
+.raster {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-raster);
+}
+
+/* Horizontal scanlines. Period is --scan-pitch; the dark line is 1px of it,
+   so the duty cycle changes correctly if the pitch is retuned. */
+.raster__scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) calc(var(--scan-pitch) - 1px),
+    rgba(0, 0, 0, var(--scan-weight)) calc(var(--scan-pitch) - 1px),
+    rgba(0, 0, 0, var(--scan-weight)) var(--scan-pitch)
+  );
+}
+
+/* Aperture grille. A colour CRT's shadow mask splits the beam into vertical
+   R/G/B stripes. At this pitch you don't see stripes, you see the faint
+   chromatic fringing that makes bright text feel like it's on glass. */
+.raster__grille {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: overlay;
+  opacity: var(--grille-weight);
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 0, 0, .55) 0,
+    rgba(255, 0, 0, .55) 1px,
+    rgba(0, 255, 0, .55) 1px,
+    rgba(0, 255, 0, .55) 2px,
+    rgba(0, 0, 255, .55) 2px,
+    rgba(0, 0, 255, .55) var(--grille-pitch)
+  );
+}
+
+/* Interlace. A tall soft band drifting down the tube — the beat frequency
+   between the field rate and the camera photographing it. Slow, and almost
+   subliminal. This is the single most convincing tell that it's a tube. */
+.raster__interlace {
+  position: absolute;
+  left: 0; right: 0;
+  height: 32vh;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, var(--interlace-weight)) 46%,
+    rgba(255, 255, 255, calc(var(--interlace-weight) * 1.6)) 50%,
+    rgba(255, 255, 255, var(--interlace-weight)) 54%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: interlace-roll 7.5s var(--e-linear) infinite;
+  will-change: transform;
+}
+@keyframes interlace-roll {
+  from { transform: translate3d(0, -34vh, 0); }
+  to   { transform: translate3d(0, 100vh, 0); }
+}
+
+/* Electron grain. A 128px tile of fractal noise, repeated. Small tile keeps
+   the filter cost off the compositor. */
+.raster__grain {
+  position: absolute;
+  inset: -50%;
+  opacity: var(--noise-weight);
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='128' height='128' filter='url(%23n)'/></svg>");
+  animation: grain-jump .6s steps(6, end) infinite;
+  will-change: transform;
+}
+@keyframes grain-jump {
+  0%   { transform: translate3d(0, 0, 0); }
+  20%  { transform: translate3d(-3%, 2%, 0); }
+  40%  { transform: translate3d(2%, -4%, 0); }
+  60%  { transform: translate3d(-4%, -2%, 0); }
+  80%  { transform: translate3d(3%, 3%, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   GLASS
+   Vignette, corner falloff, and a fixed specular sheen. The tube is behind
+   a curved sheet of glass in a dark room; something is always reflected in
+   it, faintly, from the upper left.
+   -------------------------------------------------------------------------- */
+.glass {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-glass);
+}
+
+.glass__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(130% 118% at 50% 48%,
+      rgba(0,0,0,0) 52%,
+      rgba(0,0,0,.45) 82%,
+      rgba(0,0,0,var(--vignette-weight)) 100%);
+}
+
+/* Corner falloff. A rectangular tube loses beam focus hardest at the corners;
+   this is what reads as curvature without warping the layout. */
+.glass__corners {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(58% 58% at 0%   0%,   rgba(0,0,0,.62), transparent 70%),
+    radial-gradient(58% 58% at 100% 0%,   rgba(0,0,0,.62), transparent 70%),
+    radial-gradient(58% 58% at 0%   100%, rgba(0,0,0,.62), transparent 70%),
+    radial-gradient(58% 58% at 100% 100%, rgba(0,0,0,.62), transparent 70%);
+}
+
+.glass__sheen {
+  position: absolute;
+  inset: 0;
+  opacity: .05;
+  background: linear-gradient(147deg,
+    rgba(var(--p4-rgb), .9) 0%,
+    rgba(var(--p4-rgb), .18) 18%,
+    transparent 38%);
+}
+
+/* The whole tube breathes. Mains ripple on the high-voltage supply.
+   Amplitude is small enough that you register it as life, not as flicker. */
+.crt-live { animation: mains 4.1s var(--e-linear) infinite; }
+@keyframes mains {
+  0%, 100% { opacity: 1; }
+  47%      { opacity: .985; }
+  48%      { opacity: 1; }
+  71%      { opacity: .975; }
+  72%      { opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   BEAM SWEEP
+   A refresh bar crossing a single module. Applied on demand by crt.js when a
+   module reloads its data — the module visibly redraws rather than
+   cross-fading, because a vector display cannot cross-fade.
+   -------------------------------------------------------------------------- */
+.sweeping { position: relative; }
+.sweeping::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(var(--ch-rgb), .10) 44%,
+    rgba(var(--ch-rgb), .34) 50%,
+    rgba(var(--ch-rgb), .10) 56%,
+    transparent 100%);
+  animation: beam-sweep var(--d-sweep) var(--e-linear) 1;
+}
+@keyframes beam-sweep {
+  from { transform: translate3d(0, -100%, 0); }
+  to   { transform: translate3d(0, 100%, 0); }
+}
+
+/* --------------------------------------------------------------------------
+   SIGNAL FAULT
+   Horizontal tear + chromatic split. Used sparingly: on channel change and
+   on alarm. Not ambient — a glitch that runs constantly stops meaning
+   anything.
+   -------------------------------------------------------------------------- */
+.tearing { animation: tear .34s steps(2, end) 3; }
+@keyframes tear {
+  0%   { transform: translate3d(0,0,0);      clip-path: inset(0 0 0 0); }
+  20%  { transform: translate3d(-7px,0,0);   clip-path: inset(18% 0 62% 0); }
+  40%  { transform: translate3d(5px,0,0);    clip-path: inset(0 0 0 0); }
+  60%  { transform: translate3d(-3px,0,0);   clip-path: inset(66% 0 12% 0); }
+  100% { transform: translate3d(0,0,0);      clip-path: inset(0 0 0 0); }
+}
+
+.chroma-split { position: relative; }
+.chroma-split::before,
+.chroma-split::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.chroma-split::before { color: rgba(255,0,60,.7);  transform: translateX(-1px); }
+.chroma-split::after  { color: rgba(0,200,255,.7); transform: translateX(1px); }
+
+/* --------------------------------------------------------------------------
+   POWER-ON
+   The tube warms up: a horizontal line snaps open to full raster, holds,
+   then the image arrives. Runs once, on load.
+   -------------------------------------------------------------------------- */
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-boot);
+  background: var(--void);
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.boot[hidden] { display: none; }
+
+.boot__degauss {
+  width: 100%;
+  height: 100%;
+  background: var(--void);
+  animation: degauss var(--d-boot) var(--e-snap) 1 forwards;
+  transform-origin: 50% 50%;
+}
+@keyframes degauss {
+  0%   { transform: scaleY(.002) scaleX(.6);  opacity: 0;  background: var(--p4-core); }
+  6%   { transform: scaleY(.004) scaleX(1);   opacity: 1;  background: var(--p4-core); }
+  16%  { transform: scaleY(.006) scaleX(1);   opacity: 1;  background: var(--p1-core); }
+  34%  { transform: scaleY(1) scaleX(1);      opacity: .85; background: var(--p1-ghost); }
+  55%  { transform: scaleY(1) scaleX(1);      opacity: .28; background: var(--void); }
+  100% { transform: scaleY(1) scaleX(1);      opacity: 0;   background: var(--void); }
+}
+
+/* --------------------------------------------------------------------------
+   DEGRADED MODE
+   Users who ask for reduced motion get the hardware but not the movement.
+   The tube is still a tube: raster, bloom and vignette are physical
+   properties, not animation.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .raster__interlace,
+  .raster__grain,
+  .crt-live,
+  .sweeping::after,
+  .tearing,
+  .boot__degauss { animation: none; }
+  .raster__interlace { display: none; }
+  .boot { display: none; }
+}
+
+/* Small screens: the raster pitch is a physical constant of the tube, but on
+   a high-density phone panel a 3px pitch turns into mush. Open it up. */
+@media (max-width: 720px) {
+  :root { --scan-pitch: 4px; --scan-weight: .22; --grille-weight: .06; }
+}

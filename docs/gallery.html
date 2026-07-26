@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en" class="doc" data-channel="viridian">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phosphor — Interface System Specimen</title>
+<meta name="description" content="Component gallery, token reference and glyph set for the Phosphor interface system.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23000'/%3E%3Cg fill='none' stroke='%2322F07E' stroke-width='1.6'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Ccircle cx='12' cy='12' r='1.4'/%3E%3Cpath d='M12 2v3M12 19v3M2 12h3M19 12h3'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="stylesheet" href="../interface/tokens.css">
+<link rel="stylesheet" href="../interface/base.css">
+<link rel="stylesheet" href="../interface/effects.css">
+<link rel="stylesheet" href="../interface/components.css">
+<style>
+  /* Specimen-sheet layout. Not part of the system — this file is the only
+     consumer, so its styles live here rather than in components.css. */
+  .sheet {
+    position: relative;
+    z-index: var(--z-content);
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: var(--s-9) var(--s-7) var(--s-10);
+  }
+  .spec-head { margin-bottom: var(--s-9); }
+  .spec-head p { max-width: 68ch; margin-top: var(--s-5); }
+
+  .spec { margin-top: var(--s-9); }
+  .spec > h2 {
+    font-family: var(--f-display);
+    font-size: var(--t-lead);
+    font-weight: var(--w-thin);
+    letter-spacing: var(--tr-lead);
+    text-transform: uppercase;
+    color: var(--p4-hi);
+    text-shadow: 0 0 6px rgba(var(--p4-rgb), .5);
+    padding-bottom: var(--s-4);
+    border-bottom: var(--hair) solid var(--chassis-line);
+    text-wrap: balance;
+  }
+  .spec > p { max-width: 68ch; margin: var(--s-5) 0 var(--s-6); color: var(--p4-base); }
+
+  .bench {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+    gap: var(--s-6);
+    align-items: start;
+  }
+  .bench--wide { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+
+  .case { border: var(--hair) solid var(--p4-ghost); padding: var(--s-6); }
+  .case > figcaption {
+    font-size: var(--t-micro);
+    letter-spacing: var(--tr-label);
+    text-transform: uppercase;
+    color: var(--p4-mid);
+    padding-bottom: var(--s-5);
+    margin-bottom: var(--s-6);
+    border-bottom: var(--hair) solid var(--p4-ghost);
+    display: flex;
+    justify-content: space-between;
+    gap: var(--s-4);
+  }
+  .case code { color: var(--p4-low); }
+
+  .swatch { display: flex; flex-direction: column; gap: var(--s-2); }
+  .swatch__ramp { display: flex; height: 42px; border: var(--hair) solid var(--p4-ghost); }
+  .swatch__step { flex: 1; position: relative; }
+  .swatch__step span {
+    position: absolute; bottom: 2px; left: 0; right: 0;
+    text-align: center;
+    font-size: 7px;
+    color: rgba(255,255,255,.55);
+    letter-spacing: .06em;
+  }
+
+  .toks { width: 100%; border-collapse: collapse; font-size: var(--t-fine); }
+  .toks th, .toks td {
+    text-align: left; padding: var(--s-3) var(--s-4);
+    border-bottom: var(--hair) solid var(--p4-ghost);
+    vertical-align: top;
+  }
+  .toks th {
+    font-size: var(--t-label); letter-spacing: var(--tr-label);
+    text-transform: uppercase; color: var(--p4-mid); font-weight: var(--w-norm);
+  }
+  .toks td:first-child { color: var(--p1-base); white-space: nowrap; }
+  .toks td:nth-child(2) { color: var(--p4-hi); white-space: nowrap; }
+  .toks td:last-child  { color: var(--p4-mid); }
+
+  .lawlist { display: grid; gap: var(--s-5); max-width: 78ch; }
+  .law { display: grid; grid-template-columns: 26px 1fr; gap: var(--s-5); align-items: start; }
+  .law__n { font-size: var(--t-micro); color: var(--p4-low); padding-top: 3px; }
+  .law__t { color: var(--p4-hi); }
+  .law__d { color: var(--p4-mid); font-size: var(--t-fine); margin-top: var(--s-2); }
+
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); }
+  .verdict > div { border: var(--hair) solid var(--p4-ghost); padding: var(--s-5); }
+  .verdict h3 {
+    font-size: var(--t-label); letter-spacing: var(--tr-label);
+    text-transform: uppercase; margin-bottom: var(--s-4);
+  }
+  .verdict--do h3   { color: var(--p1-base); }
+  .verdict--dont h3 { color: var(--al-base); }
+  .verdict ul { display: grid; gap: var(--s-3); font-size: var(--t-fine); color: var(--p4-mid); }
+  @media (max-width: 640px) { .verdict { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="g-origin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></symbol>
+    <symbol id="g-progenitor" viewBox="0 0 24 24"><path d="M12 23v-9M12 14 5 5M12 14l7-9M12 14v-6"/><path d="M5 5 3 2M19 5l2-3"/></symbol>
+    <symbol id="g-domestication" viewBox="0 0 24 24"><path d="M3 9h18v13H3zM8 9v13M16 9v13"/><path d="M12 6a3 3 0 0 0 0-5 3 3 0 0 0 0 5z"/></symbol>
+    <symbol id="g-vector" viewBox="0 0 24 24"><path d="M1 12h7M13 12h9M17 7l5 5-5 5"/></symbol>
+    <symbol id="g-genome" viewBox="0 0 24 24"><path d="M8 2v20M16 2v20M8 6h8M8 11h8M8 16h8"/></symbol>
+    <symbol id="g-season" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/></symbol>
+    <symbol id="g-output" viewBox="0 0 24 24"><path d="M4 22V9l8-6 8 6v13z"/><path d="M4 15h16M4 18.5h16"/></symbol>
+    <symbol id="g-evidence" viewBox="0 0 24 24"><path d="M2 6h20M2 12h20M2 18h20M2 22h20"/><circle cx="14" cy="15" r="2"/></symbol>
+    <symbol id="g-reticle" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M16 16l6 6M11 1v4M11 17v4M1 11h4M17 11h4"/></symbol>
+    <symbol id="g-hazard" viewBox="0 0 24 24"><path d="M12 2 1 22h22z"/><path d="M12 9v6M12 18.5v.5"/></symbol>
+    <symbol id="g-maritime" viewBox="0 0 24 24"><path d="M1 16c3-3 5-3 8 0s5 3 8 0 3-2 6 0"/><path d="M1 21c3-3 5-3 8 0s5 3 8 0 3-2 6 0"/><path d="M12 3v8M12 3l5 3"/></symbol>
+    <symbol id="g-overland" viewBox="0 0 24 24"><path d="M1 20 9 6l5 8 3-4 6 10z"/><path d="M6 15h5"/></symbol>
+    <symbol id="g-clone" viewBox="0 0 24 24"><path d="M2 3h9v9H2zM13 12h9v9h-9zM11 7.5h2v9h-2z"/></symbol>
+    <symbol id="g-power" viewBox="0 0 24 24"><path d="M12 2v9"/><path d="M6 5.5a9 9 0 1 0 12 0"/></symbol>
+  </defs>
+</svg>
+
+<div class="lattice" aria-hidden="true"></div>
+
+<main class="sheet">
+
+  <header class="spec-head">
+    <h1 class="t-title">Phosphor</h1>
+    <p class="t-body" style="color:var(--p4-base);max-width:68ch">
+      The interface system behind Produce Atlas. It renders a late-1970s
+      vector instrument display: emitted light on true black, drawn entirely
+      in stroke, with elevation expressed as brightness rather than shadow.
+      This sheet is the specimen — every component, token and glyph the
+      system ships.
+    </p>
+    <p class="t-fine" style="margin-top:var(--s-5)">
+      <a href="../index.html" style="color:var(--p1-base)">← Return to the console</a>
+    </p>
+  </header>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>The seven laws</h2>
+    <p>Every decision in the system resolves to one of these. A component that
+       breaks one is wrong even when it looks right.</p>
+    <div class="lawlist">
+      <div class="law"><span class="law__n">01</span><div>
+        <div class="law__t">Light is emitted, never reflected.</div>
+        <div class="law__d">The ground is true black — an unlit phosphor. Every surface is defined by how much light it emits above that, never by a fill or a tint.</div>
+      </div></div>
+      <div class="law"><span class="law__n">02</span><div>
+        <div class="law__t">Everything is a stroke.</div>
+        <div class="law__d">No fills, no radii. A vector display has no fill primitive and cannot cheaply draw a rounded rectangle, so neither does this.</div>
+      </div></div>
+      <div class="law"><span class="law__n">03</span><div>
+        <div class="law__t">Elevation is brightness.</div>
+        <div class="law__d">There are no drop shadows. Nothing is above anything else; it is brighter or it is dimmer. Bloom is the only depth cue.</div>
+      </div></div>
+      <div class="law"><span class="law__n">04</span><div>
+        <div class="law__t">Emphasis is luminance, never weight or size.</div>
+        <div class="law__d">Six steps: core, hi, base, mid, low, ghost. Bolding a value to make it matter more is not available.</div>
+      </div></div>
+      <div class="law"><span class="law__n">05</span><div>
+        <div class="law__t">Colour is channel, not decoration.</div>
+        <div class="law__d">Five phosphors, each with a meaning. You do not mix them for visual interest — you switch channel because the subject changed.</div>
+      </div></div>
+      <div class="law"><span class="law__n">06</span><div>
+        <div class="law__t">The chassis shows its own construction.</div>
+        <div class="law__d">Registration marks, tick rules, corner brackets and panel addresses are visible. The instrument does not hide how it is built.</div>
+      </div></div>
+      <div class="law"><span class="law__n">07</span><div>
+        <div class="law__t">Motion is mechanical.</div>
+        <div class="law__d">Things step, sweep, snap and type. Nothing eases, springs or cross-fades — a servo does not overshoot for charm, and a vector display cannot dissolve.</div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Phosphor channels</h2>
+    <p>Five emissive ramps. A container retunes its whole subtree with
+       <code>data-channel</code>; no component knows which phosphor it is
+       being rendered in.</p>
+    <div class="bench">
+      <figure class="case">
+        <figcaption><span>P1 Viridian</span><code>data-channel="viridian"</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--p1-core)"><span>core</span></div>
+            <div class="swatch__step" style="background:var(--p1-hi)"><span>hi</span></div>
+            <div class="swatch__step" style="background:var(--p1-base)"><span>base</span></div>
+            <div class="swatch__step" style="background:var(--p1-mid)"><span>mid</span></div>
+            <div class="swatch__step" style="background:var(--p1-low)"><span>low</span></div>
+            <div class="swatch__step" style="background:var(--p1-ghost)"><span>ghost</span></div>
+          </div>
+          <p class="t-micro">Primary data — taxonomy, measurement, live values</p>
+        </div>
+      </figure>
+      <figure class="case">
+        <figcaption><span>P3 Amber</span><code>data-channel="amber"</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--p3-core)"><span>core</span></div>
+            <div class="swatch__step" style="background:var(--p3-hi)"><span>hi</span></div>
+            <div class="swatch__step" style="background:var(--p3-base)"><span>base</span></div>
+            <div class="swatch__step" style="background:var(--p3-mid)"><span>mid</span></div>
+            <div class="swatch__step" style="background:var(--p3-low)"><span>low</span></div>
+            <div class="swatch__step" style="background:var(--p3-ghost)"><span>ghost</span></div>
+          </div>
+          <p class="t-micro">Historical — deep time, provenance, caution</p>
+        </div>
+      </figure>
+      <figure class="case">
+        <figcaption><span>P4 Ice</span><code>data-channel="ice"</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--p4-core)"><span>core</span></div>
+            <div class="swatch__step" style="background:var(--p4-hi)"><span>hi</span></div>
+            <div class="swatch__step" style="background:var(--p4-base)"><span>base</span></div>
+            <div class="swatch__step" style="background:var(--p4-mid)"><span>mid</span></div>
+            <div class="swatch__step" style="background:var(--p4-low)"><span>low</span></div>
+            <div class="swatch__step" style="background:var(--p4-ghost)"><span>ghost</span></div>
+          </div>
+          <p class="t-micro">Navigation and chassis — geometry, chrome, coordinates</p>
+        </div>
+      </figure>
+      <figure class="case">
+        <figcaption><span>PX Xeno</span><code>data-channel="xeno"</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--px-core)"><span>core</span></div>
+            <div class="swatch__step" style="background:var(--px-hi)"><span>hi</span></div>
+            <div class="swatch__step" style="background:var(--px-base)"><span>base</span></div>
+            <div class="swatch__step" style="background:var(--px-mid)"><span>mid</span></div>
+            <div class="swatch__step" style="background:var(--px-low)"><span>low</span></div>
+            <div class="swatch__step" style="background:var(--px-ghost)"><span>ghost</span></div>
+          </div>
+          <p class="t-micro">The foreign — introduced range, non-native, anomaly</p>
+        </div>
+      </figure>
+      <figure class="case">
+        <figcaption><span>Alarm</span><code>data-channel="alarm"</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--al-core)"><span>core</span></div>
+            <div class="swatch__step" style="background:var(--al-hi)"><span>hi</span></div>
+            <div class="swatch__step" style="background:var(--al-base)"><span>base</span></div>
+            <div class="swatch__step" style="background:var(--al-mid)"><span>mid</span></div>
+            <div class="swatch__step" style="background:var(--al-low)"><span>low</span></div>
+            <div class="swatch__step" style="background:var(--al-ghost)"><span>ghost</span></div>
+          </div>
+          <p class="t-micro">Critical only. Never used for emphasis.</p>
+        </div>
+      </figure>
+      <figure class="case">
+        <figcaption><span>Ground</span><code>--void</code></figcaption>
+        <div class="swatch">
+          <div class="swatch__ramp">
+            <div class="swatch__step" style="background:var(--void)"><span>void</span></div>
+            <div class="swatch__step" style="background:var(--hull)"><span>hull</span></div>
+            <div class="swatch__step" style="background:var(--hull-deep)"><span>deep</span></div>
+          </div>
+          <p class="t-micro">There is no grey in this system. What reads as neutral is ice phosphor at 12 % luminance.</p>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Typography</h2>
+    <p>Five voices. Every piece of text in the system is exactly one of them.
+       No webfonts: the authentic face for an instrument readout is whatever
+       monospace the terminal shipped with, and the display voice is that same
+       face tracked out hard.</p>
+    <div class="bench bench--wide">
+      <figure class="case">
+        <figcaption><span>Wordmark</span><code>.t-title</code></figcaption>
+        <div class="t-title">Produce Atlas</div>
+        <p class="t-micro" style="margin-top:var(--s-5)">15 px · 0.62 em tracking · uppercase. Letters read as separate lights before they read as a word.</p>
+      </figure>
+      <figure class="case">
+        <figcaption><span>Lead</span><code>.t-lead</code></figcaption>
+        <div class="t-lead">Deep time</div>
+        <p class="t-micro" style="margin-top:var(--s-5)">27 px · 0.24 em tracking. Module headlines only.</p>
+      </figure>
+      <figure class="case">
+        <figcaption><span>Data &amp; hero</span><code>.t-data .t-hero</code></figcaption>
+        <div class="row" style="align-items:baseline;gap:var(--s-6)">
+          <span class="t-hero">9.0</span><span class="t-data">10 500</span>
+        </div>
+        <p class="t-micro" style="margin-top:var(--s-5)">Tabular figures throughout. An instrument never prints a bare number — units are part of the value.</p>
+      </figure>
+      <figure class="case">
+        <figcaption><span>Label, body, micro</span><code>.t-label .t-body .t-micro</code></figcaption>
+        <div class="stack-4">
+          <span class="t-label">Centre of origin</span>
+          <p class="t-body">Bread wheat has never existed in the wild.</p>
+          <span class="t-micro">Vavilov IV · 37.7°N 39.3°E</span>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Components</h2>
+    <p>Twenty-one components. Each is shown in its resting state; interactive
+       ones respond to hover, focus and keyboard.</p>
+
+    <div class="bench bench--wide">
+
+      <figure class="case">
+        <figcaption><span>01 Module</span><code>.module</code></figcaption>
+        <section class="module">
+          <div class="module__head">
+            <span class="module__slug"><span class="module__addr">04</span>Deep time</span>
+            <span class="module__meta">Calibrated BP</span>
+          </div>
+          <div class="module__body">
+            <p class="t-fine">The frame every other component lives inside. Corner ticks mark the true corner; the address maps to the key that focuses the panel.</p>
+          </div>
+          <div class="module__foot"><span>↑ ↓ step</span><span>Ready</span></div>
+        </section>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>03 Readout</span><code>.readout</code></figcaption>
+        <div class="readout-grid">
+          <div class="readout">
+            <span class="readout__label"><svg class="glyph"><use href="#g-origin"/></svg>Latitude</span>
+            <span class="readout__value">37.7°N</span>
+          </div>
+          <div class="readout">
+            <span class="readout__label">Domesticated</span>
+            <span class="readout__value readout__value--lg">10.5<span class="readout__unit">ka BP</span></span>
+          </div>
+          <div class="readout">
+            <span class="readout__label">Output</span>
+            <span class="readout__value readout__value--xl">808</span>
+            <span class="readout__note">million tonnes, annual</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>02 Rule · 12 Tag</span><code>.rule .tag</code></figcaption>
+        <div class="rule"><svg class="glyph"><use href="#g-evidence"/></svg>Evidence</div>
+        <div class="tag-row">
+          <span class="tag">Hexaploid</span>
+          <span class="tag tag--on">Free-threshing</span>
+          <span class="tag tag--amber">Tough rachis</span>
+          <span class="tag tag--xeno">Introduced</span>
+          <span class="tag tag--alarm">Cyanogenic</span>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>07 Lamp</span><code>.lamp</code></figcaption>
+        <div class="stack-4">
+          <span class="lamp" data-state="ok"><span class="lamp__bulb"></span>High confidence</span>
+          <span class="lamp" data-state="warn"><span class="lamp__bulb"></span>Moderate confidence</span>
+          <span class="lamp" data-state="crit"><span class="lamp__bulb"></span>Contested</span>
+          <span class="lamp" data-state="idle"><span class="lamp__bulb"></span>No record</span>
+        </div>
+        <p class="t-micro" style="margin-top:var(--s-5)">Shape carries the state as well as colour — square, diamond, pulsing circle, hollow — so it survives greyscale.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>08 Button · 09 Channel</span><code>.btn .chan</code></figcaption>
+        <div class="stack-4">
+          <div class="row row--wrap">
+            <button class="btn">Plot</button>
+            <button class="btn" data-on="true">Engaged</button>
+            <button class="btn btn--ghost">Ghost</button>
+            <button class="btn" disabled>Locked</button>
+            <button class="btn btn--alarm">Purge</button>
+          </div>
+          <div class="chan" role="tablist" aria-label="Demonstration channel">
+            <button class="chan__btn" role="tab" aria-selected="true" style="--tab-ch:var(--p1-base)">P1</button>
+            <button class="chan__btn" role="tab" aria-selected="false" style="--tab-ch:var(--p3-base)">P3</button>
+            <button class="chan__btn" role="tab" aria-selected="false" style="--tab-ch:var(--p4-base)">P4</button>
+            <button class="chan__btn" role="tab" aria-selected="false" style="--tab-ch:var(--px-base)">PX</button>
+          </div>
+          <button class="btn btn--wide">Commit <span class="btn__key">↵</span></button>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>05 Meter · 19 Progress</span><code>.meter .progress</code></figcaption>
+        <div class="stack-4" id="bench-bars"></div>
+        <div style="margin-top:var(--s-6)"><div class="progress"></div></div>
+        <p class="t-micro" style="margin-top:var(--s-4)">Discrete cells, never a smooth fill — a segment display has a finite number of segments.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>06 Dial</span><code>.dial</code></figcaption>
+        <div style="max-width:140px;margin:0 auto" id="bench-dial"></div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>16 Season ring</span><code>.season</code></figcaption>
+        <div style="max-width:190px;margin:0 auto" id="bench-season"></div>
+        <p class="t-micro" style="margin-top:var(--s-4)">A cycle is drawn as a cycle. A bar chart of the months lies about December and January being far apart.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>15 Era rail</span><code>.era</code></figcaption>
+        <div id="bench-era"></div>
+        <p class="t-micro" style="margin-top:var(--s-4)">Logarithmic. Domestication clusters in the last twelve millennia; a linear axis spends most of the tube on empty Pleistocene.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>17 Trace</span><code>.trace</code></figcaption>
+        <div id="bench-trace"></div>
+        <p class="t-micro" style="margin-top:var(--s-4)">The endpoint is emphasised — on a scope that is where the beam is now.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>04 Ledger</span><code>.ledger</code></figcaption>
+        <div class="scroll-x">
+          <table class="ledger">
+            <thead><tr><th>Arrival</th><th>Year</th><th>Vector</th></tr></thead>
+            <tbody>
+              <tr><td>Aegean</td><td class="num">6400 BCE</td><td class="dim">Neolithic expansion</td></tr>
+              <tr><td>Indus valley</td><td class="num">6000 BCE</td><td class="dim">overland</td></tr>
+              <tr><td>British Isles</td><td class="num">4000 BCE</td><td class="dim">Neolithic expansion</td></tr>
+              <tr><td>Valley of Mexico</td><td class="num">1521 CE</td><td class="dim">Columbian Exchange</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>10 Index</span><code>.index</code></figcaption>
+        <div class="index" style="border:var(--hair) solid var(--ch-low)">
+          <div class="index__search">
+            <svg class="glyph" style="color:var(--ch-mid)"><use href="#g-reticle"/></svg>
+            <label class="sr-only" for="bench-search">Specimen search</label>
+            <input id="bench-search" type="search" placeholder="Search — press /">
+          </div>
+          <div role="listbox" aria-label="Specimen register">
+            <button class="index__row" role="option" aria-selected="true">
+              <span class="index__idx">02</span><span class="index__name">Bread wheat</span>
+              <span class="index__yr">10.5 ka BP</span>
+              <span class="index__sci t-sci">Triticum aestivum</span>
+            </button>
+            <button class="index__row" role="option" aria-selected="false">
+              <span class="index__idx">03</span><span class="index__name">Asian rice</span>
+              <span class="index__yr">9.0 ka BP</span>
+              <span class="index__sci t-sci">Oryza sativa</span>
+            </button>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>11 Terminal</span><code>.term</code></figcaption>
+        <div class="term" style="border:var(--hair) solid var(--ch-low)">
+          <div class="term__line" data-sev="ok"><span class="term__t">02:18:58</span><span class="term__src">SYS</span><span class="term__msg">READY</span></div>
+          <div class="term__line"><span class="term__t">02:18:59</span><span class="term__src">PLOT</span><span class="term__msg">ORTHOGRAPHIC PROJECTION LOCKED</span></div>
+          <div class="term__line" data-sev="warn"><span class="term__t">02:19:02</span><span class="term__src">AUDIT</span><span class="term__msg">DATE CONTESTED</span></div>
+          <div class="term__line" data-sev="crit"><span class="term__t">02:19:04</span><span class="term__src">TUBE</span><span class="term__msg">SIGNAL LOSS ON CHANNEL PX</span></div>
+          <div class="term__line"><span class="term__t"></span><span class="term__src"></span><span class="term__msg"><span class="caret"></span></span></div>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>14 Legend · 21 Bracket</span><code>.legend .bracketed</code></figcaption>
+        <div class="bracketed" style="padding:var(--s-6)">
+          <span class="bracket bracket--tl"></span><span class="bracket bracket--tr"></span>
+          <span class="bracket bracket--bl"></span><span class="bracket bracket--br"></span>
+          <div class="legend">
+            <span class="legend__item">
+              <svg class="legend__key" viewBox="0 0 12 12"><rect x="5" y="0" width="2" height="12" fill="var(--ch-base)"/></svg>Domestication</span>
+            <span class="legend__item">
+              <svg class="legend__key" viewBox="0 0 12 12"><rect x="5" y="4" width="2" height="8" fill="var(--p3-base)"/></svg>Arrival</span>
+            <span class="legend__item">
+              <svg class="legend__key" viewBox="0 0 12 12"><circle cx="6" cy="6" r="4" fill="none" stroke="var(--px-base)" stroke-width="2"/></svg>Introduced</span>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>20 Alert</span><code>.alert</code></figcaption>
+        <div class="alert__panel" style="position:static;width:auto">
+          <div class="alert__title">Record contested</div>
+          <p class="t-fine" style="color:var(--al-hi)">No secure archaeobotanical horizon supports this date. The figure shown is inferred from genomic divergence and should not be cited as an excavation result.</p>
+          <div class="alert__actions">
+            <button class="btn btn--alarm">Show evidence</button>
+            <button class="btn">Acknowledge</button>
+          </div>
+        </div>
+        <p class="t-micro" style="margin-top:var(--s-4)">The only component permitted to take the whole tube. Alarm phosphor appears nowhere else.</p>
+      </figure>
+
+      <figure class="case">
+        <figcaption><span>13 Viewport</span><code>.viewport</code></figcaption>
+        <div class="viewport" style="height:200px;border:var(--hair) solid var(--ch-low)">
+          <div class="viewport__hud">
+            <div class="reticle"></div>
+            <div class="viewport__corner viewport__corner--tl"><div>TARGET</div><div class="lum-hi">TRI-AES</div></div>
+            <div class="viewport__corner viewport__corner--tr"><div>ORIGIN FIX</div><div class="lum-hi">37.7°N 39.3°E</div></div>
+            <div class="viewport__corner viewport__corner--bl"><div>VAVILOV IV</div><div>DRAG TO SLEW</div></div>
+            <div class="viewport__corner viewport__corner--br">
+              <div class="scalebar"><span>0</span><span class="scalebar__span"></span><span>6371 km</span></div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Semiotic standard</h2>
+    <p>Ron Cobb drew both the Nostromo's displays and its warning-label
+       iconography. This set follows the same logic: a fixed 24-unit grid,
+       stroke only, one idea per glyph, legible at 12 px.</p>
+    <div class="glyph-grid">
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-origin"/></svg><span class="t-micro">Centre of origin</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-progenitor"/></svg><span class="t-micro">Wild progenitor</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-domestication"/></svg><span class="t-micro">Domestication</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-vector"/></svg><span class="t-micro">Dispersal vector</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-genome"/></svg><span class="t-micro">Genome</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-season"/></svg><span class="t-micro">Seasonality</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-output"/></svg><span class="t-micro">Output</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-evidence"/></svg><span class="t-micro">Evidence</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-reticle"/></svg><span class="t-micro">Locate</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-hazard"/></svg><span class="t-micro">Toxic raw</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-maritime"/></svg><span class="t-micro">Maritime route</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-overland"/></svg><span class="t-micro">Overland route</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-clone"/></svg><span class="t-micro">Clonal propagation</span></div>
+      <div class="glyph-plate"><svg class="glyph glyph--lg"><use href="#g-power"/></svg><span class="t-micro">Power</span></div>
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Token reference</h2>
+    <p>Components consume tokens only. No component may hardcode a colour, a
+       radius or a duration.</p>
+    <div class="scroll-x">
+      <table class="toks">
+        <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td>--void</td><td>#000000</td><td>The ground. Always true black — an unlit phosphor is black.</td></tr>
+          <tr><td>--ch-core … --ch-ghost</td><td>6-step ramp</td><td>Active channel luminance. The only emphasis mechanism in the system.</td></tr>
+          <tr><td>--bloom-1 … --bloom-4</td><td>layered text-shadow</td><td>Phosphor scatter in the glass. Replaces drop shadow entirely.</td></tr>
+          <tr><td>--radius</td><td>0px</td><td>Deliberate. Do not change.</td></tr>
+          <tr><td>--grid-cell / --grid-module</td><td>8px / 64px</td><td>The two visible lattice frequencies.</td></tr>
+          <tr><td>--tr-title / --tr-lead / --tr-label</td><td>0.62 / 0.24 / 0.18 em</td><td>Tracking for the three uppercase voices.</td></tr>
+          <tr><td>--d-persist</td><td>620ms</td><td>Phosphor decay after a value changes. The system's signature motion.</td></tr>
+          <tr><td>--scan-pitch / --grille-pitch</td><td>3px / 3px</td><td>Raster line period and aperture-grille period.</td></tr>
+          <tr><td>--e-step-4 … --e-step-24</td><td>steps()</td><td>Mechanical easing. Nothing in the system uses a smooth curve.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ==================================================================== -->
+  <section class="spec">
+    <h2>Practice</h2>
+    <div class="verdict">
+      <div class="verdict--do">
+        <h3>Do</h3>
+        <ul>
+          <li>Raise luminance to emphasise. Core is the loudest thing available.</li>
+          <li>Switch channel when the subject changes — history to amber, geometry to ice.</li>
+          <li>Print units with every number, and zero-pad every counter.</li>
+          <li>Let modules scroll internally; the chassis holds still.</li>
+          <li>Encode state in shape as well as colour, as the lamps do.</li>
+          <li>Mark a contested figure as contested, on the panel, not in a footnote.</li>
+        </ul>
+      </div>
+      <div class="verdict--dont">
+        <h3>Don't</h3>
+        <ul>
+          <li>Add a drop shadow. There is no light source and nothing is above anything.</li>
+          <li>Fill a shape, or round a corner. Both are outside the display's vocabulary.</li>
+          <li>Use alarm phosphor for emphasis. It means critical and nothing else.</li>
+          <li>Cross-fade between states. A vector display redraws; it does not dissolve.</li>
+          <li>Run the glitch effect ambiently — a fault that never stops signifies nothing.</li>
+          <li>Bold a value to make it matter more. That is what luminance is for.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="spec" style="border-top:var(--hair) solid var(--chassis-line);padding-top:var(--s-6)">
+    <p class="t-micro">Phosphor IFS 2.4 · Produce Atlas · all ages calibrated BP, present = 1950 CE</p>
+  </footer>
+
+</main>
+
+<div class="raster" aria-hidden="true">
+  <div class="raster__scan"></div>
+  <div class="raster__grille"></div>
+</div>
+<div class="glass" aria-hidden="true">
+  <div class="glass__vignette"></div>
+  <div class="glass__sheen"></div>
+</div>
+
+<script src="../interface/data/taxa.js"></script>
+<script src="../interface/js/charts.js"></script>
+<script>
+  /* Populate the chart specimens from the real dataset — a gallery built on
+     invented numbers hides exactly the layout failures it exists to catch. */
+  const wheat = TAXA.find(t => t.id === 'TRI-AES');
+
+  document.getElementById('bench-bars').innerHTML = bars(wheat.producers);
+  document.getElementById('bench-dial').innerHTML =
+    dial(17, 100, { label: 'Share held by the largest producer', display: '17%', unit: '' });
+  document.getElementById('bench-season').innerHTML =
+    seasonRing(TAXA.find(t => t.id === 'MAL-DOM').season, { label: 'Apple availability' });
+  document.getElementById('bench-era').innerHTML = eraRail([
+    { bp: wheat.domesticated, label: 'Domestication', kind: 'domestication' },
+    ...wheat.dispersal.map(d => ({ bp: Math.max(120, 1950 - d.year), label: d.place, kind: 'dispersal' }))
+  ]);
+  document.getElementById('bench-trace').innerHTML = trace(
+    [12, 19, 17, 26, 31, 29, 38, 44, 41, 52, 61, 58, 72, 80],
+    { label: 'World output, indexed' });
+</script>
+</body>
+</html>
