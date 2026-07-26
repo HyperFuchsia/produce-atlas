@@ -290,7 +290,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    transmission box and three reply buttons squeeze it to a sliver on a short
    phone — measured at 45px in landscape before this. */
 #face-wrap{
-  position:relative; min-height:min(34vh,210px);
+  position:relative; min-height:min(26vh,168px);
   display:grid; place-items:center;
 }
 #comms{overflow-y:auto}
@@ -301,11 +301,15 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 #comms-txt{
   border:var(--hair) solid var(--frame);
   padding:8px 10px;
-  min-height:74px; max-height:30%;
+  /* Tall enough that the signal line and a wrapped translation both fit
+     without the grid compressing it; the face gives the room back. */
+  min-height:152px; max-height:46%;
   overflow-y:auto;
   font-size:12px; line-height:1.5;
   color:var(--white);
-  white-space:pre-wrap;
+  /* No pre-wrap: the box now holds elements rather than one text node, and
+     pre-wrap was rendering the source indentation between them as ninety
+     pixels of blank lines. */
 }
 #comms-txt .who{
   display:block; font-size:8px; letter-spacing:.16em;
@@ -313,12 +317,54 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   position:sticky; top:0; z-index:1;   /* the source must not scroll away */
   background:var(--void); padding:0 0 3px;
 }
+/* Two lines: what arrived, and what it means. The translation runs a beat
+   behind the signal, because that is what a translator does. */
+#comms-txt .tl{display:block;margin-top:5px}
+#comms-txt .tag{
+  display:block;font-size:7px;letter-spacing:.2em;color:var(--frame);
+  opacity:.7;margin-bottom:2px;
+}
+/* The signal is a ticker, not a transcript. Wrapping the whole incoming
+   stream pushed it — and its label — out of an 87px box entirely; a single
+   line showing the newest glyphs is smaller and reads like a receiver. */
+#comms-raw{
+  /* inline-block keeps the caret on the same line as the incoming glyphs
+     while still clipping the ticker rather than wrapping it */
+  display:inline-block; vertical-align:bottom;
+  max-width:calc(100% - 12px);
+  white-space:nowrap; overflow:hidden;
+  color:var(--contact); opacity:.9;
+  font-size:13px; letter-spacing:.08em; line-height:1.4;
+}
+#comms-eng{color:var(--white);font-size:12px;line-height:1.5}
+
 #comms-caret{
   display:inline-block;width:7px;height:1em;vertical-align:text-bottom;
   background:currentColor;animation:cw .9s steps(2,end) infinite;
 }
 @keyframes cw{0%,100%{opacity:1}50%{opacity:0}}
-@media (prefers-reduced-motion:reduce){#comms-caret{animation:none}}
+@media (prefers-reduced-motion:reduce){/* Two lines: what arrived, and what it means. The translation runs a beat
+   behind the signal, because that is what a translator does. */
+#comms-txt .tl{display:block;margin-top:5px}
+#comms-txt .tag{
+  display:block;font-size:7px;letter-spacing:.2em;color:var(--frame);
+  opacity:.7;margin-bottom:2px;
+}
+/* The signal is a ticker, not a transcript. Wrapping the whole incoming
+   stream pushed it — and its label — out of an 87px box entirely; a single
+   line showing the newest glyphs is smaller and reads like a receiver. */
+#comms-raw{
+  /* inline-block keeps the caret on the same line as the incoming glyphs
+     while still clipping the ticker rather than wrapping it */
+  display:inline-block; vertical-align:bottom;
+  max-width:calc(100% - 12px);
+  white-space:nowrap; overflow:hidden;
+  color:var(--contact); opacity:.9;
+  font-size:13px; letter-spacing:.08em; line-height:1.4;
+}
+#comms-eng{color:var(--white);font-size:12px;line-height:1.5}
+
+#comms-caret{animation:none}}
 
 @media (min-width:820px), (orientation:landscape) and (max-height:560px){
   #comms{
@@ -336,7 +382,25 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 }
 @media (orientation:landscape) and (max-height:460px){
   .opt{min-height:32px;padding:6px 8px}
-  #comms-txt{min-height:56px;font-size:11px}
+  #comms-txt{min-height:120px;font-size:11px}
+}
+/* Cramped heights: the translation is the payload, so it gets the room. The
+   labels go inline and the type tightens rather than letting English fall
+   below the fold. */
+@media (max-height:720px){
+  #comms-txt .tag{display:inline;margin-right:6px;margin-bottom:0}
+  #comms-txt .tl{margin-top:3px}
+  #comms-raw{font-size:11px;display:inline}
+  #comms-eng{font-size:10.5px;line-height:1.4}
+}
+
+/* Short phones cannot give the face, the transmission and three replies their
+   full heights at once. The face and the text keep theirs — they are what you
+   are here for — and the panel scrolls to reach the replies. */
+@media (max-height:720px) and (orientation:portrait){
+  .opt{min-height:34px;padding:6px 9px}
+  #comms-txt{min-height:126px;font-size:11px}
+  #face-wrap{min-height:min(23vh,144px)}
 }
 
 #comms-opts{display:grid;gap:4px}
@@ -555,6 +619,20 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 .key[data-on="1"]{color:var(--white);border-color:var(--white);box-shadow:0 0 10px rgba(234,251,255,.35)}
 .key[disabled]{color:var(--frame-dim);border-color:var(--frame-dim);box-shadow:none;cursor:not-allowed}
 .key--hot{border-color:var(--hot);color:var(--hot)}
+
+/* The one key that is not part of flying the vehicle. Spans the pad so it
+   reads as a separate act rather than a ninth switch. */
+.key--xeno{
+  grid-column:1/-1;
+  border-color:var(--contact); color:var(--contact);
+  letter-spacing:.16em;
+}
+.key--xeno .sub{color:rgba(255,82,217,.65)}
+.key--xeno:hover{border-color:var(--white);color:var(--white)}
+.key--xeno[data-live="1"]{
+  color:var(--void); background:var(--contact); border-color:var(--contact);
+  box-shadow:0 0 18px rgba(255,82,217,.75);
+}
 .key--hot:hover{color:var(--white);border-color:var(--white)}
 
 /* CALC FEED — the "futuristic calculations" column ---------------------- */
@@ -729,7 +807,11 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
         <button class="box" id="comms-x">CLOSE</button>
       </div>
       <div id="face-wrap"><canvas id="face"></canvas></div>
-      <div id="comms-txt"><span class="who" id="comms-who">TRANSMISSION</span><span id="comms-line"></span><i id="comms-caret"></i></div>
+      <div id="comms-txt">
+        <span class="who" id="comms-who">TRANSMISSION</span>
+        <div class="tl"><span class="tag">SIGNAL</span><span id="comms-raw"></span><i id="comms-caret"></i></div>
+        <div class="tl"><span class="tag">TRANSLATION</span><span id="comms-eng"></span></div>
+      </div>
       <div id="comms-opts"></div>
     </div>
 
@@ -787,6 +869,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     <button class="key" id="k-lz">LZ<span class="sub" id="lz-lbl">—</span></button>
     <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">DEORBIT</span></button>
     <button class="key key--hot" id="k-reset">RESET<span class="sub">RE-INSERT</span></button>
+    <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
 
 </div>
@@ -990,6 +1073,32 @@ const RACES={
     extra:'bolts'
   }
 };
+
+/* Each culture's own script. Deliberately drawn from Braille, box-drawing and
+   geometric-shape blocks rather than anything exotic: those three are present
+   in effectively every system monospace font, so the signal renders as glyphs
+   instead of as a row of tofu boxes on someone's phone.
+
+   The mapping is deterministic, so the same English letter always transcribes
+   to the same glyph and the script reads as a language rather than as noise. */
+const SCRIPTS={
+  voth:     '⠁⠃⠉⠙⠑⠋⠛⠓⠊⠚⠅⠇⠍⠝⠕⠏⠟⠗⠎⠞⠥⠧⠺⠭⠽⠵⠮⠔⠡⠬',
+  kelmoran: '┌┐└┘├┤┬┴┼─│╔╗╚╝╠╣╦╩╬═║╒╕╘╛╞╡╤╧',
+  ssrith:   '◜◝◞◟◠◡◢◣◤◥●○◐◑◒◓◔◕◖◗◴◵◶◷⬤⬮⬯⌒⌓⌔',
+  unit7:    '0123456789ABCDEF⌷⌸⌹⌺⌻⌼⌽⌾'
+};
+
+function transcribe(text,race){
+  const g=SCRIPTS[race]||SCRIPTS.voth;
+  let out='';
+  for(const ch of text){
+    if(/\s/.test(ch)){ out+=' '; continue; }
+    if(/[.,!?;:—-]/.test(ch)){ out+='·'; continue; }
+    const c=ch.toUpperCase().charCodeAt(0);
+    out+=g[(c*7+c%5)%g.length];
+  }
+  return out;
+}
 
 /* Where they transmit from. Spread wide so reaching a new one is a flight,
    not a wait. */
@@ -2503,7 +2612,7 @@ const comms={
   text:'', shown:0, done:false,
   mouth:0, mouthT:0, blink:0, nextBlink:2, sway:0,
   cv:null, cx:null, W:0, H:0,
-  granted:{}, lastVoice:0, glitch:0
+  granted:{}, lastVoice:0, glitch:0, raw:'', sig:0, cycle:0, settle:0, glitchRate:0.006
 };
 
 /* How far the mouth opens to make a given character. */
@@ -2649,7 +2758,7 @@ function drawFace(){
 
   /* Transmission dropout. Rare, brief, and it makes the link feel remote. */
   if(comms.glitch>0) comms.glitch-=1;
-  else if(Math.random()<0.006) comms.glitch=4+Math.random()*7;
+  else if(Math.random()<(comms.glitchRate||0.006)) comms.glitch=4+Math.random()*7;
   const tear=comms.glitch>0 ? (Math.random()-0.5)*10 : 0;
   c.save();
   c.translate(tear,0);
@@ -2688,7 +2797,9 @@ function commsSetNode(key){
   comms.node=key;
   const n=tree[key];
   comms.text=n.t; comms.shown=0; comms.done=false;
-  $('comms-line').textContent='';
+  comms.raw=transcribe(n.t, comms.alien.race);
+  $('comms-raw').textContent='';
+  $('comms-eng').textContent='';
   $('comms-opts').innerHTML='';
   if(n.grant && !comms.granted[comms.alien.id+':'+n.grant]){
     comms.granted[comms.alien.id+':'+n.grant]=true;
@@ -2715,21 +2826,34 @@ function commsTick(dt){
   const r=comms.race;
 
   if(!comms.done && comms.text){
-    comms.charAcc=(comms.charAcc||0)+dt*38;
+    /* Fast: this is a signal arriving, not a person typing. */
+    comms.charAcc=(comms.charAcc||0)+dt*62;
     while(comms.charAcc>=1 && comms.shown<comms.text.length){
       comms.charAcc-=1;
       const ch=comms.text[comms.shown++];
+      /* The jaw is driven from the English underneath, because that is what
+         the creature is actually saying; the glyph is only how we write it. */
       comms.mouthT=viseme(ch);
-      /* One blip every few characters, pitched inside the race's band. */
-      if(ch.trim() && comms.shown % r.voice.rate === 0){
-        blip(r.voice.base + Math.random()*r.voice.spread, 0.035, 0.09, 0, r.voice.type);
-      }
+      /* The noise belongs to the signal. The translation is silent — it is a
+         machine reading, not a second voice. */
+      if(ch.trim() && comms.shown % r.voice.rate === 0) sndVoice(comms.alien.race);
     }
-    $('comms-line').textContent=comms.text.slice(0,comms.shown);
-    const box=$('comms-txt'); box.scrollTop=box.scrollHeight;
+
+    /* The translation trails the signal by a fixed number of characters, so
+       you watch English resolve behind the glyphs rather than beside them. */
+    const LAG=16;
+    /* Only the tail of the signal is shown — the newest glyphs arriving. */
+    const WIN=34;
+    $('comms-raw').textContent=comms.raw.slice(Math.max(0,comms.shown-WIN),comms.shown);
+    $('comms-eng').textContent=comms.text.slice(0,Math.max(0,comms.shown-LAG));
     if(comms.shown>=comms.text.length){
-      comms.done=true; comms.mouthT=0;
-      commsOptions();
+      /* Let the translator catch up before offering replies. */
+      comms.settle=(comms.settle||0)+dt;
+      if(comms.settle>LAG/62+0.1){
+        $('comms-eng').textContent=comms.text;
+        comms.done=true; comms.mouthT=0; comms.settle=0;
+        commsOptions();
+      }
     }
   }
 
@@ -2747,8 +2871,15 @@ function commsTick(dt){
   }
 
   drawFace();
-  const sig=Math.round(72+22*Math.sin(performance.now()/900));
-  $('comms-sig').textContent='SIG '+sig+'%';
+  /* Strength falls with range, so opening a channel from the far side of the
+     planet works but looks like it: weak signal, heavier dropout. Flying to
+     the source is still worth doing. */
+  const [slat,slon]=vecToGeo(sim.r,sim.spin);
+  const km=greatCircleKm(slat,slon,comms.alien.lat,comms.alien.lon);
+  const base=clamp(96-(km/R_P)*(180/Math.PI)*0.42,18,96);
+  comms.sig=Math.round(base+4*Math.sin(performance.now()/900));
+  $('comms-sig').textContent='SIG '+comms.sig+'%';
+  comms.glitchRate = comms.sig<45 ? 0.03 : 0.006;
 }
 
 function applyGrant(kind){
@@ -3093,6 +3224,68 @@ function sndSpinUp(){
   o.connect(g).connect(snd.master); o.start(t); o.stop(t+0.2);
 }
 
+/* One voice per culture. A shared blip with a different centre frequency made
+   all four sound like the same instrument transposed; these are built
+   differently from each other so they read as different throats. */
+function sndVoice(race){
+  const ctx=A(); if(!ctx||!boot.done) return;
+  const t=ctx.currentTime;
+  const out=snd.master;
+
+  if(race==='voth'){
+    /* Insect: two hard chirps, high and clipped. */
+    for(let k=0;k<2;k++){
+      const o=ctx.createOscillator(); o.type='square';
+      const f0=1500+Math.random()*1400;
+      o.frequency.setValueAtTime(f0,t+k*0.022);
+      o.frequency.exponentialRampToValueAtTime(f0*0.55,t+k*0.022+0.018);
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0.055,t+k*0.022);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+k*0.022+0.02);
+      o.connect(g).connect(out); o.start(t+k*0.022); o.stop(t+k*0.022+0.03);
+    }
+  }else if(race==='kelmoran'){
+    /* Formal: a struck tone through a narrow band, almost a bell. */
+    const o=ctx.createOscillator(); o.type='triangle';
+    o.frequency.setValueAtTime(300+Math.random()*260,t);
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+    bp.frequency.setValueAtTime(700,t);
+    bp.frequency.exponentialRampToValueAtTime(1900,t+0.06);
+    bp.Q.value=6;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.10,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.075);
+    o.connect(bp).connect(g).connect(out); o.start(t); o.stop(t+0.09);
+  }else if(race==='ssrith'){
+    /* Wet and low: a sawtooth under a breath of filtered noise. */
+    const o=ctx.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(70+Math.random()*70,t);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.10,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.10);
+    o.connect(lp).connect(g).connect(out); o.start(t); o.stop(t+0.12);
+
+    const n=ctx.createBufferSource(); n.buffer=snd.noise;
+    const nf=ctx.createBiquadFilter(); nf.type='bandpass';
+    nf.frequency.value=2200+Math.random()*1200; nf.Q.value=1.4;
+    const ng=ctx.createGain();
+    ng.gain.setValueAtTime(0.035,t);
+    ng.gain.exponentialRampToValueAtTime(0.0001,t+0.06);
+    n.connect(nf).connect(ng).connect(out); n.start(t); n.stop(t+0.07);
+  }else{
+    /* Machine: pitch quantised to a scale of twelve, no glide at all. */
+    const step=Math.floor(Math.random()*12);
+    const o=ctx.createOscillator(); o.type='square';
+    o.frequency.setValueAtTime(300*Math.pow(2,step/12)*2,t);
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.075,t);
+    g.gain.setValueAtTime(0.075,t+0.024);
+    g.gain.linearRampToValueAtTime(0,t+0.026);
+    o.connect(g).connect(out); o.start(t); o.stop(t+0.03);
+  }
+}
+
 function sndOutcome(good){
   if(!A()) return;
   if(good){ blip(523,0.15,0.2,0); blip(784,0.15,0.2,0.14); blip(1046,0.5,0.2,0.28); }
@@ -3237,6 +3430,15 @@ function refresh(){
     hb.textContent = comms.open ? 'END' : rdy ? 'HAIL' : 'NO SIG';
   }
 
+  const xk=$('k-xeno');
+  if(xk){
+    xk.dataset.live = comms.open ? '1' : '';
+    xk.firstChild.textContent = comms.open ? 'CLOSE CHANNEL' : 'XENO CONTACT';
+    $('xeno-lbl').textContent = comms.open
+      ? (comms.race?comms.race.name:'')
+      : sim.hailReady ? 'SIGNAL IN RANGE' : 'OPEN CHANNEL';
+  }
+
   $('scan').textContent='SCAN '+pad(sim.found.length,2)+'/'+pad(EMITTERS.length,2);
 
   /* The limb is the lamp; this is its legend. Same colour, same words, so
@@ -3326,6 +3528,17 @@ btnOrbit.node.addEventListener('click',()=>{
   sndRelay();
   btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
 });
+/* The dedicated key. Opens a channel from anywhere and cycles the cultures,
+   so the scene is reachable without first flying to a transmitter — the
+   flying is then about signal quality rather than about access. */
+$('k-xeno').addEventListener('click',()=>{
+  sndRelay();
+  if(comms.open){ commsClose(); return; }
+  const a = sim.hailReady || ALIENS[(comms.cycle=(comms.cycle||0))%ALIENS.length];
+  if(!sim.hailReady) comms.cycle++;
+  commsOpen(a);
+});
+
 $('btn-hail').addEventListener('click',()=>{
   if(comms.open){ commsClose(); return; }
   const a=sim.hailReady;
