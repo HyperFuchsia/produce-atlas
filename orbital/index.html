@@ -384,7 +384,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 }
 /* An explicit display rule beats the hidden attribute, so the prompt stayed
    on screen through the whole self-test. State these back. */
-#boot-power[hidden],#boot-log[hidden],#boot-skip[hidden]{display:none}
+#boot-power[hidden],#boot-body[hidden],#boot-skip[hidden]{display:none}
 #boot-power .ring{
   width:66px;height:66px;border:2px solid var(--grid);border-radius:50%;
   display:grid;place-items:center;color:var(--grid);
@@ -417,21 +417,20 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
 /* Phase 2 — the self-test log. */
 #boot-log{
-  width:100%; max-width:620px; align-self:start;
-  margin-top:2vh;
+  width:100%;
   font-size:11px; line-height:1.55; color:var(--grid);
   text-shadow:0 0 6px rgba(34,255,136,.5);
   max-height:100%; overflow:hidden;
 }
-#boot-log .row{display:flex;gap:6px;align-items:baseline;white-space:pre}
-#boot-log .row .lab{white-space:pre}
-#boot-log .row .dots{
+#boot .row{display:flex;gap:6px;align-items:baseline;white-space:pre}
+#boot .row .lab{white-space:pre;flex:0 1 auto;min-width:0}
+#boot .row .dots{
   flex:1; min-width:12px; align-self:center; height:1px;
   background-image:radial-gradient(circle,currentColor 1px,transparent 1px);
   background-size:5px 1px; opacity:.5;
 }
-#boot-log .st{color:var(--white)}
-#boot-log .dots[hidden],#boot-log .st[hidden]{display:none}
+#boot .st{color:var(--white)}
+#boot .dots[hidden],#boot .st[hidden]{display:none}
 #boot-log .hd{
   color:var(--white);letter-spacing:.24em;font-size:13px;
   text-shadow:0 0 10px rgba(234,251,255,.6);
@@ -445,6 +444,38 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   text-shadow:0 0 12px rgba(234,251,255,.8);
 }
 #boot-log .gap{height:7px}
+/* One bar for the whole load. Items that finish are printed above it, so the
+   bar is the only moving part and the list is the record of what it got
+   through. */
+#boot-body{width:100%;max-width:620px;align-self:start;margin-top:2vh;display:grid;gap:10px}
+#boot-body[hidden]{display:none}
+
+#boot-load{display:grid;gap:5px;font-size:11px;color:var(--grid)}
+#load-lbl{color:var(--white);white-space:pre;overflow:hidden;text-overflow:ellipsis}
+#load-pct{color:var(--white);font-variant-numeric:tabular-nums}
+
+#load-bar{
+  height:13px; border:1px solid var(--frame); position:relative; overflow:hidden;
+}
+#load-fill{
+  position:absolute; inset:0;
+  transform-origin:0 50%; transform:scaleX(0);
+  background:var(--grid);
+  box-shadow:0 0 10px rgba(34,255,136,.75);
+  /* Discrete cells: a segment display has a finite number of segments. */
+  -webkit-mask-image:repeating-linear-gradient(to right,#000 0,#000 5px,transparent 5px,transparent 8px);
+          mask-image:repeating-linear-gradient(to right,#000 0,#000 5px,transparent 5px,transparent 8px);
+}
+#boot-load[data-stall="1"] #load-fill{
+  background:var(--ship); box-shadow:0 0 10px rgba(255,210,61,.8);
+  animation:stallp .5s steps(2,end) infinite;
+}
+@keyframes stallp{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){#boot-load[data-stall="1"] #load-fill{animation:none}}
+
+#load-note{min-height:1.4em;font-size:10px;color:var(--frame);letter-spacing:.08em}
+#boot-load[data-stall="1"] #load-note{color:var(--ship)}
+
 #boot-skip{
   position:absolute;bottom:12px;right:14px;
   font-size:8px;letter-spacing:.18em;color:var(--frame-dim);
@@ -642,7 +673,18 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     <span class="sub2">Halstead-Voss Trans-Orbital · Deck Systems · Terminal 04</span>
   </div>
 
-  <div id="boot-log" hidden></div>
+  <div id="boot-body" hidden>
+    <div id="boot-log"></div>
+    <div id="boot-load">
+      <div class="row">
+        <span id="load-lbl">LOADING</span>
+        <span class="dots"></span>
+        <span id="load-pct">00%</span>
+      </div>
+      <div id="load-bar"><i id="load-fill"></i></div>
+      <div id="load-note"></div>
+    </div>
+  </div>
   <div id="boot-skip" hidden>TAP TO SKIP</div>
 </div>
 
@@ -2194,50 +2236,58 @@ function render(){
    note, warn, big, gap. `d` is the pause in ms before the next line.
    ========================================================================== */
 
-const BOOT_SEQ=[
-  ['hd','HALSTEAD-VOSS TRANS-ORBITAL',null,340],
-  ['sub','DECK SYSTEMS · TERMINAL 04 · CRT-A · REV 2.6',null,420],
+/* What the bar is loading. One entry, one segment of the single bar. */
+const LOAD_ITEMS=[
+  ['HIGH TENSION SUPPLY','12.4 kV'],
+  ['CRT WARM · 15.7 kHz H / 60 Hz V','OK'],
+  ['APERTURE GRILLE','ALIGNED'],
+  ['CORE MEMORY 065536 WORDS','VERIFIED'],
+  ['GUIDANCE PROCESSOR','ONLINE'],
+  ['INERTIAL PLATFORM','ALIGNED'],
+  ['TWO-BODY SOLVER · μ 398600.4418','LOADED'],
+  ['ATMOSPHERIC MODEL · 8.5 km SCALE','LOADED'],
+  ['COASTLINE VECTOR SET · 14 MASSES','LOADED'],
+  ['SENSOR SWEEP · 3.4 s REVOLUTION','ARMED'],
+  ['XENOLINGUISTIC TABLES · 4 CULTURES','LOADED'],
+  ['COMMS · VHF / SHF / ELF / DIGITAL','OPEN'],
+  ['RECOVERY CANOPY · PYRO CONTINUITY','SAFE']
+];
+
+/* Where the load falters. `back` re-reads ground already covered, which is
+   the detail that makes a stall feel like a fault rather than a pause. */
+const STALLS=[
+  {at:21, ms:650, msg:'BUS CONTENTION — WAITING FOR CHANNEL'},
+  {at:48, ms:900, msg:'CHECKSUM MISMATCH — RE-READING BLOCK', back:6},
+  {at:72, ms:550, msg:'PARITY RETRY — SECTOR 0x1F4', back:3},
+  {at:91, ms:700, msg:'STALL — RETRYING (3 OF 3)'}
+];
+
+/* Printed after the bar completes. */
+const REG_SEQ=[
+  ['gap','',null,80],
+  ['sec','— REGISTRY —',null,180],
+  ['ok','VESSEL','LIGHTER 04 "MAGPIE"',60],
+  ['ok','REGISTRY','18041 / CJ',60],
+  ['ok','CLASS','CREWED RE-ENTRY, ONE',60],
+  ['ok','OWNER OF RECORD','HALSTEAD-VOSS T-O',60],
+  ['ok','OPERATING LICENCE 4471-K','VALID',60],
+  ['warn','INSURANCE · CARRIED · POLICY LAPSES ON UNSCHEDULED DESCENT',null,120],
+  ['ok','CREW COMPLEMENT','001 OF 007',60],
+  ['ok','STANDING ORDER 114','RETURN TO SURFACE',200],
+  ['gap','',null,120],
+  ['note','NOTICE: FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RECOVERY. FAILURE TO FILE VOIDS RECOVERY BONUS. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING CONTACT WITH NON-SIGNATORY CULTURES.',null,340],
   ['gap','',null,140],
-
-  ['sec','— POWER ON SELF TEST —',null,220],
-  ['ok','HIGH TENSION SUPPLY','12.4 kV',90],
-  ['ok','CRT WARM · 15.7 kHz H / 60 Hz V','OK',90],
-  ['ok','APERTURE GRILLE','ALIGNED',90],
-  ['ok','CORE MEMORY 065536 WORDS','VERIFIED',150],
-  ['ok','GUIDANCE PROCESSOR','ONLINE',90],
-  ['ok','INERTIAL PLATFORM','ALIGNED',90],
-  ['ok','TWO-BODY SOLVER · μ 398600.4418','LOADED',90],
-  ['ok','ATMOSPHERIC MODEL · 8.5 km SCALE','LOADED',90],
-  ['ok','SENSOR SWEEP · 3.4 s REVOLUTION','ARMED',90],
-  ['ok','COMMS · VHF / SHF / ELF / DIGITAL','OPEN',90],
-  ['ok','RECOVERY CANOPY · PYRO CONTINUITY','SAFE',150],
-  ['gap','',null,180],
-
-  ['sec','— REGISTRY —',null,220],
-  ['ok','VESSEL','LIGHTER 04 "MAGPIE"',80],
-  ['ok','REGISTRY','18041 / CJ',80],
-  ['ok','CLASS','CREWED RE-ENTRY, ONE',80],
-  ['ok','OWNER OF RECORD','HALSTEAD-VOSS T-O',80],
-  ['ok','OPERATING LICENCE 4471-K','VALID',80],
-  ['warn','INSURANCE · CARRIED · POLICY LAPSES ON UNSCHEDULED DESCENT',null,140],
-  ['ok','CREW COMPLEMENT','001 OF 007',80],
-  ['ok','STANDING ORDER 114','RETURN TO SURFACE',260],
-  ['gap','',null,160],
-
-  ['note','NOTICE: THE OPERATOR IS ACCOUNTABLE FOR ALL CONSUMABLES EXPENDED DURING MANOEUVRE. FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RECOVERY. FAILURE TO FILE VOIDS RECOVERY BONUS.',null,420],
-  ['note','CONTACT WITH NON-SIGNATORY CULTURES IS PERMITTED UNDER SCHEDULE 9 AND MUST BE LOGGED. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING SUCH CONTACT.',null,520],
-  ['gap','',null,200],
-
   ['big','SYSTEM INITIATED — ALL SUBSYSTEMS FULLY OPERATIONAL',null,700]
 ];
 
-const boot={running:false, done:false, i:0, timer:null, tick:null};
+const boot={running:false, done:false, i:0, timer:null, tick:null,
+            phase:'load', pct:0, item:0, stall:null, stallIdx:0, note:'', lastT:0, raf:null};
 
 /* Characters per line arrive on a timer, and each one clicks. Snapping whole
    lines in gave one click per line, which is not a typing sound — it is a
    line printer. Rates differ by kind: a heading is deliberate, a legal notice
    is dumped. */
-const TYPE_RATE={hd:34, sub:14, sec:13, ok:6, warn:9, note:4, big:24};
+const TYPE_RATE={hd:26, sub:11, sec:12, ok:5, warn:8, note:3, big:16};
 
 function bootLine(entry, done){
   const [kind,label,status]=entry;
@@ -2293,17 +2343,97 @@ function bootLine(entry, done){
 
 function bootStep(){
   if(!boot.running) return;
-  if(boot.i>=BOOT_SEQ.length){ bootFinish(); return; }
-  const entry=BOOT_SEQ[boot.i++];
+  if(boot.i>=REG_SEQ.length){ bootFinish(); return; }
+  const entry=REG_SEQ[boot.i++];
   /* Typing now carries the pacing, so the authored pauses shrink — they are
      only there to punctuate sections. */
-  bootLine(entry, ()=>{ boot.timer=setTimeout(bootStep, Math.round((entry[3]||60)*0.3)); });
+  bootLine(entry, ()=>{ boot.timer=setTimeout(bootStep, Math.round((entry[3]||60)*0.25)); });
+}
+
+/* ---- the loading bar ----------------------------------------------------
+   One bar across the whole manifest. It advances, it stalls, sometimes it
+   re-reads ground it already covered, and each item it clears is printed
+   above it. The chatter stopping is what a stall sounds like. */
+const LOAD_RATE=40;                    // percent per second when healthy
+
+function bootPaintLoad(){
+  const pct=Math.max(0,Math.min(100,boot.pct));
+  $('load-fill').style.transform='scaleX('+(pct/100).toFixed(4)+')';
+  $('load-pct').textContent=pad(Math.floor(pct),2)+'%';
+  const item=LOAD_ITEMS[Math.min(LOAD_ITEMS.length-1,boot.item)];
+  $('load-lbl').textContent = boot.stall ? 'HOLDING' : 'LOADING  '+item[0];
+  $('boot-load').dataset.stall = boot.stall ? '1' : '';
+  $('load-note').textContent = boot.stall ? boot.stall.msg : (boot.note||'');
+}
+
+function bootLoadFrame(now){
+  if(!boot.running || boot.phase!=='load') return;
+  const dt=Math.min(0.05,(now-(boot.lastT||now))/1000);
+  boot.lastT=now;
+
+  if(boot.stall){
+    if(now>=boot.stall.until){
+      /* Recovered. A relay closing, then the transfer picks up again. */
+      const s0=boot.stall; boot.stall=null;
+      boot.note='RECOVERED AT '+pad(Math.floor(boot.pct),2)+'%';
+      if(s0.back) boot.pct=Math.max(0,boot.pct-s0.back);
+      sndRelay();
+    }
+  }else{
+    boot.pct+=LOAD_RATE*dt;
+
+    /* Fire the next stall once the bar reaches it. */
+    const nx=STALLS[boot.stallIdx];
+    if(nx && boot.pct>=nx.at){
+      boot.stallIdx++;
+      boot.stall={...nx, until:now+nx.ms};
+      blip(520,0.10,0.13,0,'square');
+      blip(390,0.14,0.13,0.11,'square');
+    }
+
+    /* Print every item the bar has now cleared. */
+    const per=100/LOAD_ITEMS.length;
+    while(boot.item<LOAD_ITEMS.length && boot.pct>=(boot.item+1)*per){
+      const [label,status]=LOAD_ITEMS[boot.item++];
+      const log=$('boot-log');
+      const el=document.createElement('div');
+      el.className='row';
+      el.innerHTML='<span class="lab"></span><span class="dots"></span><span class="st"></span>';
+      el.querySelector('.lab').textContent=label;
+      el.querySelector('.st').textContent=status;
+      log.appendChild(el);
+      while(log.scrollHeight>log.clientHeight && log.firstChild) log.removeChild(log.firstChild);
+      if(/VERIFIED/.test(status))                 sndData(200);
+      else if(/LOADED|ONLINE|OPEN/.test(status))  sndSpinUp();
+      else                                        sndStatus();
+    }
+
+    /* Seek chatter while it is actually moving. */
+    boot.seek=(boot.seek||0)+dt;
+    if(boot.seek>0.075){
+      boot.seek=0;
+      blip(900+Math.random()*1600,0.02,0.035,0,'square');
+    }
+  }
+
+  bootPaintLoad();
+
+  if(boot.pct>=100 && !boot.stall){
+    boot.phase='reg';
+    boot.pct=100; bootPaintLoad();
+    $('load-lbl').textContent='LOAD COMPLETE';
+    $('load-note').textContent='13 OF 13 ITEMS · 0 FAULTS OUTSTANDING';
+    sndStatus();
+    boot.timer=setTimeout(bootStep,420);
+    return;
+  }
+  boot.raf=requestAnimationFrame(bootLoadFrame);
 }
 
 function bootFinish(){
   if(boot.done) return;
   boot.done=true; boot.running=false;
-  clearTimeout(boot.timer); clearInterval(boot.tick);
+  clearTimeout(boot.timer); clearInterval(boot.tick); cancelAnimationFrame(boot.raf);
   last=performance.now();          // do not hand the loop a 7-second delta
   try{ render(); refresh(); }catch(_){}
 
@@ -2341,9 +2471,16 @@ function bootStart(){
   }
 
   setTimeout(()=>{
-    $('boot-log').hidden=false;
+    $('boot-body').hidden=false;
     $('boot-skip').hidden=false;
-    bootStep();
+    /* The heading first, then the bar takes over. */
+    boot.i=0;
+    bootLine(['hd','HALSTEAD-VOSS TRANS-ORBITAL',null,0],()=>{
+      bootLine(['sub','DECK SYSTEMS · TERMINAL 04 · CRT-A · REV 2.6',null,0],()=>{
+        boot.phase='load'; boot.lastT=performance.now();
+        boot.raf=requestAnimationFrame(bootLoadFrame);
+      });
+    });
   }, 900);
 }
 
