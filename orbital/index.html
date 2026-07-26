@@ -264,6 +264,109 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 @media (prefers-reduced-motion:reduce){ #viewtools button[data-on="0"]{animation:none} }
 
 /* --------------------------------------------------------------------------
+   CONTEST
+   Their game, in their colour. Same stroke vocabulary as everything else: the
+   marks are hairlines, the band is two edges, the keys are boxes. Nothing here
+   is a graphic — a tally mark is a stroke because a tally mark IS a stroke.
+   -------------------------------------------------------------------------- */
+#contest{
+  position:absolute; inset:0; z-index:4;
+  display:grid; grid-template-rows:auto auto minmax(0,1fr) auto auto;
+  gap:6px; padding:8px;
+  background:rgba(0,0,0,.97);
+  --ct:var(--label);
+}
+#contest[hidden]{display:none}
+.ct-hd{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.ct-hd .box{font-size:9px}
+#ct-x{margin-left:auto;border-color:var(--hot);color:var(--hot);padding:3px 8px;min-height:28px}
+.ct-prompt{
+  margin:0; font-size:11px; letter-spacing:.08em; line-height:1.5;
+  color:var(--white); min-height:2.6em;
+}
+.ct-stage{
+  position:relative; border:var(--hair) solid var(--frame-dim);
+  min-height:120px; overflow:hidden;
+}
+.ct-note{
+  margin:0; font-size:10px; letter-spacing:.16em; color:var(--ct);
+  min-height:1.4em;
+}
+.ct-ans{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+.ct-key{
+  border:var(--hair) solid var(--ct); color:var(--ct);
+  background:rgba(0,0,0,.5);
+  min-height:46px; font-size:14px; letter-spacing:.1em;
+  font-variant-numeric:tabular-nums;
+}
+.ct-key:active{color:var(--white);border-color:var(--white)}
+
+/* TALLY — a field of marks, each one a stroke at its own angle. */
+.ct-field{position:absolute;inset:0}
+.ct-field i{
+  position:absolute; display:block; width:13px; height:0;
+  border-top:2px solid var(--ct);
+  box-shadow:0 0 6px var(--ct);
+}
+.ct-gone{
+  position:absolute; inset:0; display:grid; place-items:center;
+  font-size:10px; letter-spacing:.2em; color:var(--frame);
+}
+
+/* HOLD — a band with two edges and a marker between them. */
+.ct-hold{position:absolute; inset:0}
+.ct-hold::before{
+  content:""; position:absolute; left:0; right:0; top:50%; height:1px;
+  background:var(--frame-dim);
+}
+.ct-band{
+  position:absolute; top:24%; bottom:24%;
+  border-left:var(--hair) solid var(--ct); border-right:var(--hair) solid var(--ct);
+  box-shadow:0 0 12px var(--ct) inset;
+}
+.ct-mark{
+  position:absolute; top:14%; bottom:14%; width:0;
+  border-left:2px solid var(--hot);
+  box-shadow:0 0 10px var(--hot);
+  margin-left:-1px;
+}
+.ct-mark[data-ok="1"]{border-color:var(--grid);box-shadow:0 0 12px var(--grid)}
+
+/* PRECEDENCE — steps, chosen in order. */
+.ct-order{
+  position:absolute;inset:0;overflow-y:auto;padding:4px;
+  display:grid;gap:3px;grid-auto-rows:min-content;align-content:start;
+}
+.ct-step{
+  display:flex;gap:8px;align-items:center;text-align:left;
+  border:var(--hair) solid var(--frame-dim); color:var(--label);
+  padding:7px 8px; min-height:34px; font-size:10px; letter-spacing:.06em;
+  background:none;
+}
+.ct-step b{color:var(--frame);font-weight:400;min-width:1.2em}
+.ct-step[data-set="1"]{border-color:var(--ct);color:var(--white)}
+.ct-step[data-set="1"] b{color:var(--ct)}
+
+/* CONTINUATION — terms, and the one that is missing. */
+.ct-seq{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  gap:10px;flex-wrap:wrap;padding:8px;
+}
+.ct-seq i{
+  border:var(--hair) solid var(--frame-dim); color:var(--white);
+  padding:8px 10px; font-size:17px; font-style:normal;
+  font-variant-numeric:tabular-nums;
+}
+.ct-seq i.q{border-color:var(--ct);color:var(--ct)}
+
+.ct-result{
+  position:absolute;inset:0;display:grid;place-content:center;justify-items:center;gap:6px;
+}
+.ct-result .n{font-size:32px;color:var(--white);text-shadow:0 0 16px currentColor;
+  font-variant-numeric:tabular-nums}
+.ct-result .s{font-size:9px;letter-spacing:.2em;color:var(--ct)}
+
+/* --------------------------------------------------------------------------
    ASTROGATION PLOT
    Sits over the chart rather than beside it, because the whole point is to
    watch the corridor move while you steer the numbers. Anchored to the bottom
@@ -341,6 +444,10 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    and the console has enough protocol training to flag it. */
 .opt[data-court="good"]{border-left:3px solid var(--grid)}
 .opt[data-court="bad"]{border-left:3px solid var(--hot)}
+/* The invitation to their table. Marked out from the dialogue because it is not
+   a reply — it is a different thing to do. */
+.opt--game{border-color:var(--grid);color:var(--grid)}
+.opt--game small{color:var(--frame);letter-spacing:.1em}
 .opt[data-mute="1"]{
   border-style:dashed; color:var(--frame-dim); cursor:not-allowed;
   filter:none; opacity:.75;
@@ -1110,6 +1217,21 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <div class="plot-act">
         <button class="key" id="ap-go">DESCEND<span class="sub" id="ap-sub">—</span></button>
       </div>
+    </div>
+
+    <!-- CONTEST — their game, played at their table. A full-screen state like
+         the channel, so the reduced default view gains nothing. -->
+    <div id="contest" hidden role="dialog" aria-modal="true" aria-label="Contest">
+      <div class="ct-hd">
+        <span class="box" id="ct-who">—</span>
+        <span class="box" id="ct-game">—</span>
+        <span class="box" id="ct-round">— / —</span>
+        <button class="box" id="ct-x">WITHDRAW</button>
+      </div>
+      <p class="ct-prompt" id="ct-prompt">—</p>
+      <div class="ct-stage" id="ct-stage"></div>
+      <div class="ct-ans" id="ct-ans"></div>
+      <p class="ct-note" id="ct-note"></p>
     </div>
 
     <div id="comms" role="dialog" aria-modal="true" aria-label="Comms channel">
@@ -1936,6 +2058,8 @@ function newFlight(){
   sim.corridorWarned=false;
   sim.standing={}; for(const k in RACES) sim.standing[k]=0;
   approach.open=false; approach.body=null;
+  contest.played={}; contest.open=false;
+  const ct=$('contest'); if(ct) ct.hidden=true;
   const ap=$('appr'); if(ap) ap.hidden=true;
   plotReset();
   cam.tgt=[0,0,0]; cam.at=[0,0,0];
@@ -2401,6 +2525,8 @@ function approachOpen(b){
 }
 function approachStow(){
   approach.open=false; approach.body=null;
+  contest.played={}; contest.open=false;
+  const ct=$('contest'); if(ct) ct.hidden=true;
   $('appr').hidden=true;
 
   sndKey();
@@ -5011,6 +5137,25 @@ function commsOptions(){
     }
     box.appendChild(btn);
   });
+  /* Their game, offered inside the channel. A culture that is guarded will not
+     play with you, and one you cannot understand at all cannot explain the
+     rules — so the invitation is itself a readout of where you stand. */
+  if(GAMES[race] && standingOf(race).v>=0){
+    const g=GAMES[race];
+    const btn=document.createElement('button');
+    btn.className='opt opt--game';
+    const seen=contest.played[race]||0;
+    btn.innerHTML='<b>▲</b>'+g.name+' — '+RACES[race].name+' CONTEST'+
+      (seen?'<small> · PLAYED '+seen+'</small>':'');
+    btn.addEventListener('click',()=>{
+      sndKey();
+      const r=race;
+      commsClose();
+      contestOpen(r);
+    });
+    box.appendChild(btn);
+  }
+
   if(!n.o.some(o=>o.to===null||phraseKnown(o.t,race))){
     const btn=document.createElement('button');
     btn.className='opt';
@@ -6145,6 +6290,346 @@ function fmtDur(s){
    7.  DOM WIRING
    ========================================================================== */
 const $=id=>document.getElementById(id);
+/* ==========================================================================
+   CONTESTS
+   --------------------------------------------------------------------------
+   Standing used to come from picking the polite reply, which is a thin thing to
+   ask of a player and a thinner thing to ask of a culture. Nobody decides they
+   like you because you said ACKNOWLEDGE.
+
+   So each culture has a game, and it is THEIR game — derived from what the
+   fiction already says about them rather than a human pastime with an alien
+   skin on it. The VOTH counted you: "we counted seven of you before, there is
+   one of you now." Counting is what they do, so their game is a tally. The
+   SSRITH said the sea is patient either way; theirs is a test of whether you
+   can be still. The Assembly told you the paperwork is identical; theirs is
+   procedure in the correct order. UNIT 7 said relay does not require
+   comprehension, relay requires continuation; its game is continuing a
+   sequence, because continuation is the whole content of UNIT 7.
+
+   Playing well is how the reductions are earned. That makes the games the
+   spine of the diplomacy rather than a diversion beside it — you cannot
+   navigate without standing, and standing is mostly won at their table.
+   ========================================================================== */
+
+const contest={
+  open:false, race:null, g:null, round:0, rounds:0, score:0,
+  state:null, raf:null, last:0, played:{}, locked:false
+};
+
+/* What each culture plays, and why it is that and not something else. */
+const GAMES={
+  voth:{
+    name:'TALLY', rounds:4,
+    why:'THE VOTH COUNT. THEY WILL SHOW YOU A NUMBER OF THINGS.',
+    /* A field of marks, stridulated as it is laid out, then taken away. The
+       count grows and the arrangement stops being groupable, so at the top of
+       the game you have to have actually counted rather than recognised. */
+    begin(r){
+      const n=[4,7,11,16][r] + ((Math.random()*3)|0);
+      const pts=[];
+      for(let i=0;i<n;i++){
+        pts.push({x:8+Math.random()*84, y:10+Math.random()*80,
+                  a:Math.random()*180});
+      }
+      contest.state={n, pts, hidden:false, opts:tallyOptions(n)};
+      ctStage(renderTally(pts,false));
+      ctPrompt('COUNT THE MARKS');
+      ctAnswer([]);
+      /* They sound out the count as they lay it: at high comprehension the
+         chirps are a check on your own counting. */
+      for(let i=0;i<n;i++) sndVoice('voth', SCRIPTS.voth[i%SCRIPTS.voth.length],
+        (snd.ctx?snd.ctx.currentTime:0)+0.10+i*0.13);
+      const hideAt = r<2 ? 2600 : 1500;
+      contest.state.timer=setTimeout(()=>{
+        if(!contest.open) return;
+        contest.state.hidden=true;
+        ctStage(renderTally(pts,true));
+        ctPrompt('HOW MANY');
+        ctAnswer(contest.state.opts.map(v=>({label:String(v), value:v})));
+      }, hideAt);
+    },
+    answer(v){ return v===contest.state.n; },
+    cleanup(){ if(contest.state&&contest.state.timer) clearTimeout(contest.state.timer); }
+  },
+
+  ssrith:{
+    name:'HOLD', rounds:3,
+    why:'THE SSRITH ARE PATIENT. THEY WILL SEE WHETHER YOU CAN BE.',
+    /* A band that drifts and a marker you push. Hold the marker inside it. The
+       band narrows and wanders faster each round. Nothing here is reflex — the
+       drift is slow enough that the only way to lose is to stop paying
+       attention, which is exactly the quality being tested. */
+    begin(r){
+      contest.state={
+        pos:50, band:50, w:[19,14,10][r], vel:[0.34,0.52,0.70][r],
+        phase:Math.random()*6.28, inside:0, total:0, dur:[7,8,9][r], t:0, push:0
+      };
+      ctStage('<div class="ct-hold"><i class="ct-band" id="ct-band"></i>'+
+              '<i class="ct-mark" id="ct-mark"></i></div>');
+      ctPrompt('HOLD INSIDE THE BAND');
+      ctAnswer([{label:'◀ EASE', value:-1, hold:true},
+                {label:'PRESS ▶', value:1, hold:true}]);
+      contest.last=performance.now();
+      ctLoop();
+    },
+    tick(dt){
+      const s=contest.state;
+      s.t+=dt;
+      s.phase+=dt*s.vel;
+      s.band=50+Math.sin(s.phase)*30+Math.sin(s.phase*2.3)*8;
+      s.pos=clamp(s.pos+s.push*dt*34, 0, 100);
+      s.push*=Math.pow(0.06,dt);
+      const ok=Math.abs(s.pos-s.band)<=s.w/2;
+      s.total+=dt; if(ok) s.inside+=dt;
+      const bd=$('ct-band'), mk=$('ct-mark');
+      if(bd){ bd.style.left=(s.band-s.w/2)+'%'; bd.style.width=s.w+'%'; }
+      if(mk){ mk.style.left=s.pos+'%'; mk.dataset.ok=ok?'1':''; }
+      ctNote('INSIDE '+Math.round(100*s.inside/Math.max(0.01,s.total))+'%  ·  '+
+             Math.max(0,s.dur-s.t).toFixed(1)+' S');
+      /* One resolution, not one per frame. ctStop() cancels the pending frame
+         but tick() used to fall through into ctLoop() and start another, so the
+         round settled sixty times a second — a three-round game scored 266. */
+      if(s.t>=s.dur && !s.done){
+        s.done=true; ctStop();
+        ctResolve(s.inside/s.total>=0.66);
+      }
+    },
+    press(v){ contest.state.push=v*2.4; },
+    cleanup(){ ctStop(); }
+  },
+
+  kelmoran:{
+    name:'PRECEDENCE', rounds:3,
+    why:'THE ASSEMBLY FILES EVERYTHING. THE ORDER IS THE POINT.',
+    /* Five procedural steps, shuffled, and the correct order is stated in a
+       preamble written in their own script. At low comprehension you cannot
+       read the preamble and are guessing at protocol, which is precisely what
+       it is like to be an undeclared vehicle talking to a registry. */
+    begin(r){
+      const FORMS=[
+        ['STATE REGISTRY','DECLARE INTENT','FILE FORM 22-B','AWAIT ACKNOWLEDGEMENT','PROCEED'],
+        ['OPEN CHANNEL','STATE REGISTRY','DECLARE CARGO','FILE FORM 14-C','CLOSE CHANNEL'],
+        ['DECLARE INTENT','SUBMIT MANIFEST','AWAIT ACKNOWLEDGEMENT','COUNTERSIGN','PROCEED']
+      ];
+      const right=FORMS[r];
+      const shuffled=right.slice();
+      for(let i=shuffled.length-1;i>0;i--){
+        const j=(Math.random()*(i+1))|0;
+        [shuffled[i],shuffled[j]]=[shuffled[j],shuffled[i]];
+      }
+      contest.state={right, pool:shuffled, chosen:[]};
+      const pre='PRECEDENCE: '+right.join(' · ');
+      ctPrompt(renderPartial(pre,'kelmoran'));
+      ctStage('<div class="ct-order" id="ct-order"></div>');
+      ctOrderDraw();
+      ctAnswer([]);
+    },
+    cleanup(){}
+  },
+
+  unit7:{
+    name:'CONTINUATION', rounds:4,
+    why:'RELAY DOES NOT REQUIRE COMPREHENSION. RELAY REQUIRES CONTINUATION.',
+    /* Four terms and the next one. Each term is spoken in its own quantised
+       voice as it is written, so the sequence is heard as well as read — which
+       is the only concession this thing makes to being played with. */
+    begin(r){
+      const seed=2+((Math.random()*7)|0);
+      const kinds=[
+        {f:(i)=>seed+i*3,             d:'ARITHMETIC'},
+        {f:(i)=>seed*Math.pow(2,i),   d:'GEOMETRIC'},
+        {f:(i)=>seed+i*i,             d:'SQUARE'},
+        {f:(i)=>[seed,seed+1,seed*2,seed*3,seed*5,seed*8][i], d:'ADDITIVE'}
+      ];
+      const k=kinds[r%kinds.length];
+      const terms=[0,1,2,3].map(k.f);
+      const next=k.f(4);
+      const opts=[next, next+seed, Math.max(1,next-seed), next*2]
+        .map((v,i)=>({v:Math.round(v), i}))
+        .sort((a,b)=>((a.v*7919)%101)-((b.v*7919)%101));
+      contest.state={next:Math.round(next), opts};
+      ctPrompt('CONTINUE THE SEQUENCE');
+      ctStage('<div class="ct-seq">'+terms.map(t=>
+        '<i>'+Math.round(t)+'</i>').join('')+'<i class="q">?</i></div>');
+      ctAnswer(opts.map(o=>({label:String(o.v), value:o.v})));
+      terms.forEach((t,i)=>sndVoice('unit7', String(Math.round(t))[0],
+        (snd.ctx?snd.ctx.currentTime:0)+0.12+i*0.20));
+    },
+    answer(v){ return v===contest.state.next; },
+    cleanup(){}
+  }
+};
+
+/* --- shared frame -------------------------------------------------------- */
+function tallyOptions(n){
+  const set=new Set([n]);
+  while(set.size<4) set.add(Math.max(1, n + (((Math.random()*5)|0)-2) || 1));
+  return [...set].sort((a,b)=>a-b);
+}
+function renderTally(pts,hidden){
+  if(hidden) return '<div class="ct-field"><span class="ct-gone">FIELD WITHDRAWN</span></div>';
+  return '<div class="ct-field">'+pts.map(p=>
+    '<i style="left:'+p.x.toFixed(1)+'%;top:'+p.y.toFixed(1)+'%;'+
+    'transform:rotate('+p.a.toFixed(0)+'deg)"></i>').join('')+'</div>';
+}
+
+const ctPrompt=t=>{ const e=$('ct-prompt'); if(e) e.textContent=t; };
+const ctNote  =t=>{ const e=$('ct-note');   if(e) e.textContent=t; };
+const ctStage =h=>{ const e=$('ct-stage');  if(e) e.innerHTML=h; };
+
+function ctAnswer(opts){
+  const box=$('ct-ans'); if(!box) return;
+  box.innerHTML='';
+  for(const o of opts){
+    const b=document.createElement('button');
+    b.className='ct-key'; b.textContent=o.label;
+    if(o.hold){
+      /* Held rather than tapped, because the SSRITH game is about sustained
+         attention and a tap-counter would make it about tapping. */
+      let t=null;
+      const go=()=>{ contest.g.press(o.value); t=setTimeout(go,60); };
+      const stop=()=>{ if(t) clearTimeout(t); t=null; };
+      b.addEventListener('pointerdown',e=>{ e.preventDefault(); b.setPointerCapture(e.pointerId); go(); });
+      b.addEventListener('pointerup',stop);
+      b.addEventListener('pointercancel',stop);
+      b.addEventListener('pointerleave',stop);
+    }else if(o.action){
+      /* A control that does something other than answer carries its own action.
+         Bolting a second listener on afterwards meant BEGIN was also submitted
+         as an answer, losing the first round before it started. */
+      b.addEventListener('click',()=>{ sndKey(); o.action(); });
+    }else{
+      b.addEventListener('click',()=>ctSubmit(o.value));
+    }
+    box.appendChild(b);
+  }
+}
+
+function ctOrderDraw(){
+  const s=contest.state, box=$('ct-order'); if(!box) return;
+  box.innerHTML='';
+  s.chosen.forEach((t,i)=>{
+    const d=document.createElement('div');
+    d.className='ct-step'; d.dataset.set='1';
+    d.innerHTML='<b>'+(i+1)+'</b>'+t;
+    box.appendChild(d);
+  });
+  s.pool.filter(t=>!s.chosen.includes(t)).forEach(t=>{
+    const d=document.createElement('button');
+    d.className='ct-step';
+    d.innerHTML='<b>·</b>'+t;
+    d.addEventListener('click',()=>{
+      s.chosen.push(t); ctOrderDraw(); sndKey();
+      if(s.chosen.length===s.right.length){
+        ctResolve(s.chosen.every((v,i)=>v===s.right[i]));
+      }
+    });
+    box.appendChild(d);
+  });
+}
+
+function ctLoop(){
+  contest.raf=requestAnimationFrame(()=>{
+    if(!contest.open||!contest.g||!contest.g.tick) return;
+    const now=performance.now();
+    const dt=Math.min(0.05,(now-contest.last)/1000);
+    contest.last=now;
+    contest.g.tick(dt);
+    if(contest.open && contest.state && !contest.state.done) ctLoop();
+  });
+}
+function ctStop(){ if(contest.raf) cancelAnimationFrame(contest.raf); contest.raf=null; }
+
+function ctSubmit(v){
+  if(contest.locked||!contest.g||!contest.g.answer) return;
+  ctResolve(!!contest.g.answer(v));
+}
+
+/* One round settled, then the next — or the reckoning. */
+function ctResolve(ok){
+  contest.locked=true;
+  if(ok){ contest.score++; ctNote('CORRECT'); sndOutcome(true); }
+  else   { ctNote('NOT CORRECT'); sndAlarm(); }
+  ctAnswer([]);
+  setTimeout(()=>{
+    contest.locked=false;
+    contest.round++;
+    if(contest.round>=contest.rounds) ctFinish();
+    else ctRound();
+  }, ok?900:1200);
+}
+
+function ctRound(){
+  if(contest.g.cleanup) contest.g.cleanup();
+  $('ct-round').textContent=(contest.round+1)+' / '+contest.rounds;
+  contest.g.begin(contest.round);
+}
+
+/* What playing well is worth. A culture that has watched you take its game
+   seriously will tell you things; one that has watched you waste its time will
+   not. Repeat sittings count for less — they have already seen you play. */
+function ctFinish(){
+  const frac=contest.score/contest.rounds;
+  const race=contest.race;
+  const seen=contest.played[race]||0;
+  contest.played[race]=seen+1;
+  const taper=seen===0?1:seen===1?0.5:0;
+  /* What the sitting was worth, and then what a repeat sitting is worth: they
+     have already watched you play, so a second game moves them half as far and
+     a third not at all. Written out rather than folded into one expression —
+     the folded version silently turned a perfect score into +1. */
+  let delta = frac>=0.75 ? 2 : frac>=0.5 ? 1 : frac>=0.25 ? 0 : -1;
+  if(delta>0){
+    if(taper===0)        delta=0;
+    else if(taper<1)     delta=1;
+  }
+  const R=RACES[race].name;
+  ctPrompt(frac>=0.75 ? 'THEY ARE SATISFIED'
+         : frac>=0.5  ? 'THEY ACCEPT IT'
+         : frac>=0.25 ? 'THEY ARE UNMOVED'
+         :              'YOU HAVE WASTED THEIR TIME');
+  ctStage('<div class="ct-result"><span class="n">'+contest.score+' / '+contest.rounds+'</span>'+
+          '<span class="s">'+GAMES[race].name+'  ·  '+R+'</span></div>');
+  ctNote(delta>0 ? 'STANDING +'+delta : delta<0 ? 'STANDING '+delta : 'STANDING UNCHANGED');
+  ctAnswer([{label:'CLOSE', action:ctClose}]);
+  if(delta) courtesy(race, delta);
+  logLine(GAMES[race].name+' '+contest.score+'/'+contest.rounds+' — '+R+' '+standingOf(race).k);
+  /* Learning happens at the table too: you were listening for four rounds. */
+  const got=learn(race, frac>=0.5?3:1);
+  if(got) logLine('LEXICON '+R+' +'+got+' GLYPHS');
+}
+
+function contestOpen(race){
+  if(sim.over) return;
+  contest.open=true; contest.race=race; contest.g=GAMES[race];
+  contest.rounds=contest.g.rounds; contest.round=0; contest.score=0;
+  contest.locked=false;
+  $('contest').hidden=false;
+  $('ct-who').textContent=RACES[race].name;
+  $('ct-game').textContent=contest.g.name;
+  $('ct-game').style.color='rgb('+RACES[race].colour.join(',')+')';
+  $('ct-game').style.borderColor='rgb('+RACES[race].colour.join(',')+')';
+  $('contest').style.setProperty('--ct', 'rgb('+RACES[race].colour.join(',')+')');
+  ctPrompt(contest.g.why);
+  ctStage('');
+  ctNote('');
+  ctAnswer([{label:'BEGIN', action:ctRound}]);
+  spendAir(12);
+  raiseHeat(0.3);
+  sndRelay();
+}
+
+function contestClose(){ ctClose(); }
+function ctClose(){
+  if(contest.g&&contest.g.cleanup) contest.g.cleanup();
+  ctStop();
+  contest.open=false; contest.g=null;
+  $('contest').hidden=true;
+  refresh();
+  sndKey();
+}
+
 /* --- the plot panel -----------------------------------------------------
    Three numbers, four buttons each, and every consequence of them shown
    before you commit. Nothing here is hidden behind a confirmation: the
@@ -6597,6 +7082,7 @@ document.querySelectorAll('#appr .prow .pb').forEach(b=>{
 });
 
 $('k-go').addEventListener('click',engage);
+$('ct-x').addEventListener('click',ctClose);
 
 /* --- what the console shows -----------------------------------------------
    Two reveals, both remembered for the session, neither of which moves a key
@@ -6841,7 +7327,8 @@ function checkOutcome(){
 function updatePhase(){
   if(sim.over){ sim.phase='LOST'; return; }
   if(sim.landed){ sim.phase='DONE'; return; }
-  sim.phase = sim.jumping ? 'JUMP' : plot.open ? 'PLOT' : comms.open ? 'COMMS' : 'IDLE';
+  sim.phase = sim.jumping ? 'JUMP' : contest.open ? 'CONTEST'
+            : plot.open ? 'PLOT' : comms.open ? 'COMMS' : 'IDLE';
 }
 
 /* ==========================================================================
