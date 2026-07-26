@@ -264,6 +264,79 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 @media (prefers-reduced-motion:reduce){ #viewtools button[data-on="0"]{animation:none} }
 
 /* --------------------------------------------------------------------------
+   ASTROGATION PLOT
+   Sits over the chart rather than beside it, because the whole point is to
+   watch the corridor move while you steer the numbers. Anchored to the bottom
+   so it is under a thumb in portrait, and the chart above it stays visible.
+   -------------------------------------------------------------------------- */
+#plot{
+  position:absolute; left:6px; right:6px; bottom:6px; z-index:3;
+  display:grid; gap:4px;
+  padding:6px;
+  border:var(--hair) solid var(--frame);
+  background:rgba(0,0,0,.88);
+}
+#plot[hidden]{display:none}
+.plot-hd{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.plot-hd .box{font-size:9px}
+#plot-fine{margin-left:auto;border-color:var(--frame-dim);padding:3px 8px;min-height:26px}
+#plot-fine[data-on="1"]{border-color:var(--white);color:var(--white)}
+#plot-x{border-color:var(--frame-dim);padding:3px 8px;min-height:26px}
+.plot-dif{
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  border:var(--hair) solid var(--frame-dim);padding:3px 5px;
+}
+.plot-dif .dk{color:var(--frame);font-size:9px;letter-spacing:.2em}
+.plot-dif .dv{color:var(--label);font-size:10px}
+.plot-rows{display:grid;gap:3px}
+.prow{display:flex;align-items:stretch;gap:3px}
+.pk{
+  display:flex;align-items:center;
+  min-width:34px;font-size:9px;letter-spacing:.14em;color:var(--label);
+}
+.pb{
+  flex:1 1 0;
+  border:var(--hair) solid var(--frame-dim);
+  color:var(--label);
+  min-height:32px;font-size:10px;
+  background:rgba(0,0,0,.5);
+  touch-action:none;
+}
+.pb:active{border-color:var(--white);color:var(--white)}
+.pv{
+  flex:0 0 74px;
+  display:flex;align-items:center;justify-content:center;
+  border:var(--hair) solid var(--frame);
+  color:var(--white);font-size:14px;
+  text-shadow:0 0 8px currentColor;
+}
+.plot-out{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.po{
+  border:var(--hair) solid var(--frame-dim);
+  padding:3px 5px;display:grid;gap:1px;
+}
+.po .s{font-size:8px;letter-spacing:.12em;color:var(--frame)}
+.po .n{font-size:11px;color:var(--white)}
+.po[data-alert="1"]{border-color:var(--hot)} .po[data-alert="1"] .n{color:var(--hot)}
+.po[data-alert="2"]{border-color:var(--ship)} .po[data-alert="2"] .n{color:var(--ship)}
+.po[data-alert="ok"]{border-color:var(--grid)} .po[data-alert="ok"] .n{color:var(--grid)}
+.plot-act{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.plot-act .key{min-height:38px}
+@media (max-height:780px){
+  .pb{min-height:29px}
+  .pv{font-size:13px}
+  .plot-act .key{min-height:34px}
+  #plot{gap:3px;padding:5px}
+}
+.key--go{border-color:var(--grid);color:var(--grid)}
+.key--go[data-arm="1"]{box-shadow:0 0 14px rgba(34,255,136,.5)}
+.key--go[data-arm="bad"]{border-color:var(--hot);color:var(--hot);box-shadow:0 0 14px rgba(255,58,44,.5)}
+.opt[data-mute="1"]{
+  border-style:dashed; color:var(--frame-dim); cursor:not-allowed;
+  filter:none; opacity:.75;
+}
+
+/* --------------------------------------------------------------------------
    COMMS
    Sits inside the viewport at z-index 2, below the raster at 3, so the face
    is drawn ON the tube — scanlines, grille and vignette fall across it the
@@ -636,7 +709,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 .key--hot:hover{color:var(--white);border-color:var(--white)}
 
 /* CALC FEED — the "futuristic calculations" column ---------------------- */
-#calc,#sensorlog{display:none}
+#calc,#sensorlog,#oplog{display:none}
 .calcrow{display:flex;justify-content:space-between;gap:6px;font-size:10px}
 .calcrow .s{color:var(--frame)}
 .calcrow .n{color:var(--white)}
@@ -675,6 +748,41 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 #report p{margin:0 0 6px;font-size:11px;color:var(--label)}
 #report .big{font-size:30px;color:var(--white);text-shadow:0 0 14px currentColor;margin:10px 0}
 #report .key{margin-top:14px;width:100%}
+/* The last thing on the plate. Dimmer than the report above it and set on its
+   own, because it is not a readout — it is the only line in the whole console
+   that is not reporting a state. */
+#rep-epitaph{
+  margin-top:12px;padding-top:10px;
+  border-top:var(--hair) solid var(--frame-dim);
+  color:var(--frame);font-size:10px;letter-spacing:.16em;line-height:1.9;
+  white-space:pre-line;
+}
+#report.bad #rep-epitaph{color:var(--hot);opacity:.85}
+
+#lex{border:var(--hair) solid var(--frame-dim);padding:5px 6px;display:grid;gap:2px}
+#lex .hd{
+  font-size:9px;letter-spacing:.18em;color:var(--frame);
+  border-bottom:var(--hair) solid var(--frame-dim);padding-bottom:3px;margin-bottom:2px;
+}
+.lexrow{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;
+  align-items:center;font-size:10px;
+}
+.lexrow .nm{color:var(--label);letter-spacing:.06em;white-space:nowrap}
+.lexrow .st{
+  font-size:8px;letter-spacing:.06em;opacity:.85;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;
+}
+.lexrow .bar{
+  display:block;width:44px;height:6px;
+  border:var(--hair) solid var(--frame-dim);position:relative;
+}
+.lexrow .bar i{position:absolute;left:0;top:0;bottom:0;background:currentColor;display:block}
+.lexrow[data-state="locked"] .nm{color:var(--frame-dim)}
+.lexrow[data-state="locked"] .bar{border-style:dashed}
+.lexrow[data-state="open"]   {color:var(--ship)}
+.lexrow[data-state="fluent"] {color:var(--grid)}
+.lexrow[data-state="locked"] {color:var(--frame-dim)}
 
 /* --------------------------------------------------------------------------
    LANDSCAPE / LARGE — the classic three-column flight deck
@@ -703,6 +811,20 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     gap:6px;
   }
   .key{min-height:54px}
+  #oplog{
+    display:block;
+    grid-column:1/-1;
+    border:var(--hair) solid var(--frame-dim);
+    padding:6px;
+  }
+  #oplog .hd{
+    font-size:8px;letter-spacing:.16em;color:var(--frame);
+    border-bottom:var(--hair) solid var(--frame-dim);
+    padding-bottom:4px;margin-bottom:5px;
+  }
+  #oplog .calcrow{display:grid;grid-template-columns:auto 1fr;gap:8px}
+  #oplog .calcrow .s{color:var(--frame-dim);font-size:9px}
+  #oplog .calcrow .n{color:var(--white);font-size:9px;letter-spacing:.04em;text-align:left}
   #sensorlog{
     display:block;
     grid-column:1/-1;
@@ -799,6 +921,60 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-hail"  data-on="no">HAIL</button>
     </div>
 
+    <!-- ASTROGATION PLOT — the three numbers the vehicle actually flies -->
+    <div id="plot" hidden aria-label="Astrogation plot">
+      <div class="plot-hd">
+        <span class="box" id="plot-tgt">TARGET —</span>
+        <span class="box" id="plot-band">—</span>
+        <button class="box" id="plot-fine" data-on="">COARSE</button>
+        <button class="box" id="plot-x">STOW</button>
+      </div>
+      <!-- The quantity the catalogue does not give you: the target's position
+           relative to HERE. Everything else on this panel is downstream of it. -->
+      <div class="plot-dif">
+        <span class="dk">Δ</span>
+        <span class="dv" id="pd-x">x —</span>
+        <span class="dv" id="pd-y">y —</span>
+        <span class="dv" id="pd-z">z —</span>
+        <span class="dv" id="pd-r">|Δ| —</span>
+      </div>
+      <div class="plot-rows">
+        <div class="prow" data-f="brg">
+          <span class="pk">BRG</span>
+          <button class="pb" data-d="-10">&#9664;&#9664;</button>
+          <button class="pb" data-d="-1">&#9664;</button>
+          <span class="pv" id="pv-brg">000.0</span>
+          <button class="pb" data-d="1">&#9654;</button>
+          <button class="pb" data-d="10">&#9654;&#9654;</button>
+        </div>
+        <div class="prow" data-f="elv">
+          <span class="pk">ELV</span>
+          <button class="pb" data-d="-10">&#9664;&#9664;</button>
+          <button class="pb" data-d="-1">&#9664;</button>
+          <span class="pv" id="pv-elv">+00.0</span>
+          <button class="pb" data-d="1">&#9654;</button>
+          <button class="pb" data-d="10">&#9654;&#9654;</button>
+        </div>
+        <div class="prow" data-f="rng">
+          <span class="pk">RNG</span>
+          <button class="pb" data-d="-1">&#9664;&#9664;</button>
+          <button class="pb" data-d="-0.1">&#9664;</button>
+          <span class="pv" id="pv-rng">0.00</span>
+          <button class="pb" data-d="0.1">&#9654;</button>
+          <button class="pb" data-d="1">&#9654;&#9654;</button>
+        </div>
+      </div>
+      <div class="plot-out">
+        <div class="po"><span class="s">residual</span><span class="n" id="po-res">— ly</span></div>
+        <div class="po"><span class="s">corridor</span><span class="n" id="po-cor">CLEAR</span></div>
+        <div class="po"><span class="s">fuel after</span><span class="n" id="po-fuel">— ly</span></div>
+      </div>
+      <div class="plot-act">
+        <button class="key" id="plot-solve">SOLVE<span class="sub" id="solve-sub">−14 s AIR</span></button>
+        <button class="key key--go" id="plot-go">COMMIT<span class="sub" id="go-sub">—</span></button>
+      </div>
+    </div>
+
     <div id="comms" role="dialog" aria-modal="true" aria-label="Comms channel">
       <div id="comms-hd">
         <span class="box" id="comms-src">— — —</span>
@@ -821,6 +997,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
         <p id="rep-sub">SURFACE CONTACT LOGGED</p>
         <div class="big" id="rep-big">— km</div>
         <p id="rep-detail"></p>
+        <p id="rep-epitaph"></p>
         <button class="key" id="rep-again">NEW DESCENT</button>
       </div>
     </div>
@@ -832,9 +1009,9 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     <div class="rd"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
     <div class="rd"><span class="k">Jump dist</span><span class="v" id="r-ap">—</span></div>
     <div class="rd"><span class="k">Fuel</span><span class="v" id="r-pe">—</span></div>
-    <div class="rd"><span class="k">Class</span><span class="v" id="r-g">—</span></div>
-    <div class="rd"><span class="k">Planets</span><span class="v" id="r-dv">—</span></div>
-    <div class="rd"><span class="k">From Sol</span><span class="v" id="r-heat">—</span></div>
+    <div class="rd"><span class="k">Hull</span><span class="v" id="r-g">—</span></div>
+    <div class="rd"><span class="k">Air</span><span class="v" id="r-dv">—</span></div>
+    <div class="rd"><span class="k">Contact</span><span class="v" id="r-heat">—</span></div>
     <div class="rd"><span class="k">Cultures</span><span class="v" id="r-miss">—</span></div>
 
     <div id="calc">
@@ -845,17 +1022,27 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <div class="calcrow"><span class="s">x  equatorial</span><span class="n" id="c-inc">—</span></div>
       <div class="calcrow"><span class="s">y  equatorial</span><span class="n" id="c-raan">—</span></div>
       <div class="calcrow"><span class="s">z  equatorial</span><span class="n" id="c-nu">—</span></div>
-      <div class="calcrow"><span class="s">sp spectral class</span><span class="n" id="c-h">—</span></div>
-      <div class="calcrow"><span class="s">Δv jump cost</span><span class="n" id="c-fpa">—</span></div>
-      <div class="calcrow"><span class="s">R  reachable now</span><span class="n" id="c-q">—</span></div>
-      <div class="calcrow"><span class="s">S  scan radius</span><span class="n" id="c-lat">—</span></div>
-      <div class="calcrow"><span class="s">N  catalogue size</span><span class="n" id="c-lon">—</span></div>
+      <div class="calcrow"><span class="s">Δx  differential</span><span class="n" id="c-h">—</span></div>
+      <div class="calcrow"><span class="s">Δy  differential</span><span class="n" id="c-fpa">—</span></div>
+      <div class="calcrow"><span class="s">Δz  differential</span><span class="n" id="c-q">—</span></div>
+      <div class="calcrow"><span class="s">|Δ| range required</span><span class="n" id="c-lat">—</span></div>
+      <div class="calcrow"><span class="s">F  field identifier</span><span class="n" id="c-lon">—</span></div>
       <div class="calcrow"><span class="s">T  elapsed</span><span class="n" id="c-per">—</span></div>
+    </div>
+
+    <div id="lex">
+      <div class="hd">LEXICON</div>
+      <div id="lexrows"></div>
     </div>
 
     <div id="sensorlog">
       <div class="hd">SENSOR ACQUISITION</div>
       <div id="sensorrows"><div class="calcrow"><span class="s">no contacts</span></div></div>
+    </div>
+
+    <div id="oplog">
+      <div class="hd">OPERATIONS LOG</div>
+      <div id="logrows"><div class="calcrow"><span class="s">nominal</span></div></div>
     </div>
   </section>
 
@@ -1088,8 +1275,7 @@ function transcribe(text,race){
   for(const ch of text){
     if(/\s/.test(ch)){ out+=' '; continue; }
     if(/[.,!?;:—-]/.test(ch)){ out+='·'; continue; }
-    const c=ch.toUpperCase().charCodeAt(0);
-    out+=g[(c*7+c%5)%g.length];
+    out+=g[glyphIndex(ch,race)];
   }
   return out;
 }
@@ -1157,6 +1343,149 @@ const TALK={
   }
 };
 
+/* ==========================================================================
+   COMPREHENSION
+   --------------------------------------------------------------------------
+   You do not arrive able to speak to anything. A transmission is a stream of
+   glyphs, and a glyph means nothing until you have a reason to believe what it
+   means. Comprehension is therefore counted, not granted: sim.lex[race] is how
+   many of that culture's glyphs you can currently read, out of its full
+   inventory, and everything on screen follows from that one number.
+
+   What makes a language easy is redundancy. The SSRITH broadcast on ELF at a
+   few dozen hertz — a bandwidth that carries almost nothing, so they repeat
+   themselves enormously, and repetition is what a decoder eats. They are the
+   way in. UNIT 7 is the opposite: a machine relay with no redundancy at all,
+   every symbol carrying maximum information and none of it recoverable from
+   context. It is unreadable until you have three other languages to stand on.
+
+   The consequence is that the easiest culture to talk to is the furthest away
+   — fifteen light years out, several jumps and a scoop or two — and the one
+   you meet first, six light years from Sol, is the one you will not understand
+   for most of the run. That is the shape of the game: the thing you need is
+   never the thing that is near.
+
+   The ladder is strict. Without its prerequisite at working comprehension a
+   culture is capped at LEX_FLOOR glyphs — enough to pick a few nouns out of
+   the noise, never enough for a sentence.
+   ========================================================================== */
+
+const LEX_FLOOR   = 6;     // glyphs obtainable with no prerequisite
+const LEX_WORKING = 20;    // glyphs that count as being able to hold a conversation
+const LEX_GAIN    = 5;     // glyphs per completed exchange
+
+const LADDER={
+  ssrith:   {tier:1, prereq:null,       why:'ELF · MASSIVELY REDUNDANT'},
+  voth:     {tier:2, prereq:'ssrith',   why:'SHARES SSRITH NUMERALS'},
+  kelmoran: {tier:3, prereq:'voth',     why:'VOTH LOANWORDS IN PROTOCOL'},
+  unit7:    {tier:4, prereq:'kelmoran', why:'RELAYS ASSEMBLY TRAFFIC'}
+};
+
+/* Which glyphs you learn first, and in what order. Frequency order, computed
+   from what that culture actually transmits — because a decoder works on the
+   corpus it has, and the commonest symbol is the one it cracks first. This
+   also means early comprehension unlocks a lot of words at once and late
+   comprehension unlocks stragglers, which is what learning a script feels
+   like. */
+const GLYPH_RANK={};
+function buildGlyphRanks(){
+  for(const race in SCRIPTS){
+    const g=SCRIPTS[race], count=new Array(g.length).fill(0);
+    const ali=ALIENS.find(a=>a.race===race);
+    const tree=ali?TALK[ali.id]:null;
+    if(tree) for(const k in tree){
+      for(const ch of tree[k].t){
+        if(/\s/.test(ch)||/[.,!?;:—-]/.test(ch)) continue;
+        count[glyphIndex(ch,race)]++;
+      }
+    }
+    const order=count.map((c,i)=>({c,i})).sort((a,b)=>b.c-a.c||a.i-b.i);
+    const rank=new Array(g.length);
+    order.forEach((o,n)=>{ rank[o.i]=n; });
+    GLYPH_RANK[race]=rank;
+  }
+}
+/* The transcription mapping, factored out so the decoder and the transcriber
+   cannot drift apart. */
+function glyphIndex(ch,race){
+  const g=SCRIPTS[race]||SCRIPTS.voth;
+  const c=ch.toUpperCase().charCodeAt(0);
+  return (c*7+c%5)%g.length;
+}
+
+function lexCap(race){
+  const L=LADDER[race];
+  if(!L||!L.prereq) return SCRIPTS[race].length;
+  return (sim.lex[L.prereq]||0)>=LEX_WORKING ? SCRIPTS[race].length : LEX_FLOOR;
+}
+function comprehension(race){
+  return clamp((sim.lex[race]||0)/SCRIPTS[race].length,0,1);
+}
+function learn(race,n){
+  const cap=lexCap(race);
+  const before=sim.lex[race]||0;
+  const after=Math.min(cap, before+n);
+  if(after===before) return 0;
+  sim.lex[race]=after;
+  return after-before;
+}
+
+/* Is this word readable? Only if every glyph in it is one you have. A word is
+   all-or-nothing because half a word is not a word — and because the operator
+   needs to be able to tell, at a glance, what they are missing. */
+function wordKnown(w,race){
+  const rank=GLYPH_RANK[race]; if(!rank) return true;
+  const lim=sim.lex[race]||0;
+  for(const ch of w){
+    if(/\s/.test(ch)||/[.,!?;:—'-]/.test(ch)) continue;
+    if(rank[glyphIndex(ch,race)]>=lim) return false;
+  }
+  return true;
+}
+
+/* Speaking is not reading. To put a sentence together you need most of it,
+   not all of it — you can gesture around one missing word and you cannot
+   gesture around four. Seven in ten is the line. */
+const PHRASE_MIN=0.7;
+function phraseKnown(text,race){
+  const ws=(text.match(/[A-Za-z][A-Za-z']*/g)||[]);
+  if(!ws.length) return true;
+  let n=0; for(const w of ws) if(wordKnown(w,race)) n++;
+  return n/ws.length>=PHRASE_MIN;
+}
+
+/* Render a line at the operator's current comprehension: the words they can
+   read in English, the rest still in the sender's own script. This is the
+   whole readout — you can see exactly how much of the message you are getting
+   and, because the unknown words stay as glyphs, you can see that there is
+   something there rather than a blank. */
+function renderPartial(text,race){
+  let out='';
+  const toks=text.match(/\s+|[^\s]+/g)||[];
+  for(const tk of toks){
+    if(/^\s+$/.test(tk)){ out+=tk; continue; }
+    out += wordKnown(tk,race) ? tk : transcribe(tk,race);
+  }
+  return out;
+}
+
+/* And the same decision, as a list, for the readback: the synthesiser speaks
+   what has been decoded and drops out on what has not. Silence in the middle
+   of a sentence is the most legible possible readout of not understanding. */
+function speakSegments(text,race){
+  const segs=[];
+  const toks=text.match(/\s+|[^\s]+/g)||[];
+  let run='', gap=0;
+  for(const tk of toks){
+    if(/^\s+$/.test(tk)){ if(run) run+=tk; continue; }
+    if(wordKnown(tk,race)){ if(gap){ segs.push({gap}); gap=0; } run+=tk; }
+    else { if(run){ segs.push({say:run}); run=''; } gap++; }
+  }
+  if(run) segs.push({say:run});
+  if(gap) segs.push({gap});
+  return segs;
+}
+
 /* Pixel sprites. Genuine bitmaps, drawn blocky, because that is what a
    sprite is. '.' is transparent. */
 const SPRITES={
@@ -1221,6 +1550,10 @@ const SPRITES={
    that actually have confirmed planets, so which stars can refuel you is
    astronomy rather than level design, and the route you can fly is a genuine
    consequence of where the planets are.
+
+   Three things deplete and none of them refill on their own. Fuel is range.
+   Air is time — every instrument you use spends it, so hesitation is a cost
+   and so is thoroughness. Hull is margin, and it only ever goes down.
    ========================================================================== */
 
 const JUMP_MAX  = 9.0;    // furthest single jump, light years
@@ -1228,9 +1561,147 @@ const TANK      = 42;     // light years of capacity
 const SCAN_LY   = 11.0;   // transmission detection radius
 const JUMP_SECS = 2.6;    // how long a jump takes to run
 
+const AIR_SECS  = 1500;   // twenty-five minutes of air, idling
+const HULL_MAX  = 100;
+
+/* --- vectors, because a corridor is a line and a hazard is a volume ------ */
+const sub3=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const add3=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const mul3=(a,k)=>[a[0]*k,a[1]*k,a[2]*k];
+const dot3=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const len3=a=>Math.hypot(a[0],a[1],a[2]);
+const nrm3=a=>{ const l=len3(a)||1; return [a[0]/l,a[1]/l,a[2]/l]; };
+
+/* A heading is three numbers, and this is what they mean. Bearing is measured
+   in the reference plane from +x through +z; elevation is out of that plane.
+   It is the convention the chart's graticule is already drawn on, so the plot
+   the operator types and the line they can see are the same object. */
+function headingVec(brgDeg,elvDeg){
+  const b=brgDeg*Math.PI/180, e=elvDeg*Math.PI/180, ce=Math.cos(e);
+  return [ce*Math.cos(b), Math.sin(e), ce*Math.sin(b)];
+}
+/* And the inverse, which is the answer the operator is trying to find. */
+function vecHeading(v){
+  let b=Math.atan2(v[2],v[0])*180/Math.PI;
+  if(b<0) b+=360;
+  return {brg:b, elv:Math.asin(clamp(v[1]/(len3(v)||1),-1,1))*180/Math.PI, rng:len3(v)};
+}
+/* Distance from a point to a segment. */
+function pointSeg(p,a,b){
+  const ab=sub3(b,a), ap=sub3(p,a), L=dot3(ab,ab);
+  const t=L>1e-9 ? clamp(dot3(ap,ab)/L,0,1) : 0;
+  return len3(sub3(ap,mul3(ab,t)));
+}
+
+/* --- the field ----------------------------------------------------------
+   Hazards are capsules: a segment with a radius. A drifting hulk is a capsule
+   whose segment has no length, so one test covers both a wreck and a debris
+   stream and there is only one piece of geometry to get wrong.
+
+   They are seeded from a number, and the number is displayed. Two operators
+   given the same field identifier fly the same field — which is what makes it
+   a chart rather than a slot machine. */
+const HAZ={
+  stream:{ label:'DEBRIS STREAM', density:34, col:'#FF3A2C' },
+  swarm: { label:'METEOR SWARM',  density:26, col:'#FF9A1F' },
+  hulk:  { label:'DRIFTING HULK', density:78, col:'#FF52D9' }
+};
+
+function lcg(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
+
+/* Hazards are placed on routes rather than at random, because a hazard nobody
+   can fly into is scenery. Every one of them straddles the midpoint of a pair
+   of stars that are actually within jump range of each other. */
+function seedHazards(seed){
+  const r=lcg(seed), out=[];
+  const pairs=[];
+  for(let i=0;i<STARS.length;i++) for(let j=i+1;j<STARS.length;j++){
+    const d=starDist(STARS[i],STARS[j]);
+    if(d>2.0 && d<=JUMP_MAX) pairs.push([i,j]);
+  }
+  if(!pairs.length) return out;
+  const rv=()=>nrm3([r()*2-1,r()*2-1,r()*2-1]);
+  /* The volume immediately around Sol is charted — it is where the survey
+     started. Nothing is seeded inside it, so the first jump out is safe and
+     the operator gets to learn the plot before the field starts costing them
+     hull. Everything past it is unsurveyed, and unsurveyed is the point. */
+  const CHARTED=5.2;
+  const mid=()=>{
+    for(let k=0;k<40;k++){
+      const [i,j]=pairs[(r()*pairs.length)|0];
+      const m=mul3(add3(STARS[i].p,STARS[j].p),0.5);
+      if(len3(m)>CHARTED) return m;
+    }
+    return mul3(nrm3([r()*2-1,r()*2-1,r()*2-1]), CHARTED+2+r()*6);
+  };
+
+  for(let k=0;k<8;k++){
+    const m=add3(mid(),mul3(rv(),r()*1.1));
+    const dir=rv(), half=1.8+r()*3.4;
+    out.push({k:'stream', a:add3(m,mul3(dir,-half)), b:add3(m,mul3(dir,half)),
+              r:0.20+r()*0.34, known:false, id:'DS-'+String(2100+k*37).slice(0,4)});
+  }
+  for(let k=0;k<7;k++){
+    const m=add3(mid(),mul3(rv(),r()*1.4));
+    out.push({k:'swarm', a:m, b:m, r:0.42+r()*0.62, known:false,
+              drift:mul3(rv(),0.010+r()*0.020), id:'MS-'+String(3100+k*53).slice(0,4)});
+  }
+  for(let k=0;k<5;k++){
+    const m=add3(mid(),mul3(rv(),r()*1.6));
+    out.push({k:'hulk', a:m, b:m, r:0.16+r()*0.16, known:false,
+              drift:mul3(rv(),0.004+r()*0.010), id:'WR-'+String(4100+k*71).slice(0,4)});
+  }
+  return out;
+}
+
+/* How much of the corridor lies inside a hazard, and the closest it ever
+   comes to the axis.
+
+   The chord is integrated by sampling rather than solved in closed form. A
+   capsule is a cylinder capped with two hemispheres, and the exact chord
+   through that union is three cases with a sign trap in each; sampling is one
+   case, exact to the sample spacing, and it costs nothing because a corridor
+   is only re-tested when the plot changes — never per frame. */
+const CORR_N=72;
+function corridorHazard(A,B,h){
+  const L=len3(sub3(B,A));
+  if(L<1e-6) return {chord:0, miss:Infinity};
+  let inside=0, miss=Infinity;
+  const step=sub3(B,A);
+  for(let i=0;i<=CORR_N;i++){
+    const d=pointSeg(add3(A,mul3(step,i/CORR_N)),h.a,h.b);
+    if(d<miss) miss=d;
+    if(d<h.r) inside++;
+  }
+  return {chord:L*inside/(CORR_N+1), miss};
+}
+
+/* Everything the corridor would cost, known and unknown alike. What the
+   operator is shown is filtered later; what kills them is not. */
+function corridorScan(A,B){
+  const hits=[];
+  let dmg=0;
+  for(const h of sim.haz){
+    const c=corridorHazard(A,B,h);
+    if(c.chord<=0) continue;
+    const d=c.chord*HAZ[h.k].density;
+    dmg+=d;
+    hits.push({h, chord:c.chord, miss:c.miss, dmg:d});
+  }
+  hits.sort((a,b)=>b.dmg-a.dmg);
+  return {dmg, hits};
+}
+
+/* --- deep space ---------------------------------------------------------
+   A bad plot does not put you at the wrong star. It puts you where there is
+   no star, and the console has to be able to say so. */
+const DEEP={n:'DEEP SPACE', sp:'—', pl:0, d:0, ra:0, dec:0, p:[0,0,0],
+            col:'#FF9A1F', sz:0};
+
 const sim={
-  at:0, target:1,
+  at:0, target:1, pos:null,
   fuel:TANK, scooped:{},
+  hull:HULL_MAX, air:100, heat:0,
   t:0,
   jumping:null,
   phase:'IDLE',
@@ -1238,62 +1709,160 @@ const sim={
   sweep:0, sweepPrev:0,
   pings:[], found:[], acq:null, transient:null,
   xeno:[], hailReady:null,
-  logged:{},
+  logged:{}, lex:{},
   landed:null,
-  clutterAge:0
+  clutterAge:0,
+  haz:[], field:0, seenHaz:{},
+  stalker:null,
+  dead:null, over:false,
+  log:[]
 };
 
-const here    = ()=>STARS[sim.at];
+/* here() is the one place that knows whether the vehicle is at a catalogued
+   star or adrift between them, so nothing downstream has to care. */
+const here = ()=>{
+  if(sim.at>=0) return STARS[sim.at];
+  DEEP.p=sim.pos||[0,0,0];
+  DEEP.d=len3(DEEP.p);
+  const hd=vecHeading(DEEP.p);
+  DEEP.ra=hd.brg; DEEP.dec=hd.elv;
+  return DEEP;
+};
 const target  = ()=>STARS[sim.target];
 const jumpKm  = ()=>starDist(here(),target());
 const canJump = ()=>{
   const d=jumpKm();
-  return sim.target!==sim.at && d<=JUMP_MAX && d<=sim.fuel && !sim.jumping;
+  return sim.target!==sim.at && d<=JUMP_MAX && d<=sim.fuel && !sim.jumping && !sim.over;
 };
 
 function newFlight(){
-  sim.at=0; sim.target=1; sim.fuel=TANK; sim.scooped={};
+  sim.at=0; sim.target=1; sim.pos=null;
+  sim.fuel=TANK; sim.scooped={};
+  sim.hull=HULL_MAX; sim.air=100; sim.heat=0;
   sim.t=0; sim.jumping=null; sim.phase='IDLE';
   sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null;
   sim.xeno=[]; sim.hailReady=null; sim.logged={}; sim.landed=null;
   sim.sweep=0; sim.sweepPrev=0; sim.clutterAge=0;
+  sim.lex={}; for(const k in RACES) sim.lex[k]=0;
+  comms.heard={}; comms.granted={};
+  sim.field=(Math.random()*90000+10000)|0;
+  sim.haz=seedHazards(sim.field);
+  sim.seenHaz={};
+  sim.stalker=null; sim.dead=null; sim.over=false; sim.log=[]; sim.taughtPlot=false;
+  plotReset();
   cam.tgt=[0,0,0]; cam.at=[0,0,0];
 }
 
 /* Fuel is scooped once per system, and only where there is something to scoop
-   from. A bare star gives you nothing. */
+   from. A bare star gives you nothing, and deep space gives you less. */
 function canScoop(){
   const st=here();
-  return st.pl>0 && !sim.scooped[sim.at] && sim.fuel<TANK-0.01;
+  return sim.at>=0 && st.pl>0 && !sim.scooped[sim.at] && sim.fuel<TANK-0.01;
 }
 function scoop(){
   if(!canScoop()) return false;
   const st=here();
   sim.scooped[sim.at]=true;
-  /* More planets, more to work with — again straight from the catalogue. */
   sim.fuel=Math.min(TANK, sim.fuel + 6 + st.pl*3);
+  spendAir(20);
   return true;
+}
+
+/* --- the clock ----------------------------------------------------------
+   Air is the only resource that spends itself. A breached hull spends it
+   faster, which is what makes damage compound rather than merely subtract. */
+function spendAir(secs){
+  if(sim.over) return;
+  sim.air=Math.max(0, sim.air - 100*secs/AIR_SECS);
+  if(sim.air<=0) die('ANOXIA','ATMOSPHERE EXHAUSTED');
+}
+function airRate(){
+  return 1 + 1.4*(1-sim.hull/HULL_MAX) + (sim.scanOn?0.35:0);
+}
+function damage(n,cause){
+  if(sim.over||n<=0) return;
+  sim.hull=Math.max(0, sim.hull-n);
+  sndAlarm();
+  if(sim.hull<=0) die('HULL FAILURE', cause||'STRUCTURAL COLLAPSE');
+}
+
+/* --- what is following --------------------------------------------------
+   Nothing is hunting you until you transmit. Every hail is a broadcast, and a
+   broadcast is a bearing. The instrument that lets you progress is the same
+   instrument that tells it where you are. */
+const STALK_SPAWN=3;
+function raiseHeat(n){
+  sim.heat+=n;
+  if(!sim.stalker && sim.heat>=STALK_SPAWN){
+    /* It starts from the far side of the catalogue, on the bearing you have
+       been broadcasting from. */
+    const h=here();
+    const away=STARS.map((st,i)=>({i,d:starDist(h,st)})).sort((a,b)=>b.d-a.d)[0];
+    sim.stalker={p:STARS[away.i].p.slice(), seen:false, close:0, contact:0};
+    logLine('UNSCHEDULED RETURN ON HAIL BEARING');
+  }
+}
+/* It moves when you move. Standing still is safe and gets you nothing, which
+   is the whole shape of the game. */
+function stalkerAdvance(){
+  const s=sim.stalker; if(!s||sim.over) return;
+  const h=here();
+  const gap=len3(sub3(h.p,s.p));
+  const step=Math.min(gap, 2.0+Math.min(sim.heat,12)*0.35);
+  s.p=add3(s.p, mul3(nrm3(sub3(h.p,s.p)), step));
+  s.close=len3(sub3(h.p,s.p));
+  if(s.close<0.35){
+    s.contact+=1;
+    if(s.contact>=2) die('CONTACT','THE RETURN CLOSED TO ZERO');
+    else logLine('PROXIMITY — IT IS IN THIS SYSTEM');
+  }
+}
+
+function logLine(t){
+  sim.log.unshift({t, at:sim.t});
+  if(sim.log.length>7) sim.log.pop();
+}
+
+function die(kind,detail){
+  if(sim.over) return;
+  sim.over=true; sim.dead={kind, detail};
+  sim.jumping=null; sim.phase='LOST';
+  plot.open=false;
+  if(comms.open) commsClose();
+  sndDeath();
+  showEnd();
 }
 
 function beginJump(){
   if(!canJump()) return false;
   const d=jumpKm();
-  sim.jumping={from:sim.at, to:sim.target, t0:performance.now(), dur:JUMP_SECS*1000, d};
+  sim.jumping={from:sim.at, to:sim.target, fromP:here().p.slice(),
+               term:target().p.slice(), t0:performance.now(), dur:JUMP_SECS*1000, d};
   sim.phase='JUMP';
   return true;
 }
 
 function stepNav(dt){
+  if(sim.over) return;
   sim.t+=dt;
+  spendAir(dt*airRate());
+  /* Swarms and wrecks drift, so a corridor that was clear last hour is not
+     necessarily clear now. Streams do not: they are the remains of something
+     that already happened. */
+  for(const h of sim.haz){
+    if(!h.drift) continue;
+    h.a=add3(h.a,mul3(h.drift,dt)); h.b=h.a;
+  }
   if(sim.jumping){
     const k=(performance.now()-sim.jumping.t0)/sim.jumping.dur;
     if(k>=1){
-      sim.fuel=Math.max(0,sim.fuel-sim.jumping.d);
-      sim.at=sim.jumping.to;
+      const j=sim.jumping;
       sim.jumping=null;
       sim.phase='IDLE';
-      /* Arriving somewhere is what re-opens the survey. */
-      sim.pings=[]; sim.acq=null; sim.transient=null;
+      sim.pings=[]; sim.acq=null; sim.transient=null; sim.found=[];
+      /* Fuel was spent when the plot was committed, not on arrival: you paid
+         for the corridor whether or not it took you anywhere. */
+      if(j.band) plotArrive(j); else { sim.at=j.to; sim.pos=null; }
       sndSpinUp();
     }
   }
@@ -1305,6 +1874,185 @@ function reachable(){
   return STARS.map((st,i)=>({i,d:starDist(here(),st)}))
               .filter(o=>o.i!==sim.at && o.d<=JUMP_MAX)
               .sort((a,b)=>a.d-b.d);
+}
+
+/* ==========================================================================
+   ASTROGATION
+   --------------------------------------------------------------------------
+   A jump is not a button. It is three numbers, and the vehicle goes exactly
+   where those three numbers point — not where you meant them to point.
+
+   The catalogue gives every star in spherical coordinates: right ascension α,
+   declination δ, distance r. The chart works in equatorial Cartesian, because
+   you cannot subtract two directions:
+
+       x = r cos δ cos α      y = r sin δ      z = r cos δ sin α
+
+   The displacement the operator has to fly is the difference of two of those
+   vectors, resolved back into a heading:
+
+       Δ = t − h
+       bearing   = atan2(Δz, Δx)          measured in the reference plane
+       elevation = asin(Δy / |Δ|)         out of it
+       range     = |Δ|
+
+   That is the whole problem, and it is genuinely the hard part: the numbers on
+   the plate are the target's coordinates from SOL, and what you need is its
+   coordinates from HERE. Fly the catalogue heading instead of the differential
+   heading and you will miss by the length of your own position vector.
+
+   Residual is |terminus − target|, in light years, and it is shown live while
+   you steer the three numbers. The vehicle does not care whether you solved it
+   or found it by hand.
+   ========================================================================== */
+
+const PLOT_CLEAN  = 0.06;   // ly — inside this you arrive in the system
+const PLOT_EDGE   = 0.34;   // ly — inside this you arrive, but through the halo
+const PLOT_ADRIFT = 1.20;   // ly — beyond this the vehicle does not arrive
+
+const plot={
+  open:false, brg:0, elv:0, rng:0,
+  term:[0,0,0], res:0, scan:null, dirty:true, fine:false, solved:false
+};
+
+function plotReset(){
+  plot.open=false; plot.brg=0; plot.elv=0; plot.rng=0;
+  plot.solved=false; plot.dirty=true; plot.scan=null; plot.fine=false;
+}
+
+function plotTerminus(){
+  return add3(here().p, mul3(headingVec(plot.brg,plot.elv), plot.rng));
+}
+
+/* Recomputed only when the plot changes. The corridor scan is 72 samples
+   against 20 capsules; doing that per frame would be 1440 distance tests a
+   frame for a number that only moves when a thumb moves. */
+function plotUpdate(){
+  if(!plot.dirty) return;
+  plot.dirty=false;
+  plot.term=plotTerminus();
+  plot.res=len3(sub3(plot.term,target().p));
+  plot.scan=corridorScan(here().p, plot.term);
+}
+
+function plotNudge(field,delta,quiet){
+  if(sim.over||sim.jumping) return;
+  const r2=v=>Math.round(v*1000)/1000;
+  if(field==='brg') plot.brg=r2((plot.brg+delta+360)%360);
+  if(field==='elv') plot.elv=r2(clamp(plot.elv+delta,-90,90));
+  if(field==='rng') plot.rng=r2(clamp(plot.rng+delta,0,JUMP_MAX));
+  plot.solved=false; plot.dirty=true;
+  if(!quiet) sndKey();
+}
+
+/* The astrogation processor will do the subtraction for you. It costs air,
+   and a damaged processor is confidently wrong rather than silent — which is
+   the only kind of instrument failure worth modelling, because a silent one
+   you would simply not use. */
+function plotDrift(){
+  return 1 - sim.hull/HULL_MAX;          // 0 clean, 1 at total loss
+}
+function plotSolve(){
+  if(sim.over||sim.jumping) return;
+  const d=sub3(target().p, here().p);
+  const s=vecHeading(d);
+  const k=plotDrift();
+  /* Error grows as the square of the damage, so a lightly damaged processor
+     is still worth trusting and a badly damaged one is a liability. */
+  const e=k*k;
+  const r=()=>(Math.random()*2-1);
+  plot.brg=(s.brg + r()*22*e + 360)%360;
+  plot.elv=clamp(s.elv + r()*14*e, -90, 90);
+  plot.rng=clamp(s.rng*(1 + r()*0.14*e), 0, JUMP_MAX);
+  plot.brg=Math.round(plot.brg*10)/10;
+  plot.elv=Math.round(plot.elv*10)/10;
+  plot.rng=Math.round(plot.rng*100)/100;
+  plot.solved=true; plot.dirty=true;
+  spendAir(14);
+  sndData(260);
+  logLine(e>0.25?'PROCESSOR SOLUTION — CONFIDENCE DEGRADED':'PROCESSOR SOLUTION ACCEPTED');
+}
+
+/* What the operator is allowed to see. An undiscovered hazard is still in the
+   corridor and still in the damage sum; it simply is not on the plate. */
+function plotVisibleHits(){
+  if(!plot.scan) return [];
+  return plot.scan.hits.filter(x=>x.h.known);
+}
+function plotVisibleDamage(){
+  return plotVisibleHits().reduce((a,x)=>a+x.dmg,0);
+}
+
+function plotBand(){
+  const r=plot.res;
+  if(r<=PLOT_CLEAN)  return {k:'CLEAN',  c:'#22FF88', t:'ARRIVAL IN SYSTEM'};
+  if(r<=PLOT_EDGE)   return {k:'HALO',   c:'#FFD23D', t:'ARRIVAL THROUGH HALO'};
+  if(r<=PLOT_ADRIFT) return {k:'ADRIFT', c:'#FF9A1F', t:'NO SYSTEM AT TERMINUS'};
+  return {k:'LOST', c:'#FF3A2C', t:'TERMINUS NOT SURVIVABLE'};
+}
+
+/* --- committing ---------------------------------------------------------
+   Everything is resolved here, once, against the plot as entered. There is no
+   confirmation dialogue: the confirmation was the number. */
+function plotExecute(){
+  if(sim.over||sim.jumping) return;
+  if(plot.rng<0.05){ logLine('PLOT REJECTED — NO RANGE ENTERED'); return; }
+  if(plot.rng>sim.fuel+1e-6){ logLine('PLOT REJECTED — INSUFFICIENT FUEL'); sndAlarm(); return; }
+  plot.dirty=true; plotUpdate();
+
+  const band=plotBand();
+  const term=plot.term.slice();
+  const scan=plot.scan;
+
+  sim.fuel=Math.max(0, sim.fuel-plot.rng);
+  /* Moving is quiet. Talking is not. A drive signature alone takes twenty
+     jumps to add up to what one hail does in a single transmission. */
+  raiseHeat(0.15);
+
+  /* The corridor first. You can be obliterated on the way to a perfect
+     arrival, and that is the point of checking it before you commit. */
+  if(scan && scan.dmg>0){
+    const worst=scan.hits[0];
+    logLine('CORRIDOR CONTACT — '+HAZ[worst.h.k].label+' '+worst.h.id);
+    worst.h.known=true; sim.seenHaz[worst.h.id]=true;
+    damage(scan.dmg, HAZ[worst.h.k].label+' '+worst.h.id);
+    if(sim.over) return;
+  }
+
+  /* Then the arrival. */
+  if(band.k==='LOST'){
+    die('DISPERSED','TERMINUS RESIDUAL '+plot.res.toFixed(2)+' LY');
+    return;
+  }
+  /* Indices are not enough any more: a jump can start in deep space, where
+     there is no index to start from. Carry the coordinates. */
+  sim.jumping={from:sim.at, to:sim.target, fromP:here().p.slice(),
+               t0:performance.now(), dur:JUMP_SECS*1000,
+               d:plot.rng, band:band.k, term, res:plot.res};
+  sim.phase='JUMP';
+  plot.open=false;
+  sndSpinUp();
+}
+
+/* Called when the jump animation finishes. */
+function plotArrive(j){
+  if(j.band==='CLEAN'){
+    sim.at=j.to; sim.pos=null;
+    logLine('ARRIVAL '+STARS[j.to].n+' — RESIDUAL '+j.res.toFixed(3)+' LY');
+  }else if(j.band==='HALO'){
+    sim.at=j.to; sim.pos=null;
+    /* Missing the centre means arriving inside whatever the system has not
+       swept up. It scales with how badly you missed. */
+    const d=8+70*(j.res-PLOT_CLEAN)/(PLOT_EDGE-PLOT_CLEAN);
+    logLine('HALO ENTRY — DEBRIS CONTACT ON ARRIVAL');
+    damage(d,'ARRIVAL THROUGH SYSTEM HALO');
+  }else{
+    sim.at=-1; sim.pos=j.term.slice();
+    logLine('NO SYSTEM AT TERMINUS — ADRIFT');
+    sndAlarm();
+  }
+  stalkerAdvance();
+  plot.dirty=true;
 }
 
 /* ==========================================================================
@@ -1411,6 +2159,14 @@ function label(text,x,y,colour,boxed,align){
    canvas; the raster and glass live in CSS above it.
    -------------------------------------------------------------------------- */
 const crt={on:true, fade:0.5, jx:0, jy:0, tearUntil:0, tearOff:0};
+
+/* Damage is not a number in a box, it is what the instruments start doing.
+   A holed vessel loses its supply regulation, and a display running on
+   unregulated supply tears, jitters and drops sync — so the operator reads
+   the hull off the picture before they read it off the readout. */
+function faultLevel(){
+  return sim.over ? 1 : clamp(1 - sim.hull/HULL_MAX, 0, 1);
+}
 let bloomCv=null, bloomCtx=null;
 
 /* Phosphor colours a speck can be struck in — the same five the display
@@ -1428,12 +2184,16 @@ function beginFrame(){
   ctx.fillStyle='rgba(0,0,0,'+crt.fade+')';
   ctx.fillRect(0,0,W,H);
 
-  crt.jx=(Math.random()-0.5)*0.8;
-  crt.jy=(Math.random()-0.5)*0.6;
+  /* Jitter and tearing both scale with the fault level, so a badly holed
+     vessel is legibly harder to read from — which compounds the damage
+     instead of merely recording it. */
+  const flt=faultLevel();
+  crt.jx=(Math.random()-0.5)*(0.8+flt*3.4);
+  crt.jy=(Math.random()-0.5)*(0.6+flt*2.6);
   const now=performance.now();
-  if(now>crt.tearUntil && Math.random()<0.0045){
-    crt.tearUntil=now+70+Math.random()*90;
-    crt.tearOff=(Math.random()-0.5)*11;
+  if(now>crt.tearUntil && Math.random()<0.0045+flt*0.055){
+    crt.tearUntil=now+70+Math.random()*(90+flt*180);
+    crt.tearOff=(Math.random()-0.5)*(11+flt*46);
   }
   const tx = now<crt.tearUntil ? crt.tearOff : 0;
   ctx.setTransform(DPR,0,0,DPR,(crt.jx+tx)*DPR,crt.jy*DPR);
@@ -1707,14 +2467,111 @@ function drawPings(){
   for(const p of sim.pings){
     const k=(now-p.t0)/1000/p.life;
     if(k>1) continue;
-    const st=STARS[p.si];
-    if(!inFront(st.p)) continue;
-    const q=project(st.p); if(!q) continue;
-    const col = p.alien ? '255,82,217' : p.weak ? '140,230,255' : '255,210,61';
+    const at = p.p || (STARS[p.si] && STARS[p.si].p);
+    if(!at) continue;
+    const q=project(at); if(!q) continue;
+    const col = p.threat ? '255,58,44' : p.alien ? '255,82,217' : p.weak ? '140,230,255' : '255,210,61';
     ctx.strokeStyle='rgba('+col+','+((1-k)*0.8).toFixed(3)+')';
     ctx.lineWidth=p.weak?1:1.2;
     ctx.beginPath(); ctx.arc(q.x,q.y,4+k*(p.weak?7:14),0,6.2832); ctx.stroke();
   }
+}
+
+/* ==========================================================================
+   THE FIELD, DRAWN
+   --------------------------------------------------------------------------
+   A hazard you have found is drawn where it is; a hazard you have not found
+   is drawn nowhere, and is still there. Nothing about the display tells you
+   how much of the volume you have swept — the absence of contacts and the
+   absence of a survey look identical, which is the whole problem.
+   ========================================================================== */
+
+/* A capsule, drawn as rings along its axis plus two rails. Cheap, legible in
+   wireframe, and it reads as a volume rather than as a line. */
+function drawHazard(h){
+  const col=HAZ[h.k].col;
+  const ax=sub3(h.b,h.a), L=len3(ax);
+  const dir = L>1e-6 ? mul3(ax,1/L) : [0,1,0];
+  /* Any vector not parallel to the axis will do to build the ring basis; take
+     the one furthest from parallel so the cross product never degenerates. */
+  const ref = Math.abs(dir[1])<0.9 ? [0,1,0] : [1,0,0];
+  const u=nrm3([dir[1]*ref[2]-dir[2]*ref[1], dir[2]*ref[0]-dir[0]*ref[2], dir[0]*ref[1]-dir[1]*ref[0]]);
+  const v=[dir[1]*u[2]-dir[2]*u[1], dir[2]*u[0]-dir[0]*u[2], dir[0]*u[1]-dir[1]*u[0]];
+
+  const RINGS = L>0.01 ? Math.min(7, 2+Math.round(L/1.2)) : 1;
+  const SEG=14;
+  for(let i=0;i<RINGS;i++){
+    const c=add3(h.a, mul3(ax, RINGS>1?i/(RINGS-1):0.5));
+    const pts=[];
+    for(let j=0;j<=SEG;j++){
+      const a=j/SEG*6.2832;
+      pts.push(project(add3(c, add3(mul3(u,Math.cos(a)*h.r), mul3(v,Math.sin(a)*h.r)))));
+    }
+    strokePolyline(pts,col,1,4,true);
+  }
+  if(L>0.01) for(const sg of [-1,1]){
+    strokePolyline([project(add3(h.a,mul3(u,sg*h.r))),
+                    project(add3(h.b,mul3(u,sg*h.r)))],col,1,3);
+  }
+  const q=project(mul3(add3(h.a,h.b),0.5));
+  if(q) claimLabel(h.id, q.x+6, q.y-6, col, false);
+}
+
+function drawHazards(){
+  for(const h of sim.haz) if(h.known) drawHazard(h);
+}
+
+/* The corridor: the line the vehicle will actually fly, its terminus, and the
+   residual drawn as the gap between that terminus and where you meant to be.
+   That gap is the whole game rendered as one line segment. */
+function drawCorridor(){
+  if(!plot.open||sim.jumping) return;
+  plotUpdate();
+  const A=here().p, B=plot.term;
+  const a=project(A), b=project(B);
+  const band=plotBand();
+
+  const pts=[];
+  for(let i=0;i<=24;i++) pts.push(project(add3(A,mul3(sub3(B,A),i/24))));
+  strokePolyline(pts, band.c, 1.3, 6);
+
+  /* Ticks along the corridor, one per light year, so range is readable off
+     the chart and not only off the dial. */
+  if(plot.rng>0.5){
+    const dirv=nrm3(sub3(B,A));
+    for(let i=1;i<Math.round(plot.rng);i++){
+      const q=project(add3(A,mul3(dirv,i)));
+      if(!q) continue;
+      strokePolyline([{x:q.x-3,y:q.y},{x:q.x+3,y:q.y}], band.c, 1, 0);
+    }
+  }
+
+  if(!b) return;
+  drawCross(b.x,b.y,9,band.c);
+  claimLabel('TERMINUS', b.x+9, b.y+12, band.c, false);
+  const t=target(), q=project(t.p);
+  if(q){
+    strokePolyline([b,q], plot.res>PLOT_CLEAN?'#FF3A2C':'#22FF88', 1, 4);
+    claimLabel('Δ '+plot.res.toFixed(3)+' LY', (b.x+q.x)/2+7, (b.y+q.y)/2, band.c, true);
+  }
+}
+
+/* Whatever is following. It is never identified and never labelled with
+   anything but a range, because nothing aboard can identify it. */
+function drawStalker(){
+  const s=sim.stalker;
+  if(!s||!s.seen||sim.jumping) return;
+  const q=project(s.p);
+  if(!q) return;
+  const k=0.5+0.5*Math.sin(sim.t*3.1);
+  drawCross(q.x,q.y,11+k*4,'#FF3A2C');
+  const pts=[];
+  for(let i=0;i<=16;i++){
+    const a=i/16*6.2832;
+    pts.push({x:q.x+Math.cos(a)*(13+k*5), y:q.y+Math.sin(a)*(13+k*5)});
+  }
+  strokePolyline(pts,'#FF3A2C',1,6,true);
+  claimLabel('UNRESOLVED  '+s.close.toFixed(2)+' LY', q.x+18, q.y, '#FF3A2C', true);
 }
 
 /* ==========================================================================
@@ -1724,6 +2581,13 @@ function drawPings(){
    so what it can hear is a real function of where you have flown to.
    ========================================================================== */
 const SWEEP_RATE=2*Math.PI/3.4;
+
+/* A damaged array hears less far. This is the compounding that makes damage
+   frightening rather than merely expensive: you cannot see the next hazard, so
+   you take the next hit, so you can see even less. */
+function scanRange(){
+  return SCAN_LY*(0.42+0.58*sim.hull/HULL_MAX);
+}
 
 function updateScan(dt){
   if(!sim.scanOn||sim.jumping) return;
@@ -1739,7 +2603,7 @@ function updateScan(dt){
     if(i===sim.at) continue;
     const st=STARS[i];
     const d=starDist(h,st);
-    if(d>SCAN_LY) continue;
+    if(d>scanRange()) continue;
 
     /* Bearing in the reference plane, so the sweep line means something. */
     let b=Math.atan2(st.p[2]-h.p[2], st.p[0]-h.p[0]);
@@ -1766,6 +2630,46 @@ function updateScan(dt){
     }
   }
 
+  /* The field. A hazard is found the same way a star is: the sweep line
+     crosses its bearing while it is inside the detection sphere. Which means
+     a corridor you have never pointed the sensor down is a corridor you are
+     flying blind, and the console will not tell you that — it has nothing to
+     report. */
+  for(const hz of sim.haz){
+    if(hz.known) continue;
+    const c=mul3(add3(hz.a,hz.b),0.5);
+    const rel=sub3(c,h.p);
+    const d=len3(rel)-hz.r;
+    if(d>scanRange()) continue;
+    let b2=Math.atan2(rel[2],rel[0]); if(b2<0) b2+=2*Math.PI;
+    let a0=sim.sweepPrev, a1=sim.sweep; if(a1<a0) a1+=2*Math.PI;
+    let bb=b2; if(bb<a0) bb+=2*Math.PI;
+    if(bb<a0||bb>a1) continue;
+    hz.known=true; sim.seenHaz[hz.id]=true;
+    sim.found.push({si:-1, id:hz.id, name:HAZ[hz.k].label, cls:hz.r.toFixed(2)+' ly',
+                    sig:Math.max(8,Math.round(100-d*7))});
+    logLine('FIELD CONTACT '+hz.id+' — '+HAZ[hz.k].label);
+    sndTrack();
+    plot.dirty=true;
+  }
+
+  /* And whatever is behind you. It is detected the same way, and identified
+     no way at all. */
+  const stk=sim.stalker;
+  if(stk){
+    stk.close=len3(sub3(h.p,stk.p));
+    if(stk.close<=scanRange()){
+      let b3=Math.atan2(stk.p[2]-h.p[2], stk.p[0]-h.p[0]); if(b3<0) b3+=2*Math.PI;
+      let a0=sim.sweepPrev, a1=sim.sweep; if(a1<a0) a1+=2*Math.PI;
+      let bb=b3; if(bb<a0) bb+=2*Math.PI;
+      if(bb>=a0&&bb<=a1){
+        if(!stk.seen){ logLine('UNRESOLVED RETURN — NO TRANSPONDER'); sndAlarm(); }
+        stk.seen=true;
+        sim.pings.push({si:-1, t0:now, life:1.4, threat:true, p:stk.p});
+      }
+    }
+  }
+
   /* An alien is hailable when we are standing in its system. */
   const hereAlien=ALIENS.find(a=>a.star===h.n);
   if(hereAlien) sim.hailReady=hereAlien;
@@ -1774,7 +2678,8 @@ function updateScan(dt){
   sim.clutterAge=(sim.clutterAge||0)+dt;
   if(sim.clutterAge>0.3+Math.random()*0.6){
     sim.clutterAge=0;
-    const cand=STARS.map((st,i)=>({i,d:starDist(h,st)})).filter(o=>o.d<=SCAN_LY&&o.i!==sim.at);
+    const cand=STARS.map((st,i)=>({i,d:starDist(h,st)})).filter(o=>o.d<=scanRange()&&o.i!==sim.at);
+    /* eslint-disable-line — cand may be empty in deep space, guarded below */
     if(cand.length){
       const pick=cand[(Math.random()*cand.length)|0];
       sim.pings.push({si:pick.i, t0:now, life:0.9, weak:true});
@@ -1798,13 +2703,14 @@ function drawSweep(){
   const pts=[];
   for(let i=0;i<=64;i++){
     const a=i/64*6.2832;
-    pts.push([h.p[0]+Math.cos(a)*SCAN_LY, h.p[1], h.p[2]+Math.sin(a)*SCAN_LY]);
+    pts.push([h.p[0]+Math.cos(a)*scanRange(), h.p[1], h.p[2]+Math.sin(a)*scanRange()]);
   }
   strokePolyline(pts.map(p=>inFront(p)?project(p):null),'rgba(140,230,255,0.22)',1,0);
 
   for(let k=0;k<7;k++){
     const b=sim.sweep-k*0.09;
-    const p0=h.p, p1=[h.p[0]+Math.cos(b)*SCAN_LY, h.p[1], h.p[2]+Math.sin(b)*SCAN_LY];
+    const R=scanRange();
+    const p0=h.p, p1=[h.p[0]+Math.cos(b)*R, h.p[1], h.p[2]+Math.sin(b)*R];
     if(!inFront(p0)||!inFront(p1)) continue;
     const q0=project(p0), q1=project(p1);
     if(q0&&q1) strokePolyline([q0,q1],'rgba(34,255,136,'+(0.5*(1-k/7)).toFixed(3)+')',k?1:1.5,0);
@@ -1836,19 +2742,21 @@ function drawJump(){
 /* The chart's annunciator. Same job the planet's limb had: state readable at
    a glance without parsing a digit. Colour is whether the selected jump can
    be made, and it says which. */
+/* The annunciator. It reports the worst true thing, in the order that will
+   kill you soonest — proximity before hull, hull before air, air before fuel —
+   because a panel that lists everything at once reports nothing. */
 function limbState(){
-  const d=jumpKm(), ok=canJump();
-  const colour = sim.jumping ? [234,251,255]
-               : sim.fuel<6  ? [255,58,44]
-               : ok          ? [34,255,136]
-               : d>JUMP_MAX  ? [255,210,61]
-               :               [255,58,44];
-  const caption = sim.jumping ? 'JUMP RUNNING'
-               : sim.fuel<6   ? 'FUEL CRITICAL'
-               : ok           ? 'JUMP READY '+d.toFixed(1)+' LY'
-               : d>JUMP_MAX   ? 'BEYOND RANGE'
-               :                'INSUFFICIENT FUEL';
-  return {fill:sim.fuel/TANK, colour, caption, ok};
+  const stk=sim.stalker;
+  let colour=[34,255,136], caption='NOMINAL';
+  const set=(c,t)=>{ colour=c; caption=t; };
+  if(sim.fuel<6)                 set([255,210,61],'FUEL CRITICAL');
+  if(sim.air<20)                 set([255,154,31],'AIR '+Math.round(sim.air)+'%');
+  if(sim.hull<35)                set([255,58,44],'HULL '+Math.round(sim.hull)+'%');
+  if(stk&&stk.seen&&stk.close<4) set([255,58,44],'PROXIMITY '+stk.close.toFixed(1)+' LY');
+  if(sim.jumping)                set([234,251,255],'JUMP RUNNING');
+  if(plot.open&&!sim.jumping)    set([140,230,255],'PLOTTING');
+  if(sim.over)                   set([255,58,44],'VESSEL LOST');
+  return {fill:sim.fuel/TANK, colour, caption, ok:!sim.over};
 }
 
 /* Four brackets converging on a point, then an identification block typed on
@@ -1958,14 +2866,20 @@ function render(){
     drawJump();
   }else{
     drawSweep();
+    drawHazards();
     drawChart();
     drawPings();
     drawXeno();
+    drawStalker();
+    drawCorridor();
     drawTransient();
     drawAcquire();
   }
   drawFrame();
   if(crt.on){ drawSparkle(); drawBloom(); }
+  /* The plate is live while it is up: the differential drifts, hazards drift,
+     and the corridor has to say so. */
+  if(plot.open && !sim.jumping) plotRefresh();
 }
 
 /* ==========================================================================
@@ -2016,9 +2930,15 @@ const REG_SEQ=[
   ['ok','OPERATING LICENCE 4471-K','VALID',60],
   ['warn','INSURANCE · CARRIED · POLICY VOID BEYOND 25 LY FROM SOL',null,120],
   ['ok','CREW COMPLEMENT','001 OF 007',60],
-  ['ok','STANDING ORDER 114','LOG ALL TRANSMITTING CULTURES',200],
-  ['gap','',null,120],
-  ['note','NOTICE: FUEL IS RECOVERABLE ONLY FROM SYSTEMS WITH CONFIRMED PLANETS. FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RETURN. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING CONTACT WITH NON-SIGNATORY CULTURES.',null,340],
+  ['ok','STANDING ORDER 114','LOG ALL TRANSMITTING CULTURES',80],
+  ['ok','STANDING ORDER 114A','ESTABLISH COMPREHENSION BEFORE UNDERTAKING',200],
+  ['gap','',null,110],
+  ['sec','— OPERATING NOTES —',null,150],
+  ['warn','ASTROGATION: CATALOGUE BEARINGS ARE REFERENCED TO SOL. THE VEHICLE IS NOT AT SOL. PLOT THE DIFFERENTIAL.',null,150],
+  ['warn','FIELD: SURVEYED VOLUME EXTENDS 5.2 LY. BEYOND IT DEBRIS IS UNCHARTED AND UNANNOUNCED.',null,150],
+  ['warn','TRANSMISSION IS OMNIDIRECTIONAL. EVERY HAIL GIVES A BEARING TO ANYTHING LISTENING.',null,200],
+  ['gap','',null,110],
+  ['note','NOTICE: FUEL IS RECOVERABLE ONLY FROM SYSTEMS WITH CONFIRMED PLANETS. ATMOSPHERE IS NOT RECOVERABLE AT ALL. FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RETURN. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING CONTACT WITH NON-SIGNATORY CULTURES, NOR FOR RECOVERY OF THE VESSEL OR ITS OPERATOR.',null,340],
   ['gap','',null,140],
   ['big','SYSTEM INITIATED — ALL SUBSYSTEMS FULLY OPERATIONAL',null,700]
 ];
@@ -2242,7 +3162,7 @@ function bootStart(){
    ========================================================================== */
 
 const comms={
-  open:false, alien:null, race:null, node:null,
+  open:false, alien:null, race:null, node:null, heard:{},
   text:'', shown:0, done:false,
   mouth:0, mouthT:0, blink:0, nextBlink:2, sway:0,
   cv:null, cx:null, W:0, H:0,
@@ -2749,19 +3669,79 @@ function commsSetNode(key){
     comms.granted[comms.alien.id+':'+n.grant]=true;
     applyGrant(n.grant);
   }
+  /* Every exchange is corpus. You learn from listening whether or not you
+     understood, which is why a culture you cannot read is still worth
+     standing in front of — up to the ceiling its prerequisite sets.
+
+     It is the reaching of a NEW node that pays, not the hailing. Re-opening
+     the channel and listening to the same greeting again is worth almost
+     nothing, so comprehension has to be earned by getting deeper into the
+     conversation — and getting deeper requires the comprehension to phrase
+     the reply. That loop is the whole progression. */
+  const race=comms.alien.race;
+  const seen=comms.alien.id+':'+key;
+  const fresh=!comms.heard[seen];
+  comms.heard[seen]=true;
+  const got=learn(race, fresh?LEX_GAIN:2);
+  if(got) logLine('LEXICON '+RACES[race].name+' +'+got+' GLYPHS');
+  /* And a working command of one culture is what breaks open the next one up
+     the ladder, because that is where the loanwords are. This is the channel
+     that guarantees the ladder can always be climbed: once you can hold a
+     conversation with a culture, listening to it again teaches you about the
+     next one whether or not you have anything new to say. It is slow, and it
+     costs air and a bearing every time — which is the point. Grinding a
+     language is a decision to stay put and keep transmitting. */
+  for(const nx in LADDER){
+    if(LADDER[nx].prereq===race && sim.lex[race]>=LEX_WORKING){
+      const g=learn(nx, fresh?3:2);
+      if(g) logLine('CROSS-REFERENCE '+RACES[nx].name+' +'+g);
+    }
+  }
 }
 
 function commsOptions(){
   const n=TALK[comms.alien.id][comms.node];
   const box=$('comms-opts');
   box.innerHTML='';
+  const race=comms.alien.race;
   n.o.forEach((o,i)=>{
     const btn=document.createElement('button');
     btn.className='opt';
-    btn.innerHTML='<b>'+String(i+1)+'</b>'+o.t;
-    btn.addEventListener('click',()=>{ sndKey(); commsSetNode(o.to); });
+    /* You can only say what you can say. A reply whose words you have no
+       glyphs for is shown in their script and cannot be sent — the barrier
+       is not a locked door, it is the plain fact that you do not have the
+       words. Ending the transmission is always available: hanging up needs
+       no vocabulary. */
+    const free = o.to===null;
+    const ok = free || phraseKnown(o.t, race);
+    btn.innerHTML='<b>'+String(i+1)+'</b>'+(ok?o.t:renderPartial(o.t,race));
+    if(ok){
+      btn.addEventListener('click',()=>{ sndKey(); commsSetNode(o.to); });
+    }else{
+      btn.disabled=true; btn.dataset.mute='1';
+      btn.setAttribute('aria-disabled','true');
+    }
     box.appendChild(btn);
   });
+  if(!n.o.some(o=>o.to===null||phraseKnown(o.t,race))){
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.innerHTML='<b>0</b>END TRANSMISSION';
+    btn.addEventListener('click',()=>{ sndKey(); commsClose(); });
+    box.appendChild(btn);
+  }
+}
+
+/* Speak a fragment at the operator's current comprehension. Decoded runs go
+   to the formant synthesiser; undecoded ones become a dropout on the same
+   bus — the sound of a translator with nothing to say, which is worse than an
+   error tone because it is the sound of the machine working correctly. */
+function commsSpeak(seg){
+  if(!seg.trim()) return;
+  for(const s of speakSegments(seg, comms.alien.race)){
+    if(s.say) comms.speakAt=speakEnglish(s.say, comms.speakAt||0);
+    else      comms.speakAt=speakDropout(s.gap, comms.speakAt||0);
+  }
 }
 
 /* Type the transmission out, driving the mouth and the voice from it. */
@@ -2803,17 +3783,22 @@ function commsTick(dt){
 
     $('comms-raw').textContent=comms.raw.slice(Math.max(0,comms.shown-WIN),comms.shown);
     const eng=comms.text.slice(0,Math.max(0,comms.shown-LAG));
-    $('comms-eng').textContent=eng;
+    /* Only what you can read resolves. The rest stays in their script, in
+       place, so you can see the shape of the sentence you are not getting. */
+    $('comms-eng').textContent=renderPartial(eng, comms.alien.race);
 
-    /* Read aloud whatever the translator has finished. Only complete words —
-       a fragment would be spoken as a different word — and each fragment is
-       queued to start where the last one ended, so the readback is
-       continuous even though it is assembled a word at a time. */
+    /* Read aloud whatever the translator has finished AND can decode. Only
+       complete words — a fragment would be spoken as a different word — and
+       each fragment is queued to start where the last one ended, so the
+       readback is continuous even though it is assembled a word at a time.
+       Words with no lexicon entry are not spoken: the voice drops out, and a
+       silence in the middle of a sentence is the most legible possible
+       readout of not understanding it. */
     const settled=eng.replace(/\S*$/,'');
     if(settled.length>(comms.spoken||0)){
       const seg=settled.slice(comms.spoken||0);
       comms.spoken=settled.length;
-      if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+      commsSpeak(seg);
     }
 
     if(comms.shown>=comms.text.length){
@@ -2822,9 +3807,9 @@ function commsTick(dt){
       if(comms.spoken<comms.text.length){
         const seg=comms.text.slice(comms.spoken||0);
         comms.spoken=comms.text.length;
-        if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+        commsSpeak(seg);
       }
-      $('comms-eng').textContent=comms.text;
+      $('comms-eng').textContent=renderPartial(comms.text, comms.alien.race);
       comms.settle=(comms.settle||0)+dt;
       const rest = snd.ctx ? Math.max(0,(comms.speakAt||0)-snd.ctx.currentTime) : 0;
       if(comms.settle>0.15 && rest<=0.05){
@@ -2873,7 +3858,12 @@ function applyGrant(kind){
 }
 
 function commsOpen(a){
+  if(plot.open) plotStow();
   comms.open=true; comms.alien=a; comms.race=RACES[a.race];
+  /* A hail is a broadcast, and a broadcast is a bearing. The instrument that
+     lets you make progress is the same instrument that says where you are. */
+  raiseHeat(0.6);
+  spendAir(10);
   /* Contact is the standing order; log it the moment a channel is open. */
   sim.logged[a.id]=true;
   comms.mouth=0; comms.mouthT=0; comms.blink=0; comms.charAcc=0;
@@ -3632,6 +4622,34 @@ function voiceBus(ctx){
   return out;
 }
 
+/* The sound of a word the translator cannot read: the carrier is there, the
+   modulation is not. Band-limited hiss on the same bus, gated at the rate the
+   synthesiser would have spoken, so it sits in the sentence where the word
+   should have been rather than replacing the sentence. */
+function speakDropout(words,when){
+  const ctx=A();
+  if(!ctx||!boot.done||!snd.on) return when||0;
+  const t0=Math.max(when||0, ctx.currentTime+0.03);
+  const dur=Math.min(1.1, 0.22+0.16*words);
+  const bus=voiceBus(ctx);
+  bus.gain.cancelScheduledValues(t0);
+  bus.gain.setValueAtTime(1,t0);
+  const n=ctx.createBufferSource(); n.buffer=snd.noise; n.loop=true;
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+  bp.frequency.value=780; bp.Q.value=1.1;
+  const g=ctx.createGain(); g.gain.value=0;
+  /* Gated at roughly a syllable rate so it reads as speech that failed to
+     resolve rather than as static. */
+  for(let i=0;i*0.085<dur;i++){
+    const t=t0+i*0.085;
+    g.gain.setValueAtTime(i%2?0.004:0.055,t);
+  }
+  g.gain.setTargetAtTime(0,t0+dur,0.01);
+  n.connect(bp).connect(g).connect(bus);
+  n.start(t0); n.stop(t0+dur+0.08);
+  return t0+dur+0.03;
+}
+
 /* Speak a fragment of English, starting no earlier than `when`. Returns the
    time the fragment ends, so successive fragments abut. */
 function speakEnglish(text,when){
@@ -3723,6 +4741,17 @@ function sndOutcome(good){
 }
 
 /* Continuous voices follow simulation state, not input. */
+/* The bed has run since the tube struck, and its absence is the loudest thing
+   the console can do. It thins as the hull opens and cuts out entirely when
+   the return is close enough to matter — so the operator hears the proximity
+   before the readout gets round to saying it. */
+function bedLevel(){
+  if(!crt.on||!snd.on) return 0;
+  const stk=sim.stalker;
+  if(stk&&stk.seen&&stk.close<2.2) return 0;
+  return clamp(0.28+0.72*sim.hull/HULL_MAX,0,1);
+}
+
 function audioFrame(){
   const ctx=A(); if(!ctx) return;
   const now=ctx.currentTime;
@@ -3743,8 +4772,10 @@ function audioFrame(){
     }
   }
 
-  snd.bed.gain.setTargetAtTime(crt.on?1:0, now, 0.2);
-  snd.world.gain.setTargetAtTime(boot.done?1:0, now, 0.18);
+  if(!sim.over){
+    snd.bed.gain.setTargetAtTime(bedLevel(), now, 0.35);
+    snd.world.gain.setTargetAtTime(boot.done?1:0, now, 0.18);
+  }
 
   /* The drive under load during a jump, and nothing at all between them —
      there is no medium out here to make a noise in. */
@@ -3787,6 +4818,102 @@ function fmtDur(s){
    7.  DOM WIRING
    ========================================================================== */
 const $=id=>document.getElementById(id);
+/* --- the plot panel -----------------------------------------------------
+   Three numbers, four buttons each, and every consequence of them shown
+   before you commit. Nothing here is hidden behind a confirmation: the
+   confirmation was entering the number. */
+function plotOpen(){
+  if(sim.over) return;
+  plot.open=true;
+  /* The range-finder feeds the plot directly — |Δ| is a measurement, not a
+     derivation, and making the operator dial in a number the console is
+     already displaying is clerical work rather than navigation. The two
+     angles are the navigation, and they stay theirs. */
+  if(!plot.solved && plot.rng<0.05){
+    plot.rng=Math.round(Math.min(JUMP_MAX, len3(sub3(target().p, here().p)))*100)/100;
+  }
+  if(!sim.taughtPlot){
+    sim.taughtPlot=true;
+    logLine('PLOT — NULL THE RESIDUAL. BEARING, THEN ELEVATION, THEN RANGE.');
+    logLine('CATALOGUE BEARINGS ARE FROM SOL. YOU ARE NOT AT SOL.');
+  }
+  $('plot').hidden=false;
+  $('viewtools').style.display='none';
+  plot.dirty=true;
+  plotRefresh();
+  sndRelay();
+}
+function plotStow(){
+  plot.open=false;
+  $('plot').hidden=true;
+  if(!comms.open) $('viewtools').style.display='';
+  sndKey();
+}
+
+function plotRefresh(){
+  if(!plot.open) return;
+  plotUpdate();
+  const t=target(), band=plotBand();
+
+  const dp=plot.fine?2:1;
+  $('pv-brg').textContent=plot.brg.toFixed(dp).padStart(dp?5+dp-1:5,'0');
+  $('pv-elv').textContent=(plot.elv>=0?'+':'−')+Math.abs(plot.elv).toFixed(dp);
+  $('pv-rng').textContent=plot.rng.toFixed(plot.fine?3:2);
+
+  /* The differential is computed by the same processor that runs SOLVE, so it
+     fails the same way. Past two thirds damage the axes start dropping out and
+     the operator is thrown back on the catalogue plate and their own head —
+     which is the moment the vessel stops being an instrument and starts being
+     a problem. */
+  const dv=sub3(t.p, here().p);
+  const flt=plotDrift();
+  const ax=(n,v)=>{
+    const dead = flt>0.62 && ((Math.floor(sim.t*1.7)+n)%3===0);
+    return dead ? '———' : v.toFixed(3);
+  };
+  $('pd-x').textContent='x '+ax(0,dv[0]);
+  $('pd-y').textContent='y '+ax(1,dv[1]);
+  $('pd-z').textContent='z '+ax(2,dv[2]);
+  $('pd-r').textContent='|Δ| '+(flt>0.85?'———':len3(dv).toFixed(3));
+  $('plot-tgt').textContent='TARGET '+t.n;
+  $('plot-band').textContent=band.k;
+  $('plot-band').style.color=band.c;
+  $('plot-band').style.borderColor=band.c;
+
+  const res=$('po-res');
+  res.textContent=plot.res.toFixed(3)+' ly';
+  res.parentElement.dataset.alert =
+    band.k==='CLEAN'?'ok': band.k==='HALO'?'2': '1';
+
+  /* Only what the survey has actually found is reported. The corridor may be
+     full of things this line has never been pointed at. */
+  const vis=plotVisibleHits();
+  const cor=$('po-cor');
+  if(!vis.length){
+    cor.textContent='CLEAR';
+    cor.parentElement.dataset.alert='';
+  }else{
+    const w=vis[0];
+    cor.textContent=w.h.id+' '+w.chord.toFixed(2)+' ly';
+    cor.parentElement.dataset.alert = plotVisibleDamage()>=sim.hull ? '1' : '2';
+  }
+
+  const after=sim.fuel-plot.rng;
+  const fu=$('po-fuel');
+  fu.textContent=after.toFixed(1)+' ly';
+  fu.parentElement.dataset.alert = after<0 ? '1' : after<8 ? '2' : '';
+
+  const go=$('plot-go');
+  const bad = band.k==='LOST' || after<0 || plotVisibleDamage()>=sim.hull;
+  go.dataset.arm = bad ? 'bad' : band.k==='CLEAN' ? '1' : '';
+  $('go-sub').textContent = after<0 ? 'NO FUEL' : band.t;
+
+  const drift=plotDrift();
+  $('solve-sub').textContent = drift>0.55 ? 'PROCESSOR DEGRADED'
+                             : drift>0.2  ? 'CONFIDENCE '+Math.round((1-drift*drift)*100)+'%'
+                             : '−14 s AIR';
+}
+
 const el={
   alt:$('r-alt'), vel:$('r-vel'), ap:$('r-ap'), pe:$('r-pe'),
   g:$('r-g'), dv:$('r-dv'), heat:$('r-heat'), miss:$('r-miss'),
@@ -3808,14 +4935,20 @@ function refresh(){
   el.vel.innerHTML  = t.n;
   el.ap.innerHTML   = d.toFixed(2)+' <small>LY</small>';
   el.pe.innerHTML   = sim.fuel.toFixed(1)+' <small>LY</small>';
-  el.g.innerHTML    = t.sp;
-  el.dv.innerHTML   = String(t.pl);
-  el.heat.innerHTML = t.d.toFixed(2)+' <small>LY</small>';
+  el.g.innerHTML    = Math.round(sim.hull)+' <small>%</small>';
+  el.dv.innerHTML   = Math.round(sim.air)+' <small>%</small>';
+  /* Until the sweep has actually found it there is nothing to report, and the
+     plate does not hint. A readout that warns you about something it cannot
+     see is a readout that is lying to make you feel better. */
+  const stk=sim.stalker;
+  el.heat.innerHTML = (stk&&stk.seen) ? stk.close.toFixed(2)+' <small>LY</small>' : 'NONE';
   el.miss.innerHTML = pad(Object.keys(sim.logged).length,1)+' / '+pad(ALIENS.length,1);
 
   alertOf(el.ap).dataset.alert = ok ? '' : d>JUMP_MAX ? '1' : '2';
   alertOf(el.pe).dataset.alert = sim.fuel<9 ? '1' : sim.fuel<18 ? '2' : '';
-  alertOf(el.dv).dataset.alert = t.pl>0 ? '' : '';
+  alertOf(el.g).dataset.alert  = sim.hull<25 ? '1' : sim.hull<60 ? '2' : '';
+  alertOf(el.dv).dataset.alert = sim.air<15 ? '1' : sim.air<35 ? '2' : '';
+  alertOf(el.heat).dataset.alert = !(stk&&stk.seen) ? '' : stk.close<4 ? '1' : '2';
   alertOf(el.miss).dataset.alert = Object.keys(sim.logged).length===ALIENS.length ? '' : '2';
 
   el.met.textContent=fmtClock(sim.t);
@@ -3828,12 +4961,35 @@ function refresh(){
   el.cInc.textContent = t.p[0].toFixed(2);
   el.cRaan.textContent= t.p[1].toFixed(2);
   el.cNu.textContent  = t.p[2].toFixed(2);
-  el.cH.textContent   = t.sp;
-  el.cFpa.textContent = d.toFixed(3)+' ly';
-  el.cQ.textContent   = String(reachable().length);
+  /* The differential, spelled out. This is the quantity the plot needs and the
+     one the catalogue does not give you: the target's position relative to
+     here rather than relative to Sol. Fly the catalogue heading instead of
+     this one and you miss by the length of your own position vector. */
+  const dv=sub3(t.p, h.p);
+  el.cH.textContent   = dv[0].toFixed(3);
+  el.cFpa.textContent = dv[1].toFixed(3);
+  el.cQ.textContent   = dv[2].toFixed(3);
+  el.cLat.textContent = len3(dv).toFixed(3)+' ly';
+  el.cLon.textContent = String(sim.field);
   el.cPer.textContent = fmtClock(sim.t).replace('T+','');
-  el.cLat.textContent = SCAN_LY.toFixed(1)+' ly';
-  el.cLon.textContent = String(STARS.length);
+
+  /* Where comprehension stands, and what it is waiting on. */
+  const lr=$('lexrows');
+  if(lr){
+    let html='';
+    for(const k of Object.keys(LADDER).sort((a,b)=>LADDER[a].tier-LADDER[b].tier)){
+      const n=sim.lex[k]||0, max=SCRIPTS[k].length;
+      const cap=lexCap(k);
+      const state = n>=LEX_WORKING ? 'fluent' : cap<max ? 'locked' : 'open';
+      const pre=LADDER[k].prereq;
+      const note = state==='locked' ? '↑'+RACES[pre].name : n+'/'+max;
+      html+='<div class="lexrow" data-state="'+state+'">'+
+            '<span class="nm">'+RACES[k].name+'</span>'+
+            '<span class="st">'+note+'</span>'+
+            '<span class="bar"><i style="width:'+Math.round(100*n/max)+'%"></i></span></div>';
+    }
+    lr.innerHTML=html;
+  }
 
   const hb=$('btn-hail');
   if(hb){
@@ -3859,9 +5015,8 @@ function refresh(){
   lst.style.color='rgb('+ls.colour.join(',')+')';
   lst.style.borderColor='rgb('+ls.colour.join(',')+')';
 
-  $('jump-lbl').textContent = sim.jumping ? 'RUNNING'
-    : ok ? d.toFixed(2)+' LY' : d>JUMP_MAX ? 'OUT OF RANGE' : 'NO FUEL';
-  $('k-jump').dataset.on = ok ? '1' : '';
+  $('jump-lbl').textContent = sim.jumping ? 'RUNNING' : plot.open ? 'STOW PLOT' : 'PLOT COURSE';
+  $('k-jump').dataset.on = plot.open ? '1' : '';
   $('scoop-lbl').textContent = canScoop() ? 'AVAILABLE' : sim.scooped[sim.at] ? 'SPENT' : 'NONE HERE';
   $('k-scoop').dataset.on = canScoop() ? '1' : '';
   $('near-lbl').textContent = reachable().length+' IN RANGE';
@@ -3869,10 +5024,20 @@ function refresh(){
   const rows=$('sensorrows');
   if(rows){
     rows.innerHTML = sim.found.length
-      ? sim.found.slice(-7).reverse().map(f=>
+      ? sim.found.slice(-6).reverse().map(f=>
           '<div class="calcrow"><span class="s">'+f.id+' '+f.cls+'</span>'+
           '<span class="n sig">'+f.name+'</span></div>').join('')
       : '<div class="calcrow"><span class="s">sweeping — no returns</span></div>';
+  }
+  /* What has happened to you, in the order it happened. Everything that
+     changes the state of the vessel writes a line here, because a game that
+     kills you has to be able to say why. */
+  const lg=$('logrows');
+  if(lg){
+    lg.innerHTML = sim.log.length
+      ? sim.log.map(e=>'<div class="calcrow"><span class="s">'+
+          fmtClock(e.at).replace('T+','')+'</span><span class="n">'+e.t+'</span></div>').join('')
+      : '<div class="calcrow"><span class="s">nominal</span></div>';
   }
 }
 
@@ -3953,6 +5118,8 @@ function stepTarget(dir){
   let k=order.findIndex(o=>o.i===sim.target);
   if(k<0) k=0; else k=(k+dir+order.length)%order.length;
   sim.target=order[k].i;
+  if(plot.open) plot.rng=Math.round(Math.min(JUMP_MAX,len3(sub3(target().p,here().p)))*100)/100;
+  plot.dirty=true; plotRefresh();
   sndKey(); refresh();
 }
 
@@ -3963,6 +5130,8 @@ $('k-near').addEventListener('click',()=>{
   sndKey();
   const r=reachable();
   if(r.length) sim.target=r[0].i;
+  if(plot.open) plot.rng=Math.round(Math.min(JUMP_MAX,len3(sub3(target().p,here().p)))*100)/100;
+  plot.dirty=true; plotRefresh();
   refresh();
 });
 
@@ -3972,10 +5141,49 @@ $('k-scoop').addEventListener('click',()=>{
   refresh();
 });
 
+/* There is no longer a button that flies the vehicle. JUMP raises the plot,
+   and the plot is where the flying is decided. */
 $('k-jump').addEventListener('click',()=>{
-  if(beginJump()){ sndRelay(); sndData(500); }
-  else { sndKey(); sndAlarm(); }
+  if(sim.jumping||sim.over){ sndAlarm(); return; }
+  if(plot.open) plotStow(); else plotOpen();
   refresh();
+});
+
+$('plot-x').addEventListener('click',plotStow);
+$('plot-solve').addEventListener('click',()=>{ plotSolve(); plotRefresh(); refresh(); });
+$('plot-go').addEventListener('click',()=>{ plotExecute(); plotRefresh(); refresh(); });
+/* A vernier. One tenth of a degree at five light years is nine thousandths of
+   a light year, which is inside arrival tolerance — so the fine scale is what
+   makes plotting by hand actually converge, and the coarse scale is what makes
+   getting into the neighbourhood quick. */
+/* Press and hold to run, and the longer it is held the faster it runs. Every
+   instrument with a thumbwheel on it works this way, and without it a plot
+   that needs a hundred adjustments is a hundred taps rather than two seconds
+   of pressure. The maths is meant to be the hard part; the dialling is not. */
+document.querySelectorAll('#plot .prow').forEach(row=>{
+  const f=row.dataset.f;
+  row.querySelectorAll('.pb').forEach(b=>{
+    const base=parseFloat(b.dataset.d);
+    let timer=null, held=0, quiet=0;
+    const fire=()=>{
+      const accel = held<6 ? 1 : held<18 ? 3 : 8;
+      plotNudge(f, base*(plot.fine?0.1:1)*accel, quiet++%3!==0);
+      plotRefresh(); refresh();
+      held++;
+      timer=setTimeout(fire, held<2 ? 260 : 55);
+    };
+    const stop=()=>{ if(timer) clearTimeout(timer); timer=null; held=0; quiet=0; };
+    b.addEventListener('pointerdown',e=>{ e.preventDefault(); b.setPointerCapture(e.pointerId); stop(); fire(); });
+    b.addEventListener('pointerup',stop);
+    b.addEventListener('pointercancel',stop);
+    b.addEventListener('pointerleave',stop);
+  });
+});
+$('plot-fine').addEventListener('click',()=>{
+  plot.fine=!plot.fine;
+  $('plot-fine').dataset.on=plot.fine?'1':'';
+  $('plot-fine').textContent=plot.fine?'FINE':'COARSE';
+  sndKey();
 });
 
 $('k-home').addEventListener('click',()=>{
@@ -3987,11 +5195,19 @@ $('k-home').addEventListener('click',()=>{
 
 /* AUTO plots the next leg of a route to the nearest culture not yet logged,
    choosing a reachable stepping stone that reduces the remaining distance. */
+/* AUTO routes toward the culture you can actually make progress with — the
+   lowest rung of the ladder that is not yet fluent and whose prerequisite you
+   already hold. Standing in front of a language you cannot get a foothold in
+   is the mistake this button exists to stop you repeating. */
 $('k-auto').addEventListener('click',()=>{
   sndRelay();
-  const want=ALIENS.filter(a=>!sim.logged[a.id])
-                   .map(a=>STARS.findIndex(st=>st.n===a.star))
-                   .filter(i=>i>=0);
+  const useful=ALIENS.filter(a=>{
+    const L=LADDER[a.race];
+    if((sim.lex[a.race]||0)>=SCRIPTS[a.race].length) return false;
+    return !L.prereq || (sim.lex[L.prereq]||0)>=LEX_WORKING;
+  }).sort((a,b)=>LADDER[a.race].tier-LADDER[b.race].tier);
+  const pool=useful.length?useful:ALIENS.filter(a=>!sim.logged[a.id]);
+  const want=pool.map(a=>STARS.findIndex(st=>st.n===a.star)).filter(i=>i>=0);
   if(!want.length){ sndStatus(); refresh(); return; }
   let best=null;
   for(const gi of want){
@@ -4072,25 +5288,64 @@ function showReport(good,title,sub,big,detail){
   const r=$('report');
   r.dataset.show='1';
   r.className=good?'':'bad';
+  $('rep-again').textContent = good ? 'NEW SURVEY' : 'NEW VESSEL';
   $('rep-title').textContent=title;
   $('rep-sub').textContent=sub;
   $('rep-big').textContent=big;
   $('rep-detail').textContent=detail;
 }
-function hideReport(){ $('report').dataset.show=''; }
+function hideReport(){ $('report').dataset.show=''; $('rep-epitaph').textContent=''; }
+
+/* The end of a run. Everything the console knows is on the plate — where you
+   got to, what you understood, what killed you — and then one line that is
+   not a readout, because there is nobody left to read anything to. */
+function showEnd(){
+  const spoke=Object.keys(RACES).filter(k=>comprehension(k)>=LEX_WORKING/SCRIPTS[k].length);
+  showReport(false, sim.dead.kind, sim.dead.detail,
+    here().n,
+    'Hull '+Math.round(sim.hull)+'%. Air '+Math.round(sim.air)+'%. '+
+    sim.fuel.toFixed(1)+' ly of range unspent. '+
+    Object.keys(sim.logged).length+' of '+ALIENS.length+' cultures contacted, '+
+    (spoke.length?spoke.map(k=>RACES[k].name).join(' and ')+' understood':'none understood')+'. '+
+    sim.found.length+' returns logged. Field '+sim.field+'.');
+  $('rep-epitaph').textContent=
+    'THIS TRANSMISSION WILL CONTINUE UNTIL THE POWER FAILS.\n'+
+    'NO RELAY IS IN RANGE. NOBODY IS RECEIVING IT.\n'+
+    'THERE IS NO ONE OUT HERE TO HEAR ANY OF THIS.';
+}
+
+/* Death has its own sound, and it is the absence of the one that has been
+   running since the tube struck. The bed is cut, everything else is left to
+   ring out, and what is left is a single low tone going nowhere. */
+function sndDeath(){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime;
+  if(snd.bed){ snd.bed.gain.cancelScheduledValues(t); snd.bed.gain.setTargetAtTime(0,t,0.25); }
+  if(snd.world){ snd.world.gain.cancelScheduledValues(t); snd.world.gain.setTargetAtTime(0,t,0.4); }
+  for(const f of [72,74.5]){
+    const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.085,t+1.4);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+9);
+    o.connect(g).connect(snd.master); o.start(t); o.stop(t+9.2);
+  }
+}
 
 function checkOutcome(){
-  if(sim.landed) return;
+  if(sim.landed||sim.over) return;
 
   /* Every culture logged: the standing order is discharged. */
-  if(Object.keys(sim.logged).length>=ALIENS.length){
+  const fluent=Object.keys(RACES).every(k=>(sim.lex[k]||0)>=LEX_WORKING);
+  if(Object.keys(sim.logged).length>=ALIENS.length && fluent){
     sim.landed=true;
     sndOutcome(true);
     showReport(true,'SURVEY COMPLETE','ALL TRANSMITTING CULTURES LOGGED',
       Object.keys(sim.logged).length+' / '+ALIENS.length,
-      'Contact established with every culture in the catalogue. '+
+      'Contact established with every culture in the catalogue, and every one of '+
+      'them understood. Hull '+Math.round(sim.hull)+'%. Air '+Math.round(sim.air)+'%. '+
       sim.fuel.toFixed(1)+' ly of range remaining. '+
-      sim.found.length+' of '+STARS.length+' systems surveyed. File Form 22-B on return.');
+      sim.found.length+' returns logged. File Form 22-B on return.');
     return;
   }
 
@@ -4110,8 +5365,9 @@ function checkOutcome(){
 }
 
 function updatePhase(){
+  if(sim.over){ sim.phase='LOST'; return; }
   if(sim.landed){ sim.phase='DONE'; return; }
-  sim.phase = sim.jumping ? 'JUMP' : comms.open ? 'COMMS' : 'IDLE';
+  sim.phase = sim.jumping ? 'JUMP' : plot.open ? 'PLOT' : comms.open ? 'COMMS' : 'IDLE';
 }
 
 /* ==========================================================================
@@ -4156,7 +5412,7 @@ function frame(now){
      the target while a jump is being considered, and it rides the jump. */
   const focus = sim.jumping
     ? (()=>{ const k=clamp((performance.now()-sim.jumping.t0)/sim.jumping.dur,0,1);
-             const A=STARS[sim.jumping.from].p, B=STARS[sim.jumping.to].p;
+             const A=sim.jumping.fromP, B=sim.jumping.term;
              return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k]; })()
     : cam.mode===2 ? target().p
     : here().p;
@@ -4198,6 +5454,7 @@ addEventListener('pointerdown',()=>{
 $('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
 new ResizeObserver(()=>{ if(comms.open) commsResize(); }).observe($('face-wrap'));
+buildGlyphRanks();
 newFlight();
 resize();
 refresh();
