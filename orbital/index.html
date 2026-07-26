@@ -424,12 +424,14 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   max-height:100%; overflow:hidden;
 }
 #boot-log .row{display:flex;gap:6px;align-items:baseline;white-space:pre}
+#boot-log .row .lab{white-space:pre}
 #boot-log .row .dots{
   flex:1; min-width:12px; align-self:center; height:1px;
   background-image:radial-gradient(circle,currentColor 1px,transparent 1px);
   background-size:5px 1px; opacity:.5;
 }
 #boot-log .st{color:var(--white)}
+#boot-log .dots[hidden],#boot-log .st[hidden]{display:none}
 #boot-log .hd{
   color:var(--white);letter-spacing:.24em;font-size:13px;
   text-shadow:0 0 10px rgba(234,251,255,.6);
@@ -2229,46 +2231,79 @@ const BOOT_SEQ=[
   ['big','SYSTEM INITIATED — ALL SUBSYSTEMS FULLY OPERATIONAL',null,700]
 ];
 
-const boot={running:false, done:false, i:0, timer:null};
+const boot={running:false, done:false, i:0, timer:null, tick:null};
 
-function bootLine(entry){
+/* Characters per line arrive on a timer, and each one clicks. Snapping whole
+   lines in gave one click per line, which is not a typing sound — it is a
+   line printer. Rates differ by kind: a heading is deliberate, a legal notice
+   is dumped. */
+const TYPE_RATE={hd:34, sub:14, sec:13, ok:6, warn:9, note:4, big:24};
+
+function bootLine(entry, done){
   const [kind,label,status]=entry;
   const log=$('boot-log');
+
+  if(kind==='gap'){
+    const el=document.createElement('div'); el.className='gap';
+    log.appendChild(el); done(); return;
+  }
+
   const el=document.createElement('div');
-  if(kind==='gap'){ el.className='gap'; }
-  else if(kind==='ok'){
+  let target, text=label;
+  if(kind==='ok'){
     el.className='row';
-    el.innerHTML='<span>'+label+'</span><span class="dots"></span><span class="st">'+status+'</span>';
+    el.innerHTML='<span class="lab"></span><span class="dots" hidden></span><span class="st" hidden></span>';
+    target=el.querySelector('.lab');
   }else{
     el.className=kind;
-    el.textContent=label;
+    target=el;
   }
   log.appendChild(el);
-  /* Keep the tail in view without a scrollbar. */
-  while(log.scrollHeight>log.clientHeight && log.firstChild) log.removeChild(log.firstChild);
 
-  /* Voice: a teletype tick per line, a relay for a section, a chord at the
-     end. Quiet — the boot should sound like a machine, not a fanfare. */
-  if(kind==='ok')   { sndKey(); if(Math.random()<0.35) blip(1800+Math.random()*900,0.02,0.05,0,'square'); }
-  if(kind==='sec')  { sndRelay(); }
-  if(kind==='hd')   { blip(320,0.10,0.14,0,'triangle'); }
-  if(kind==='warn') { blip(560,0.09,0.13,0,'square'); blip(430,0.11,0.13,0.10,'square'); }
-  if(kind==='note') { blip(1400+Math.random()*400,0.02,0.04,0,'square'); }
-  if(kind==='big')  { sndPowerUp(); }
+  if(kind==='sec') sndRelay();
+  if(kind==='hd')  blip(320,0.10,0.14,0,'triangle');
+
+  const rate=TYPE_RATE[kind]||10;
+  let i=0;
+  const tick=setInterval(()=>{
+    if(!boot.running){ clearInterval(tick); return; }
+    target.textContent=text.slice(0,++i);
+    /* Every character on the slow voices, every other on the fast ones, so a
+       fast dump does not turn into a buzz. */
+    if(rate>=11 || i%2===0) sndType();
+    if(i>=text.length){
+      clearInterval(tick);
+      if(kind==='ok'){
+        /* The result lands after the label, which is how a POST reads. */
+        el.querySelector('.dots').hidden=false;
+        const st=el.querySelector('.st');
+        st.hidden=false; st.textContent=status;
+        if(/VERIFIED/.test(status))            sndData(260);
+        else if(/LOADED|ONLINE|OPEN/.test(status)) sndSpinUp();
+        else                                    sndStatus();
+      }
+      if(kind==='warn'){ blip(560,0.09,0.13,0,'square'); blip(430,0.11,0.13,0.10,'square'); }
+      if(kind==='big')  sndPowerUp();
+      while(log.scrollHeight>log.clientHeight && log.firstChild) log.removeChild(log.firstChild);
+      done();
+    }
+  }, rate);
+  boot.tick=tick;
 }
 
 function bootStep(){
   if(!boot.running) return;
   if(boot.i>=BOOT_SEQ.length){ bootFinish(); return; }
   const entry=BOOT_SEQ[boot.i++];
-  bootLine(entry);
-  boot.timer=setTimeout(bootStep, entry[3]||90);
+  /* Typing now carries the pacing, so the authored pauses shrink — they are
+     only there to punctuate sections. */
+  bootLine(entry, ()=>{ boot.timer=setTimeout(bootStep, Math.round((entry[3]||60)*0.3)); });
 }
 
 function bootFinish(){
   if(boot.done) return;
   boot.done=true; boot.running=false;
-  clearTimeout(boot.timer);
+  clearTimeout(boot.timer); clearInterval(boot.tick);
   last=performance.now();          // do not hand the loop a 7-second delta
   try{ render(); refresh(); }catch(_){}
 
@@ -2875,6 +2910,50 @@ function sndPowerUp(){
   g.gain.exponentialRampToValueAtTime(0.0001,t+1.5);
   o.connect(g).connect(snd.pingBus);
   o.start(t+0.9); o.stop(t+1.6);
+}
+
+/* --- boot voices --------------------------------------------------------
+   A terminal coming up makes four distinct noises and they are worth keeping
+   apart: the keystroke, the result, the load, and the subsystem answering. */
+
+/* One keystroke. Short, bright, and pitch-jittered so a run of them reads as
+   a mechanism rather than a metronome. */
+function sndType(){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime;
+  const src=ctx.createBufferSource(); src.buffer=snd.noise;
+  src.playbackRate.value=0.75+Math.random()*0.7;
+  const f=ctx.createBiquadFilter(); f.type='bandpass';
+  f.frequency.value=2500+Math.random()*1800; f.Q.value=3.2;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.085+Math.random()*0.03,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.024);
+  src.connect(f).connect(g).connect(snd.master);
+  src.start(t); src.stop(t+0.035);
+}
+
+/* The status landing in the right-hand column. */
+function sndStatus(){ blip(1560,0.05,0.11,0,'square'); blip(2080,0.035,0.06,0.035,'square'); }
+
+/* Bulk transfer: tape or disk chatter while something is actually read in. */
+function sndData(ms){
+  const n=Math.max(5,Math.round(ms/38));
+  for(let i=0;i<n;i++)
+    blip(650+Math.random()*1700, 0.028, 0.05, i*0.038, 'square');
+}
+
+/* A subsystem answering — a short rising sweep, the sound of something
+   spinning up rather than merely being ticked off a list. */
+function sndSpinUp(){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime;
+  const o=ctx.createOscillator(); o.type='sawtooth';
+  o.frequency.setValueAtTime(280,t);
+  o.frequency.exponentialRampToValueAtTime(1350,t+0.15);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.075,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.17);
+  o.connect(g).connect(snd.master); o.start(t); o.stop(t+0.2);
 }
 
 function sndOutcome(good){
