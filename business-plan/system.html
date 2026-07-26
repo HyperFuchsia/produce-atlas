@@ -1,0 +1,497 @@
+<title>The Compiled System — everything, wired together</title>
+
+<style>
+  :root {
+    --paper:#EFF2F5; --panel:#F7F9FA; --ink:#111820; --steel:#5A6875;
+    --hairline:#C9D2DA; --hairline-2:#DDE4EA;
+    --accent:#0D7A84; --accent-ink:#095C64; --accent-wash:#DCEBEC;
+    --critical:#B23A32; --major:#C67C1E; --minor:#2F6BA8; --good:#0D7A84;
+    --term-bg:#10161A; --term-ink:#C8D4DC;
+    --serif: ui-serif,"Iowan Old Style",Georgia,"Times New Roman",serif;
+    --sans: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --mono: ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#0D1114; --panel:#151B20; --ink:#E2E8EC; --steel:#93A2AF;
+      --hairline:#2C363E; --hairline-2:#212A31;
+      --accent:#2FA3AE; --accent-ink:#55BEC8; --accent-wash:#122A2D;
+      --critical:#E2607F; --major:#B08327; --minor:#5F97D8; --good:#2FA3AE;
+      --term-bg:#080B0D; --term-ink:#C8D4DC;
+    }
+  }
+  :root[data-theme="dark"]{--paper:#0D1114;--panel:#151B20;--ink:#E2E8EC;--steel:#93A2AF;--hairline:#2C363E;--hairline-2:#212A31;--accent:#2FA3AE;--accent-ink:#55BEC8;--accent-wash:#122A2D;--critical:#E2607F;--major:#B08327;--minor:#5F97D8;--good:#2FA3AE;--term-bg:#080B0D;}
+  :root[data-theme="light"]{--paper:#EFF2F5;--panel:#F7F9FA;--ink:#111820;--steel:#5A6875;--hairline:#C9D2DA;--hairline-2:#DDE4EA;--accent:#0D7A84;--accent-ink:#095C64;--accent-wash:#DCEBEC;--critical:#B23A32;--major:#C67C1E;--minor:#2F6BA8;--good:#0D7A84;--term-bg:#10161A;}
+
+  body { background:var(--paper); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .sheet { max-width:80rem; margin:0 auto; padding:clamp(1.25rem,4vw,3.5rem) clamp(1rem,4vw,3rem) 6rem; display:flex; flex-direction:column; gap:clamp(2.5rem,5vw,4rem); }
+
+  header.plate { border:2px solid var(--ink); background:var(--panel); }
+  .plate__top { padding:clamp(1.25rem,3vw,2.25rem); display:flex; flex-direction:column; gap:.9rem; }
+  .eyebrow { font-family:var(--mono); font-size:.68rem; letter-spacing:.17em; text-transform:uppercase; color:var(--steel); display:flex; flex-wrap:wrap; gap:.3rem 1.2rem; }
+  h1 { font-family:var(--serif); font-size:clamp(1.9rem,5.5vw,3.3rem); line-height:1.05; font-weight:600; letter-spacing:-.015em; text-wrap:balance; max-width:24ch; }
+  .thesis { font-family:var(--serif); font-size:clamp(1rem,2vw,1.24rem); line-height:1.5; color:var(--steel); max-width:60ch; text-wrap:pretty; }
+  .plate__specs { border-top:2px solid var(--ink); display:grid; grid-template-columns:repeat(auto-fit,minmax(10rem,1fr)); }
+  .spec { padding:.9rem clamp(1.25rem,3vw,2.25rem); border-right:1px solid var(--hairline); display:flex; flex-direction:column; gap:.12rem; }
+  .spec:last-child{border-right:0;}
+  .spec__k { font-family:var(--mono); font-size:.63rem; letter-spacing:.14em; text-transform:uppercase; color:var(--steel); }
+  .spec__v { font-family:var(--mono); font-size:.95rem; font-weight:600; font-variant-numeric:tabular-nums; }
+
+  section { display:flex; flex-direction:column; gap:1.25rem; }
+  .sec-head { display:flex; align-items:baseline; gap:.85rem; border-bottom:2px solid var(--ink); padding-bottom:.5rem; flex-wrap:wrap; }
+  .sec-num { font-family:var(--mono); font-size:.78rem; font-weight:700; color:var(--accent); letter-spacing:.06em; }
+  h2 { font-family:var(--serif); font-weight:600; font-size:clamp(1.3rem,3vw,1.75rem); line-height:1.15; letter-spacing:-.01em; }
+  .sec-note { font-size:.8rem; color:var(--steel); margin-left:auto; font-family:var(--mono); }
+  h3 { font-family:var(--sans); font-size:.73rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; color:var(--steel); }
+  p { max-width:70ch; text-wrap:pretty; }
+  strong{font-weight:650;}
+  code { font-family:var(--mono); font-size:.9em; background:var(--hairline-2); padding:.1em .35em; }
+
+  pre.mermaid { background:var(--panel); border:1px solid var(--hairline); padding:1.25rem; overflow-x:auto; text-align:center; }
+
+  /* terminal */
+  .term { background:var(--term-bg); border:1px solid var(--hairline); overflow-x:auto; }
+  .term__bar { display:flex; gap:.75rem; align-items:center; padding:.5rem .9rem; border-bottom:1px solid #2A343B; }
+  .term__dot { width:9px; height:9px; border-radius:50%; background:#3A464F; }
+  .term__title { font-family:var(--mono); font-size:.68rem; color:#7C8A95; letter-spacing:.06em; }
+  .term pre { font-family:var(--mono); font-size:.79rem; line-height:1.55; color:var(--term-ink); padding:.9rem 1.1rem; white-space:pre; }
+  .t-dim{color:#6B7A85;} .t-ok{color:#5FBF8F;} .t-bad{color:#E2607F;} .t-warn{color:#D9A441;} .t-b{font-weight:700;color:#EAF1F5;}
+
+  /* stage list */
+  .stages { display:flex; flex-direction:column; }
+  .stage { display:grid; grid-template-columns:2.4rem 1fr; gap:0 1.1rem; border-top:1px solid var(--hairline); padding:1.05rem 0; }
+  .stage:last-child{border-bottom:1px solid var(--hairline);}
+  .stage__n { font-family:var(--mono); font-size:.95rem; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .stage__b { display:flex; flex-direction:column; gap:.45rem; }
+  .stage__h { font-family:var(--serif); font-size:1.12rem; font-weight:600; }
+  .stage__m { display:flex; flex-wrap:wrap; gap:.35rem .5rem; }
+  .tag { font-family:var(--mono); font-size:.66rem; letter-spacing:.06em; padding:.14rem .45rem; border:1px solid var(--hairline); color:var(--steel); white-space:nowrap; }
+  .tag--out { color:var(--accent-ink); border-color:var(--accent); }
+  .tag--gate { color:var(--critical); border-color:var(--critical); }
+  .stage__p { font-size:.92rem; }
+
+  .scroll { overflow-x:auto; border:1px solid var(--hairline); background:var(--panel); }
+  table { border-collapse:collapse; width:100%; font-size:.88rem; min-width:36rem; }
+  th,td { text-align:left; padding:.58rem .8rem; border-bottom:1px solid var(--hairline-2); vertical-align:top; }
+  thead th { font-family:var(--mono); font-size:.64rem; letter-spacing:.12em; text-transform:uppercase; color:var(--steel); font-weight:600; border-bottom:1px solid var(--hairline); white-space:nowrap; }
+  tbody tr:last-child td{border-bottom:0;}
+  td.f { font-family:var(--mono); font-size:.84rem; white-space:nowrap; color:var(--accent-ink); }
+  .st { font-family:var(--mono); font-size:.66rem; font-weight:700; letter-spacing:.07em; text-transform:uppercase; padding:.1rem .4rem; border:1px solid currentColor; white-space:nowrap; }
+  .st--live{color:var(--good);} .st--gap{color:var(--critical);} .st--part{color:var(--major);}
+
+  .cols { display:grid; gap:1.5rem; grid-template-columns:repeat(auto-fit,minmax(17rem,1fr)); }
+  .card { background:var(--panel); border:1px solid var(--hairline); padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:.5rem; }
+  .card__k { font-family:var(--mono); font-size:.66rem; letter-spacing:.12em; text-transform:uppercase; color:var(--steel); }
+  .card__h { font-family:var(--serif); font-size:1.1rem; font-weight:600; line-height:1.25; }
+  .card p { font-size:.91rem; }
+
+  .callout { border-left:3px solid var(--accent); background:var(--accent-wash); padding:1rem 1.15rem; display:flex; flex-direction:column; gap:.5rem; }
+  .callout--stop { border-left-color:var(--critical); background:transparent; border:1px solid var(--critical); border-left-width:3px; }
+  .callout__k { font-family:var(--mono); font-size:.66rem; letter-spacing:.13em; text-transform:uppercase; font-weight:700; color:var(--accent-ink); }
+  .callout--stop .callout__k{color:var(--critical);}
+  .callout p{max-width:64ch; font-size:.94rem;}
+
+  ul.tight { padding-left:1.05rem; display:flex; flex-direction:column; gap:.28rem; font-size:.93rem; max-width:70ch; }
+  ul.tight li::marker{color:var(--accent);}
+  .foot { border-top:2px solid var(--ink); padding-top:1rem; font-size:.83rem; color:var(--steel); display:flex; flex-direction:column; gap:.4rem; max-width:70ch; }
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+  @media (max-width:34rem){ .spec{border-right:0;border-bottom:1px solid var(--hairline);} }
+</style>
+
+<div class="sheet">
+
+  <header class="plate">
+    <div class="plate__top">
+      <div class="eyebrow">
+        <span>The compiled system</span><span>UAS-1:v0.1</span><span>Preflight clean</span>
+      </div>
+      <h1>Everything, wired together.</h1>
+      <p class="thesis">
+        A stranger answers nine questions and learns their machinery is governed
+        by a memo. Fourteen months later their insurer discounts the premium
+        because a certificate exists. This is every stage in between, what runs
+        at each one, and the gates that stop it moving on.
+      </p>
+    </div>
+    <div class="plate__specs">
+      <div class="spec"><span class="spec__k">Stages</span><span class="spec__v">9</span></div>
+      <div class="spec"><span class="spec__k">Runnable now</span><span class="spec__v">5</span></div>
+      <div class="spec"><span class="spec__k">Blocked</span><span class="spec__v">4</span></div>
+      <div class="spec"><span class="spec__k">Docs / engagement</span><span class="spec__v">Generated</span></div>
+      <div class="spec"><span class="spec__k">Self-checks</span><span class="spec__v">7 passing</span></div>
+    </div>
+  </header>
+
+  <!-- ═══ §1 THE WHOLE THING ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§1</span><h2>The whole thing on one page</h2>
+      <span class="sec-note">teal = built · red = gate</span>
+    </div>
+    <pre class="mermaid">
+flowchart TD
+  subgraph FOUND ["FOUNDATION — the asset you cannot buy"]
+    D["Doctrine<br/>4 pillars · glossary<br/>argument register"] --> STD["UAS-1:v0.1<br/>free · public · citable"]
+    D --> LINT["doctrine_lint<br/>blocks overclaims"]
+  end
+
+  subgraph DEM ["DEMAND"]
+    STD --> CHK["Self-assessment<br/>9 questions · free"]
+    STD --> ART["Articles<br/>hierarchy of controls"]
+    CHK --> LEAD(["Lead<br/>'11 of 14 ungoverned'"])
+    ART --> LEAD
+  end
+
+  subgraph ENG ["ENGAGEMENT"]
+    LEAD --> SCOPE["Engagement scope<br/>deliverables · exclusions"]
+    SCOPE --> G1{{"GATE 1<br/>contract · E&amp;O"}}
+    G1 --> FIELD["Field guide<br/>1.5–2.5 days on site"]
+    FIELD --> REG[("Actuator registry<br/>schema-valid JSON")]
+  end
+
+  subgraph PIPE ["PIPELINE — one command"]
+    REG --> RUN["pipeline engagement"]
+    RUN --> REP["Assessment report"]
+    RUN --> NCF["Finding letters<br/>one per finding"]
+    RUN --> CERT{"Certificate<br/>decision"}
+  end
+
+  CERT -->|"criticals open"| WH["WITHHELD<br/>remediate and re-score"]
+  CERT -->|"Level 2"| C2["Certificate issued"]
+  WH --> FIELD
+
+  C2 --> G2{{"GATE 2<br/>licensed PE"}}
+  G2 --> C3["Level 3<br/>certified"]
+
+  subgraph REC ["RECURRING"]
+    C2 --> GOV["Governor licence<br/>monthly, per site"]
+    C2 --> RECERT["Recertification<br/>annual"]
+  end
+
+  subgraph CHAN ["CHANNEL — the flywheel"]
+    C3 --> INS{{"GATE 3<br/>carrier relationship"}}
+    INS --> PREM["Premium credit<br/>for certified sites"]
+    PREM --> INBOUND(["Inbound<br/>broker-referred"])
+  end
+  INBOUND --> SCOPE
+
+  classDef built fill:#DCEBEC,stroke:#0D7A84,stroke-width:2px,color:#111820
+  classDef gate fill:#F7E7E6,stroke:#B23A32,stroke-width:2px,color:#111820
+  classDef out fill:#F7F9FA,stroke:#5A6875,color:#111820
+  class D,STD,LINT,CHK,FIELD,SCOPE,RUN,REP,NCF,CERT,WH,C2 built
+  class G1,G2,INS gate
+    </pre>
+    <p>
+      Everything in teal exists and runs today. Everything in red is a gate that
+      no amount of further building opens — each one needs a person: an
+      attorney, a licensed engineer, an underwriter.
+      <strong>That is the honest shape of the thing.</strong> The method is
+      finished well ahead of the business, which is normal, and worth knowing
+      rather than discovering at the first invoice.
+    </p>
+  </section>
+
+  <!-- ═══ §2 STAGES ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§2</span><h2>Stage by stage</h2>
+      <span class="sec-note">what runs · what it makes · what stops it</span>
+    </div>
+    <div class="stages">
+
+      <div class="stage">
+        <span class="stage__n">01</span>
+        <div class="stage__b">
+          <span class="stage__h">Publish the standard</span>
+          <div class="stage__m">
+            <span class="tag">doctrine → standard</span>
+            <span class="tag tag--out">UAS-1:v0.1</span>
+            <span class="tag tag--out">registry schema</span>
+          </div>
+          <p class="stage__p">You cannot buy authority, so you publish into it. Free, versioned, citable, mapped clause-by-clause to NIST AI RMF, ISO 42001, IEC 61508 and the machinery standards — so it reads as an extension of the existing canon rather than a new religion.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">02</span>
+        <div class="stage__b">
+          <span class="stage__h">Create demand</span>
+          <div class="stage__m">
+            <span class="tag">checklist · articles</span>
+            <span class="tag tag--out">a lead who already believes you</span>
+          </div>
+          <p class="stage__p">The self-assessment does the arguing. A plant manager discovers on their own that machinery which can kill someone is held by a procedure — and the flagship article tells them the profession settled this decades ago, in their own vocabulary.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">03</span>
+        <div class="stage__b">
+          <span class="stage__h">Scope the engagement</span>
+          <div class="stage__m">
+            <span class="tag">engagement-scope.md</span>
+            <span class="tag tag--gate">GATE — contract terms, E&amp;O</span>
+          </div>
+          <p class="stage__p">Deliverables, exclusions, client obligations, findings handling. Level 3 is declared unattainable in the first meeting rather than the last. Payment terms, liability, indemnity and IP are attorney work — the skeleton stops exactly where template work stops being honest.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">04</span>
+        <div class="stage__b">
+          <span class="stage__h">Enumerate on site</span>
+          <div class="stage__m">
+            <span class="tag">field-guide.md</span>
+            <span class="tag">1.5–2.5 days</span>
+            <span class="tag tag--out">registry JSON</span>
+          </div>
+          <p class="stage__p">The four attribution questions, chains traced past the first hop, and the six questions that break a false Level&nbsp;3 claim. This is the only stage that cannot be automated and the only one where the value is actually created — everything downstream is arithmetic on what gets written down here.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">05</span>
+        <div class="stage__b">
+          <span class="stage__h">Run the pipeline</span>
+          <div class="stage__m">
+            <span class="tag">pipeline engagement</span>
+            <span class="tag tag--out">report</span>
+            <span class="tag tag--out">finding letters</span>
+            <span class="tag tag--out">certificate decision</span>
+            <span class="tag tag--out">manifest</span>
+          </div>
+          <p class="stage__p">One command, complete package. Generated rather than written so nothing is softened, dropped, or forgotten between the walk and the documents — and so no finding can be quietly removed to keep a client comfortable.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">06</span>
+        <div class="stage__b">
+          <span class="stage__h">Deliver findings</span>
+          <div class="stage__m">
+            <span class="tag">one letter per finding</span>
+            <span class="tag">client only</span>
+          </div>
+          <p class="stage__p">Private, always. No regulator, no insurer, no third party. Enforcement is the <em>absence</em> of a certificate — which is how boiler, elevator and electrical listing have all worked for a century, and it means the assessor never acts against the client who hired them.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">07</span>
+        <div class="stage__b">
+          <span class="stage__h">Remediate and re-score</span>
+          <div class="stage__m">
+            <span class="tag">client or third party</span>
+            <span class="tag">not the assessor</span>
+          </div>
+          <p class="stage__p">In the worked example, two of three criticals were fixed by <strong>moving an existing control</strong> — the rule was already correct, it just lived inside the system it governed. That is usually true, and saying it early keeps the conversation about engineering rather than blame.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">08</span>
+        <div class="stage__b">
+          <span class="stage__h">Certify</span>
+          <div class="stage__m">
+            <span class="tag tag--out">Level 2 — issuable now</span>
+            <span class="tag tag--gate">GATE — licensed PE for Level 3</span>
+          </div>
+          <p class="stage__p">The scorer takes a deployment to Level 2 and refuses to go further, reporting the PE signature as a blocker it cannot clear. A tool that could award its own top grade would be worth nothing.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <span class="stage__n">09</span>
+        <div class="stage__b">
+          <span class="stage__h">Open the channel</span>
+          <div class="stage__m">
+            <span class="tag tag--gate">GATE — carrier relationship</span>
+            <span class="tag tag--out">inbound, permanently</span>
+          </div>
+          <p class="stage__p">One carrier crediting certification ends the selling. Clients arrive because a broker sent them, authority is settled by the requirement rather than by reputation, and certification becomes cheaper than the premium differential — free, in the buyer's arithmetic.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ §3 IT RUNS ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§3</span><h2>It actually runs</h2>
+      <span class="sec-note">real output, not mocked</span>
+    </div>
+
+    <h3>Preflight — nothing ships if this is red</h3>
+    <div class="term">
+      <div class="term__bar"><span class="term__dot"></span><span class="term__title">pipeline.py preflight</span></div>
+<pre><span class="t-b">PREFLIGHT</span>  <span class="t-dim">nothing ships if this is red</span>
+
+  <span class="t-ok">PASS</span>  doctrine lint — 13 files
+  <span class="t-ok">PASS</span>  registry schema parses (6 definitions)
+  <span class="t-ok">PASS</span>  examples validate against schema
+  <span class="t-ok">PASS</span>  warehouse-amr.registry.json — L0, GAR 37.5%
+  <span class="t-ok">PASS</span>  warehouse-amr-remediated.registry.json — L2, GAR 87.5%
+  <span class="t-ok">PASS</span>  scorer defers Level 3 to a human assessor
+  <span class="t-ok">PASS</span>  delivery kit complete (5 documents)
+
+  <span class="t-ok">PREFLIGHT CLEAN</span></pre>
+    </div>
+
+    <h3>A non-conforming site — certificate withheld</h3>
+    <div class="term">
+      <div class="term__bar"><span class="term__dot"></span><span class="term__title">pipeline.py engagement DC-04.registry.json --out ./DC-04</span></div>
+<pre><span class="t-b">ENGAGEMENT</span>  Example Regional Distribution — Distribution Centre 04
+
+  <span class="t-dim">[1/6]</span> scoring registry
+        result: <span class="t-bad">Non-conforming</span> · GAR 37.5% · 13 finding(s), 2 critical
+  <span class="t-dim">[2/6]</span> creating ./DC-04/
+  <span class="t-dim">[3/6]</span> generating assessment report
+  <span class="t-dim">[4/6]</span> generating 13 finding letter(s)
+  <span class="t-dim">[5/6]</span> generating certificate decision
+        certificate: <span class="t-bad">WITHHELD</span>
+  <span class="t-dim">[6/6]</span> writing manifest
+
+  <span class="t-ok">PACKAGE COMPLETE</span>  16 documents in ./DC-04/
+
+    <span class="t-dim">·</span> 00-assessment-report.md
+    <span class="t-dim">·</span> 01-finding-NCF-001-critical.md
+    <span class="t-dim">·</span> 01-finding-NCF-002-critical.md
+    <span class="t-dim">·</span> 01-finding-NCF-003-major.md   <span class="t-dim">… 9 more</span>
+    <span class="t-dim">·</span> 01-finding-NCF-013-minor.md
+    <span class="t-dim">·</span> 02-certificate-withheld.md
+    <span class="t-dim">·</span> manifest.json
+
+  <span class="t-warn">Deliver criticals in person.</span> A Tier 1 actuator held by
+  a procedure is not a paperwork finding.</pre>
+    </div>
+
+    <h3>The same site after remediation</h3>
+    <div class="term">
+      <div class="term__bar"><span class="term__dot"></span><span class="term__title">pipeline.py engagement DC-04.remediated.json --out ./DC-04-post</span></div>
+<pre>  <span class="t-dim">[1/6]</span> scoring registry
+        result: <span class="t-ok">Level 2 — Governed</span> · GAR 87.5% · 1 finding(s), 0 critical
+  <span class="t-dim">[5/6]</span> generating certificate decision
+        certificate: <span class="t-ok">ISSUED</span>
+
+  <span class="t-ok">PACKAGE COMPLETE</span>  4 documents in ./DC-04-post/</pre>
+    </div>
+
+    <div class="callout">
+      <span class="callout__k">Why generated, not written</span>
+      <p>
+        Findings come out of the registry mechanically. Nobody drafts them, so
+        nobody can soften one, forget one, or quietly drop the awkward one to
+        keep a client comfortable at the close-out meeting. The pressure to do
+        exactly that is the reason inspection regimes fail, and it is strongest
+        precisely when the finding matters most.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ §4 ASSETS ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§4</span><h2>Asset register</h2>
+      <span class="sec-note">everything built, and where it is used</span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Asset</th><th>Stage</th><th>What it does</th><th>State</th></tr></thead>
+        <tbody>
+          <tr><td class="f">04-DOCTRINE.md</td><td>01</td><td>Four pillars, controlled glossary, argument register — each claim with its strength and its strongest counter</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">standard/UAS-v0.1.md</td><td>01</td><td>12 clauses, 5 annexes, mapped to the existing safety canon</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">schema/*.json</td><td>04</td><td>Registry format; can express non-compliance, which is the point</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">tools/uas_score.py</td><td>05</td><td>Scoring, demotion rules, report generation</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">tools/doctrine_lint.py</td><td>01</td><td>Fails on absolute claims, retired vocabulary, unsourced quotes</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">pipeline.py</td><td>05</td><td>Preflight and the full engagement package</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">checklist.html</td><td>02</td><td>Nine-question funnel, entirely client-side</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">kit/field-guide.md</td><td>04</td><td>How to enumerate, classify, and break a false Level 3 claim</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">kit/engagement-scope.md</td><td>03</td><td>Scope skeleton — deliberately stops short of legal terms</td><td><span class="st st--part">Partial</span></td></tr>
+          <tr><td class="f">kit/findings-letter.md</td><td>06</td><td>Template; the generated letters supersede it in practice</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">kit/certificate.md</td><td>08</td><td>Certificate and the mandatory residual risk statement</td><td><span class="st st--live">Live</span></td></tr>
+          <tr><td class="f">Governor v0</td><td>recurring</td><td>The enforcement middleware. Spec is buildable; nothing is built</td><td><span class="st st--gap">Not built</span></td></tr>
+          <tr><td class="f">Flagship article</td><td>02</td><td>&ldquo;Your AI safety programme is an administrative control&rdquo;</td><td><span class="st st--gap">Not written</span></td></tr>
+          <tr><td class="f">Entity · contract · E&amp;O</td><td>03</td><td>The difference between a method and a business</td><td><span class="st st--gap">Blocked</span></td></tr>
+          <tr><td class="f">Licensed PE</td><td>08</td><td>The signature. Without it, Level 3 does not exist</td><td><span class="st st--gap">Blocked</span></td></tr>
+          <tr><td class="f">Carrier relationship</td><td>09</td><td>The flywheel</td><td><span class="st st--gap">Blocked</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══ §5 GATES ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§5</span><h2>The four gates</h2>
+      <span class="sec-note">none of these open by building more</span>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <span class="card__k">Gate 1 · before any invoice</span>
+        <span class="card__h">Entity, contract, E&amp;O</span>
+        <p>Legal entity and bank account. Payment, liability, indemnity and IP terms drafted by an attorney. Errors-and-omissions cover quoted against the corrected claims language — which is also why every absolute claim had to go: they are what make cover unaffordable or void.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Gate 2 · before Level 3</span>
+        <span class="card__h">A licensed engineer</span>
+        <p>A certification body's product is the credibility of a signature, and it has to belong to someone personally exposed. Also the person who validates every <code>[PE-REVIEW]</code> threshold — which is the honest way to open the conversation.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Gate 3 · the flywheel</span>
+        <span class="card__h">One carrier</span>
+        <p>Everything in stages 1–8 is preparation for one conversation with an underwriter. Hartford Steam Boiler, 1866: inspect and carry the risk. Skin in the game is what made the inspection credible then and it is what would make it credible now.</p>
+      </div>
+      <div class="card">
+        <span class="card__k">Gate 0 · before committing a year</span>
+        <span class="card__h">Verify the market is empty</span>
+        <p>D-0 item 7 rests on reasoning, not research, and it is load-bearing. Check whether any equipment-breakdown carrier already asks about automated systems on its inspection forms — that single check also tells you whether Gate 3 is open.</p>
+      </div>
+    </div>
+    <div class="callout callout--stop">
+      <span class="callout__k">The thing to be clear about</span>
+      <p>
+        More building does not open any of these. The method is further along
+        than the business, and the remaining work is three conversations —
+        an attorney, an engineer, an underwriter — plus one piece of research.
+        Continuing to build instead would be the comfortable move and the wrong
+        one.
+      </p>
+    </div>
+  </section>
+
+  <!-- ═══ §6 COMMANDS ═══ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">§6</span><h2>The command surface</h2>
+      <span class="sec-note">everything you can run today</span>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Command</th><th>Does</th></tr></thead>
+        <tbody>
+          <tr><td class="f">pipeline.py preflight</td><td>Every self-check: lint, schema, example regressions, the Level 3 guard, kit completeness</td></tr>
+          <tr><td class="f">pipeline.py engagement REG --out DIR</td><td>Full client package: report, one letter per finding, certificate decision, manifest</td></tr>
+          <tr><td class="f">uas_score.py REG</td><td>Console conformance report</td></tr>
+          <tr><td class="f">uas_score.py REG --report</td><td>Client-deliverable assessment report</td></tr>
+          <tr><td class="f">uas_score.py REG --json</td><td>Machine-readable, for tracking scores across sites</td></tr>
+          <tr><td class="f">uas_score.py REG --strict</td><td>Exit non-zero unless Level 3 — for a client's own CI</td></tr>
+          <tr><td class="f">doctrine_lint.py</td><td>Blocks overclaims before anything is published</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>
+      Standard library only, no dependencies beyond an optional <code>jsonschema</code>
+      for validation. That matters more than it sounds: an assessor should be able
+      to run this on a locked-down laptop inside a client's facility, with no
+      network and no install rights.
+    </p>
+  </section>
+
+  <footer class="foot">
+    <div>Preflight clean as of the last commit. Numeric thresholds pending engineering validation are marked <code>[PE-REVIEW]</code> in the standard rather than omitted.</div>
+    <div>The worked examples are illustrative and clearly labelled as such. They demonstrate the method; they are not a track record, and presenting them as one would be the first dishonest thing in the whole system.</div>
+    <div>No conformance level under this standard eliminates risk. Clause 10.5.2 makes that binding on the certifying body, not advisory.</div>
+  </footer>
+
+</div>

@@ -12,10 +12,26 @@ Working thesis, in one line:
 
 ---
 
-## Documents
+## Run it
+
+```bash
+python3 pipeline.py preflight                          # every self-check
+python3 pipeline.py engagement SITE.json --out ./OUT   # full client package
+```
+
+`preflight` runs the doctrine lint, schema validity, example regressions, the
+Level 3 guard, and kit completeness. Nothing ships if it is red.
+
+`engagement` takes a site registry and produces the assessment report, one
+non-conformance letter per finding, the certificate decision, and a manifest.
+Generated rather than written, so no finding can be softened or dropped between
+the site walk and the documents.
+
+---
 
 | File | Contents |
 |---|---|
+| [`pipeline.py`](pipeline.py) | **The runner.** Preflight and the full engagement package. |
 | [`00-DECISIONS.md`](00-DECISIONS.md) | Eleven open questions, each forced to a recommendation. Start here. |
 | [`01-CORRECTIONS.md`](01-CORRECTIONS.md) | What failed scrutiny in the source doctrine, and why. All items now applied — retained as the reasoning record. |
 | [`02-BUILD-SEQUENCE.md`](02-BUILD-SEQUENCE.md) | Month 0–18 operating plan, sequenced against real constraints. |
@@ -24,7 +40,8 @@ Working thesis, in one line:
 | [`standard/`](standard/) | UAS-1:v0.1 — the standard, registry schema, conformance scorer, worked examples. |
 | [`kit/`](kit/) | **Delivery kit.** Everything to run one paid engagement: field guide, engagement scope, findings letter, certificate. |
 | [`checklist.html`](checklist.html) | Free 4-minute self-assessment. The funnel — runs entirely client-side. |
-| [`plan.html`](plan.html) | Visual business layout. **Internal** — shows a prospect you have no customers. |
+| [`plan.html`](plan.html) | Visual business layout — market call, pricing, phases. **Internal.** |
+| [`system.html`](system.html) | The compiled system: nine stages, real pipeline output, asset register, the four gates. |
 | [`tools/doctrine_lint.py`](tools/doctrine_lint.py) | Enforces the §5 language rules mechanically. Run before publishing anything. |
 
 ```bash
@@ -123,10 +140,23 @@ documented.
 
 ## Status
 
-First pass. Open items that still need work:
+Preflight clean. The method runs end to end; the business does not yet exist.
 
-- Entity structure and jurisdiction
-- Detailed financial model
-- The standard document itself (Phase 0.2 — the actual next deliverable)
-- Competitive landscape mapped in detail
-- Named prospect list for the beachhead
+**Built and running:** doctrine, standard, registry schema, conformance scorer,
+report generation, engagement pipeline, delivery kit, self-assessment funnel,
+doctrine linter.
+
+**Gates — none of these open by building more:**
+
+| Gate | Needs | Blocks |
+|---|---|---|
+| 0 | Verify D-0 item 7 (is the market actually empty?) | Committing a year to the targeting |
+| 1 | Entity, contract terms, E&O cover — attorney and broker | Any invoice |
+| 2 | A licensed PE | Level 3 certification |
+| 3 | One carrier relationship | The flywheel |
+
+**Still to build:** the flagship article, the Governor v0 code, a financial
+model, a named prospect list.
+
+The remaining work is three conversations and one piece of research. Continuing
+to build instead would be the comfortable move and the wrong one.
