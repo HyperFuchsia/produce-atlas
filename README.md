@@ -3,7 +3,7 @@ An evidence-led interactive 3-D atlas tracing the scientific identity, origins, 
 
 ## Jumping Jammers
 
-A rhythm-based jumping game: obstacles arrive on the beat, and you tap/click/space to jump exactly on time. Land inside the timing window to build combos and chase a high score as the tempo climbs from a chill 100 BPM to a frantic 170+.
+A rhythm-based jumping game: a boy and his dog work a street-corner boombox, and "Beat Crate" cues roll in on the beat for you to tap/click/space to jump over exactly on time. Land inside the timing window to build combos and chase a high score as the tempo climbs from a chill 100 BPM to a frantic 170+.
 
 It's a single self-contained `index.html` — HTML5 Canvas for rendering, the Web Audio API for the synthesized backing track and sound effects, no external assets or build step.
 

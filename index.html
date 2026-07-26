@@ -7,10 +7,10 @@
 <style>
   :root {
     --cyan: #00e5ff;
-    --green: #4ade80;
-    --yellow: #ffd60a;
+    --green: #39e67a;
+    --yellow: #ffd23f;
     --red: #ff3b3b;
-    --magenta: #ff2fb0;
+    --magenta: #ff3dad;
     --ink: #eaf0ff;
   }
   * { box-sizing: border-box; }
@@ -36,7 +36,7 @@
     aspect-ratio: 900 / 500;
     max-height: 100vh;
     background: #05050f;
-    box-shadow: 0 0 60px rgba(255, 47, 176, 0.15);
+    box-shadow: 0 0 60px rgba(255, 61, 173, 0.15);
     touch-action: none;
     user-select: none;
     overflow: hidden;
@@ -85,7 +85,7 @@
     text-align: center;
     font-size: clamp(14px, 2.4vw, 20px);
     color: var(--magenta);
-    text-shadow: 0 0 10px rgba(255, 47, 176, 0.7);
+    text-shadow: 0 0 10px rgba(255, 61, 173, 0.7);
     transition: transform 0.12s ease-out;
   }
   .hud-combo.pop { transform: translateX(-50%) scale(1.35); }
@@ -165,7 +165,7 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    text-shadow: 0 0 30px rgba(255, 47, 176, 0.35);
+    text-shadow: 0 0 30px rgba(255, 61, 173, 0.35);
     margin: 0;
   }
   .subtitle {
@@ -200,8 +200,8 @@
   button.jj-btn:active { transform: scale(0.96); }
   button.jj-btn.primary {
     border-color: var(--magenta);
-    background: rgba(255, 47, 176, 0.14);
-    box-shadow: 0 0 22px rgba(255, 47, 176, 0.4);
+    background: rgba(255, 61, 173, 0.14);
+    box-shadow: 0 0 22px rgba(255, 61, 173, 0.4);
   }
   button.jj-btn.ghost {
     border-color: rgba(234, 240, 255, 0.35);
@@ -282,7 +282,7 @@
   <!-- Title screen -->
   <div class="screen visible" id="screen-title">
     <h1 class="title-logo">JUMPING JAMMERS</h1>
-    <p class="subtitle">Tap / Click / Space to jump — hold through the gaps.<br>Hit the beat, build your combo, survive the climb.</p>
+    <p class="subtitle">A boy and his dog work the corner boombox.<br>Tap / Click / Space to jump on the beat — hold through the gaps.</p>
     <div class="stat-row">
       <div>High Score: <b id="stat-highscore">0</b></div>
       <div>Best Combo: <b id="stat-bestcombo">0</b></div>
@@ -358,19 +358,110 @@
    CONFIG
    ========================================================================= */
 const CW = 900, CH = 500;
-const HIT_X = CW * 0.22;
+const HIT_X = 200;
 const GROUND_Y = CH * 0.72;
 const TRACK_SPAN = CW - HIT_X;
 
 const WINDOW_MS = { PERFECT: 40, GREAT: 80, GOOD: 120 }; // upper bound per rating
 const MISS_GRACE_SEC = 0.12;
-const SCORE_BASE = { PERFECT: 100, GREAT: 70, GOOD: 40, MISS: 0 };
-const RATING_COLOR = { PERFECT: "#00e5ff", GREAT: "#4ade80", GOOD: "#ffd60a", MISS: "#ff3b3b" };
+const SCORE_BASE = { PERFECT: 100, GREAT: 70, GOOD: 40 };
+const RATING_COLOR = { PERFECT: "#00e5ff", GREAT: "#39e67a", GOOD: "#ffd23f", MISS: "#ff3b3b" };
+const RATING_TEXT_COLOR = { PERFECT: "#1a1a1a", GREAT: "#1a1a1a", GOOD: "#1a1a1a", MISS: "#ffffff" };
 const RATING_RANK = { PERFECT: 0, GREAT: 1, GOOD: 2, MISS: 3 }; // higher = worse
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * clamp(t, 0, 1);
+const rand = (a, b) => a + Math.random() * (b - a);
+const choice = (arr) => arr[(Math.random() * arr.length) | 0];
+
+// Street-corner scene palette. Cyan/green/red are reserved exclusively for
+// judgment feedback (Perfect/Great/Miss) so they never collide with backdrop colors.
+const PALETTE = {
+  skyTop: "#1b1030", skyMid: "#4b2e83", skyHorizon: "#ff6fa0",
+  skylineFar: "#362256", skylineNear: "#241640",
+  windowWarm: "#ffd23f", windowCool: "#5ac8fa",
+  brick: "#7a3b32", mortar: "#5c2c26",
+  graffiti: ["#b8467e", "#3e7a8c", "#a69b3e"],
+  lampPole: "#2b2b2b", lampGlow: "#fff4c2",
+  pavement: "#6b6b75", groundLine: "#9a9aa5", joint: "#55555e", gutter: "#4a4a52",
+  curb: "#ffd23f", manhole: "#4a4a52", manholeOutline: "#2e2e33",
+  outline: "#1a1a1a",
+  boySkin: "#c6824f", boyCapCrown: "#e63950", boyCapBrim: "#b71c34", boyCapLogo: "#ffd23f",
+  boyHoodieFront: "#2ec4b6", boyHoodieCuffFront: "#1b8f84",
+  boyHoodieBack: "#e63950", boyHoodieCuffBack: "#b71c34",
+  boyCollar: "#f4f4f4", boyChain: "#ffd23f",
+  boyPants: "#43485b", boyStripe: "#ffd23f",
+  boySneakerBody: "#ffffff", boySneakerSole: "#1a1a1a", boySneakerStripe: "#e63950",
+  boyBlush: "#ff8fa3",
+  dogFur: "#d9a066", dogBelly: "#f1d9b5", dogEar: "#a66a34", dogPatch: "#3a2e28",
+  dogBandana: "#ff6b35", dogGlasses: "#1a1a1a", dogChain: "#ffd23f",
+  djCap: "#6b5b7b", djHoodie: "#556270", djSkin: "#a9714a", djPants: "#33363e",
+  crate: "#3a5fa0", crateLattice: "#24406e",
+  boomChassis: "#232323", boomChrome: "#c9c9c9",
+  boomSpeakerL: "#b24dff", boomSpeakerR: "#ff3dad",
+  cueChassis: "#232323", cueBumper: "#c9c9c9",
+  cueCycle: ["#ff3dad", "#b24dff", "#ff6b35", "#f4f4f4"],
+};
+
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    if (typeof r === "number") r = { tl: r, tr: r, br: r, bl: r };
+    this.moveTo(x + r.tl, y);
+    this.lineTo(x + w - r.tr, y);
+    this.arcTo(x + w, y, x + w, y + r.tr, r.tr);
+    this.lineTo(x + w, y + h - r.br);
+    this.arcTo(x + w, y + h, x + w - r.br, y + h, r.br);
+    this.lineTo(x + r.bl, y + h);
+    this.arcTo(x, y + h, x, y + h - r.bl, r.bl);
+    this.lineTo(x, y + r.tl);
+    this.arcTo(x, y, x + r.tl, y, r.tl);
+    return this;
+  };
+}
+
+function beatPulse(phase, width) {
+  return phase < width ? 1 - phase / width : 0;
+}
+function roundRectPath(x, y, w, h, r) {
+  ctx2d.beginPath();
+  ctx2d.roundRect(x, y, w, h, r);
+}
+function buildSkyline(minH, maxH, count) {
+  const buildings = [];
+  let x = 0;
+  for (let i = 0; i < count; i++) {
+    const w = rand(40, 90);
+    const h = rand(minH, maxH);
+    const windows = [];
+    const cols = Math.max(1, Math.floor(w / 14));
+    const rows = Math.max(1, Math.floor(h / 16));
+    for (let cx = 0; cx < cols; cx++) {
+      for (let cy = 0; cy < rows; cy++) {
+        if (Math.random() < 0.18) {
+          windows.push({ dx: 6 + cx * 14, dy: 6 + cy * 16, color: Math.random() < 0.85 ? PALETTE.windowWarm : PALETTE.windowCool });
+        }
+      }
+    }
+    buildings.push({ x, w, h, windows });
+    x += w + rand(4, 14);
+  }
+  return { buildings, width: x };
+}
+// Kept clear of x~180-290 (the boy+dog stand there and the boy's cap can rise to y~200 mid-jump).
+const GRAFFITI_BLOBS = [
+  { cx: 38, cy: 228, rx: 28, ry: 15, rot: -0.15, color: PALETTE.graffiti[0] },
+  { cx: 95, cy: 190, rx: 24, ry: 14, rot: 0.1, color: PALETTE.graffiti[2] },
+  { cx: 100, cy: 270, rx: 36, ry: 18, rot: 0.12, color: PALETTE.graffiti[1] },
+  { cx: 45, cy: 310, rx: 28, ry: 12, rot: 0.2, color: PALETTE.graffiti[0] },
+];
+const FAR_SKYLINE = buildSkyline(100, 210, 14);
+const NEAR_SKYLINE = buildSkyline(140, 250, 10);
 
 const BPM_START = 100, BPM_STEP = 5, BPM_CAP = 170, STEP_INTERVAL_SEC = 30;
 const MAX_OVERDRIVE_STEP_SEC = 45;
-const TIER_THRESHOLDS = [120, 140, 160, 170];
+const TIER_BOUNDARIES = [120, 140, 160]; // bpm boundaries between Warm-Up/Groove/Overdrive/Frenzy
+const TIER_NAMES = ["Warm-Up", "Groove", "Overdrive", "Frenzy"];
+const TIER_THRESHOLDS = [...TIER_BOUNDARIES, BPM_CAP]; // bpm values that fire an "Encore!" banner
 const LS = {
   highScore: "jumpingJammers_highScore",
   bestCombo: "jumpingJammers_bestCombo",
@@ -380,23 +471,13 @@ const LS = {
   volume: "jumpingJammers_volume",
 };
 
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const lerp = (a, b, t) => a + (b - a) * clamp(t, 0, 1);
-const rand = (a, b) => a + Math.random() * (b - a);
-const choice = (arr) => arr[(Math.random() * arr.length) | 0];
-
-function tierName(bpm, maxOverdrive) {
-  if (maxOverdrive) return "Max Overdrive";
-  if (bpm < 120) return "Warm-Up";
-  if (bpm < 140) return "Groove";
-  if (bpm < 160) return "Overdrive";
-  return "Frenzy";
-}
 function tierIndexForBpm(bpm) {
-  if (bpm < 120) return 0;
-  if (bpm < 140) return 1;
-  if (bpm < 160) return 2;
-  return 3;
+  let idx = 0;
+  for (const b of TIER_BOUNDARIES) if (bpm >= b) idx++;
+  return idx;
+}
+function tierName(bpm, maxOverdrive) {
+  return maxOverdrive ? "Max Overdrive" : TIER_NAMES[tierIndexForBpm(bpm)];
 }
 function ratingForDelta(deltaMs) {
   if (deltaMs <= WINDOW_MS.PERFECT) return "PERFECT";
@@ -455,19 +536,37 @@ function showBanner(text) {
 /* =========================================================================
    Persistence
    ========================================================================= */
+// localStorage can throw (private-browsing Safari, sandboxed iframes, enterprise
+// policy) — never let that crash startup or soft-lock the game-over screen.
+function lsGet(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? fallback : v;
+  } catch (e) {
+    return fallback;
+  }
+}
+function lsSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    /* storage unavailable; ignore */
+  }
+}
+
 const save = {
-  highScore: parseInt(localStorage.getItem(LS.highScore) || "0", 10),
-  bestCombo: parseInt(localStorage.getItem(LS.bestCombo) || "0", 10),
-  highestBpm: parseInt(localStorage.getItem(LS.highestBpm) || String(BPM_START), 10),
-  hardcoreUnlocked: localStorage.getItem(LS.hardcoreUnlocked) === "true",
-  inputOffsetMs: parseInt(localStorage.getItem(LS.inputOffset) || "0", 10),
-  volume: parseInt(localStorage.getItem(LS.volume) || "70", 10),
+  highScore: parseInt(lsGet(LS.highScore, "0"), 10),
+  bestCombo: parseInt(lsGet(LS.bestCombo, "0"), 10),
+  highestBpm: parseInt(lsGet(LS.highestBpm, String(BPM_START)), 10),
+  hardcoreUnlocked: lsGet(LS.hardcoreUnlocked, "false") === "true",
+  inputOffsetMs: parseInt(lsGet(LS.inputOffset, "0"), 10),
+  volume: parseInt(lsGet(LS.volume, "70"), 10),
 };
 function persist() {
-  localStorage.setItem(LS.highScore, String(save.highScore));
-  localStorage.setItem(LS.bestCombo, String(save.bestCombo));
-  localStorage.setItem(LS.highestBpm, String(save.highestBpm));
-  localStorage.setItem(LS.hardcoreUnlocked, String(save.hardcoreUnlocked));
+  lsSet(LS.highScore, String(save.highScore));
+  lsSet(LS.bestCombo, String(save.bestCombo));
+  lsSet(LS.highestBpm, String(save.highestBpm));
+  lsSet(LS.hardcoreUnlocked, String(save.hardcoreUnlocked));
 }
 function refreshTitleStats() {
   document.getElementById("stat-highscore").textContent = save.highScore;
@@ -511,7 +610,7 @@ function initAudio() {
 function setVolume(v) {
   save.volume = v;
   if (masterGain) masterGain.gain.value = v / 100;
-  localStorage.setItem(LS.volume, String(v));
+  lsSet(LS.volume, String(v));
 }
 
 function envGain(ctxTime, attack, decay, peak) {
@@ -640,7 +739,6 @@ let shakeMag;
 let rafId;
 let lastAnnouncedThreshold;
 let jumpAnimStart; // audio time of last press, for player squash/stretch anim
-let bgHueBase;
 
 function resetRunState() {
   bpm = BPM_START;
@@ -669,7 +767,6 @@ function resetRunState() {
   shakeMag = 0;
   lastAnnouncedThreshold = -1;
   jumpAnimStart = -10;
-  bgHueBase = 270;
 }
 
 /* =========================================================================
@@ -678,9 +775,10 @@ function resetRunState() {
 const LOOKAHEAD_MS = 25;
 const SCHEDULE_AHEAD_SEC = 0.1;
 
+// startScheduler() expects songStartTime/nextNoteTime to already be set (by
+// runCountIn, which also pre-generates bar 0's obstacles during the count-in
+// so they get real glide-in lead time instead of appearing right at scheduler start).
 function startScheduler() {
-  nextNoteTime = actx.currentTime + 0.05;
-  songStartTime = nextNoteTime;
   schedulerTimer = setInterval(schedulerTick, LOOKAHEAD_MS);
   schedulerTick();
 }
@@ -698,11 +796,13 @@ function schedulerTick() {
 }
 
 function scheduleSixteenth(idx, t) {
+  // Read barIndex before onBarStart() advances it, so this bar's chord/bass/lead
+  // match the obstacles that were generated for it (see onBarStart/peekNextBar).
+  const chord = CHORD_PROGRESSION[barIndex % CHORD_PROGRESSION.length];
+  const tones = CHORD_TONES[chord.name];
   if (idx === 0) {
     onBarStart(t);
   }
-  const chord = CHORD_PROGRESSION[barIndex % CHORD_PROGRESSION.length];
-  const tones = CHORD_TONES[chord.name];
 
   // Kick: quarter notes
   if (idx % 4 === 0) playKick(t);
@@ -755,8 +855,43 @@ function onBarStart(t) {
     }
   }
 
-  generateObstaclesForBar(t, bpm, tierIndexForBpm(bpm), breatherThisBar);
+  // Generate the NEXT bar's obstacles now (one full bar of lead — comfortably
+  // more than the 3-beat travelTime obstacles are rendered with) instead of
+  // this bar's, which would only get the scheduler's ~100ms audio lookahead
+  // and pop in right next to the hit line. Bar 0 is seeded separately by
+  // runCountIn(), during the count-in, so it gets lead time too.
+  const next = peekNextBar(t);
+  generateObstaclesForBar(next.startTime, next.bpm, tierIndexForBpm(next.bpm), next.breather, next.maxOverdrive, next.densityBonus);
   barIndex++;
+}
+
+// Predicts the bpm/breather/max-overdrive status of the bar AFTER the one
+// currently starting at `currentBarStartTime`, without mutating real state.
+// Mirrors onBarStart's own decision logic one step ahead so the prediction
+// always matches what that later real onBarStart call will independently compute.
+function peekNextBar(currentBarStartTime) {
+  let predBpm = bpm;
+  let predMaxOverdrive = maxOverdrive;
+  let predDensityBonus = maxOverdriveDensityBonus;
+
+  if (bumpBpmNextBar) {
+    predBpm = Math.min(BPM_CAP, predBpm + BPM_STEP);
+    if (predBpm >= BPM_CAP) predMaxOverdrive = true;
+  }
+
+  const beatSecNow = 60 / bpm;
+  const nextBarStartTime = currentBarStartTime + 4 * beatSecNow;
+  const elapsedAtNextBar = nextBarStartTime - songStartTime;
+
+  let predBreather;
+  if (!predMaxOverdrive) {
+    predBreather = elapsedAtNextBar >= nextStepThreshold && predBpm < BPM_CAP;
+  } else {
+    predBreather = elapsedAtNextBar >= nextMaxOverdriveThreshold;
+    if (predBreather) predDensityBonus = Math.min(3, predDensityBonus + 1);
+  }
+
+  return { bpm: predBpm, breather: predBreather, startTime: nextBarStartTime, maxOverdrive: predMaxOverdrive, densityBonus: predDensityBonus };
 }
 
 function checkTierAnnounce(oldBpm, newBpm, t) {
@@ -780,16 +915,16 @@ function showBannerAt(audioTime, text) {
    ========================================================================= */
 let obstacleUid = 1;
 
-function generateObstaclesForBar(barStartTime, curBpm, tier, isBreather) {
+function generateObstaclesForBar(barStartTime, curBpm, tier, isBreather, isMaxOverdrive, densityBonus) {
   if (isBreather) return;
   const sixteenthSec = 60 / curBpm / 4;
   const beatSec = 60 / curBpm;
   const slotTime = (slot) => barStartTime + slot * sixteenthSec;
 
-  const density = maxOverdrive ? 4 + maxOverdriveDensityBonus : tier;
+  const density = isMaxOverdrive ? 4 + densityBonus : tier;
   const usedSlots = new Set();
-  const minGapSlots = maxOverdrive ? 1 : [8, 4, 2, 1][tier];
-  const chainGapSlots = maxOverdrive ? 2 : (tier >= 3 ? 2 : 4);
+  const minGapSlots = isMaxOverdrive ? 1 : [8, 4, 2, 1][tier];
+  const chainGapSlots = isMaxOverdrive ? 2 : (tier >= 3 ? 2 : 4);
 
   function slotFree(slot, span = 1) {
     for (let s = slot - minGapSlots; s < slot + span + minGapSlots; s++) {
@@ -937,6 +1072,7 @@ function findTapCandidate(t) {
 
 function onPress() {
   if (state !== "playing") return;
+  if (holdActive) return; // one action in flight at a time (e.g. ignore a second touch point mid-hold)
   const t = effectiveNow();
   jumpAnimStart = nowAudio();
   const o = findTapCandidate(t);
@@ -975,7 +1111,10 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     if (e.repeat) return;
     onPress();
+  } else if (e.code === "Escape" && screens.settings.classList.contains("visible")) {
+    showScreen("title");
   } else if (e.code === "KeyP" || e.code === "Escape") {
+    if (e.repeat) return;
     togglePause();
   } else if (e.code === "KeyR" && state === "gameover") {
     startGame();
@@ -994,11 +1133,8 @@ canvas.addEventListener(
   (e) => { e.preventDefault(); onPress(); },
   { passive: false }
 );
-window.addEventListener(
-  "touchend",
-  (e) => { onRelease(); },
-  { passive: true }
-);
+window.addEventListener("touchend", () => onRelease(), { passive: true });
+window.addEventListener("touchcancel", () => onRelease(), { passive: true });
 
 /* =========================================================================
    Particles & floating text
@@ -1045,13 +1181,22 @@ function updateFloatingTexts() {
 }
 function drawFloatingTexts() {
   ctx2d.textAlign = "center";
-  ctx2d.font = "bold 20px sans-serif";
+  ctx2d.textBaseline = "middle";
+  ctx2d.font = "bold 13px sans-serif";
   for (const f of floatingTexts) {
     ctx2d.globalAlpha = clamp(f.life, 0, 1);
+    const w = ctx2d.measureText(f.text).width + 16;
     ctx2d.fillStyle = f.color;
-    ctx2d.fillText(f.text, f.x, f.y);
+    ctx2d.strokeStyle = f.text === "MISS" ? RATING_COLOR.MISS : PALETTE.outline;
+    ctx2d.lineWidth = 2;
+    roundRectPath(f.x - w / 2, f.y - 10, w, 20, 10);
+    ctx2d.fill();
+    ctx2d.stroke();
+    ctx2d.fillStyle = RATING_TEXT_COLOR[f.text] || "#1a1a1a";
+    ctx2d.fillText(f.text, f.x, f.y + 1);
   }
   ctx2d.globalAlpha = 1;
+  ctx2d.textBaseline = "alphabetic";
 }
 
 /* =========================================================================
@@ -1062,10 +1207,579 @@ function xForTime(targetTime, travelTime, t) {
   return HIT_X + TRACK_SPAN * progress;
 }
 
+/* ---------- Backdrop: sky, skyline, brick wall, streetlamp, ground ---------- */
+function drawSky() {
+  const grad = ctx2d.createLinearGradient(0, 0, 0, GROUND_Y);
+  grad.addColorStop(0, PALETTE.skyTop);
+  grad.addColorStop(0.55, PALETTE.skyMid);
+  grad.addColorStop(1, PALETTE.skyHorizon);
+  ctx2d.fillStyle = grad;
+  ctx2d.fillRect(0, 0, CW, GROUND_Y);
+}
+function drawSkylineLayer(skyline, color, scrollOffset) {
+  const pw = skyline.width;
+  const offset = ((scrollOffset % pw) + pw) % pw;
+  for (const b of skyline.buildings) {
+    for (const dx of [-offset, -offset + pw, -offset - pw]) {
+      const bx = b.x + dx;
+      if (bx + b.w < -20 || bx > CW + 20) continue;
+      ctx2d.fillStyle = color;
+      ctx2d.fillRect(bx, GROUND_Y - b.h, b.w, b.h);
+      for (const win of b.windows) {
+        ctx2d.fillStyle = win.color;
+        ctx2d.fillRect(bx + win.dx, GROUND_Y - b.h + win.dy, 5, 7);
+      }
+    }
+  }
+}
+function drawBrickWall() {
+  ctx2d.fillStyle = PALETTE.brick;
+  ctx2d.fillRect(0, 150, 320, GROUND_Y - 150);
+  ctx2d.strokeStyle = PALETTE.mortar;
+  ctx2d.lineWidth = 1;
+  for (let y = 156; y < GROUND_Y; y += 14) {
+    ctx2d.beginPath();
+    ctx2d.moveTo(0, y);
+    ctx2d.lineTo(320, y);
+    ctx2d.stroke();
+  }
+  ctx2d.globalAlpha = 0.9;
+  for (const g of GRAFFITI_BLOBS) {
+    ctx2d.save();
+    ctx2d.translate(g.cx, g.cy);
+    ctx2d.rotate(g.rot);
+    ctx2d.fillStyle = g.color;
+    ctx2d.strokeStyle = PALETTE.outline;
+    ctx2d.lineWidth = 2;
+    ctx2d.beginPath();
+    ctx2d.ellipse(0, 0, g.rx, g.ry, 0, 0, Math.PI * 2);
+    ctx2d.fill();
+    ctx2d.stroke();
+    ctx2d.restore();
+  }
+  ctx2d.globalAlpha = 1;
+}
+function drawStreetlamp() {
+  const x = 345;
+  ctx2d.strokeStyle = PALETTE.lampPole;
+  ctx2d.lineWidth = 6;
+  ctx2d.lineCap = "round";
+  ctx2d.beginPath(); ctx2d.moveTo(x, GROUND_Y); ctx2d.lineTo(x, 200); ctx2d.stroke();
+  ctx2d.beginPath(); ctx2d.moveTo(x, 200); ctx2d.quadraticCurveTo(x + 18, 194, x + 32, 206); ctx2d.stroke();
+  ctx2d.lineCap = "butt";
+
+  const glow = ctx2d.createRadialGradient(x + 34, 208, 4, x + 34, 208, 42);
+  glow.addColorStop(0, PALETTE.lampGlow);
+  glow.addColorStop(1, "rgba(255,244,194,0)");
+  ctx2d.fillStyle = glow;
+  ctx2d.beginPath(); ctx2d.arc(x + 34, 208, 42, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = PALETTE.outline;
+  roundRectPath(x + 24, 200, 20, 15, 3);
+  ctx2d.fill();
+}
+function drawGroundPlane() {
+  ctx2d.fillStyle = PALETTE.pavement;
+  ctx2d.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
+
+  ctx2d.strokeStyle = PALETTE.groundLine;
+  ctx2d.lineWidth = 3;
+  ctx2d.beginPath();
+  ctx2d.moveTo(0, GROUND_Y + 1.5);
+  ctx2d.lineTo(CW, GROUND_Y + 1.5);
+  ctx2d.stroke();
+
+  ctx2d.strokeStyle = PALETTE.joint;
+  ctx2d.lineWidth = 1;
+  for (let x = 40; x < CW; x += 90) {
+    ctx2d.beginPath();
+    ctx2d.moveTo(x, GROUND_Y + 4);
+    ctx2d.lineTo(x, GROUND_Y + 60);
+    ctx2d.stroke();
+  }
+
+  ctx2d.fillStyle = PALETTE.gutter;
+  ctx2d.fillRect(0, GROUND_Y + 96, CW, CH - GROUND_Y - 96);
+
+  ctx2d.globalAlpha = 0.4;
+  ctx2d.fillStyle = PALETTE.curb;
+  ctx2d.fillRect(260, GROUND_Y - 2, 260, 4);
+  ctx2d.globalAlpha = 1;
+
+  ctx2d.fillStyle = PALETTE.manhole;
+  ctx2d.strokeStyle = PALETTE.manholeOutline;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath();
+  ctx2d.ellipse(540, GROUND_Y - 2, 13, 5, 0, 0, Math.PI * 2);
+  ctx2d.fill();
+  ctx2d.stroke();
+}
+function drawHitLineMarker(beatPhase) {
+  const pulse = beatPulse(beatPhase, 0.2);
+  ctx2d.save();
+  ctx2d.strokeStyle = `rgba(255,244,214,${0.3 + pulse * 0.4})`;
+  ctx2d.lineWidth = 2;
+  ctx2d.setLineDash([4, 5]);
+  ctx2d.beginPath();
+  ctx2d.ellipse(HIT_X, GROUND_Y + 2, 26, 7, 0, 0, Math.PI * 2);
+  ctx2d.stroke();
+  ctx2d.restore();
+}
+
+/* ---------- DJ + boombox foreground prop ---------- */
+function eqBarHeight(i, t) {
+  return 4 + (Math.sin(t * 6 + i * 1.7) * 0.5 + 0.5) * 10;
+}
+function drawSpeaker(cx, cy, r, accent) {
+  ctx2d.fillStyle = "#333333";
+  ctx2d.beginPath(); ctx2d.arc(cx, cy, r, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.strokeStyle = accent;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.arc(cx, cy, r * 0.6, 0, Math.PI * 2); ctx2d.stroke();
+  ctx2d.fillStyle = "#eeeeee";
+  ctx2d.beginPath(); ctx2d.arc(cx, cy, r * 0.15, 0, Math.PI * 2); ctx2d.fill();
+}
+function drawBoombox(t, beatPhase, pulse) {
+  ctx2d.save();
+  ctx2d.translate(0, -pulse * 2); // micro-bounce on strong beats
+
+  const bx = -4, by = -50, bw = 62, bh = 40;
+  const halo = ctx2d.createRadialGradient(bx + bw / 2, by + bh / 2, 4, bx + bw / 2, by + bh / 2, 55);
+  halo.addColorStop(0, `rgba(255,61,173,${0.15 + pulse * 0.25})`);
+  halo.addColorStop(1, "rgba(255,61,173,0)");
+  ctx2d.fillStyle = halo;
+  ctx2d.beginPath(); ctx2d.arc(bx + bw / 2, by + bh / 2, 55, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = PALETTE.boomChassis;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 3;
+  roundRectPath(bx, by, bw, bh, 6);
+  ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.strokeStyle = PALETTE.boomChrome;
+  ctx2d.lineWidth = 2.5;
+  ctx2d.beginPath(); ctx2d.arc(bx + bw / 2, by - 2, 14, Math.PI, 0); ctx2d.stroke();
+
+  const speakerR = 9 + pulse * 1.5;
+  drawSpeaker(bx + 14, by + bh / 2 + 4, speakerR, PALETTE.boomSpeakerL);
+  drawSpeaker(bx + bw - 14, by + bh / 2 + 4, speakerR, PALETTE.boomSpeakerR);
+
+  ctx2d.fillStyle = "#101010";
+  roundRectPath(bx + bw / 2 - 9, by + 6, 18, 10, 2);
+  ctx2d.fill();
+  for (let i = 0; i < 6; i++) {
+    const h = eqBarHeight(i, t);
+    ctx2d.fillStyle = i % 2 === 0 ? PALETTE.boomSpeakerR : PALETTE.boomSpeakerL;
+    ctx2d.fillRect(bx + bw / 2 - 9 + i * 3, by + 16 - h, 2, h);
+  }
+
+  ctx2d.globalAlpha = 0.5 + pulse * 0.5;
+  const ledGrad = ctx2d.createLinearGradient(bx, 0, bx + bw, 0);
+  ledGrad.addColorStop(0, "#ff6b35");
+  ledGrad.addColorStop(1, "#ff3dad");
+  ctx2d.fillStyle = ledGrad;
+  ctx2d.fillRect(bx + 3, by + bh - 5, bw - 6, 3);
+  ctx2d.globalAlpha = 1;
+
+  const antennaAngle = -0.15 - pulse * 0.25;
+  const ax = bx + bw - 6 + Math.sin(antennaAngle) * 18, ay = by - Math.cos(antennaAngle) * 18;
+  ctx2d.strokeStyle = PALETTE.boomChrome;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(bx + bw - 6, by); ctx2d.lineTo(ax, ay); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boomSpeakerL;
+  ctx2d.beginPath(); ctx2d.arc(ax, ay, 2.5, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = "#e63950";
+  ctx2d.beginPath(); ctx2d.arc(bx + 6, by + bh - 5, 2, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.fillStyle = "#ffd23f";
+  ctx2d.beginPath(); ctx2d.arc(bx + 13, by + bh - 5, 2, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.restore();
+}
+function drawDjAndBoombox(t, beatPhase) {
+  const pulse = beatPulse(beatPhase, 0.2);
+  ctx2d.save();
+  ctx2d.translate(108, GROUND_Y);
+
+  ctx2d.fillStyle = "rgba(0,0,0,0.35)";
+  ctx2d.beginPath(); ctx2d.ellipse(0, 2, 58, 8, 0, 0, Math.PI * 2); ctx2d.fill();
+
+  // milk crate seat
+  ctx2d.fillStyle = PALETTE.crate;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 2.5;
+  roundRectPath(-58, -34, 30, 34, 3);
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.strokeStyle = PALETTE.crateLattice;
+  ctx2d.lineWidth = 1.5;
+  for (let i = 1; i < 3; i++) {
+    ctx2d.beginPath(); ctx2d.moveTo(-58 + i * 10, -34); ctx2d.lineTo(-58 + i * 10, 0); ctx2d.stroke();
+  }
+  for (let i = 1; i < 3; i++) {
+    ctx2d.beginPath(); ctx2d.moveTo(-58, -34 + i * 11); ctx2d.lineTo(-28, -34 + i * 11); ctx2d.stroke();
+  }
+
+  // seated DJ character (muted palette so it recedes behind the hero pair)
+  const headBob = -pulse * 2;
+  ctx2d.fillStyle = PALETTE.djPants;
+  roundRectPath(-54, -16, 12, 16, 3); ctx2d.fill();
+  roundRectPath(-38, -16, 12, 16, 3); ctx2d.fill();
+
+  ctx2d.strokeStyle = PALETTE.djHoodie;
+  ctx2d.lineWidth = 8;
+  ctx2d.lineCap = "round";
+  ctx2d.beginPath(); ctx2d.moveTo(-28, -30 + headBob); ctx2d.lineTo(-8, -32); ctx2d.stroke();
+  ctx2d.lineCap = "butt";
+
+  ctx2d.fillStyle = PALETTE.djHoodie;
+  ctx2d.strokeStyle = "#2a2a2a";
+  ctx2d.lineWidth = 2;
+  roundRectPath(-56, -46 + headBob, 32, 30, 8); ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.djSkin;
+  ctx2d.beginPath(); ctx2d.arc(-40, -58 + headBob, 13, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.djCap;
+  ctx2d.beginPath(); ctx2d.ellipse(-40, -68 + headBob, 12, 7, 0, Math.PI, 0); ctx2d.closePath(); ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.ellipse(-40, -63 + headBob, 5, 4, 0, 0, Math.PI * 2); ctx2d.fill();
+
+  drawBoombox(t, beatPhase, pulse);
+
+  ctx2d.restore();
+}
+
+/* ---------- Beat Crate / Bass Wall cue reskin ---------- */
+function drawBeatCrate(o, x, alpha, approach, beatPhase, seed) {
+  const accent = PALETTE.cueCycle[seed % 4];
+  const scale = lerp(1, 1.08, approach);
+  const pulse = beatPulse(beatPhase, 0.25);
+  const w = 34 * scale, h = 38 * scale;
+
+  let rot = 0, dropY = 0;
+  if (o.judged && o.rating === "MISS") {
+    const age = 1 - alpha;
+    rot = (age * 22 * Math.PI) / 180;
+    dropY = age * 20;
+  }
+
+  ctx2d.save();
+  ctx2d.globalAlpha = alpha;
+  ctx2d.translate(x, GROUND_Y + dropY);
+  ctx2d.rotate(rot);
+
+  ctx2d.fillStyle = "rgba(0,0,0,0.3)";
+  ctx2d.beginPath(); ctx2d.ellipse(0, 4, w * 0.5, 5, 0, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = o.judged ? RATING_COLOR[o.rating] + "40" : PALETTE.cueChassis;
+  ctx2d.strokeStyle = o.judged ? RATING_COLOR[o.rating] : PALETTE.outline;
+  ctx2d.lineWidth = 3;
+  roundRectPath(-w / 2, -h, w, h, 5);
+  ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.cueBumper;
+  const bs = 3;
+  ctx2d.fillRect(-w / 2 + 2, -h + 2, bs, bs);
+  ctx2d.fillRect(w / 2 - 2 - bs, -h + 2, bs, bs);
+  ctx2d.fillRect(-w / 2 + 2, -2 - bs, bs, bs);
+  ctx2d.fillRect(w / 2 - 2 - bs, -2 - bs, bs, bs);
+
+  drawSpeaker(0, -h * 0.55, (5 + pulse * 1.5) * scale, accent);
+
+  ctx2d.globalAlpha = alpha * lerp(0.5, 1, approach);
+  ctx2d.fillStyle = accent;
+  ctx2d.fillRect(-w / 2 + 3, -h + 6, w - 6, 3);
+
+  ctx2d.restore();
+}
+function drawBassWall(o, xEntry, xExit, alpha, beatPhase) {
+  const left = Math.min(xEntry, xExit), right = Math.max(xEntry, xExit);
+  const w = Math.max(4, right - left);
+  const pulse = beatPulse(beatPhase, 0.25);
+
+  let rot = 0, dropY = 0;
+  if (o.judged && o.rating === "MISS") {
+    const age = 1 - alpha;
+    rot = (age * 18 * Math.PI) / 180;
+    dropY = age * 20;
+  }
+
+  ctx2d.save();
+  ctx2d.globalAlpha = alpha;
+  ctx2d.translate(left + w / 2, GROUND_Y + dropY);
+  ctx2d.rotate(rot);
+
+  ctx2d.fillStyle = "rgba(0,0,0,0.3)";
+  ctx2d.beginPath(); ctx2d.ellipse(0, 4, w * 0.5, 6, 0, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = o.judged ? RATING_COLOR[o.rating] + "40" : PALETTE.cueChassis;
+  ctx2d.strokeStyle = o.judged ? RATING_COLOR[o.rating] : "#ff8c1a";
+  ctx2d.lineWidth = 3;
+  roundRectPath(-w / 2, -32, w, 28, 6);
+  ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.strokeStyle = "#ff8c1a";
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath();
+  for (let i = 0; i <= w; i += 6) {
+    const yy = -16 + Math.sin(i * 0.4 + beatPhase * Math.PI * 4) * 5;
+    if (i === 0) ctx2d.moveTo(-w / 2 + i, yy); else ctx2d.lineTo(-w / 2 + i, yy);
+  }
+  ctx2d.stroke();
+
+  ctx2d.globalAlpha = alpha * (0.5 + pulse * 0.5);
+  ctx2d.fillStyle = "#ff8c1a";
+  ctx2d.fillRect(-w / 2 + 2, -30, w - 4, 3);
+
+  ctx2d.restore();
+}
+
+/* ---------- Hero characters: boy + dog ---------- */
+function computeHeroPose(t) {
+  const airtime = 0.5;
+  const since = t - jumpAnimStart;
+  const jumping = since >= 0 && since < airtime;
+  let jumpFrac = 0, squashX = 1, squashY = 1, capKick = 0;
+  if (jumping) {
+    const p = since / airtime;
+    jumpFrac = Math.sin(p * Math.PI);
+    if (p < 0.12) {
+      squashY = lerp(1, 1.25, p / 0.12); squashX = lerp(1, 0.85, p / 0.12); capKick = lerp(0, 1, p / 0.12);
+    } else if (p > 0.85) {
+      squashY = lerp(1.25, 1, (p - 0.85) / 0.15); squashX = lerp(0.85, 1, (p - 0.85) / 0.15); capKick = lerp(1, 0, (p - 0.85) / 0.15);
+    } else {
+      squashY = 1.15; squashX = 0.92; capKick = 1;
+    }
+  } else if (holdActive) {
+    jumpFrac = 0.85; squashY = 1.05; squashX = 0.95; capKick = 0.6;
+  }
+  return { since, airtime, jumpFrac, squashX, squashY, capKick, jumping };
+}
+function drawBoyArm(shoulderX, swingDeg, color, cuffColor) {
+  ctx2d.save();
+  ctx2d.translate(shoulderX, -34);
+  ctx2d.rotate((swingDeg * Math.PI) / 180);
+  ctx2d.fillStyle = color;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 3;
+  roundRectPath(-5, 0, 10, 20, 5);
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.strokeStyle = cuffColor;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(-5, 14); ctx2d.lineTo(5, 14); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boySkin;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.arc(0, 22, 4, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+  ctx2d.restore();
+}
+function drawBoy(t, pose, beatPhase) {
+  const idle = (pose.jumping || holdActive) ? 0 : beatPulse(beatPhase, 0.4) * 3;
+  const lift = pose.jumpFrac * 62 + idle;
+  const capTiltDeg = 8 + pose.capKick * 10;
+
+  const shadowScale = lerp(1, 0.55, pose.jumpFrac);
+  ctx2d.fillStyle = "rgba(0,0,0,0.35)";
+  ctx2d.beginPath();
+  ctx2d.ellipse(HIT_X, GROUND_Y + 3, 16 * shadowScale, 4 * shadowScale, 0, 0, Math.PI * 2);
+  ctx2d.fill();
+
+  ctx2d.save();
+  ctx2d.translate(HIT_X, GROUND_Y - lift);
+  ctx2d.scale(pose.squashX, pose.squashY);
+  ctx2d.lineJoin = "round";
+
+  // sneakers
+  ctx2d.fillStyle = PALETTE.boySneakerBody;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 3;
+  roundRectPath(-21, -12, 18, 10, 4); ctx2d.fill(); ctx2d.stroke();
+  roundRectPath(3, -12, 18, 10, 4); ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boySneakerSole;
+  ctx2d.fillRect(-21, -5, 18, 3);
+  ctx2d.fillRect(3, -5, 18, 3);
+  ctx2d.strokeStyle = PALETTE.boySneakerStripe;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(-19, -10); ctx2d.lineTo(-8, -6); ctx2d.stroke();
+  ctx2d.beginPath(); ctx2d.moveTo(5, -10); ctx2d.lineTo(16, -6); ctx2d.stroke();
+
+  // pants
+  ctx2d.fillStyle = PALETTE.boyPants;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 4;
+  ctx2d.beginPath();
+  ctx2d.moveTo(-20, -30); ctx2d.lineTo(20, -30);
+  ctx2d.lineTo(23, -10); ctx2d.lineTo(8, -10); ctx2d.lineTo(2, -18);
+  ctx2d.lineTo(-2, -18); ctx2d.lineTo(-8, -10); ctx2d.lineTo(-23, -10);
+  ctx2d.closePath();
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.strokeStyle = PALETTE.boyStripe;
+  ctx2d.lineWidth = 3;
+  ctx2d.beginPath(); ctx2d.moveTo(18, -28); ctx2d.lineTo(21, -11); ctx2d.stroke();
+
+  const armSwing = pose.jumping ? -18 : idle > 1.5 ? -6 : 0;
+  drawBoyArm(-29, armSwing, PALETTE.boyHoodieBack, PALETTE.boyHoodieCuffBack);
+
+  // torso, split-color hoodie (clip to one rounded silhouette so the seam stays clean)
+  roundRectPath(-23, -38, 46, 20, 8);
+  ctx2d.save();
+  ctx2d.clip();
+  ctx2d.fillStyle = PALETTE.boyHoodieBack;
+  ctx2d.fillRect(-23, -38, 23, 20);
+  ctx2d.fillStyle = PALETTE.boyHoodieFront;
+  ctx2d.fillRect(0, -38, 23, 20);
+  ctx2d.restore();
+  roundRectPath(-23, -38, 46, 20, 8);
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 4;
+  ctx2d.stroke();
+  ctx2d.strokeStyle = PALETTE.boyHoodieCuffFront;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(-12, -26); ctx2d.lineTo(14, -26); ctx2d.stroke();
+
+  drawBoyArm(29, armSwing, PALETTE.boyHoodieFront, PALETTE.boyHoodieCuffFront);
+
+  ctx2d.fillStyle = PALETTE.boyCollar;
+  ctx2d.fillRect(-5, -40, 10, 4);
+
+  ctx2d.strokeStyle = PALETTE.boyChain;
+  ctx2d.lineWidth = 3;
+  ctx2d.beginPath(); ctx2d.moveTo(-12, -34); ctx2d.quadraticCurveTo(0, -26, 12, -34); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boyChain;
+  ctx2d.fillRect(-2.5, -28, 5, 5);
+
+  // head
+  ctx2d.fillStyle = PALETTE.boySkin;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 4;
+  ctx2d.beginPath(); ctx2d.arc(0, -58, 20, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.boyBlush;
+  ctx2d.beginPath(); ctx2d.arc(-8, -52, 3.5, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = "#1a1a1a";
+  ctx2d.beginPath(); ctx2d.ellipse(6, -60, 3, 4, 0, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.ellipse(16, -61, 3, 4, 0, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.fillStyle = "#ffffff";
+  ctx2d.beginPath(); ctx2d.arc(7, -61.5, 1, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.arc(17, -62.5, 1, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.strokeStyle = "#1a1a1a";
+  ctx2d.lineWidth = 1.5;
+  ctx2d.beginPath(); ctx2d.arc(12, -54, 4, 0.15 * Math.PI, 0.85 * Math.PI); ctx2d.stroke();
+
+  // cap (jaunty tilt, kicks back further at takeoff)
+  ctx2d.save();
+  ctx2d.translate(0, -78);
+  ctx2d.rotate((-capTiltDeg * Math.PI) / 180);
+  ctx2d.fillStyle = PALETTE.boyCapCrown;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 4;
+  ctx2d.beginPath(); ctx2d.ellipse(0, -2, 22, 14, 0, Math.PI, 0); ctx2d.closePath(); ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boyCapBrim;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.ellipse(16, 3, 13, 5, -0.15, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.boyCapLogo;
+  ctx2d.beginPath(); ctx2d.arc(-2, -6, 3, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.restore();
+
+  ctx2d.restore();
+}
+function drawDog(t, pose, beatPhase) {
+  const idle = (pose.jumping || holdActive) ? 0 : beatPulse((beatPhase + 0.06) % 1, 0.4) * 2;
+  const dogSince = pose.since - 0.07; // trails the boy's launch slightly
+  let dogFrac = 0;
+  if (dogSince >= 0 && dogSince < pose.airtime) {
+    dogFrac = Math.sin((dogSince / pose.airtime) * Math.PI);
+  } else if (holdActive) {
+    dogFrac = 0.6;
+  }
+  const lift = dogFrac * 38 + idle;
+  const dogX = HIT_X + 45;
+
+  const shadowScale = lerp(1, 0.55, dogFrac);
+  ctx2d.fillStyle = "rgba(0,0,0,0.32)";
+  ctx2d.beginPath();
+  ctx2d.ellipse(dogX, GROUND_Y + 2, 12 * shadowScale, 3.5 * shadowScale, 0, 0, Math.PI * 2);
+  ctx2d.fill();
+
+  ctx2d.save();
+  ctx2d.translate(dogX, GROUND_Y - lift);
+  const sx = dogFrac > 0.6 ? lerp(1, 0.9, (dogFrac - 0.6) / 0.4) : 1;
+  const sy = dogFrac > 0.6 ? lerp(1, 1.1, (dogFrac - 0.6) / 0.4) : 1;
+  ctx2d.scale(sx, sy);
+  ctx2d.lineJoin = "round";
+
+  const tailWag = Math.sin(t * 9) * 0.3 + (pose.jumping ? 0.35 : 0);
+  ctx2d.strokeStyle = PALETTE.dogFur;
+  ctx2d.lineWidth = 6;
+  ctx2d.lineCap = "round";
+  ctx2d.beginPath();
+  ctx2d.moveTo(-16, -14);
+  ctx2d.quadraticCurveTo(-27, -20 - tailWag * 10, -22, -6 - tailWag * 6);
+  ctx2d.stroke();
+  ctx2d.lineCap = "butt";
+
+  ctx2d.fillStyle = PALETTE.dogFur;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 2.5;
+  for (const lx of [-10, -2, 6, 14]) {
+    roundRectPath(lx - 3, -10, 6, 10, 2);
+    ctx2d.fill(); ctx2d.stroke();
+  }
+
+  roundRectPath(-18, -26, 34, 18, 10);
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle = PALETTE.dogBelly;
+  ctx2d.beginPath(); ctx2d.ellipse(-2, -14, 12, 6, 0, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = PALETTE.boyStripe; // "matching drip" with the boy's pants stripe
+  ctx2d.fillRect(11, -10, 6, 3);
+
+  ctx2d.strokeStyle = PALETTE.dogChain;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(9, -26); ctx2d.quadraticCurveTo(15, -22, 9, -19); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.dogFur;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 3.5;
+  ctx2d.beginPath(); ctx2d.arc(19, -30, 14, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.dogEar;
+  ctx2d.beginPath(); ctx2d.ellipse(10, -40, 5, 9, -0.3, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+  ctx2d.beginPath(); ctx2d.ellipse(27, -40, 5, 9, 0.3, 0, Math.PI * 2); ctx2d.fill(); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.dogBelly;
+  ctx2d.beginPath(); ctx2d.ellipse(29, -27, 7, 5, 0, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.fillStyle = "#1a1a1a";
+  ctx2d.beginPath(); ctx2d.arc(34, -27, 2, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = PALETTE.dogPatch;
+  ctx2d.beginPath(); ctx2d.ellipse(13, -32, 5, 6, 0.2, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.fillStyle = PALETTE.dogGlasses;
+  roundRectPath(12, -34, 16, 6, 2);
+  ctx2d.fill();
+  ctx2d.strokeStyle = "#ffffff";
+  ctx2d.lineWidth = 1;
+  ctx2d.beginPath(); ctx2d.moveTo(15, -33); ctx2d.lineTo(18, -30); ctx2d.stroke();
+
+  ctx2d.fillStyle = PALETTE.dogBandana;
+  ctx2d.strokeStyle = PALETTE.outline;
+  ctx2d.lineWidth = 2;
+  ctx2d.beginPath(); ctx2d.moveTo(9, -22); ctx2d.lineTo(23, -22); ctx2d.lineTo(16, -12); ctx2d.closePath();
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.fillStyle = "#ffffff";
+  ctx2d.beginPath(); ctx2d.arc(13, -19, 1, 0, Math.PI * 2); ctx2d.fill();
+  ctx2d.beginPath(); ctx2d.arc(19, -19, 1, 0, Math.PI * 2); ctx2d.fill();
+
+  ctx2d.restore();
+}
+
 function draw() {
   const t = nowAudio();
   const beatSec = 60 / bpm;
   const travelTime = 3 * beatSec;
+  const beatPhase = (t % beatSec) / beatSec;
 
   ctx2d.clearRect(0, 0, CW, CH);
 
@@ -1075,123 +1789,40 @@ function draw() {
   ctx2d.save();
   ctx2d.translate(sx, sy);
 
-  // Background
-  const hue = lerp(bgHueBase, -60, (bpm - BPM_START) / (BPM_CAP - BPM_START));
-  const grad = ctx2d.createLinearGradient(0, 0, 0, GROUND_Y);
-  grad.addColorStop(0, "#0a0a2e");
-  grad.addColorStop(1, `hsl(${hue}, 55%, 16%)`);
-  ctx2d.fillStyle = grad;
-  ctx2d.fillRect(0, 0, CW, GROUND_Y);
+  drawSky();
+  drawSkylineLayer(FAR_SKYLINE, PALETTE.skylineFar, t * 3);
+  drawSkylineLayer(NEAR_SKYLINE, PALETTE.skylineNear, t * 9);
+  drawBrickWall();
+  drawStreetlamp();
+  drawGroundPlane();
+  drawHitLineMarker(beatPhase);
+  drawDjAndBoombox(t, beatPhase);
 
-  // Sun
-  ctx2d.save();
-  const sunGrad = ctx2d.createRadialGradient(CW * 0.72, GROUND_Y * 0.55, 10, CW * 0.72, GROUND_Y * 0.55, 130);
-  sunGrad.addColorStop(0, `hsla(${hue}, 90%, 65%, 0.55)`);
-  sunGrad.addColorStop(1, `hsla(${hue}, 90%, 55%, 0)`);
-  ctx2d.fillStyle = sunGrad;
-  ctx2d.beginPath();
-  ctx2d.arc(CW * 0.72, GROUND_Y * 0.55, 130, 0, Math.PI * 2);
-  ctx2d.fill();
-  ctx2d.restore();
-
-  // Scrolling horizon grid
-  ctx2d.strokeStyle = `hsla(${hue}, 80%, 60%, 0.25)`;
-  ctx2d.lineWidth = 1;
-  const scrollOffset = (t * 60) % 40;
-  for (let x = -40; x < CW + 40; x += 40) {
-    ctx2d.beginPath();
-    ctx2d.moveTo(x - scrollOffset, GROUND_Y);
-    ctx2d.lineTo(CW / 2 + (x - CW / 2 - scrollOffset) * 0.15, GROUND_Y * 0.55);
-    ctx2d.stroke();
-  }
-
-  // Ground
-  ctx2d.fillStyle = "#0c0c22";
-  ctx2d.fillRect(0, GROUND_Y, CW, CH - GROUND_Y);
-
-  // Beat-flash ground line
-  const phase = ((t % beatSec) / beatSec);
-  const flash = phase < 0.15 ? 1 - phase / 0.15 : 0;
-  ctx2d.strokeStyle = `rgba(255,255,255,${0.15 + flash * 0.6})`;
-  ctx2d.lineWidth = 2 + flash * 2;
-  ctx2d.beginPath();
-  ctx2d.moveTo(0, GROUND_Y);
-  ctx2d.lineTo(CW, GROUND_Y);
-  ctx2d.stroke();
-
-  // Hit line
-  ctx2d.strokeStyle = "rgba(0,229,255,0.55)";
-  ctx2d.lineWidth = 2;
-  ctx2d.beginPath();
-  ctx2d.moveTo(HIT_X, GROUND_Y - 90);
-  ctx2d.lineTo(HIT_X, GROUND_Y + 4);
-  ctx2d.stroke();
-
-  // Obstacles
   for (const o of obstacles) {
     if (o.type === "gap") {
       const xEntry = xForTime(o.entryTime, travelTime, t);
       const xExit = xForTime(o.exitTime, travelTime, t);
-      const left = Math.min(xEntry, xExit), right = Math.max(xEntry, xExit);
-      if (right < -60 || left > CW + 60) continue;
-      const alpha = o.judged ? clamp(1 - (t - o.judgedAt) * 2, 0, 1) : 1;
-      ctx2d.globalAlpha = alpha;
-      ctx2d.fillStyle = "#080814";
-      ctx2d.fillRect(left, GROUND_Y - 6, Math.max(2, right - left), 46);
-      ctx2d.strokeStyle = o.judged ? RATING_COLOR[o.rating] : "#ff8c1a";
-      ctx2d.lineWidth = 3;
-      ctx2d.strokeRect(left, GROUND_Y - 6, Math.max(2, right - left), 46);
-      ctx2d.globalAlpha = 1;
+      if (Math.max(xEntry, xExit) < -60 || Math.min(xEntry, xExit) > CW + 60) continue;
+      const fadeRate = o.rating === "MISS" ? 4 : 2;
+      const alpha = o.judged ? clamp(1 - (t - o.judgedAt) * fadeRate, 0, 1) : 1;
+      drawBassWall(o, xEntry, xExit, alpha, beatPhase);
     } else {
       const x = xForTime(o.targetTime, travelTime, t);
       if (x < -40 || x > CW + 40) continue;
       const approach = clamp(1 - (o.targetTime - t) / travelTime, 0, 1);
-      const alpha = o.judged ? clamp(1 - (t - o.judgedAt) * 2, 0, 1) : lerp(0.35, 1, approach);
-      const pulse = 1 + Math.sin(t * bpm / 60 * Math.PI * 2) * 0.03;
-      ctx2d.globalAlpha = alpha;
-      ctx2d.fillStyle = o.judged ? RATING_COLOR[o.rating] + "33" : "#1a0a2e";
-      ctx2d.strokeStyle = o.judged ? RATING_COLOR[o.rating] : "#ff2fb0";
-      ctx2d.lineWidth = 3;
-      const w = 22 * pulse, h = 34 * pulse;
-      ctx2d.beginPath();
-      ctx2d.roundRect(x - w / 2, GROUND_Y - h, w, h, 4);
-      ctx2d.fill();
-      ctx2d.stroke();
-      ctx2d.globalAlpha = 1;
+      const fadeRate = o.rating === "MISS" ? 4 : 2;
+      const alpha = o.judged ? clamp(1 - (t - o.judgedAt) * fadeRate, 0, 1) : lerp(0.4, 1, approach);
+      drawBeatCrate(o, x, alpha, approach, beatPhase, o.id);
     }
   }
 
-  // Player
-  drawPlayer(t);
+  const pose = computeHeroPose(t);
+  drawBoy(t, pose, beatPhase);
+  drawDog(t, pose, beatPhase);
 
   drawParticles();
   drawFloatingTexts();
 
-  ctx2d.restore();
-}
-
-function drawPlayer(t) {
-  const airtime = 0.5;
-  const since = t - jumpAnimStart;
-  let jumpH = 0, squash = 1, stretch = 1;
-  if (since >= 0 && since < airtime) {
-    const p = since / airtime;
-    jumpH = Math.sin(p * Math.PI) * 55;
-    if (p < 0.12) { squash = lerp(1, 0.7, p / 0.12); stretch = lerp(1, 1.25, p / 0.12); }
-    else if (p > 0.85) { squash = lerp(0.7, 1, (p - 0.85) / 0.15); stretch = lerp(1.25, 1, (p - 0.85) / 0.15); }
-    else { squash = 1.1; stretch = 0.92; }
-  } else if (holdActive) {
-    jumpH = 48; squash = 0.85; stretch = 1.1;
-  }
-  const px = HIT_X, py = GROUND_Y - jumpH;
-  const w = 26 * squash, h = 30 * stretch;
-  ctx2d.save();
-  ctx2d.shadowColor = "#00e5ff";
-  ctx2d.shadowBlur = 16;
-  ctx2d.fillStyle = "#eaf9ff";
-  ctx2d.beginPath();
-  ctx2d.roundRect(px - w / 2, py - h, w, h, 6);
-  ctx2d.fill();
   ctx2d.restore();
 }
 
@@ -1257,6 +1888,11 @@ function loop() {
    Flow control
    ========================================================================= */
 function startGame() {
+  // Defensive: a Restart from the Pause screen never stopped the previous
+  // game's scheduler (only gameOver()/goToMenu() did), which would otherwise
+  // leak a second setInterval loop running forever alongside the new one.
+  stopScheduler();
+  cancelAnimationFrame(rafId);
   initAudio();
   if (actx.state === "suspended") actx.resume();
   resetRunState();
@@ -1278,13 +1914,22 @@ function runCountIn() {
   labels.forEach((label, i) => {
     setTimeout(() => { countdownEl.textContent = label; }, i * beatSec * 1000);
   });
+
+  // Seed bar 0's obstacles now, using the count-in itself as glide-in lead
+  // time (comfortably more than the 3-beat travelTime they render with).
+  songStartTime = t0 + 4 * beatSec;
+  nextNoteTime = songStartTime;
+  generateObstaclesForBar(songStartTime, BPM_START, 0, false, false, 0);
+
+  // Single rAF chain for the whole session: loop() reads live `state` each
+  // frame, so it keeps running through the countdown->playing transition below
+  // without needing (and previously wrongly starting a second) rAF chain.
   rafId = requestAnimationFrame(loop);
   setTimeout(() => {
     showScreen(null);
     hud.classList.add("visible");
     state = "playing";
     startScheduler();
-    rafId = requestAnimationFrame(loop);
   }, 4 * beatSec * 1000);
 }
 
@@ -1369,7 +2014,7 @@ lblOffset.textContent = save.inputOffsetMs;
 rngOffset.addEventListener("input", () => {
   save.inputOffsetMs = parseInt(rngOffset.value, 10);
   lblOffset.textContent = save.inputOffsetMs;
-  localStorage.setItem(LS.inputOffset, String(save.inputOffsetMs));
+  lsSet(LS.inputOffset, String(save.inputOffsetMs));
 });
 
 const rngVolume = document.getElementById("rng-volume");
