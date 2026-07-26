@@ -269,14 +269,15 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    watch the corridor move while you steer the numbers. Anchored to the bottom
    so it is under a thumb in portrait, and the chart above it stays visible.
    -------------------------------------------------------------------------- */
-#plot{
+#plot,#appr{
   position:absolute; left:6px; right:6px; bottom:6px; z-index:3;
   display:grid; gap:4px;
   padding:6px;
   border:var(--hair) solid var(--frame);
   background:rgba(0,0,0,.88);
 }
-#plot[hidden]{display:none}
+#plot[hidden],#appr[hidden]{display:none}
+#appr{border-color:var(--label)}
 .plot-hd{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .plot-hd .box{font-size:9px}
 #plot-fine{margin-left:auto;border-color:var(--frame-dim);padding:3px 8px;min-height:26px}
@@ -294,6 +295,10 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   display:flex;align-items:center;
   min-width:34px;font-size:9px;letter-spacing:.14em;color:var(--label);
 }
+/* An axis the processor cannot reduce is an axis you fly by hand, and the
+   panel says so without a legend: the label is struck through. */
+.prow[data-aid=""] .pk{color:var(--warn);text-decoration:line-through}
+.prow[data-aid="1"] .pk{color:var(--grid)}
 .pb{
   flex:1 1 0;
   border:var(--hair) solid var(--frame-dim);
@@ -331,6 +336,11 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 .key--go{border-color:var(--grid);color:var(--grid)}
 .key--go[data-arm="1"]{box-shadow:0 0 14px rgba(34,255,136,.5)}
 .key--go[data-arm="bad"]{border-color:var(--hot);color:var(--hot);box-shadow:0 0 14px rgba(255,58,44,.5)}
+/* A reply that will cost you something is marked before you send it. This is
+   not a morality meter — it is the difference between asking and demanding,
+   and the console has enough protocol training to flag it. */
+.opt[data-court="good"]{border-left:3px solid var(--grid)}
+.opt[data-court="bad"]{border-left:3px solid var(--hot)}
 .opt[data-mute="1"]{
   border-style:dashed; color:var(--frame-dim); cursor:not-allowed;
   filter:none; opacity:.75;
@@ -768,13 +778,13 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;
   align-items:center;font-size:10px;
 }
-.lexrow .nm{color:var(--label);letter-spacing:.06em;white-space:nowrap}
+.lexrow .nm{color:var(--label);letter-spacing:0;white-space:nowrap;font-size:9px}
 .lexrow .st{
   font-size:8px;letter-spacing:.06em;opacity:.85;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;
 }
 .lexrow .bar{
-  display:block;width:44px;height:6px;
+  display:block;width:40px;height:6px;
   border:var(--hair) solid var(--frame-dim);position:relative;
 }
 .lexrow .bar i{position:absolute;left:0;top:0;bottom:0;background:currentColor;display:block}
@@ -912,6 +922,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     </div>
 
     <div id="viewtools">
+      <button id="btn-view"  data-on="1">CHART</button>
       <button id="btn-cam"   data-on="1">CAM ORB</button>
       <button id="btn-track" data-on="1">DROPS</button>
       <button id="btn-orbit" data-on="1">GRID</button>
@@ -975,11 +986,37 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       </div>
     </div>
 
+    <!-- APPROACH — one number: how deep into the well you are willing to go -->
+    <div id="appr" hidden aria-label="Approach">
+      <div class="plot-hd">
+        <span class="box" id="ap-id">— —</span>
+        <span class="box" id="ap-cls">—</span>
+        <button class="box" id="ap-x">STOW</button>
+      </div>
+      <div class="prow" data-f="alt">
+        <span class="pk">ALT</span>
+        <button class="pb" data-d="-0.1">&#9664;&#9664;</button>
+        <button class="pb" data-d="-0.01">&#9664;</button>
+        <span class="pv" id="ap-alt">0.00</span>
+        <button class="pb" data-d="0.01">&#9654;</button>
+        <button class="pb" data-d="0.1">&#9654;&#9654;</button>
+      </div>
+      <div class="plot-out">
+        <div class="po"><span class="s">yield</span><span class="n" id="ap-y">—</span></div>
+        <div class="po"><span class="s">est. floor</span><span class="n" id="ap-f">—</span></div>
+        <div class="po"><span class="s">air cost</span><span class="n" id="ap-a">—</span></div>
+      </div>
+      <div class="plot-act">
+        <button class="key" id="ap-go">DESCEND<span class="sub" id="ap-sub">—</span></button>
+      </div>
+    </div>
+
     <div id="comms" role="dialog" aria-modal="true" aria-label="Comms channel">
       <div id="comms-hd">
         <span class="box" id="comms-src">— — —</span>
         <span class="box" id="comms-sig">SIG 00%</span>
         <span class="box" id="comms-band">BAND —</span>
+        <span class="box" id="comms-stand">YOU: VISITOR</span>
         <button class="box" id="comms-x">CLOSE</button>
       </div>
       <div id="face-wrap"><canvas id="face"></canvas></div>
@@ -1293,53 +1330,53 @@ const ALIENS=[
 const TALK={
   'AX-1':{
     start:{t:"YOU ARE LOW. YOUR SHELL IS THIN. WE COUNTED SEVEN OF YOU BEFORE. THERE IS ONE OF YOU NOW.",
-      o:[{t:'ASK WHAT HAPPENED TO THE OTHERS',to:'lost'},
-         {t:'REQUEST PROPELLANT',to:'fuel'},
-         {t:'END TRANSMISSION',to:null}]},
+      o:[{c:1,t:'ASK WHAT HAPPENED TO THE OTHERS',to:'lost'},
+         {c:0,t:'REQUEST PROPELLANT',to:'fuel'},
+         {c:0,t:'END TRANSMISSION',to:null}]},
     lost:{t:"THEY DESCENDED STEEPLY. THE AIR IS NOT SOFT. WE RECOVERED WHAT FELL AND WE KEEP IT. YOU MAY NOT HAVE IT BACK.",
-      o:[{t:'REQUEST PROPELLANT',to:'fuel'},{t:'END TRANSMISSION',to:null}]},
+      o:[{c:0,t:'REQUEST PROPELLANT',to:'fuel'},{c:0,t:'END TRANSMISSION',to:null}]},
     fuel:{t:"WE WILL FILL YOUR TANKS. NOT KINDNESS. WE WANT YOU TO LEAVE ORBIT BY CHOICE RATHER THAN BY FAILURE.",
       grant:'fuel',
-      o:[{t:'ACKNOWLEDGE',to:'end'}]},
-    end:{t:"GO DOWN SLOWLY. WE WILL BE COUNTING.", o:[{t:'CLOSE CHANNEL',to:null}]}
+      o:[{c:1,t:'ACKNOWLEDGE',to:'end'}]},
+    end:{t:"GO DOWN SLOWLY. WE WILL BE COUNTING.", o:[{c:0,t:'CLOSE CHANNEL',to:null}]}
   },
   'AX-2':{
     start:{t:"THIS IS A REGISTERED ASSEMBLY STATION. YOUR VEHICLE IS UNDECLARED. STATE YOUR INTENT BEFORE YOUR NEXT PASS.",
-      o:[{t:'DECLARE: RETURN TO SURFACE',to:'ok'},
-         {t:'DECLARE: SURVEY ONLY',to:'survey'},
-         {t:'REFUSE',to:'refuse'}]},
+      o:[{c:1,t:'DECLARE: RETURN TO SURFACE',to:'ok'},
+         {c:0,t:'DECLARE: SURVEY ONLY',to:'survey'},
+         {c:-2,t:'REFUSE',to:'refuse'}]},
     ok:{t:"ACCEPTED. AN ADDITIONAL RECOVERY SITE IS RELEASED TO YOUR NAVIGATION. USE IT OR DO NOT. THE PAPERWORK IS IDENTICAL.",
       grant:'zone',
-      o:[{t:'ACKNOWLEDGE',to:'end'}]},
+      o:[{c:1,t:'ACKNOWLEDGE',to:'end'}]},
     survey:{t:"SURVEY IS PERMITTED AT OR ABOVE TWO HUNDRED KILOMETRES. YOU ARE NOT AT OR ABOVE TWO HUNDRED KILOMETRES.",
-      o:[{t:'AMEND: RETURN TO SURFACE',to:'ok'},{t:'END TRANSMISSION',to:null}]},
+      o:[{c:1,t:'AMEND: RETURN TO SURFACE',to:'ok'},{c:0,t:'END TRANSMISSION',to:null}]},
     refuse:{t:"NOTED. YOUR REFUSAL IS FILED. NOTHING FURTHER WILL HAPPEN TO YOU TODAY.",
-      o:[{t:'CLOSE CHANNEL',to:null}]},
-    end:{t:"THE ASSEMBLY THANKS YOU FOR YOUR COMPLIANCE.", o:[{t:'CLOSE CHANNEL',to:null}]}
+      o:[{c:0,t:'CLOSE CHANNEL',to:null}]},
+    end:{t:"THE ASSEMBLY THANKS YOU FOR YOUR COMPLIANCE.", o:[{c:0,t:'CLOSE CHANNEL',to:null}]}
   },
   'AX-3':{
     start:{t:"SSSS. YOU RIDE ON TOP OF THE AIR. WE LIVE UNDERNEATH IT. WE FEEL YOU PASS. IT IS LIKE WEATHER.",
-      o:[{t:'ASK ABOUT THE WEATHER',to:'weather'},
-         {t:'ASK WHAT THEY ARE',to:'what'},
-         {t:'END TRANSMISSION',to:null}]},
+      o:[{c:1,t:'ASK ABOUT THE WEATHER',to:'weather'},
+         {c:1,t:'ASK WHAT THEY ARE',to:'what'},
+         {c:0,t:'END TRANSMISSION',to:null}]},
     weather:{t:"THREE PLACES ARE ANGRY. WE MARK THEM ON YOUR GLASS. DO NOT COME DOWN THROUGH THEM. THEY DO NOT KNOW WHAT YOU ARE AND THEY WILL NOT LEARN.",
       grant:'hazard',
-      o:[{t:'ASK WHAT THEY ARE',to:'what'},{t:'ACKNOWLEDGE',to:'end'}]},
+      o:[{c:1,t:'ASK WHAT THEY ARE',to:'what'},{c:1,t:'ACKNOWLEDGE',to:'end'}]},
     what:{t:"OLDER THAN THE SHAPE OF YOUR CONTINENTS. WE WERE NOT WAITING FOR YOU. YOU ARE SIMPLY RECENT.",
-      o:[{t:'ASK ABOUT THE WEATHER',to:'weather'},{t:'END TRANSMISSION',to:null}]},
-    end:{t:"COME DOWN. OR DO NOT. THE SEA IS PATIENT EITHER WAY.", o:[{t:'CLOSE CHANNEL',to:null}]}
+      o:[{c:1,t:'ASK ABOUT THE WEATHER',to:'weather'},{c:0,t:'END TRANSMISSION',to:null}]},
+    end:{t:"COME DOWN. OR DO NOT. THE SEA IS PATIENT EITHER WAY.", o:[{c:0,t:'CLOSE CHANNEL',to:null}]}
   },
   'AX-4':{
     start:{t:"RELAY ACTIVE. NO OPERATOR PRESENT. LAST INSTRUCTION RECEIVED 40 731 YEARS AGO. INSTRUCTION WAS: CONTINUE.",
-      o:[{t:'QUERY: WHAT ARE YOU RELAYING',to:'what'},
-         {t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},
-         {t:'END TRANSMISSION',to:null}]},
+      o:[{c:1,t:'QUERY: WHAT ARE YOU RELAYING',to:'what'},
+         {c:0,t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},
+         {c:0,t:'END TRANSMISSION',to:null}]},
     what:{t:"CONTENT UNREADABLE. FORMAT UNREADABLE. ORIGIN UNREADABLE. RELAY DOES NOT REQUIRE COMPREHENSION. RELAY REQUIRES CONTINUATION.",
-      o:[{t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},{t:'END TRANSMISSION',to:null}]},
+      o:[{c:0,t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},{c:0,t:'END TRANSMISSION',to:null}]},
     solve:{t:"COMPUTING. YOUR RETURN IS A TWO BODY PROBLEM WITH DRAG. IT IS NOT HARD. SOLUTION UPLINKED TO YOUR AUTOPILOT.",
       grant:'solve',
-      o:[{t:'ACKNOWLEDGE',to:'end'}]},
-    end:{t:"RELAY CONTINUING.", o:[{t:'CLOSE CHANNEL',to:null}]}
+      o:[{c:1,t:'ACKNOWLEDGE',to:'end'}]},
+    end:{t:"RELAY CONTINUING.", o:[{c:0,t:'CLOSE CHANNEL',to:null}]}
   }
 };
 
@@ -1373,6 +1410,38 @@ const TALK={
 const LEX_FLOOR   = 6;     // glyphs obtainable with no prerequisite
 const LEX_WORKING = 20;    // glyphs that count as being able to hold a conversation
 const LEX_GAIN    = 5;     // glyphs per completed exchange
+
+/* --- standing -----------------------------------------------------------
+   Every one of these cultures was here first. To the VOTH you are a thin
+   shell that is going to fall; to the Assembly you are an undeclared vehicle;
+   to the SSRITH you are weather. Nobody owes you anything, and the console is
+   quite clear that the unregistered party in every one of these exchanges is
+   the one reading it.
+
+   So courtesy is a resource. What the cultures have that you need — the
+   reductions that make astrogation possible at all, and the fuel that makes
+   the next leg possible — is given, not taken, and it is given to a visitor
+   who behaved like one. Standing runs from hostile to trusted, it moves on
+   what you actually said, and below zero they stop answering. */
+const STANDING=[
+  {at:-2, k:'HOSTILE',  c:'#FF3A2C'},
+  {at:-1, k:'GUARDED',  c:'#FF9A1F'},
+  {at: 0, k:'NEUTRAL',  c:'#8CE6FF'},
+  {at: 2, k:'CIVIL',    c:'#D8FF3C'},
+  {at: 4, k:'TRUSTED',  c:'#22FF88'}
+];
+function standingOf(race){
+  const v=sim.standing[race]||0;
+  let out=STANDING[0];
+  for(const t of STANDING) if(v>=t.at) out=t;
+  return {v, ...out};
+}
+function courtesy(race,n){
+  if(!n) return;
+  sim.standing[race]=clamp((sim.standing[race]||0)+n,-4,6);
+  const st=standingOf(race);
+  logLine((n>0?'COURTESY NOTED — ':'OFFENCE TAKEN — ')+RACES[race].name+' '+st.k);
+}
 
 const LADDER={
   ssrith:   {tier:1, prereq:null,       why:'ELF · MASSIVELY REDUNDANT'},
@@ -1700,7 +1769,7 @@ const DEEP={n:'DEEP SPACE', sp:'—', pl:0, d:0, ra:0, dec:0, p:[0,0,0],
 
 const sim={
   at:0, target:1, pos:null,
-  fuel:TANK, scooped:{},
+  fuel:TANK,
   hull:HULL_MAX, air:100, heat:0,
   t:0,
   jumping:null,
@@ -1713,6 +1782,7 @@ const sim={
   landed:null,
   clutterAge:0,
   haz:[], field:0, seenHaz:{},
+  systems:{}, view:'CHART', aid:{rng:false,brg:false,elv:false}, standing:{},
   stalker:null,
   dead:null, over:false,
   log:[]
@@ -1737,7 +1807,7 @@ const canJump = ()=>{
 
 function newFlight(){
   sim.at=0; sim.target=1; sim.pos=null;
-  sim.fuel=TANK; sim.scooped={};
+  sim.fuel=TANK;
   sim.hull=HULL_MAX; sim.air=100; sim.heat=0;
   sim.t=0; sim.jumping=null; sim.phase='IDLE';
   sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null;
@@ -1749,23 +1819,20 @@ function newFlight(){
   sim.haz=seedHazards(sim.field);
   sim.seenHaz={};
   sim.stalker=null; sim.dead=null; sim.over=false; sim.log=[]; sim.taughtPlot=false;
+  sim.systems={}; sim.view='CHART';
+  sim.aid={rng:false, brg:false, elv:false};
+  sim.standing={}; for(const k in RACES) sim.standing[k]=0;
+  approach.open=false; approach.body=null;
+  const ap=$('appr'); if(ap) ap.hidden=true;
   plotReset();
   cam.tgt=[0,0,0]; cam.at=[0,0,0];
 }
 
 /* Fuel is scooped once per system, and only where there is something to scoop
    from. A bare star gives you nothing, and deep space gives you less. */
+/* Whether this system still has anything in it that has not been worked. */
 function canScoop(){
-  const st=here();
-  return sim.at>=0 && st.pl>0 && !sim.scooped[sim.at] && sim.fuel<TANK-0.01;
-}
-function scoop(){
-  if(!canScoop()) return false;
-  const st=here();
-  sim.scooped[sim.at]=true;
-  sim.fuel=Math.min(TANK, sim.fuel + 6 + st.pl*3);
-  spendAir(20);
-  return true;
+  return sim.at>=0 && systemAt(sim.at).some(b=>!b.taken);
 }
 
 /* --- the clock ----------------------------------------------------------
@@ -1958,19 +2025,31 @@ function plotSolve(){
   const s=vecHeading(d);
   const k=plotDrift();
   /* Error grows as the square of the damage, so a lightly damaged processor
-     is still worth trusting and a badly damaged one is a liability. */
+     is still worth trusting and a badly damaged one is a liability.
+
+     But damage is the smaller term. The vehicle left Sol unable to reduce any
+     of the three axes at all: an untaught axis is not solved, it is guessed,
+     and the processor does not mark which one it guessed. Each reduction is
+     something a culture gives you, and only if it is willing to. This is what
+     makes the first jumps genuinely impossible to compute and the last ones
+     merely difficult — and it is why the aliens, not the vessel, are the
+     thing that makes navigation possible. */
   const e=k*k;
   const r=()=>(Math.random()*2-1);
-  plot.brg=(s.brg + r()*22*e + 360)%360;
-  plot.elv=clamp(s.elv + r()*14*e, -90, 90);
-  plot.rng=clamp(s.rng*(1 + r()*0.14*e), 0, JUMP_MAX);
+  const wild=a=>!sim.aid[a];
+  plot.brg = wild('brg') ? Math.random()*360 : (s.brg + r()*22*e + 360)%360;
+  plot.elv = wild('elv') ? (Math.random()*2-1)*70 : clamp(s.elv + r()*14*e, -90, 90);
+  plot.rng = wild('rng') ? Math.random()*JUMP_MAX : clamp(s.rng*(1 + r()*0.14*e), 0, JUMP_MAX);
   plot.brg=Math.round(plot.brg*10)/10;
   plot.elv=Math.round(plot.elv*10)/10;
   plot.rng=Math.round(plot.rng*100)/100;
   plot.solved=true; plot.dirty=true;
   spendAir(14);
   sndData(260);
-  logLine(e>0.25?'PROCESSOR SOLUTION — CONFIDENCE DEGRADED':'PROCESSOR SOLUTION ACCEPTED');
+  const un=['rng','brg','elv'].filter(a=>!sim.aid[a]);
+  logLine(un.length ? 'SOLUTION PARTIAL — NO REDUCTION FOR '+un.map(a=>a.toUpperCase()).join('/')
+        : e>0.25 ? 'PROCESSOR SOLUTION — CONFIDENCE DEGRADED'
+        : 'PROCESSOR SOLUTION ACCEPTED');
 }
 
 /* What the operator is allowed to see. An undiscovered hazard is still in the
@@ -2053,6 +2132,172 @@ function plotArrive(j){
   }
   stalkerAdvance();
   plot.dirty=true;
+}
+
+/* ==========================================================================
+   THE NEAR FIELD
+   --------------------------------------------------------------------------
+   The chart is a galaxy: seventy-one stars, and the vehicle is a point on it.
+   That is the right instrument for deciding where to go and the wrong one for
+   everything you do once you get there. This is the other one — the volume
+   the vehicle is actually inside, at a scale where a planet is a thing you
+   can approach rather than a number in a column.
+
+   Systems are derived, not authored. The catalogue gives a spectral class and
+   a confirmed planet count for every star, and both of those are real; the
+   bodies are laid out from them deterministically, so the same star always
+   has the same system and what is in it is a consequence of astronomy rather
+   than of level design. A barren star is barren because nobody has found
+   anything there.
+   ========================================================================== */
+
+const BODY={
+  gas:  {label:'GAS GIANT',   yield:'fuel', col:'#FFD23D', unit:'LY RANGE'},
+  ice:  {label:'ICE BODY',    yield:'air',  col:'#8CE6FF', unit:'% ATMOS'},
+  iron: {label:'IRON WORLD',  yield:'hull', col:'#FF9A1F', unit:'% HULL'},
+  rock: {label:'ROCKY WORLD', yield:'hull', col:'#D8FF3C', unit:'% HULL'},
+  anom: {label:'ANOMALY',     yield:'data', col:'#FF52D9', unit:'RECORD'}
+};
+
+/* Deterministic per star: the same name always yields the same system. */
+function hashName(s){
+  let h=2166136261>>>0;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  return h;
+}
+
+function buildSystem(si){
+  const st=STARS[si];
+  const r=lcg(hashName(st.n));
+  const out=[];
+  /* Confirmed planets first — these are the real ones, and they are why the
+     catalogue says this system is worth the fuel. */
+  const n=st.pl;
+  for(let i=0;i<n;i++){
+    const a=r();
+    const k = a<0.30 ? 'gas' : a<0.55 ? 'ice' : a<0.80 ? 'rock' : 'iron';
+    out.push(makeBody(st,r,k,i,out.length));
+  }
+  /* And whatever else is down there. A dead system still has ice in it, which
+     is the only reason a dead system is ever worth stopping at. */
+  const extra = n>0 ? (r()<0.5?1:0) : (r()<0.62?1:0);
+  for(let i=0;i<extra;i++){
+    const k = r()<0.55 ? 'ice' : 'rock';
+    out.push(makeBody(st,r,k,n+i,out.length));
+  }
+  /* One system in six has something the catalogue cannot classify. */
+  if(r()<0.17) out.push(makeBody(st,r,'anom',out.length,out.length));
+  return out;
+}
+
+function makeBody(st,r,kind,idx,slot){
+  const orbit=1.7+slot*1.55+r()*0.7;
+  const B=BODY[kind];
+  /* Yield scales with how deep you are willing to go. Depth is the hazard and
+     the payment at once, which is the only interesting shape a resource can
+     have. */
+  const rich=0.55+r()*0.9;
+  return {
+    k:kind, id:st.n.replace(/[^A-Z0-9]/g,'').slice(0,4)+'-'+(slot+1),
+    orbit, phase:r()*6.2832, rate:(0.06+r()*0.10)/Math.sqrt(orbit),
+    rad:kind==='gas'?0.62+r()*0.30:kind==='anom'?0.24:0.28+r()*0.20,
+    tilt:(r()-0.5)*0.5,
+    rich,
+    /* The floor is where the approach starts costing hull. It is a property
+       of the body and the console can only estimate it. */
+    floor:0.22+r()*0.30,
+    taken:false, scanned:false, label:B.label
+  };
+}
+
+/* Bodies move. A system you looked at an hour ago is not in that arrangement
+   any more, which is why the approach is plotted against the body rather than
+   against the orbit. */
+function systemAt(si){
+  if(!sim.systems[si]) sim.systems[si]=buildSystem(si);
+  return sim.systems[si];
+}
+function bodyPos(b){
+  const a=b.phase+sim.t*b.rate;
+  return [Math.cos(a)*b.orbit, Math.sin(a)*b.orbit*b.tilt, Math.sin(a)*b.orbit];
+}
+
+/* --- the approach -------------------------------------------------------
+   One number: how close you are willing to take the vehicle. Everything the
+   body will give you is a function of it, and so is everything it will do to
+   you. The yield curve rises all the way down; the damage curve starts at the
+   floor and rises faster. Where those two cross is the decision, and the
+   console cannot tell you exactly where the floor is — a damaged sensor
+   suite estimates it worse. */
+const approach={open:false, body:null, alt:1.0, dirty:true};
+
+function approachYield(b,alt){
+  /* Inverse-square-ish in altitude above the body: close is worth far more. */
+  return b.rich*Math.pow(clamp(0.30/Math.max(alt,0.06),0,4.2),0.9);
+}
+function approachDamage(b,alt){
+  const over=b.floor-alt;
+  return over<=0 ? 0 : 46*Math.pow(over/b.floor,1.7);
+}
+/* What the console believes the floor is. It is wrong by an amount that grows
+   as the sensor suite is damaged, and it is wrong in a fixed direction for a
+   given body, so it can be learned by surviving. */
+function floorEstimate(b){
+  const e=(1-sim.hull/HULL_MAX)*0.55;
+  const bias=((hashName(b.id)%1000)/1000-0.5)*2;
+  return Math.max(0.05, b.floor*(1+bias*e));
+}
+
+function approachOpen(b){
+  if(sim.over||sim.jumping) return;
+  approach.open=true; approach.body=b;
+  approach.alt=Math.max(0.35, floorEstimate(b)+0.25);
+  approach.dirty=true;
+  $('appr').hidden=false;
+  $('viewtools').style.display='none';
+  approachRefresh();
+  sndRelay();
+}
+function approachStow(){
+  approach.open=false; approach.body=null;
+  $('appr').hidden=true;
+  if(!comms.open&&!plot.open) $('viewtools').style.display='';
+  sndKey();
+}
+function approachNudge(d){
+  if(sim.over) return;
+  approach.alt=clamp(Math.round((approach.alt+d)*1000)/1000, 0.05, 3.0);
+  approach.dirty=true;
+  approachRefresh();
+}
+
+function approachRun(){
+  const b=approach.body;
+  if(!b||sim.over) return;
+  if(b.taken){ logLine('BODY ALREADY WORKED — '+b.id); sndAlarm(); return; }
+  const y=approachYield(b,approach.alt);
+  const d=approachDamage(b,approach.alt);
+  /* Time in the well. Deeper is slower, and time is the thing you have least
+     of. */
+  spendAir(26+34/Math.max(approach.alt,0.12));
+  b.taken=true; b.scanned=true;
+  const B=BODY[b.k];
+  let got='';
+  if(B.yield==='fuel'){ const g=Math.min(TANK-sim.fuel, y*5.2); sim.fuel+=g; got=g.toFixed(1)+' LY'; }
+  if(B.yield==='air'){  const g=Math.min(100-sim.air, y*13);    sim.air+=g;  got=g.toFixed(0)+'% ATMOS'; }
+  if(B.yield==='hull'){ const g=Math.min(HULL_MAX-sim.hull, y*11); sim.hull+=g; got=g.toFixed(0)+'% HULL'; }
+  if(B.yield==='data'){
+    /* An anomaly is somebody else's wreck, and what survives in a wreck is
+       navigation data. */
+    const axes=['rng','brg','elv'].filter(a=>!sim.aid[a]);
+    if(axes.length){ sim.aid[axes[0]]=true; got=AIDNAME[axes[0]]+' RECOVERED'; }
+    else { sim.fuel=Math.min(TANK,sim.fuel+6); got='6.0 LY'; }
+  }
+  logLine('WORKED '+b.id+' — '+got);
+  sndData(300);
+  if(d>0){ logLine('APPROACH BELOW FLOOR — '+b.id); damage(d,'ATMOSPHERIC ENTRY AT '+b.id); }
+  approachStow();
+  refresh();
 }
 
 /* ==========================================================================
@@ -2285,6 +2530,9 @@ let labelRects=[];
 function claimLabel(text,x,y,colour,boxed){
   ctx.font='9px '+getComputedStyle(document.body).fontFamily;
   const w=ctx.measureText(text).width;
+  /* A label that runs off the tube is worse than no label: it reads as a
+     fragment of a different word. Drop it rather than clip it. */
+  if(x<4 || y<8 || y>H-6 || x+w>W-4) return false;
   const r={l:x-3,t:y-8,r:x+w+5,b:y+8};
   for(const o of labelRects)
     if(!(r.r<o.l||r.l>o.r||r.b<o.t||r.t>o.b)) return false;
@@ -2574,6 +2822,160 @@ function drawStalker(){
   claimLabel('UNRESOLVED  '+s.close.toFixed(2)+' LY', q.x+18, q.y, '#FF3A2C', true);
 }
 
+/* --- the near field, drawn ----------------------------------------------
+   Its own origin and its own scale. Nothing from the chart is in here: at
+   this range the nearest other star is four light years away and there is
+   nothing to draw between here and it, which is the point of the view. */
+function drawLocal(){
+  const si=sim.at;
+  const st=si>=0?STARS[si]:null;
+
+  /* The reference plane, so orbits read as orbits and not as loops in a
+     void. Same graticule idiom as the chart, one scale down. */
+  for(const R of [2,4,6,8,10]){
+    const pts=[];
+    for(let i=0;i<=48;i++){
+      const a=i/48*6.2832;
+      pts.push(project([Math.cos(a)*R,0,Math.sin(a)*R]));
+    }
+    strokePolyline(pts,'rgba(61,139,255,0.13)',1,0,true);
+  }
+
+  if(!st){
+    /* Adrift. There is nothing here, and the view says so honestly. */
+    const q=project([0,0,0]);
+    if(q){ drawCross(q.x,q.y,14,'#FF9A1F');
+           claimLabel('NO PRIMARY — DEEP SPACE',q.x+16,q.y,'#FF9A1F',true); }
+    drawShipLocal();
+    return;
+  }
+
+  /* The primary. Drawn as a real sphere of latitude and longitude, because
+     at this scale it is a body rather than a point. */
+  const col=st.col;
+  for(let i=1;i<6;i++){
+    const v=i/6, y=Math.cos(v*Math.PI)*0.95, rr=Math.sin(v*Math.PI)*0.95;
+    const pts=[];
+    for(let j=0;j<=24;j++){
+      const a=j/24*6.2832;
+      pts.push(project([Math.cos(a)*rr, y, Math.sin(a)*rr]));
+    }
+    strokePolyline(pts,col,1,5,true);
+  }
+  for(let j=0;j<8;j++){
+    const a=j/8*6.2832, pts=[];
+    for(let i=0;i<=16;i++){
+      const v=i/16, y=Math.cos(v*Math.PI)*0.95, rr=Math.sin(v*Math.PI)*0.95;
+      pts.push(project([Math.cos(a)*rr, y, Math.sin(a)*rr]));
+    }
+    strokePolyline(pts,col,1,0);
+  }
+  const sq=project([0,0,0]);
+  if(sq) claimLabel(st.n+'  '+st.sp, sq.x+14, sq.y-14, col, true);
+
+  /* The bodies, on their orbits, where they actually are now. */
+  for(const b of systemAt(si)){
+    const B=BODY[b.k];
+    const opts=[];
+    for(let i=0;i<=64;i++){
+      const a=i/64*6.2832;
+      opts.push(project([Math.cos(a)*b.orbit, Math.sin(a)*b.orbit*b.tilt, Math.sin(a)*b.orbit]));
+    }
+    strokePolyline(opts, b.taken?'rgba(61,139,255,0.16)':'rgba(140,230,255,0.24)',1,0,true);
+
+    const p=bodyPos(b), q=project(p);
+    if(!q) continue;
+    const rr=Math.max(3, b.rad*q.s);
+    const pts=[];
+    for(let i=0;i<=20;i++){
+      const a=i/20*6.2832;
+      pts.push({x:q.x+Math.cos(a)*rr, y:q.y+Math.sin(a)*rr});
+    }
+    const live = !b.taken;
+    strokePolyline(pts, live?B.col:'rgba(61,139,255,0.35)', live?1.3:1, live?6:0, true);
+    if(b.k==='gas'){                                    // banding, so a giant reads as one
+      for(const f of [-0.45,0,0.45]) strokePolyline(
+        [{x:q.x-rr*Math.cos(Math.asin(f)),y:q.y+rr*f},
+         {x:q.x+rr*Math.cos(Math.asin(f)),y:q.y+rr*f}], B.col,1,0);
+    }
+    if(b.k==='anom'){                                   // an anomaly does not resolve
+      const k=0.5+0.5*Math.sin(sim.t*4.1);
+      drawCross(q.x,q.y,rr*2.4*(0.8+k*0.4),B.col);
+    }
+    const sel = approach.open && approach.body===b;
+    if(sel) drawCross(q.x,q.y,rr+11,'#EAFBFF');
+    claimLabel(b.id+(b.taken?' · WORKED':' · '+B.label), q.x+rr+6, q.y, live?B.col:'#12386E', sel);
+  }
+
+  /* Anything transmitting from this system sits off the plane, because it is
+     a station and not a world. */
+  const ali=ALIENS.find(a=>st&&a.star===st.n);
+  if(ali){
+    const p=[0, 3.1, 0], q=project(p);
+    if(q){
+      drawSprite(SPRITES.station, q.x, q.y, Math.max(2,q.s*0.05), '#FF52D9', 6);
+      claimLabel(RACES[ali.race].name+' STATION', q.x+16, q.y, '#FF52D9', true);
+      strokePolyline([project([0,0,0]),q],'rgba(255,82,217,0.25)',1,0);
+    }
+  }
+
+  drawShipLocal();
+}
+
+/* The vehicle, parked. It is drawn small and off the plane because that is
+   where you would actually hold station: above the ecliptic, out of the way
+   of everything that is moving. */
+function drawShipLocal(){
+  const p=[Math.cos(sim.t*0.11)*4.4, 1.35, Math.sin(sim.t*0.11)*4.4];
+  const q=project(p);
+  if(!q) return;
+  drawSprite(SPRITES.vessel, q.x, q.y, Math.max(2,q.s*0.055), '#FFD23D', 7);
+  claimLabel('MAGPIE', q.x+14, q.y+10, '#FFD23D', false);
+  if(approach.open && approach.body){
+    const t=bodyPos(approach.body), b=project(t);
+    if(b){
+      const pts=[];
+      for(let i=0;i<=20;i++){
+        const k=i/20;
+        pts.push(project([p[0]+(t[0]-p[0])*k, p[1]+(t[1]-p[1])*k, p[2]+(t[2]-p[2])*k]));
+      }
+      const d=approachDamage(approach.body, approach.alt);
+      strokePolyline(pts, d>0?'#FF3A2C':'#22FF88', 1.3, 6);
+    }
+  }
+  return q;
+}
+
+/* Tapping a body in the near field selects it for approach. */
+function localPick(mx,my){
+  if(sim.at<0) return false;
+  let best=null;
+  for(const b of systemAt(sim.at)){
+    const q=project(bodyPos(b));
+    if(!q) continue;
+    const d=Math.hypot(q.x-mx,q.y-my);
+    if(d<Math.max(22, b.rad*q.s+14) && (!best||d<best.d)) best={b,d};
+  }
+  if(!best) return false;
+  approachOpen(best.b);
+  return true;
+}
+
+/* --- astrogation aids ---------------------------------------------------
+   The plot has three axes and the vehicle arrives able to reduce none of
+   them. Each culture works in a quantity it actually cares about — the
+   SSRITH feel you pass and therefore know how far, the VOTH counted you and
+   therefore know which way, the KEL-MORAN file everything against a plane —
+   and what they give you, when they are willing to give you anything, is the
+   reduction for their own quantity. Until then the processor's answer for
+   that axis is a guess, and it does not say which axis it guessed.
+
+   This is why the mathematics is impossible at the start and merely hard at
+   the end, and why it is the aliens rather than the vessel that make it so.
+*/
+const AIDNAME={rng:'RANGE REDUCTION', brg:'BEARING REDUCTION', elv:'PLANE REDUCTION'};
+const AIDFROM={ssrith:'rng', voth:'brg', kelmoran:'elv', unit7:null};
+
 /* ==========================================================================
    SURVEY SWEEP
    The sensor turns through bearing as before, but the footprint is now a
@@ -2845,7 +3247,10 @@ function drawFrame(){
 
   const gut=inset+cs+10;
   const h=here();
-  label('CHART · EQUATORIAL · '+cam.dist.toFixed(0)+' LY FIELD', gut, 14, '#8CE6FF', true);
+  label(sim.view==='LOCAL'
+        ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')+' · SYSTEM SCALE'
+        : 'CHART · EQUATORIAL · '+cam.dist.toFixed(0)+' LY FIELD',
+        gut, 14, '#8CE6FF', true);
   label('P.O.R.  '+h.n+'  '+h.sp, gut, H-14, '#8CE6FF', false);
   label(sim.jumping?'JUMP':'IDLE', W-gut, H-14, '#3D8BFF', false, 'right');
 }
@@ -2864,6 +3269,10 @@ function render(){
   drawStars();
   if(sim.jumping){
     drawJump();
+  }else if(sim.view==='LOCAL'){
+    /* The near field has no use for the sweep, the corridor or the chart —
+       everything it draws is inside one system. */
+    drawLocal();
   }else{
     drawSweep();
     drawHazards();
@@ -2880,6 +3289,7 @@ function render(){
   /* The plate is live while it is up: the differential drifts, hazards drift,
      and the corridor has to say so. */
   if(plot.open && !sim.jumping) plotRefresh();
+  if(approach.open && !sim.jumping) approachRefresh();
 }
 
 /* ==========================================================================
@@ -3665,9 +4075,26 @@ function commsSetNode(key){
   $('comms-raw').textContent='';
   $('comms-eng').textContent='';
   $('comms-opts').innerHTML='';
+  /* Nothing is handed over to a guest who has been rude. A culture at or
+     below guarded gives you the sentence and nothing else. */
   if(n.grant && !comms.granted[comms.alien.id+':'+n.grant]){
-    comms.granted[comms.alien.id+':'+n.grant]=true;
-    applyGrant(n.grant);
+    if(standingOf(comms.alien.race).v>=0){
+      comms.granted[comms.alien.id+':'+n.grant]=true;
+      applyGrant(n.grant);
+    }else{
+      logLine('ASSISTANCE WITHHELD — '+RACES[comms.alien.race].name+' GUARDED');
+      sndAlarm();
+    }
+  }
+  /* And the reduction. This is the thing that actually opens the galaxy up,
+     and it is only ever given to a visitor who has been civil and who can
+     hold the conversation well enough to be told how. */
+  const aidAxis=AIDFROM[comms.alien.race];
+  if(aidAxis && !sim.aid[aidAxis] &&
+     standingOf(comms.alien.race).v>=2 && (sim.lex[comms.alien.race]||0)>=LEX_WORKING){
+    sim.aid[aidAxis]=true;
+    logLine(AIDNAME[aidAxis]+' GIVEN BY '+RACES[comms.alien.race].name);
+    sndOutcome(true);
   }
   /* Every exchange is corpus. You learn from listening whether or not you
      understood, which is why a culture you cannot read is still worth
@@ -3716,7 +4143,12 @@ function commsOptions(){
     const ok = free || phraseKnown(o.t, race);
     btn.innerHTML='<b>'+String(i+1)+'</b>'+(ok?o.t:renderPartial(o.t,race));
     if(ok){
-      btn.addEventListener('click',()=>{ sndKey(); commsSetNode(o.to); });
+      if(o.c) btn.dataset.court = o.c>0 ? 'good' : 'bad';
+      btn.addEventListener('click',()=>{
+        sndKey();
+        courtesy(race, o.c||0);
+        commsSetNode(o.to);
+      });
     }else{
       btn.disabled=true; btn.dataset.mute='1';
       btn.setAttribute('aria-disabled','true');
@@ -3847,13 +4279,48 @@ function commsTick(dt){
   comms.glitchRate = comms.sig<45 ? 0.03 : 0.006;
 }
 
+/* Talking is worth doing, and what each culture gives is the thing that
+   culture actually has. The VOTH fill your tanks because they want you gone.
+   The Assembly releases a charted zone, which is a filing action. The SSRITH
+   mark the angry places on your glass — they said so — and that is the only
+   way to see debris you have not swept. UNIT 7 computes, because computing is
+   the entire content of UNIT 7. */
 function applyGrant(kind){
-  /* Talking is worth doing: every culture gives something that changes what
-     the route can be. */
-  if(kind==='fuel')   sim.fuel=Math.min(TANK, sim.fuel+14);
-  if(kind==='zone')   sim.scooped={};                  // the Assembly clears your scoop record
-  if(kind==='hazard') sim.fuel=Math.min(TANK, sim.fuel+6);
-  if(kind==='solve')  sim.fuel=Math.min(TANK, sim.fuel+9);
+  if(kind==='fuel'){
+    sim.fuel=Math.min(TANK, sim.fuel+14);
+    logLine('PROPELLANT TRANSFERRED — 14.0 LY');
+  }
+  if(kind==='zone'){
+    /* A charted volume: every hazard within scan range is filed to you. */
+    const h=here(); let n=0;
+    for(const z of sim.haz){
+      if(z.known) continue;
+      if(len3(sub3(mul3(add3(z.a,z.b),0.5), h.p))>scanRange()*1.9) continue;
+      z.known=true; n++;
+      sim.found.push({si:-1, id:z.id, name:HAZ[z.k].label, cls:'FILED', sig:99});
+    }
+    logLine('ZONE RELEASED — '+n+' FIELD OBJECTS FILED');
+    plot.dirty=true;
+  }
+  if(kind==='hazard'){
+    /* They mark them on your glass. The three worst things in reach. */
+    const h=here();
+    const near=sim.haz.filter(z=>!z.known)
+      .map(z=>({z, d:len3(sub3(mul3(add3(z.a,z.b),0.5), h.p))}))
+      .sort((a,b)=>a.d-b.d).slice(0,3);
+    for(const o of near){
+      o.z.known=true;
+      sim.found.push({si:-1, id:o.z.id, name:HAZ[o.z.k].label, cls:'MARKED', sig:99});
+    }
+    logLine('THREE PLACES MARKED ON THE GLASS');
+    plot.dirty=true;
+  }
+  if(kind==='solve'){
+    /* It is not hard, it says. */
+    const axes=['rng','brg','elv'].filter(a=>!sim.aid[a]);
+    if(axes.length){ sim.aid[axes[0]]=true; logLine(AIDNAME[axes[0]]+' UPLINKED BY UNIT 7'); }
+    else { sim.fuel=Math.min(TANK, sim.fuel+9); logLine('TRAJECTORY REFINED — 9.0 LY RECOVERED'); }
+  }
   sndAcquire();
 }
 
@@ -3871,7 +4338,11 @@ function commsOpen(a){
   $('comms').dataset.open='1';
   $('comms-src').textContent=comms.race.name+' · '+a.id;
   $('comms-band').textContent='BAND '+comms.race.band;
+  const stn=standingOf(a.race);
   $('comms-who').textContent=comms.race.name+' — '+comms.race.tag+' — '+a.place;
+  $('comms-src').textContent=comms.race.name+' · '+a.id;
+  const sb=$('comms-stand');
+  if(sb){ sb.textContent='YOU: VISITOR · '+stn.k; sb.style.color=stn.c; sb.style.borderColor=stn.c; }
   $('viewtools').style.display='none';
   $('view').classList.add('comms-open');
   commsResize();
@@ -4850,6 +5321,38 @@ function plotStow(){
   sndKey();
 }
 
+function approachRefresh(){
+  if(!approach.open||!approach.body) return;
+  const b=approach.body, B=BODY[b.k];
+  const est=floorEstimate(b);
+  const y=approachYield(b,approach.alt);
+  const secs=26+34/Math.max(approach.alt,0.12);
+  $('ap-id').textContent=b.id;
+  $('ap-cls').textContent=B.label;
+  $('ap-cls').style.color=B.col; $('ap-cls').style.borderColor=B.col;
+  $('ap-alt').textContent=approach.alt.toFixed(2);
+
+  const yv = B.yield==='fuel' ? (y*5.2).toFixed(1)+' ly'
+           : B.yield==='air'  ? (y*13).toFixed(0)+'%'
+           : B.yield==='hull' ? (y*11).toFixed(0)+'%'
+           :                    'RECORD';
+  $('ap-y').textContent=yv;
+  $('ap-y').parentElement.dataset.alert = y>1.4?'ok':y>0.7?'2':'';
+
+  /* The estimate, not the floor. The console does not know the floor; it
+     knows what its sensors say, and its sensors are as damaged as the rest of
+     the vessel. Going below the estimate is a bet on the instrument. */
+  $('ap-f').textContent=est.toFixed(2);
+  $('ap-f').parentElement.dataset.alert = approach.alt<est ? '1' : approach.alt<est*1.25 ? '2' : '';
+  $('ap-a').textContent=Math.round(secs)+' s';
+  $('ap-a').parentElement.dataset.alert = sim.air<20 ? '1' : '';
+  $('ap-sub').textContent = b.taken ? 'ALREADY WORKED'
+                          : approach.alt<est ? 'BELOW ESTIMATED FLOOR'
+                          : 'HOLD AT '+approach.alt.toFixed(2);
+  $('ap-go').dataset.arm = b.taken ? 'bad' : approach.alt<est ? 'bad' : '1';
+  $('ap-go').classList.add('key--go');
+}
+
 function plotRefresh(){
   if(!plot.open) return;
   plotUpdate();
@@ -4909,9 +5412,17 @@ function plotRefresh(){
   $('go-sub').textContent = after<0 ? 'NO FUEL' : band.t;
 
   const drift=plotDrift();
-  $('solve-sub').textContent = drift>0.55 ? 'PROCESSOR DEGRADED'
+  const un=['rng','brg','elv'].filter(a=>!sim.aid[a]);
+  $('solve-sub').textContent = un.length ? 'NO REDUCTION: '+un.map(a=>a.toUpperCase()).join(' ')
+                             : drift>0.55 ? 'PROCESSOR DEGRADED'
                              : drift>0.2  ? 'CONFIDENCE '+Math.round((1-drift*drift)*100)+'%'
                              : '−14 s AIR';
+  /* Each dial says whether the processor can reduce that axis at all, so the
+     operator knows exactly which thirds of the problem are still theirs. */
+  for(const f of ['brg','elv','rng']){
+    const row=document.querySelector('#plot .prow[data-f="'+f+'"]');
+    if(row) row.dataset.aid = sim.aid[f] ? '1' : '';
+  }
 }
 
 const el={
@@ -5017,8 +5528,13 @@ function refresh(){
 
   $('jump-lbl').textContent = sim.jumping ? 'RUNNING' : plot.open ? 'STOW PLOT' : 'PLOT COURSE';
   $('k-jump').dataset.on = plot.open ? '1' : '';
-  $('scoop-lbl').textContent = canScoop() ? 'AVAILABLE' : sim.scooped[sim.at] ? 'SPENT' : 'NONE HERE';
-  $('k-scoop').dataset.on = canScoop() ? '1' : '';
+  const bodies = sim.at>=0 ? systemAt(sim.at) : [];
+  const live = bodies.filter(b=>!b.taken).length;
+  $('scoop-lbl').textContent = sim.at<0 ? 'NO PRIMARY'
+                             : !bodies.length ? 'BARREN'
+                             : live ? live+' BODIES' : 'WORKED OUT';
+  $('k-scoop').dataset.on = live ? '1' : '';
+  $('k-scoop').firstChild.textContent = 'APPROACH';
   $('near-lbl').textContent = reachable().length+' IN RANGE';
 
   const rows=$('sensorrows');
@@ -5082,6 +5598,9 @@ cv.addEventListener('click',e=>{
   if(sim.jumping) return;
   const r=cv.getBoundingClientRect();
   const mx=e.clientX-r.left, my=e.clientY-r.top;
+  /* In the near field a tap picks a body to approach; on the chart it picks a
+     star to plot to. Same gesture, two instruments. */
+  if(sim.view==='LOCAL'){ if(localPick(mx,my)) refresh(); return; }
   let best=null;
   STARS.forEach((st,i)=>{
     if(i===sim.at || !inFront(st.p)) return;
@@ -5099,6 +5618,7 @@ addEventListener('keydown',e=>{
     if(b) b.click();
     return;
   }
+  if(e.code==='KeyV'){ e.preventDefault(); setView(sim.view==='LOCAL'?'CHART':'LOCAL'); return; }
   if(e.code==='ArrowLeft'||e.code==='KeyA'){ e.preventDefault(); stepTarget(-1); }
   if(e.code==='ArrowRight'||e.code==='KeyD'){ e.preventDefault(); stepTarget(1); }
   if(e.code==='Enter'||e.code==='Space'){ e.preventDefault(); $('k-jump').click(); }
@@ -5135,9 +5655,15 @@ $('k-near').addEventListener('click',()=>{
   refresh();
 });
 
+/* Fuel is not a button any more: it is somewhere, and you have to go to it.
+   SCOOP raises the near field and selects the best body still unworked. */
 $('k-scoop').addEventListener('click',()=>{
-  if(scoop()){ sndData(320); sndSpinUp(); }
-  else sndKey();
+  if(sim.at<0){ sndAlarm(); logLine('NO PRIMARY — NOTHING TO WORK'); refresh(); return; }
+  if(sim.view!=='LOCAL') setView('LOCAL');
+  const live=systemAt(sim.at).filter(b=>!b.taken);
+  if(!live.length){ sndAlarm(); logLine('SYSTEM WORKED OUT'); refresh(); return; }
+  live.sort((a,b)=>b.rich-a.rich);
+  approachOpen(live[0]);
   refresh();
 });
 
@@ -5147,6 +5673,39 @@ $('k-jump').addEventListener('click',()=>{
   if(sim.jumping||sim.over){ sndAlarm(); return; }
   if(plot.open) plotStow(); else plotOpen();
   refresh();
+});
+
+/* --- the two instruments -------------------------------------------------
+   CHART is where you decide where to go. NEAR is where you do everything once
+   you are there. Neither one is a mode of the other; they are two different
+   instruments pointed at two different scales, and the console will only show
+   you one at a time because that is all a console of this vintage could do. */
+function setView(v){
+  sim.view=v;
+  const b=$('btn-view');
+  b.textContent = v==='LOCAL' ? 'NEAR' : 'CHART';
+  b.dataset.on='1';
+  if(v==='LOCAL'){ if(plot.open) plotStow(); cam.dist=13.5; }
+  else { if(approach.open) approachStow(); cam.dist=44; }
+  logLine(v==='LOCAL'?'NEAR FIELD SCAN ACTIVE':'CHART ACTIVE');
+  sndRelay(); refresh();
+}
+$('btn-view').addEventListener('click',()=>setView(sim.view==='LOCAL'?'CHART':'LOCAL'));
+
+$('ap-x').addEventListener('click',approachStow);
+$('ap-go').addEventListener('click',approachRun);
+document.querySelectorAll('#appr .prow .pb').forEach(b=>{
+  const base=parseFloat(b.dataset.d);
+  let timer=null, held=0;
+  const fire=()=>{
+    approachNudge(base*(held<8?1:3));
+    held++; timer=setTimeout(fire, held<2?260:60);
+  };
+  const stop=()=>{ if(timer) clearTimeout(timer); timer=null; held=0; };
+  b.addEventListener('pointerdown',e=>{ e.preventDefault(); b.setPointerCapture(e.pointerId); stop(); fire(); });
+  b.addEventListener('pointerup',stop);
+  b.addEventListener('pointercancel',stop);
+  b.addEventListener('pointerleave',stop);
 });
 
 $('plot-x').addEventListener('click',plotStow);
@@ -5357,9 +5916,9 @@ function checkOutcome(){
       sndOutcome(false);
       showReport(false,'STRANDED','NO REACHABLE SYSTEM WITHIN REMAINING RANGE',
         here().n,
-        'The tank is dry and this system has nothing to scoop. '+
+        'The tank is dry and there is nothing left in this system to work. '+
         Object.keys(sim.logged).length+' of '+ALIENS.length+' cultures were logged. '+
-        'Fuel is only found where there are planets — plan the route through them.');
+        'Fuel comes out of gas giants and nothing else — plan the route through them.');
     }
   }
 }
@@ -5410,13 +5969,19 @@ function frame(now){
 
   /* The camera eases to whatever we are looking at: the vehicle normally,
      the target while a jump is being considered, and it rides the jump. */
+  if(sim.view==='LOCAL' && !sim.jumping){
+    /* Its own frame entirely: origin at the primary, and a field measured in
+       orbits rather than light years. */
+    cam.tgt=[0,0,0];
+    cam.dist += (13.5-cam.dist)*Math.min(1,wall*3);
+  }
   const focus = sim.jumping
     ? (()=>{ const k=clamp((performance.now()-sim.jumping.t0)/sim.jumping.dur,0,1);
              const A=sim.jumping.fromP, B=sim.jumping.term;
              return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k]; })()
     : cam.mode===2 ? target().p
     : here().p;
-  cam.tgt=focus;
+  if(sim.view!=='LOCAL'||sim.jumping) cam.tgt=focus;
   for(let i=0;i<3;i++) cam.at[i]+=(cam.tgt[i]-cam.at[i])*Math.min(1,wall*3.2);
 
   if(cam.mode===0 && !sim.jumping) cam.yaw+=wall*0.045;
