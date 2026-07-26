@@ -200,6 +200,12 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   92%{opacity:.955}93.5%{opacity:1}
 }
 
+/* While a channel is open the globe is not drawn, so the bloom canvas holds a
+   stale frame behind a 96.5%-opaque panel — invisible, and a full-viewport
+   screen-blend composite every frame. Measured at 16 fps on a 1440x900
+   desktop. */
+#view.comms-open #bloom{display:none}
+
 /* CRT off: a clean render, for anyone who wants to actually read it. */
 #view:not(.crt-on) #crt,
 #view:not(.crt-on) #bloom{display:none}
@@ -256,6 +262,104 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   box-shadow:0 0 6px var(--ship); pointer-events:none;
 }
 @media (prefers-reduced-motion:reduce){ #viewtools button[data-on="0"]{animation:none} }
+
+/* --------------------------------------------------------------------------
+   COMMS
+   Sits inside the viewport at z-index 2, below the raster at 3, so the face
+   is drawn ON the tube — scanlines, grille and vignette fall across it the
+   same as everything else.
+   -------------------------------------------------------------------------- */
+#comms{
+  position:absolute; inset:0; z-index:2;
+  display:none;
+  grid-template-rows:auto minmax(0,1fr) auto auto;
+  gap:6px; padding:8px;
+  background:rgba(0,0,0,.965);
+}
+#comms[data-open="1"]{display:grid}
+
+#comms-hd{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+#comms-hd .box{font-size:9px}
+#comms-x{
+  margin-left:auto; cursor:pointer;
+  border-color:var(--hot); color:var(--hot);
+  font-size:9px; padding:3px 8px; min-height:28px;
+}
+
+/* The face is the point of the panel, so it gets a floor. Without one the
+   transmission box and three reply buttons squeeze it to a sliver on a short
+   phone — measured at 45px in landscape before this. */
+#face-wrap{
+  position:relative; min-height:min(34vh,210px);
+  display:grid; place-items:center;
+}
+#comms{overflow-y:auto}
+#face{width:100%;height:100%;display:block}
+
+/* The transmission. Monospaced, left-aligned, and it scrolls rather than
+   reflowing the panel, because a comms log that resizes the face is wrong. */
+#comms-txt{
+  border:var(--hair) solid var(--frame);
+  padding:8px 10px;
+  min-height:74px; max-height:30%;
+  overflow-y:auto;
+  font-size:12px; line-height:1.5;
+  color:var(--white);
+  white-space:pre-wrap;
+}
+#comms-txt .who{
+  display:block; font-size:8px; letter-spacing:.16em;
+  color:var(--frame); margin-bottom:4px;
+  position:sticky; top:0; z-index:1;   /* the source must not scroll away */
+  background:var(--void); padding:0 0 3px;
+}
+#comms-caret{
+  display:inline-block;width:7px;height:1em;vertical-align:text-bottom;
+  background:currentColor;animation:cw .9s steps(2,end) infinite;
+}
+@keyframes cw{0%,100%{opacity:1}50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#comms-caret{animation:none}}
+
+@media (min-width:820px), (orientation:landscape) and (max-height:560px){
+  #comms{
+    grid-template-columns:minmax(0,1.15fr) minmax(240px,.85fr);
+    grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:
+      "hd   hd"
+      "face txt"
+      "face opts";
+  }
+  #comms-hd{grid-area:hd}
+  #face-wrap{grid-area:face; min-height:0}
+  #comms-txt{grid-area:txt; max-height:none}
+  #comms-opts{grid-area:opts}
+}
+@media (orientation:landscape) and (max-height:460px){
+  .opt{min-height:32px;padding:6px 8px}
+  #comms-txt{min-height:56px;font-size:11px}
+}
+
+#comms-opts{display:grid;gap:4px}
+.opt{
+  border:var(--hair) solid var(--frame-dim);
+  color:var(--label);
+  padding:9px 10px; text-align:left;
+  font-size:10px; letter-spacing:.06em;
+  min-height:40px; cursor:pointer;
+  display:flex; align-items:center; gap:8px;
+}
+.opt:hover{border-color:var(--white);color:var(--white)}
+.opt b{color:var(--frame);font-weight:400}
+.opt[disabled]{color:var(--frame-dim);border-color:var(--frame-dim);cursor:default}
+
+/* A hail waiting to be answered is the loudest thing on the panel. */
+#btn-hail[data-on="rdy"]{
+  border-color:var(--contact); color:var(--contact);
+  animation:hail 1.1s steps(2,end) infinite;
+}
+@keyframes hail{0%,100%{box-shadow:0 0 12px rgba(255,82,217,.6)}50%{box-shadow:0 0 0 rgba(255,82,217,0)}}
+#btn-hail[data-on="no"]{border-color:var(--frame-dim);color:var(--frame-dim);animation:none}
+@media (prefers-reduced-motion:reduce){#btn-hail[data-on="rdy"]{animation:none}}
 
 /* READOUT STRIP ------------------------------------------------------- */
 #read{
@@ -470,6 +574,19 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-crt"   data-on="1">CRT</button>
       <button id="btn-scan"  data-on="1">SCAN</button>
       <button id="btn-snd"   data-on="0">AUDIO OFF<i id="snd-bar"></i></button>
+      <button id="btn-hail"  data-on="no">HAIL</button>
+    </div>
+
+    <div id="comms" role="dialog" aria-modal="true" aria-label="Comms channel">
+      <div id="comms-hd">
+        <span class="box" id="comms-src">— — —</span>
+        <span class="box" id="comms-sig">SIG 00%</span>
+        <span class="box" id="comms-band">BAND —</span>
+        <button class="box" id="comms-x">CLOSE</button>
+      </div>
+      <div id="face-wrap"><canvas id="face"></canvas></div>
+      <div id="comms-txt"><span class="who" id="comms-who">TRANSMISSION</span><span id="comms-line"></span><i id="comms-caret"></i></div>
+      <div id="comms-opts"></div>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -682,6 +799,117 @@ const EMITTERS=[
   {lat: 68.3, lon:-133.5, cls:'POLAR LINK', name:'INUVIK'}
 ];
 
+/* ==========================================================================
+   XENOLOGY
+   Four transmitting cultures at fixed points on the surface. Each is defined
+   by geometry rather than artwork: a head outline, an eye rule, a mouth
+   mechanism and a voice, all drawn as strokes so they belong to the same
+   display as everything else.
+
+   Coordinates are in a normalised face space, x and y both -1 to 1.
+   ========================================================================== */
+
+const RACES={
+  voth:{
+    name:'VOTH', tag:'ARTHROPOD COLLECTIVE', colour:[34,255,136],
+    band:'VHF 148.2', voice:{base:150, spread:120, type:'square', rate:2},
+    head:[[0,-1.02],[.42,-.86],[.68,-.44],[.74,.04],[.58,.52],[.3,.86],[0,.98],
+          [-.3,.86],[-.58,.52],[-.74,.04],[-.68,-.44],[-.42,-.86]],
+    eye:'compound', eyes:[[-.36,-.22,.24],[.36,-.22,.24]],
+    mouth:'mandible', mouthAt:[0,.52], mouthW:.34,
+    extra:'antennae'
+  },
+  kelmoran:{
+    name:'KEL-MORAN', tag:'ASSEMBLY DELEGATE', colour:[140,230,255],
+    band:'SHF 8.41', voice:{base:320, spread:70, type:'triangle', rate:2},
+    head:[[0,-1.05],[.34,-.9],[.5,-.5],[.46,-.05],[.34,.42],[.18,.8],[0,.94],
+          [-.18,.8],[-.34,.42],[-.46,-.05],[-.5,-.5],[-.34,-.9]],
+    eye:'triple', eyes:[[0,-.52,.13],[-.24,-.2,.11],[.24,-.2,.11]],
+    mouth:'slit', mouthAt:[0,.46], mouthW:.26,
+    extra:'crest'
+  },
+  ssrith:{
+    name:'SSRITH', tag:'DEEP LITTORAL', colour:[255,82,217],
+    band:'ELF 0.076', voice:{base:90, spread:40, type:'sawtooth', rate:3},
+    head:[[0,-.92],[.5,-.7],[.78,-.2],[.72,.3],[.44,.72],[.14,.98],[-.14,.98],
+          [-.44,.72],[-.72,.3],[-.78,-.2],[-.5,-.7]],
+    eye:'pits', eyes:[[-.42,-.3,.1],[-.2,-.44,.08],[.2,-.44,.08],[.42,-.3,.1]],
+    mouth:'jaw', mouthAt:[0,.4], mouthW:.52,
+    extra:'gills'
+  },
+  unit7:{
+    name:'UNIT 7', tag:'AUTONOMOUS RELAY', colour:[255,210,61],
+    band:'DIGITAL 2.4', voice:{base:420, spread:260, type:'square', rate:1},
+    head:[[-.72,-.72],[.72,-.72],[.72,.72],[-.72,.72]],
+    eye:'raster', eyes:[[0,-.34,.5]],
+    mouth:'scope', mouthAt:[0,.34], mouthW:.62,
+    extra:'bolts'
+  }
+};
+
+/* Where they transmit from. Spread wide so reaching a new one is a flight,
+   not a wait. */
+const ALIENS=[
+  {id:'AX-1', race:'voth',     lat:-14.8, lon:-141.2, place:'CENTRAL PACIFIC BASIN'},
+  {id:'AX-2', race:'kelmoran', lat:-74.6, lon:  27.4, place:'QUEEN MAUD ICE'},
+  {id:'AX-3', race:'ssrith',   lat: -3.9, lon: -62.5, place:'AMAZON LITTORAL'},
+  {id:'AX-4', race:'unit7',    lat: 67.8, lon: 104.9, place:'PUTORANA SHIELD'}
+];
+
+/* Conversation trees. `grant` fires once, when the node is first reached. */
+const TALK={
+  'AX-1':{
+    start:{t:"YOU ARE LOW. YOUR SHELL IS THIN. WE COUNTED SEVEN OF YOU BEFORE. THERE IS ONE OF YOU NOW.",
+      o:[{t:'ASK WHAT HAPPENED TO THE OTHERS',to:'lost'},
+         {t:'REQUEST PROPELLANT',to:'fuel'},
+         {t:'END TRANSMISSION',to:null}]},
+    lost:{t:"THEY DESCENDED STEEPLY. THE AIR IS NOT SOFT. WE RECOVERED WHAT FELL AND WE KEEP IT. YOU MAY NOT HAVE IT BACK.",
+      o:[{t:'REQUEST PROPELLANT',to:'fuel'},{t:'END TRANSMISSION',to:null}]},
+    fuel:{t:"WE WILL FILL YOUR TANKS. NOT KINDNESS. WE WANT YOU TO LEAVE ORBIT BY CHOICE RATHER THAN BY FAILURE.",
+      grant:'fuel',
+      o:[{t:'ACKNOWLEDGE',to:'end'}]},
+    end:{t:"GO DOWN SLOWLY. WE WILL BE COUNTING.", o:[{t:'CLOSE CHANNEL',to:null}]}
+  },
+  'AX-2':{
+    start:{t:"THIS IS A REGISTERED ASSEMBLY STATION. YOUR VEHICLE IS UNDECLARED. STATE YOUR INTENT BEFORE YOUR NEXT PASS.",
+      o:[{t:'DECLARE: RETURN TO SURFACE',to:'ok'},
+         {t:'DECLARE: SURVEY ONLY',to:'survey'},
+         {t:'REFUSE',to:'refuse'}]},
+    ok:{t:"ACCEPTED. AN ADDITIONAL RECOVERY SITE IS RELEASED TO YOUR NAVIGATION. USE IT OR DO NOT. THE PAPERWORK IS IDENTICAL.",
+      grant:'zone',
+      o:[{t:'ACKNOWLEDGE',to:'end'}]},
+    survey:{t:"SURVEY IS PERMITTED AT OR ABOVE TWO HUNDRED KILOMETRES. YOU ARE NOT AT OR ABOVE TWO HUNDRED KILOMETRES.",
+      o:[{t:'AMEND: RETURN TO SURFACE',to:'ok'},{t:'END TRANSMISSION',to:null}]},
+    refuse:{t:"NOTED. YOUR REFUSAL IS FILED. NOTHING FURTHER WILL HAPPEN TO YOU TODAY.",
+      o:[{t:'CLOSE CHANNEL',to:null}]},
+    end:{t:"THE ASSEMBLY THANKS YOU FOR YOUR COMPLIANCE.", o:[{t:'CLOSE CHANNEL',to:null}]}
+  },
+  'AX-3':{
+    start:{t:"SSSS. YOU RIDE ON TOP OF THE AIR. WE LIVE UNDERNEATH IT. WE FEEL YOU PASS. IT IS LIKE WEATHER.",
+      o:[{t:'ASK ABOUT THE WEATHER',to:'weather'},
+         {t:'ASK WHAT THEY ARE',to:'what'},
+         {t:'END TRANSMISSION',to:null}]},
+    weather:{t:"THREE PLACES ARE ANGRY. WE MARK THEM ON YOUR GLASS. DO NOT COME DOWN THROUGH THEM. THEY DO NOT KNOW WHAT YOU ARE AND THEY WILL NOT LEARN.",
+      grant:'hazard',
+      o:[{t:'ASK WHAT THEY ARE',to:'what'},{t:'ACKNOWLEDGE',to:'end'}]},
+    what:{t:"OLDER THAN THE SHAPE OF YOUR CONTINENTS. WE WERE NOT WAITING FOR YOU. YOU ARE SIMPLY RECENT.",
+      o:[{t:'ASK ABOUT THE WEATHER',to:'weather'},{t:'END TRANSMISSION',to:null}]},
+    end:{t:"COME DOWN. OR DO NOT. THE SEA IS PATIENT EITHER WAY.", o:[{t:'CLOSE CHANNEL',to:null}]}
+  },
+  'AX-4':{
+    start:{t:"RELAY ACTIVE. NO OPERATOR PRESENT. LAST INSTRUCTION RECEIVED 40 731 YEARS AGO. INSTRUCTION WAS: CONTINUE.",
+      o:[{t:'QUERY: WHAT ARE YOU RELAYING',to:'what'},
+         {t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},
+         {t:'END TRANSMISSION',to:null}]},
+    what:{t:"CONTENT UNREADABLE. FORMAT UNREADABLE. ORIGIN UNREADABLE. RELAY DOES NOT REQUIRE COMPREHENSION. RELAY REQUIRES CONTINUATION.",
+      o:[{t:'REQUEST TRAJECTORY SOLUTION',to:'solve'},{t:'END TRANSMISSION',to:null}]},
+    solve:{t:"COMPUTING. YOUR RETURN IS A TWO BODY PROBLEM WITH DRAG. IT IS NOT HARD. SOLUTION UPLINKED TO YOUR AUTOPILOT.",
+      grant:'solve',
+      o:[{t:'ACKNOWLEDGE',to:'end'}]},
+    end:{t:"RELAY CONTINUING.", o:[{t:'CLOSE CHANNEL',to:null}]}
+  }
+};
+
 /* Pixel sprites. Genuine bitmaps, drawn blocky, because that is what a
    sprite is. '.' is transparent. */
 const SPRITES={
@@ -755,6 +983,8 @@ const sim={
   acq:null,            // permanent acquisition bracket, animating
   transient:null,      // uncorrelated return being worked
   scanOn:true,
+  xeno:[],             // alien transmitters detected
+  hailReady:null,      // one currently inside the footprint
   track:[],            // predicted ground track, [lat,lon] pairs
   impact:null,         // predicted touchdown point, or null while still in orbit
   trackAge:1e9,
@@ -778,6 +1008,7 @@ function insertOrbit(){
   sim.phase='ORBIT'; sim.heat=0; sim.heatPeak=0; sim.g=0; sim.gPeak=0; sim.landed=null; sim.chute=false;
   sim.auto=false; sim.autoState='idle'; sim.autoSol=null; sim.trackAge=1e9;
   sim.sweep=0; sim.sweepPrev=0; sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null; sim.clutterAge=0;
+  sim.xeno=[]; sim.hailReady=null;
 
   sim.contacts=[
     mkContact('station', 780, 51.6,   40, '#FF52D9', 'ORBITAL PLATFORM'),
@@ -1521,6 +1752,24 @@ function updateScan(dt){
     }
   }
 
+  /* Alien transmitters. Same footprint and same sweep rule as a ground
+     station, so getting one on the air means actually flying over it. */
+  sim.hailReady=null;
+  for(const a of ALIENS){
+    const d=greatCircleKm(slat,slon,a.lat,a.lon)/R_P;
+    if(d>fp) continue;
+    sim.hailReady=a;
+    let b=bearingTo(slat,slon,a.lat,a.lon); if(b<0)b+=2*Math.PI;
+    let a0=sim.sweepPrev,a1=sim.sweep; if(a1<a0)a1+=2*Math.PI;
+    let bb=b; if(bb<a0)bb+=2*Math.PI;
+    if(bb<a0||bb>a1) continue;
+    sim.pings.push({lat:a.lat, lon:a.lon, t0:now, life:1.8, max:0.13, alien:true});
+    if(!sim.xeno.some(x=>x.id===a.id)){
+      sim.xeno.push({id:a.id, race:a.race, lat:a.lat, lon:a.lon});
+      sndAcquire();
+    }
+  }
+
   /* Unidentified returns: clutter from terrain and sea state inside the
      footprint. They ping and fade without ever resolving to a contact, which
      is both what a real sweep looks like and what keeps the tube busy while
@@ -1594,6 +1843,14 @@ function drawPings(){
     const k=(now-p.t0)/1000/p.life;
     if(k>1) continue;
     /* Two rings, offset in phase, expanding and fading. */
+    if(p.alien){
+      for(const off of [0,0.3,0.6]){
+        const kk=k+off; if(kk>1) continue;
+        surfaceRing(p.lat,p.lon,kk*p.max,
+          'rgba(255,82,217,'+((1-kk)*0.9).toFixed(3)+')',1.6,28);
+      }
+      continue;
+    }
     if(p.weak){
       surfaceRing(p.lat,p.lon,k*p.max,
         'rgba(140,230,255,'+((1-k)*0.5).toFixed(3)+')',1,16);
@@ -1605,6 +1862,22 @@ function drawPings(){
       surfaceRing(p.lat,p.lon,kk*p.max,
         'rgba(255,210,61,'+((1-kk)*0.85).toFixed(3)+')',1.4,26);
     }
+  }
+}
+
+/* Alien transmitters, once found, keep a magenta beacon and designation. */
+function drawXeno(){
+  if(!sim.scanOn) return;
+  for(const x of sim.xeno){
+    const p=geoToVec(x.lat,x.lon,sim.spin,1.008);
+    if(!onNearSide(p)) continue;
+    const q=project(p); if(!q) continue;
+    const pulse=0.55+0.45*Math.sin(performance.now()/260);
+    drawSprite(SPRITES.beacon,q.x,q.y,2,'rgba(255,82,217,'+pulse.toFixed(2)+')',10);
+    ctx.strokeStyle='rgba(255,82,217,0.8)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(q.x,q.y,9,0,6.2832); ctx.stroke();
+    const cc=toCam(p);
+    if(cc[2]>0.3) label(x.id+' '+RACES[x.race].name, q.x+11, q.y-9, '#FF52D9', true);
   }
 }
 
@@ -1795,6 +2068,7 @@ function render(){
   drawZone();
   drawPings();
   drawFound();
+  drawXeno();
   drawGroundTrack();
   drawConic();
   drawContacts();
@@ -1805,6 +2079,316 @@ function render(){
   if(crt.on){ drawSparkle(); drawBloom(); }
 }
 
+
+/* ==========================================================================
+   COMMS — the face, the voice, and the transmission
+   --------------------------------------------------------------------------
+   The face is procedural vector geometry, not artwork: an outline, an eye
+   rule and a mouth mechanism per race, all strokes, so it belongs to the
+   same display as the globe.
+
+   Mouth movement is driven from the text as it types. Each character maps to
+   a viseme — an opening the mouth would make to produce it — and the jaw
+   eases toward that target. Vowels open, plosives close, spaces shut it.
+   The result reads as speech because it is derived from the words being
+   spoken rather than from a loop.
+   ========================================================================== */
+
+const comms={
+  open:false, alien:null, race:null, node:null,
+  text:'', shown:0, done:false,
+  mouth:0, mouthT:0, blink:0, nextBlink:2, sway:0,
+  cv:null, cx:null, W:0, H:0,
+  granted:{}, lastVoice:0, glitch:0
+};
+
+/* How far the mouth opens to make a given character. */
+const VISEME={a:1,e:.85,i:.55,o:.95,u:.7,y:.6,
+              m:0,b:0,p:0,f:.22,v:.22,w:.45,
+              ' ':0,'.':0,',':.08,'!':.9,'?':.75,'\n':0,'-':.1};
+function viseme(ch){
+  const c=ch.toLowerCase();
+  if(c in VISEME) return VISEME[c];
+  if(/[0-9]/.test(c)) return .5;
+  if(/[a-z]/.test(c)) return .38;
+  return 0;
+}
+
+/* --- geometry helpers, all in normalised face space --------------------- */
+function facePath(pts,close){
+  const c=comms.cx, S=comms.S, ox=comms.ox, oy=comms.oy;
+  c.beginPath();
+  pts.forEach((p,i)=>{
+    const x=ox+p[0]*S, y=oy+p[1]*S;
+    i?c.lineTo(x,y):c.moveTo(x,y);
+  });
+  if(close) c.closePath();
+  c.stroke();
+}
+function faceEllipse(x,y,rx,ry){
+  const c=comms.cx, S=comms.S;
+  c.beginPath();
+  c.ellipse(comms.ox+x*S, comms.oy+y*S, Math.max(.5,rx*S), Math.max(.5,ry*S), 0, 0, 6.2832);
+  c.stroke();
+}
+
+function drawEyes(r,t){
+  const c=comms.cx;
+  const lid=comms.blink;                       // 0 open, 1 shut
+  for(const [ex,ey,er] of r.eyes){
+    const open=Math.max(0.04, er*(1-lid));
+    if(r.eye==='compound'){
+      /* Concentric hexagons: a faceted eye reads as insect without needing
+         to draw a hundred ommatidia. */
+      for(let k=3;k>=1;k--){
+        const rr=er*k/3;
+        const pts=[];
+        for(let i=0;i<=6;i++){
+          const a=i/6*6.2832+t*0.06;
+          pts.push([ex+Math.cos(a)*rr, ey+Math.sin(a)*rr*(1-lid)]);
+        }
+        facePath(pts,true);
+      }
+    }else if(r.eye==='triple'){
+      faceEllipse(ex,ey,er,open);
+      faceEllipse(ex,ey,er*0.35,open*0.35);
+    }else if(r.eye==='pits'){
+      /* No eyes. Sensory pits: short arcs that flare as it senses. */
+      const flare=0.6+0.4*Math.sin(t*0.9+ex*7);
+      faceEllipse(ex,ey,er*flare,er*0.45*flare);
+    }else if(r.eye==='raster'){
+      /* A machine has a screen, not eyes. Draw a scanning band. */
+      const c2=comms.cx;
+      for(let i=-3;i<=3;i++){
+        const yy=ey+i*er*0.16;
+        facePath([[ex-er,yy],[ex+er,yy]],false);
+      }
+      const sweepY=ey+Math.sin(t*1.4)*er*0.5;
+      c2.save(); c2.lineWidth=2;
+      facePath([[ex-er,sweepY],[ex+er,sweepY]],false);
+      c2.restore();
+    }
+  }
+}
+
+function drawMouth(r,t){
+  const [mx,my]=r.mouthAt, w=r.mouthW, o=comms.mouth;
+  if(r.mouth==='mandible'){
+    /* Two jaws hinged at the sides, swinging outward as it speaks. */
+    for(const sgn of [-1,1]){
+      const tip=[mx+sgn*w*(0.25+o*0.5), my+0.30-o*0.10];
+      facePath([[mx+sgn*w*0.9, my-0.16], [mx+sgn*w*(0.5+o*0.3), my+0.10], tip],false);
+    }
+    facePath([[mx-w*0.35,my-0.10],[mx+w*0.35,my-0.10]],false);
+  }else if(r.mouth==='slit'){
+    const h=0.02+o*0.20;
+    facePath([[mx-w,my],[mx-w*0.5,my-h],[mx+w*0.5,my-h],[mx+w,my],
+              [mx+w*0.5,my+h],[mx-w*0.5,my+h]],true);
+  }else if(r.mouth==='jaw'){
+    const drop=o*0.34;
+    facePath([[mx-w,my],[mx-w*0.6,my+0.10+drop],[0,my+0.16+drop*1.25],
+              [mx+w*0.6,my+0.10+drop],[mx+w,my]],false);
+    /* Teeth appear only once it is properly open. */
+    if(o>0.35) for(let i=-3;i<=3;i++){
+      const x=mx+i*w/3.4;
+      facePath([[x,my+0.02],[x,my+0.02+0.06*o]],false);
+    }
+  }else if(r.mouth==='scope'){
+    /* The machine speaks on an oscilloscope. Amplitude is the viseme. */
+    const pts=[];
+    for(let i=0;i<=34;i++){
+      const u=i/34;
+      const x=mx-w+u*w*2;
+      const env=Math.sin(u*Math.PI);
+      /* A carrier keeps the trace alive between words; a scope that flatlines
+         when a machine stops talking reads as a dead machine. */
+      pts.push([x, my + Math.sin(u*22+t*9)*(0.16*o+0.018)*env]);
+    }
+    facePath(pts,false);
+  }
+}
+
+function drawExtra(r,t){
+  const sway=Math.sin(t*0.7)*0.03;
+  if(r.extra==='antennae'){
+    for(const sgn of [-1,1]){
+      facePath([[sgn*0.22,-0.95],[sgn*(0.42+sway),-1.35],[sgn*(0.58-sway),-1.62]],false);
+      faceEllipse(sgn*(0.58-sway),-1.66,0.05,0.05);
+    }
+  }else if(r.extra==='crest'){
+    facePath([[-0.3,-0.92],[-0.12,-1.42],[0,-1.58],[0.12,-1.42],[0.3,-0.92]],false);
+    facePath([[0,-1.58],[0,-0.95]],false);
+  }else if(r.extra==='gills'){
+    for(const sgn of [-1,1]) for(let i=0;i<3;i++){
+      const y=0.02+i*0.17;
+      facePath([[sgn*0.6,y],[sgn*0.78,y+0.06],[sgn*0.6,y+0.12]],false);
+    }
+  }else if(r.extra==='bolts'){
+    for(const [bx,by] of [[-0.6,-0.6],[0.6,-0.6],[-0.6,0.6],[0.6,0.6]])
+      faceEllipse(bx,by,0.05,0.05);
+    facePath([[-0.72,0.58],[0.72,0.58]],false);
+  }
+}
+
+function drawFace(){
+  const r=comms.race; if(!r||!comms.cx) return;
+  const c=comms.cx, t=performance.now()/1000;
+  c.setTransform(comms.dpr,0,0,comms.dpr,0,0);
+  c.clearRect(0,0,comms.W,comms.H);
+
+  comms.S=Math.min(comms.W,comms.H)*0.33;
+  comms.ox=comms.W/2 + Math.sin(t*0.5)*comms.S*0.02;
+  comms.oy=comms.H/2 + Math.sin(t*0.31)*comms.S*0.02 + comms.S*0.12;
+
+  const col=r.colour;
+  const rgba=a=>`rgba(${col[0]},${col[1]},${col[2]},${a})`;
+
+  /* Transmission dropout. Rare, brief, and it makes the link feel remote. */
+  if(comms.glitch>0) comms.glitch-=1;
+  else if(Math.random()<0.006) comms.glitch=4+Math.random()*7;
+  const tear=comms.glitch>0 ? (Math.random()-0.5)*10 : 0;
+  c.save();
+  c.translate(tear,0);
+  c.globalAlpha = comms.glitch>0 ? 0.55 : 1;
+
+  c.lineJoin='round'; c.lineCap='round';
+  c.strokeStyle=rgba(0.92); c.lineWidth=1.6;
+  c.shadowColor=rgba(0.9); c.shadowBlur=8;
+  facePath(r.head,true);
+  c.shadowBlur=0;
+
+  c.lineWidth=1.2; c.strokeStyle=rgba(0.85);
+  drawEyes(r,t);
+  drawMouth(r,t);
+  c.strokeStyle=rgba(0.6);
+  drawExtra(r,t);
+
+  /* A framing bracket, so the face reads as a picture the console is
+     receiving rather than a thing in the room. */
+  c.strokeStyle=rgba(0.28); c.lineWidth=1;
+  const b=comms.S*1.6, bx=comms.ox, by=comms.oy;
+  for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+    c.beginPath();
+    c.moveTo(bx+sx*b, by+sy*b - sy*b*0.22);
+    c.lineTo(bx+sx*b, by+sy*b);
+    c.lineTo(bx+sx*b - sx*b*0.22, by+sy*b);
+    c.stroke();
+  }
+  c.restore();
+}
+
+/* --- the transmission --------------------------------------------------- */
+function commsSetNode(key){
+  const tree=TALK[comms.alien.id];
+  if(key===null || !tree[key]){ commsClose(); return; }
+  comms.node=key;
+  const n=tree[key];
+  comms.text=n.t; comms.shown=0; comms.done=false;
+  $('comms-line').textContent='';
+  $('comms-opts').innerHTML='';
+  if(n.grant && !comms.granted[comms.alien.id+':'+n.grant]){
+    comms.granted[comms.alien.id+':'+n.grant]=true;
+    applyGrant(n.grant);
+  }
+}
+
+function commsOptions(){
+  const n=TALK[comms.alien.id][comms.node];
+  const box=$('comms-opts');
+  box.innerHTML='';
+  n.o.forEach((o,i)=>{
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.innerHTML='<b>'+String(i+1)+'</b>'+o.t;
+    btn.addEventListener('click',()=>{ sndKey(); commsSetNode(o.to); });
+    box.appendChild(btn);
+  });
+}
+
+/* Type the transmission out, driving the mouth and the voice from it. */
+function commsTick(dt){
+  if(!comms.open) return;
+  const r=comms.race;
+
+  if(!comms.done && comms.text){
+    comms.charAcc=(comms.charAcc||0)+dt*38;
+    while(comms.charAcc>=1 && comms.shown<comms.text.length){
+      comms.charAcc-=1;
+      const ch=comms.text[comms.shown++];
+      comms.mouthT=viseme(ch);
+      /* One blip every few characters, pitched inside the race's band. */
+      if(ch.trim() && comms.shown % r.voice.rate === 0){
+        blip(r.voice.base + Math.random()*r.voice.spread, 0.035, 0.09, 0, r.voice.type);
+      }
+    }
+    $('comms-line').textContent=comms.text.slice(0,comms.shown);
+    const box=$('comms-txt'); box.scrollTop=box.scrollHeight;
+    if(comms.shown>=comms.text.length){
+      comms.done=true; comms.mouthT=0;
+      commsOptions();
+    }
+  }
+
+  /* Jaw eases toward the viseme; a mouth that snapped would read as a
+     shutter rather than a mouth. */
+  comms.mouth += (comms.mouthT-comms.mouth)*Math.min(1,dt*22);
+  if(comms.done) comms.mouthT=0;
+
+  comms.nextBlink-=dt;
+  if(comms.nextBlink<=0){ comms.blinking=0.001; comms.nextBlink=1.8+Math.random()*3.4; }
+  if(comms.blinking!=null){
+    comms.blinking+=dt*7;
+    comms.blink=Math.sin(Math.min(Math.PI,comms.blinking));
+    if(comms.blinking>=Math.PI){ comms.blinking=null; comms.blink=0; }
+  }
+
+  drawFace();
+  const sig=Math.round(72+22*Math.sin(performance.now()/900));
+  $('comms-sig').textContent='SIG '+sig+'%';
+}
+
+function applyGrant(kind){
+  if(kind==='fuel'){ sim.dv=Math.min(DV_START, sim.dv+900); }
+  if(kind==='zone'){
+    if(!ZONES.some(z=>z.id==='LZ-07'))
+      ZONES.push({id:'LZ-07', name:'MAUD STATION', lat:-70.2, lon:23.4});
+  }
+  if(kind==='hazard'){ comms.hazardKnown=true; }
+  if(kind==='solve'){ sim.dv=Math.min(DV_START, sim.dv+250); sim.autoBoost=true; }
+  sndAcquire();
+}
+
+function commsOpen(a){
+  comms.open=true; comms.alien=a; comms.race=RACES[a.race];
+  comms.mouth=0; comms.mouthT=0; comms.blink=0; comms.charAcc=0;
+  $('comms').dataset.open='1';
+  $('comms-src').textContent=comms.race.name+' · '+a.id;
+  $('comms-band').textContent='BAND '+comms.race.band;
+  $('comms-who').textContent=comms.race.name+' — '+comms.race.tag+' — '+a.place;
+  $('viewtools').style.display='none';
+  $('view').classList.add('comms-open');
+  commsResize();
+  commsSetNode('start');
+  sndPing(true);
+}
+function commsClose(){
+  comms.open=false;
+  $('comms').dataset.open='';
+  $('viewtools').style.display='';
+  $('view').classList.remove('comms-open');
+  sndRelay();
+}
+function commsResize(){
+  const cv=$('face'); if(!cv) return;
+  const r=cv.parentElement.getBoundingClientRect();
+  comms.dpr=Math.min(devicePixelRatio||1,2);
+  comms.W=Math.max(1,Math.round(r.width));
+  comms.H=Math.max(1,Math.round(r.height));
+  cv.width=Math.round(comms.W*comms.dpr);
+  cv.height=Math.round(comms.H*comms.dpr);
+  cv.style.width=comms.W+'px'; cv.style.height=comms.H+'px';
+  comms.cv=cv; comms.cx=cv.getContext('2d');
+}
 
 /* ==========================================================================
    AUDIO
@@ -2186,6 +2770,13 @@ function refresh(){
   el.cLon.textContent = fmtLon(lon);
   el.cPer.textContent = isFinite(e.T)? fmtDur(e.T) : '—';
 
+  const hb=$('btn-hail');
+  if(hb){
+    const rdy=!!sim.hailReady && !sim.landed;
+    hb.dataset.on = comms.open ? '1' : rdy ? 'rdy' : 'no';
+    hb.textContent = comms.open ? 'END' : rdy ? 'HAIL' : 'NO SIG';
+  }
+
   $('scan').textContent='SCAN '+pad(sim.found.length,2)+'/'+pad(EMITTERS.length,2);
 
   /* The limb is the lamp; this is its legend. Same colour, same words, so
@@ -2275,6 +2866,15 @@ btnOrbit.node.addEventListener('click',()=>{
   sndRelay();
   btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
 });
+$('btn-hail').addEventListener('click',()=>{
+  if(comms.open){ commsClose(); return; }
+  const a=sim.hailReady;
+  if(!a){ sndKey(); return; }
+  sndRelay();
+  commsOpen(a);
+});
+$('comms-x').addEventListener('click',()=>{ sndKey(); commsClose(); });
+
 $('btn-snd').addEventListener('click',()=>{
   /* The first press is also the user gesture the browser requires before an
      AudioContext may make any sound at all, which is why audio starts off. */
@@ -2528,12 +3128,13 @@ function frame(now){
   }
 
   updateScan(wall);
+  commsTick(wall);
   audioFrame();
   sim.trackAge+=wall;
   if(sim.trackAge>0.6 && !sim.landed) predictTrack();
 
   F=Math.min(W,H)/(2*Math.tan(cam.fov/2));
-  render();
+  if(!comms.open) render();
 
   acc+=wall;
   if(acc>0.1){ acc=0; refresh(); }
@@ -2553,6 +3154,7 @@ addEventListener('pointerdown',()=>{
 },{capture:true});
 $('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
+new ResizeObserver(()=>{ if(comms.open) commsResize(); }).observe($('face-wrap'));
 insertOrbit();
 resize();
 predictTrack();
