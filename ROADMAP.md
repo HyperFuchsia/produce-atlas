@@ -58,6 +58,12 @@ ticked once you have merged it.
 - [ ] E3 · Power is unmodelled. The tube, the array and the drive all draw from something; give the operator the routing decision. · blocked-by: E1
 - [ ] E4 · The boot self-test reports subsystems that do not exist yet. Once E1 lands, make the self-test tell the truth about them. · blocked-by: E1
 
+### G — found while building the hostiles, not yet fixed
+
+- [ ] G1 · An open contest panel suppresses both the ENGAGE hail and any hostile hail, so a contest the operator walks away from silently changes what the primary control does. Measured: ENGAGE routed away from a culture it should have hailed, and a raider sat at 0.0 ly unable to open a channel. · blocked-by:
+- [ ] G2 · Refusing two wreckers back to back cost 100% → 29% hull in two arrivals (10-26% from boarding plus 12-22% of plating). Survivable, and intended to hurt, but it has never been measured against a distribution — establish the curve and decide if it is the one we want. · blocked-by:
+- [ ] G3 · Raider dialogue is one line per outcome per kind: four kinds × four lines. It does not know what you are carrying, whether you have met this kind before, or that you paid last time. Make what they say a function of the manifest they can see. · blocked-by:
+
 ### F — it has to survive being played
 
 - [ ] F1 · The file is 284 kB and growing with every cycle. Establish a size and frame budget, measure it, and report the delta in every pull request from then on. · blocked-by:
@@ -76,6 +82,8 @@ ticked once you have merged it.
 - [x] Appendages, silhouettes, mesh occlusion over features
 - [x] Everything on the plate reports state
 - [x] ENGAGE: one-key travel and a computer that always gets you there
+- [x] Cultural contests — tally, hold, precedence, continuation
+- [x] Hostiles: four kinds, on the scope, with their own dialogue and demands
 
 ---
 

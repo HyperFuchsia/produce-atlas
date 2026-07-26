@@ -49,6 +49,25 @@ the situation does not.
 - An instrument **MUST NOT** lie to make the operator feel better. It may lie
   because it is damaged, and then the damage is the readout.
 
+### 2.2a There is a ceiling on how much may be on screen at once
+This clause exists because its absence was a hole in the charter, and the hole
+was exploited by work that was otherwise perfectly faithful. 2.2 demands that
+every mark report state; it said nothing about **how many** marks. So a build
+that added fifty-two honest readouts to the default view passed every clause
+above and was unplayable — the operator could not find the primary control, and
+said so.
+
+- The default view **MUST NOT** exceed **28** text-bearing or interactive
+  elements at 390×844. Measured, not estimated, in every cycle that touches
+  layout.
+- Every readout beyond that **MUST** live behind progressive disclosure and
+  **MUST** be reachable in one press.
+- A new feature that needs a permanent readout **MUST** either replace one or
+  earn a place by displacing something measurably less used. Adding is not
+  free; the budget is the point.
+- Density is a MUST, not a preference. A faithful console nobody can operate is
+  a failed console.
+
 ### 2.3 It is one self-contained file
 - **MUST** remain a single HTML file with no external assets, no libraries, no
   network requests, no fonts to fetch. A strict CSP blocks all of it anyway.

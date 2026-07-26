@@ -2016,6 +2016,7 @@ const sim={
   clutterAge:0,
   haz:[], field:0, seenHaz:{},
   systems:{}, view:'CHART', aid:{rng:false,brg:false,elv:false}, standing:{},
+  raiders:[],
   stalker:null,
   dead:null, over:false,
   log:[]
@@ -2059,6 +2060,7 @@ function newFlight(){
   sim.standing={}; for(const k in RACES) sim.standing[k]=0;
   approach.open=false; approach.body=null;
   contest.played={}; contest.open=false;
+  sim.raiders=[]; comms.hostile=null;
   const ct=$('contest'); if(ct) ct.hidden=true;
   const ap=$('appr'); if(ap) ap.hidden=true;
   plotReset();
@@ -2390,7 +2392,14 @@ function plotArrive(j){
     logLine('NO SYSTEM AT TERMINUS — ADRIFT');
     sndAlarm();
   }
+  /* Arriving surveys the system, unconditionally. The router treats "we have no
+     bodies for this index" as "nobody has been here", so that has to become
+     false the moment you arrive or the router can be sent back where it came
+     from. */
+  if(sim.at>=0) systemAt(sim.at);
   stalkerAdvance();
+  raidersAdvance(j.d);
+  raiderRoll();
   checkPolicy();
   plot.dirty=true;
   /* You arrived somewhere; look at it. Engaging a system and then having to
@@ -2526,6 +2535,7 @@ function approachOpen(b){
 function approachStow(){
   approach.open=false; approach.body=null;
   contest.played={}; contest.open=false;
+  sim.raiders=[]; comms.hostile=null;
   const ct=$('contest'); if(ct) ct.hidden=true;
   $('appr').hidden=true;
 
@@ -2611,7 +2621,16 @@ function routeStep(){
   const goal=nextGoalStar();
   const opts=reachable().filter(o=>o.d<=sim.fuel && o.d>=MIN_LEG);
   if(!opts.length) return -1;
-  if(goal<0) return opts[opts.length-1].i;
+  /* No culture left to reach. Returning the farthest reachable star was the
+     other half of the ping-pong, because "farthest" is a property of where you
+     are standing and it flips every time you arrive. Route to the nearest
+     system nobody has surveyed instead: arriving surveys it, so the answer can
+     never be the same twice, and unsurveyed is genuinely the next useful thing
+     when there is nobody left to talk to. */
+  if(goal<0){
+    const fresh=opts.filter(o=>!sim.systems[o.i]);
+    return (fresh.length?fresh:opts)[0].i;
+  }
   const direct=opts.find(o=>o.i===goal);
   if(direct) return goal;
   const g=STARS[goal];
@@ -2659,6 +2678,34 @@ function engageSolve(){
 function engageState(){
   if(sim.over)     return {ok:false, why:'VESSEL LOST'};
   if(sim.jumping)  return {ok:false, why:'JUMP RUNNING'};
+
+  /* You are standing in the system the standing order sent you to. Measured:
+     nextGoalStar() skips a culture whose star IS the one you are at, so it
+     returned -1, and routeStep() with no goal returns the FARTHEST reachable
+     star — so pressing the primary control at GLIESE 876 threw the vessel
+     8.88 ly to VAN MAANEN'S STAR, whose route step is GLIESE 876, forever. A
+     fourteen-leg trace ran SOL → LUYTEN → EZ AQUARII → GLIESE 876 and then
+     ping-ponged for the remaining ten legs while the halo ate the hull down
+     to nothing. The control is supposed to do the next useful thing, and the
+     next useful thing when there is somebody here to talk to is to talk to
+     them. */
+  if(!comms.open && !contest.open && sim.at>=0){
+    const ali=ALIENS.find(a=>a.star===here().n);
+    /* But only while there is something left to gain here, and only if this
+       culture is actually learnable yet. Offering the channel until
+       comprehension hit 1 was measured opening the same channel twenty times
+       in twenty-six presses — and a culture whose ladder prerequisite is not
+       met cannot gain at all, so that would have been an infinite loop rather
+       than a slow one. WORKING_FRAC is the same threshold the standing order
+       stops nagging at, so the two agree. */
+    if(ali){
+      const L=LADDER[ali.race], c=comprehension(ali.race);
+      const learnable = !L.prereq || comprehension(L.prereq)>=WORKING_FRAC;
+      if(learnable && (!sim.logged[ali.id] || c<WORKING_FRAC))
+        return {ok:true, hail:ali,
+          why:'OPEN CHANNEL — '+RACES[ali.race].name};
+    }
+  }
   /* A primary control that refuses is a primary control the operator has to
      work around. If the target is stale — because arriving made it stale —
      ENGAGE picks the nearest reachable system rather than complaining. */
@@ -2684,6 +2731,7 @@ function engageState(){
 function engage(){
   const st=engageState();
   if(!st.ok){ sndAlarm(); logLine('ENGAGE REFUSED — '+st.why); refresh(); return; }
+  if(st.hail){ commsOpen(st.hail); refresh(); return; }
   if(st.pick!=null && st.pick!==sim.target){
     sim.target=st.pick;
     plot.rng=Math.round(Math.min(JUMP_MAX,len3(sub3(target().p,here().p)))*100)/100;
@@ -3597,6 +3645,369 @@ const AIDNAME={rng:'RANGE REDUCTION', brg:'BEARING REDUCTION', elv:'PLANE REDUCT
 const AIDFROM={ssrith:'rng', voth:'brg', kelmoran:'elv', unit7:null};
 
 /* ==========================================================================
+   HOSTILES
+   --------------------------------------------------------------------------
+   The cultures out here are mostly indifferent to you. The things that are not
+   indifferent are other operators — unregistered salvage, hull breakers,
+   competing surveys — and the horror of them is not that they are alien. It is
+   that you understand them perfectly. They speak your language, they cite your
+   own paperwork at you, and they are only doing what the licence in your boot
+   sequence says nobody will protect you from.
+
+   They are attracted to what you are carrying. A full tank, a repaired hull and
+   a pocket full of astrogation reductions is a manifest worth filing a claim
+   against, so being successful is what makes you a target — the one pressure in
+   the game that gets worse the better you are doing.
+
+   They are not monsters and they do not lunge. They appear on the sweep as
+   returns with a bearing and a range, they close when you move, and when they
+   reach you they open a channel. What happens then is a negotiation you are
+   losing, and the only real leverage you have is a culture that likes you.
+   ========================================================================== */
+
+const RAIDERS={
+  scav:{
+    name:'SCAVENGER', tag:'UNREGISTERED SALVAGE', col:'#FF9A1F',
+    speed:1.05, takes:'fuel', tribute:8,
+    open:"YOUR MANIFEST IS UNDECLARED. WE ARE FILING A CLAIM ON WHAT YOU ARE CARRYING. STAND OFF AND OPEN YOUR TANKS.",
+    onPay:"CLAIM SETTLED. THE FILING IS WITHDRAWN. YOU WERE NEVER HERE.",
+    onRefuse:"THEN IT IS A RECOVERY RATHER THAN A TRANSFER. HOLD STILL.",
+    onBluff:"WE HAVE NO BUSINESS WITH THAT REGISTRY. DISENGAGING."
+  },
+  wreck:{
+    name:'WRECKER', tag:'HULL BREAKER', col:'#FF3A2C',
+    speed:0.86, takes:'hull', tribute:14,
+    open:"YOU ARE OUTSIDE COVER. NOBODY IS COMING. WE CAN DO THIS WITH YOUR PLATING INTACT OR WITHOUT IT.",
+    onPay:"SENSIBLE. WE WILL LEAVE YOU ENOUGH TO GET SOMEWHERE.",
+    onRefuse:"NOTED. WE WILL OPEN YOU AND TAKE IT ANYWAY.",
+    onBluff:"THAT NAME CARRIES OUT HERE. IT SHOULD NOT, BUT IT DOES. GO."
+  },
+  jumper:{
+    name:'CLAIM JUMPER', tag:'COMPETING SURVEY', col:'#FF52D9',
+    speed:1.32, takes:'bodies', tribute:6,
+    open:"WE HAVE BEEN READING YOUR SWEEP. EVERY BODY YOU HAVE FOUND IS ON OUR PLATE NOW. FILE AGAINST US IF YOU LIKE.",
+    onPay:"A CONSIDERATION. WE WILL LEAVE THIS SYSTEM TO YOU AND TAKE THE NEXT.",
+    onRefuse:"THEN WE WORK IT FIRST. YOU CAN HAVE WHAT IS LEFT.",
+    onBluff:"THEY HAVE STANDING WITH THE ASSEMBLY. THIS IS NOT WORTH A HEARING."
+  },
+  reaver:{
+    name:'REAVER', tag:'NO TRANSPONDER', col:'#EAFBFF',
+    speed:1.0, takes:'records', tribute:20,
+    open:"WE DO NOT WANT YOUR FUEL. WE WANT WHAT YOU HAVE LEARNED TO SAY. HAND OVER THE RECORDS.",
+    onPay:"A FAIR PRICE FOR SOMEBODY ELSE'S WORK.",
+    onRefuse:"THEN WE TAKE THE RECORDS AND LEAVE THE OPERATOR.",
+    onBluff:"YOU HAVE FRIENDS. THAT IS RARE ENOUGH TO RESPECT. THIS TIME."
+  }
+};
+const RAIDER_KEYS=Object.keys(RAIDERS);
+
+/* What you are worth to them. Fuel in the tank, a sound hull, systems you have
+   worked, and every reduction you have been given — the last of these is the
+   most valuable thing aboard and the only one you cannot re-earn quickly. */
+function manifestValue(){
+  const worked=Object.keys(sim.systems||{}).reduce((n,k)=>
+    n+(sim.systems[k]||[]).filter(b=>b.taken).length,0);
+  const aids=['rng','brg','elv'].reduce((n,k)=>n+(sim.aid[k]?1:0),0);
+  const lex=Object.keys(RACES).reduce((n,k)=>n+(sim.lex[k]||0),0);
+  return sim.fuel/TANK*10 + sim.hull/HULL_MAX*6 + worked*1.6 + aids*9 + lex*0.35;
+}
+
+/* Somebody notices. Rolled on arrival, because that is when a drive signature
+   is loudest, and weighted by what you are carrying and whether anyone is
+   obliged to come looking for you. */
+function raiderRoll(){
+  if(sim.over) return;
+  const v=manifestValue();
+  const outside=len3(here().p)>POLICY_LY;
+  const room=Math.max(0, 4-sim.raiders.length);
+  if(!room) return;
+  /* There is a base rate, and then there is what you are worth. The base has to
+     be real: with the value term as the only source, a fresh operator carrying
+     nothing rolled 0.15 and a measured twenty-jump run produced one hostile in
+     twenty arrivals. That is not a hostile universe, it is a rumour of one.
+     0.26 puts the first bracket on the scope inside three or four jumps; the
+     manifest term then takes it to 0.68 for somebody who has been successful,
+     which is the pressure that is supposed to grow. Outside the policy boundary
+     nobody is obliged to come looking for you and it gets worse again. Each
+     hostile already following you damps the roll, so the sky fills up but not
+     all at once. */
+  let p=(0.26+clamp((v-12)/80, 0, 0.42))*(outside?1.55:1);
+  p*=Math.pow(0.55, sim.raiders.length);
+  if(Math.random()>p) return;
+
+  /* Which kind takes an interest depends on what is worth taking. A reaver only
+     bothers with an operator who has something to say. */
+  const pool=[];
+  pool.push('scav','scav');
+  if(sim.hull>55) pool.push('wreck');
+  if(Object.keys(sim.systems||{}).length>2) pool.push('jumper');
+  const aids=['rng','brg','elv'].reduce((n,k)=>n+(sim.aid[k]?1:0),0);
+  if(aids>0 || Object.values(sim.lex).some(n=>n>=LEX_WORKING)) pool.push('reaver');
+  const k=pool[(Math.random()*pool.length)|0];
+
+  /* They come from somewhere real: a bearing off the vehicle, just INSIDE the
+     rim of the sweep, so the first thing that happens is the scope finding
+     them. Measured: spawning outside scanRange() meant the sweep acquired 0 of
+     4 and the first you knew of a hostile was it hailing you at 0.45 ly. That
+     is an ambush, and an ambush makes the radar decorative. At 0.72-0.94 of
+     range the first sweep after arrival puts a bracket on the rim of the
+     scope and you get two to five jumps of watching it close. */
+  const R=scanRange()*(0.72+Math.random()*0.22);
+  const dir=nrm3([Math.random()*2-1, (Math.random()*2-1)*0.35, Math.random()*2-1]);
+  sim.raiders.push({
+    k, id:RAIDERS[k].name.slice(0,2)+'-'+String(1000+((Math.random()*8999)|0)),
+    p:add3(here().p, mul3(dir,R)),
+    seen:false, dist:R, hailed:false, paid:false, node:null
+  });
+  logLine('DRIVE SIGNATURE ANSWERED — UNREGISTERED TRAFFIC');
+  sndTrack();
+}
+
+/* They follow the jump. This has to be measured against the LEG rather than be
+   a flat step, and the reason is a measurement: with a flat 1.6-5 ly step and
+   real legs of 6-8 ly, a twenty-jump run recorded a scavenger closing 9.6 → 5.1
+   → 2.6 ly and then falling back to 7.5 the moment the next jump ran. Running
+   was free and loitering was the only thing that got you caught, which is the
+   exact opposite of a pursuit. So they take the flat step AND a fraction of
+   however far you just flew: your drive signature is what they are steering by,
+   and a long jump is a louder one. */
+function raidersAdvance(legLy){
+  if(sim.over) return;
+  const h=here();
+  const leg=Math.max(0, legLy||0);
+  for(const r of sim.raiders){
+    const R=RAIDERS[r.k];
+    const gap=len3(sub3(h.p,r.p));
+    /* trail: how much of your leg they make up. A claim jumper is reading your
+       sweep and is nearly as fast as you; a wrecker is heavy and falls behind. */
+    const trail=0.44*R.speed;
+    const step=Math.min(gap, (1.6+manifestValue()*0.045)*R.speed + leg*trail);
+    r.p=add3(r.p, mul3(nrm3(sub3(h.p,r.p)), step));
+    r.dist=len3(sub3(h.p,r.p));
+  }
+  raiderContact();
+}
+
+/* And they close while you sit still, slowly. Loitering in a system to work it
+   is the safest thing you can do and it must not be free — a hostile at the rim
+   of the scope is a clock, and the clock has to run whether or not you fly. */
+function raiderDrift(dt){
+  if(sim.over||sim.jumping||!sim.raiders.length) return;
+  const h=here();
+  for(const r of sim.raiders){
+    const gap=len3(sub3(h.p,r.p));
+    if(gap<0.4) continue;
+    /* 0.085 ly a second: a hostile acquired at the rim of the scope reaches you
+       in about a hundred seconds of sitting there, which is roughly how long a
+       system takes to work. So loitering is a decision, not a hiding place. */
+    const step=Math.min(gap-0.4, 0.085*RAIDERS[r.k].speed*dt);
+    r.p=add3(r.p, mul3(nrm3(sub3(h.p,r.p)), step));
+    r.dist=len3(sub3(h.p,r.p));
+  }
+  raiderContact();
+}
+
+/* Anything that has reached you opens a channel. One at a time — a queue of
+   hostiles all shouting at once is noise, not pressure. */
+function raiderContact(){
+  const at=sim.raiders.filter(r=>r.dist<0.45 && !r.paid);
+  if(at.length && !comms.open && !contest.open && !sim.landed) raiderHail(at[0]);
+  sim.raiders=sim.raiders.filter(r=>r.dist<scanRange()*3.2);
+}
+
+/* --- the channel ---------------------------------------------------------
+   Reuses the transmission panel, because it IS a transmission — but there is
+   no script to transcribe and no comprehension to earn. You understand every
+   word, which is the point. */
+function raiderHail(r){
+  if(sim.over||comms.open) return;
+  const R=RAIDERS[r.k];
+  comms.hostile=r;
+  comms.open=true; comms.alien=null; comms.race=null;
+  comms.text=R.open; comms.raw=R.open; comms.shown=0; comms.done=false;
+  comms.spoken=0; comms.speakAt=0; comms.charAcc=0;
+  comms.mouth=0; comms.mouthT=0;
+  r.hailed=true;
+  $('comms').dataset.open='1';
+  $('comms-src').textContent=R.name+' · '+r.id;
+  $('comms-band').textContent='OPEN VOICE';
+  const sb=$('comms-stand');
+  if(sb){ sb.textContent='HOSTILE'; sb.style.color=R.col; sb.style.borderColor=R.col; }
+  $('comms-who').textContent=R.name+' — '+R.tag+' — '+r.dist.toFixed(2)+' LY';
+  $('comms-raw').textContent='';
+  $('comms-eng').textContent='';
+  $('comms-opts').innerHTML='';
+  $('view').classList.add('comms-open');
+  commsResize();
+  sndAlarm();
+  logLine('HAILED BY '+R.name+' '+r.id);
+}
+
+/* What you can do about it. Paying is cheap and teaches them you pay. Refusing
+   costs whatever they came for. And the only real leverage is that somebody out
+   here is willing to be named on your behalf — which is what all that courtesy
+   was for. */
+function raiderOptions(){
+  const r=comms.hostile, R=RAIDERS[r.k];
+  const box=$('comms-opts');
+  box.innerHTML='';
+  const add=(label,court,fn)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    if(court) b.dataset.court=court;
+    b.innerHTML='<b>'+(box.children.length+1)+'</b>'+label;
+    b.addEventListener('click',()=>{ sndKey(); fn(); });
+    box.appendChild(b);
+  };
+
+  const canPay=sim.fuel>=R.tribute;
+  add(canPay ? 'PAY TRIBUTE — '+R.tribute.toFixed(0)+' LY OF FUEL'
+             : 'PAY TRIBUTE — INSUFFICIENT FUEL', canPay?'good':'bad',
+      ()=>canPay?raiderResolve('pay'):raiderSay('WE CAN SEE YOUR TANKS. DO NOT INSULT US.'));
+
+  /* Name a culture that will vouch for you. Trusted only — civil is not enough
+     to be worth a hostile's trouble. */
+  const backer=Object.keys(RACES).find(k=>standingOf(k).v>=4);
+  if(backer) add('INVOKE '+RACES[backer].name, 'good', ()=>raiderResolve('bluff',backer));
+  else add('INVOKE A PATRON — NONE WILL VOUCH', 'bad',
+      ()=>raiderSay('YOU HAVE NOBODY. WE CHECKED BEFORE WE CAME.'));
+
+  add('REFUSE', 'bad', ()=>raiderResolve('refuse'));
+}
+
+function raiderSay(t){
+  comms.text=t; comms.raw=t; comms.shown=0; comms.done=false;
+  comms.spoken=0; comms.speakAt=0; comms.charAcc=0;
+  $('comms-raw').textContent=''; $('comms-eng').textContent='';
+  $('comms-opts').innerHTML='';
+}
+
+function raiderResolve(kind, backer){
+  const r=comms.hostile, R=RAIDERS[r.k];
+  if(kind==='pay'){
+    sim.fuel=Math.max(0, sim.fuel-R.tribute);
+    r.paid=true;
+    logLine('TRIBUTE PAID — '+R.tribute.toFixed(0)+' LY TO '+r.id);
+    raiderSay(R.onPay);
+    /* Paying works and it spreads. Somebody tells somebody. */
+    sim.heat+=1.2;
+    setTimeout(()=>{ if(comms.open) raiderDepart(r); }, 2600);
+    return;
+  }
+  if(kind==='bluff'){
+    r.paid=true;
+    logLine(RACES[backer].name+' INVOKED — '+r.id+' DISENGAGED');
+    raiderSay(R.onBluff);
+    setTimeout(()=>{ if(comms.open) raiderDepart(r); }, 2600);
+    return;
+  }
+  /* Refusal. They take what they came for and they hurt you doing it. */
+  raiderSay(R.onRefuse);
+  const loss=raiderTake(R.takes);
+  logLine('BOARDED BY '+r.id+' — '+loss);
+  damage(10+Math.random()*16, R.name+' '+r.id);
+  r.paid=true;
+  setTimeout(()=>{ if(comms.open&&!sim.over) raiderDepart(r); }, 2800);
+}
+
+/* What each kind actually takes. The records are the cruel one: a reduction is
+   nine tenths of an hour of somebody's diplomacy and it goes in a moment. */
+function raiderTake(what){
+  if(what==='fuel'){
+    const n=Math.min(sim.fuel, 6+Math.random()*10);
+    sim.fuel-=n; return n.toFixed(1)+' LY OF FUEL TAKEN';
+  }
+  if(what==='hull'){
+    /* A wrecker is not after cargo. It cuts plating off a working vessel and
+       sells it, which is why it is the only one that leaves you slower rather
+       than poorer: the array reads shorter on a thinner hull. */
+    const n=Math.min(sim.hull-6, 12+Math.random()*10);
+    if(n<=0) return 'NOTHING LEFT WORTH CUTTING';
+    sim.hull-=n; return n.toFixed(0)+'% OF PLATING CUT AWAY';
+  }
+  if(what==='bodies'){
+    let n=0;
+    for(const k in sim.systems)
+      for(const b of sim.systems[k]) if(!b.taken && Math.random()<0.55){ b.taken=true; n++; }
+    return n+' BODIES WORKED OUT FROM UNDER YOU';
+  }
+  /* Records: a reduction first, because that is what they came for, and a
+     culture's lexicon if there is no reduction left to take. */
+  const aid=['rng','brg','elv'].filter(k=>sim.aid[k]);
+  if(aid.length){
+    const k=aid[(Math.random()*aid.length)|0];
+    sim.aid[k]=false;
+    return AIDNAME[k]+' RECORDS TAKEN';
+  }
+  const race=Object.keys(RACES).filter(k=>(sim.lex[k]||0)>3)
+    .sort((a,b)=>(sim.lex[b]||0)-(sim.lex[a]||0))[0];
+  if(race){
+    const lost=Math.ceil(sim.lex[race]*0.4);
+    sim.lex[race]-=lost;
+    return lost+' '+RACES[race].name+' GLYPHS LOST';
+  }
+  return 'NOTHING WORTH TAKING';
+}
+
+function raiderDepart(r){
+  sim.raiders=sim.raiders.filter(x=>x!==r);
+  comms.hostile=null;
+  commsClose();
+  refresh();
+}
+
+/* --- on the plate --------------------------------------------------------
+   They are returns on a sweep, with a bearing and a range, drawn in the colour
+   of what they are. Nothing about the mark is dramatic; the range is the drama.
+*/
+function drawRaiders(){
+  if(sim.jumping) return;
+  for(const r of sim.raiders){
+    if(!r.seen) continue;
+    const q=project(r.p);
+    if(!q) continue;
+    const R=RAIDERS[r.k];
+    const close=r.dist<1.6;
+    const k=0.5+0.5*Math.sin(sim.t*(close?5.2:2.1));
+    /* A hard bracket rather than a ring: these are vessels, and the chart
+       already spends rings on stars and hazards.
+
+       All four corners are ONE path with ONE glow. Measured: four separately
+       shadowed strokes per mark cost 51 → 38 fps at 1280x900 with four
+       hostiles up, because canvas shadowBlur is per-stroke and there were
+       sixteen of them a frame. Batched it is 51 → 50. */
+    const s=9+k*4;
+    ctx.strokeStyle=R.col;
+    ctx.lineWidth=close?1.6:1.2;
+    ctx.shadowColor=R.col; ctx.shadowBlur=close?8:4;
+    ctx.beginPath();
+    for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+      ctx.moveTo(q.x+sx*s, q.y+sy*s-sy*s*0.45);
+      ctx.lineTo(q.x+sx*s, q.y+sy*s);
+      ctx.lineTo(q.x+sx*s-sx*s*0.45, q.y+sy*s);
+    }
+    ctx.stroke();
+    ctx.shadowBlur=0;
+    claimLabel(r.id+'  '+r.dist.toFixed(2)+' LY', q.x+s+6, q.y, R.col, close);
+  }
+}
+
+/* The threat board. It replaces nothing — the CONTACT tile already existed and
+   said NONE for the whole first minute; now it counts what the sweep has found
+   and names the nearest, which is the only one you can do anything about. */
+function threatText(){
+  const seen=sim.raiders.filter(r=>r.seen);
+  const stk=sim.stalker;
+  if(!seen.length && !(stk&&stk.seen)) return {t:'CLEAR', a:''};
+  if(stk&&stk.seen&&stk.close<(seen[0]?seen[0].dist:99))
+    return {t:'UNRESOLVED '+stk.close.toFixed(1), a:'1'};
+  seen.sort((a,b)=>a.dist-b.dist);
+  const n=seen.length;
+  return {t:(n>1?n+' · ':'')+seen[0].id+' '+seen[0].dist.toFixed(1),
+          a:seen[0].dist<2?'1':'2'};
+}
+
+/* ==========================================================================
    SURVEY SWEEP
    The sensor turns through bearing as before, but the footprint is now a
    sphere of radius SCAN_LY around the vehicle rather than a horizon circle,
@@ -3673,6 +4084,24 @@ function updateScan(dt){
     logLine('FIELD CONTACT '+hz.id+' — '+HAZ[hz.k].label);
     sndTrack();
     plot.dirty=true;
+  }
+
+  /* Unregistered traffic. Found the same way a star is — the sweep line crosses
+     its bearing — so a hostile you have not swept is a hostile you do not know
+     about, and the sweep is what the whole radar is for. */
+  for(const rd of sim.raiders){
+    rd.dist=len3(sub3(h.p,rd.p));
+    if(rd.dist>scanRange()) continue;
+    let b4=Math.atan2(rd.p[2]-h.p[2], rd.p[0]-h.p[0]); if(b4<0) b4+=2*Math.PI;
+    let a0=sim.sweepPrev, a1=sim.sweep; if(a1<a0) a1+=2*Math.PI;
+    let bb=b4; if(bb<a0) bb+=2*Math.PI;
+    if(bb<a0||bb>a1) continue;
+    if(!rd.seen){
+      rd.seen=true;
+      logLine('CONTACT '+rd.id+' — '+RAIDERS[rd.k].name+' '+rd.dist.toFixed(2)+' LY');
+      sndAlarm();
+    }
+    sim.pings.push({si:-1, t0:now, life:1.3, threat:true, p:rd.p});
   }
 
   /* And whatever is behind you. It is detected the same way, and identified
@@ -3934,6 +4363,7 @@ function render(){
     drawPings();
     drawXeno();
     drawStalker();
+    drawRaiders();
     drawCorridor();
     drawTransient();
     drawAcquire();
@@ -4711,6 +5141,51 @@ function computeEnvelope(race){
   return ENVELOPE[race];
 }
 
+/* A hostile vessel, not a creature. Hard plate, running lights, an open cargo
+   maw and a docking spine — all quantised, because it was welded rather than
+   grown, and drawn head-on because it is pointed at you. */
+function drawHull(){
+  const cx=comms.cx; if(!cx) return;
+  const R=RAIDERS[comms.hostile.k];
+  const t=performance.now()/1000;
+  cx.setTransform(comms.dpr,0,0,comms.dpr,0,0);
+  cx.clearRect(0,0,comms.W,comms.H);
+  const S=Math.min(comms.W,comms.H)*0.34;
+  const ox=comms.W/2, oy=comms.H/2;
+  const col=R.col;
+  const line=(pts,w,g,a)=>{
+    cx.strokeStyle=a==null?col:col; cx.globalAlpha=a==null?1:a;
+    cx.lineWidth=w; if(g){ cx.shadowColor=col; cx.shadowBlur=g; }
+    cx.beginPath();
+    pts.forEach((p,i)=>i?cx.lineTo(ox+p[0]*S,oy+p[1]*S):cx.moveTo(ox+p[0]*S,oy+p[1]*S));
+    cx.stroke(); cx.shadowBlur=0; cx.globalAlpha=1;
+  };
+  /* The hull: a blunt wedge, wider than tall, with cut corners. */
+  line([[-1,-.34],[-.62,-.62],[.62,-.62],[1,-.34],[1,.34],[.62,.62],[-.62,.62],[-1,.34],[-1,-.34]],1.7,8);
+  /* Plating seams, on the eighths, because that is how it was assembled. */
+  for(let i=-3;i<=3;i++) line([[i*0.25,-.6],[i*0.25,.6]],1,0,0.30);
+  for(const y of [-.34,0,.34]) line([[-1,y],[1,y]],1,0,0.22);
+  /* The maw. It is open, and it is bigger than it needs to be. */
+  line([[-.42,.12],[-.30,-.14],[.30,-.14],[.42,.12],[-.42,.12]],1.4,6);
+  for(let i=-2;i<=2;i++) line([[i*0.15,-.14],[i*0.15+0.04,.12]],1,0,0.55);
+  /* A docking spine, reaching toward you. */
+  line([[0,.12],[0,.52]],2,7);
+  line([[-.09,.52],[.09,.52]],1.6,5);
+  /* Running lights, out of phase, because nothing here is synchronised. */
+  for(let i=0;i<6;i++){
+    const x=-0.86+i*0.345, k=0.35+0.65*Math.abs(Math.sin(t*1.4+i*1.1));
+    cx.fillStyle=col; cx.globalAlpha=k; cx.shadowColor=col; cx.shadowBlur=8;
+    cx.fillRect(ox+x*S-1.5, oy-0.66*S-1.5, 3,3);
+    cx.shadowBlur=0; cx.globalAlpha=1;
+  }
+  /* Range, printed on the plate, because it is the only number that matters. */
+  cx.font='9px '+getComputedStyle(document.body).fontFamily;
+  cx.fillStyle=col; cx.textAlign='center';
+  cx.fillText(comms.hostile.id+'  ·  '+comms.hostile.dist.toFixed(2)+' LY',
+              ox, oy+0.86*S);
+  cx.textAlign='left';
+}
+
 function drawLimbs(t,open){
   const race=comms.alien.race;
   const set=LIMBS[race]||[];
@@ -4978,6 +5453,7 @@ function drawFaceMouth(t,open){
 }
 
 function drawFace(){
+  if(comms.hostile){ drawHull(); return; }
   const r=comms.race; if(!r||!comms.cx) return;
   const c=comms.cx, t=performance.now()/1000;
   c.setTransform(comms.dpr,0,0,comms.dpr,0,0);
@@ -5181,6 +5657,13 @@ function commsSpeak(seg){
 function commsTick(dt){
   if(!comms.open) return;
   const r=comms.race;
+  /* A hostile channel draws a hull rather than a face, and its strength is not
+     a function of catalogue distance — it is right there. */
+  if(comms.hostile){
+    comms.sig=Math.round(96+3*Math.sin(performance.now()/700));
+    $('comms-sig').textContent='SIG '+comms.sig+'%';
+    comms.glitchRate=0.002;
+  }
 
   /* The translation trails the signal by a fixed number of characters, so
      you watch English resolve behind the glyphs rather than beside them. */
@@ -5209,11 +5692,44 @@ function commsTick(dt){
       comms.mouthT=viseme(ch);
       /* The alien sounds out its own glyph — the sound belongs to the
          character on the wire, not to the English behind it. */
-      if(ch.trim() && comms.shown % r.voice.rate === 0){
+      if(ch.trim() && comms.shown % (r?r.voice.rate:3) === 0 && !comms.hostile)
         sndVoice(comms.alien.race, comms.raw[comms.shown-1]);
-      }
     }
 
+    /* A hostile transmits in the open, in your language. There is nothing to
+       transcribe and nothing to decode, so the signal line carries the voice
+       itself and the translation line stays empty — the readout says plainly
+       that no translator was involved. */
+    if(comms.hostile){
+      $('comms-raw').textContent=comms.text.slice(0,comms.shown);
+      $('comms-eng').textContent='';
+      /* And it is spoken, in full, with no dropout anywhere in it. Every other
+         voice in this game arrives in pieces you have to earn; this one does
+         not. The synthesiser is the same one — which is the horror of it. The
+         thing you built to make strangers comprehensible works perfectly on
+         somebody who wants your fuel. */
+      const said=comms.text.slice(0,comms.shown).replace(/\S*$/,'');
+      if(said.length>(comms.spoken||0)){
+        const seg=said.slice(comms.spoken||0);
+        comms.spoken=said.length;
+        if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+      }
+      if(comms.shown>=comms.text.length){
+        if((comms.spoken||0)<comms.text.length){
+          const seg=comms.text.slice(comms.spoken||0);
+          comms.spoken=comms.text.length;
+          if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+        }
+        comms.settle=(comms.settle||0)+dt;
+        const rest0 = snd.ctx ? Math.max(0,(comms.speakAt||0)-snd.ctx.currentTime) : 0;
+        if(comms.settle>0.2 && rest0<=0.05){
+          comms.done=true; comms.mouthT=0; comms.settle=0;
+          if(comms.hostile.paid) $('comms-opts').innerHTML='';
+          else raiderOptions();
+        }
+      }
+      return;
+    }
     $('comms-raw').textContent=comms.raw.slice(Math.max(0,comms.shown-WIN),comms.shown);
     const eng=comms.text.slice(0,Math.max(0,comms.shown-LAG));
     /* Only what you can read resolves. The rest stays in their script, in
@@ -5272,6 +5788,7 @@ function commsTick(dt){
   /* Strength falls with real distance to the transmitting system, so
      standing in it is a clean channel and hailing from six light years out
      is not. */
+  if(comms.hostile) return;
   const si=STARS.findIndex(st=>st.n===comms.alien.star);
   const ly = si<0 ? 0 : starDist(here(),STARS[si]);
   const base=clamp(97-ly*6.2,16,97);
@@ -5352,6 +5869,7 @@ function commsOpen(a){
 }
 function commsClose(){
   comms.open=false;
+  comms.hostile=null;
   /* Cut the readback dead. A translator that keeps talking after the channel
      is shut is a bug you can hear. */
   if(snd.speech && snd.ctx){
@@ -6798,15 +7316,15 @@ function refresh(){
   /* Until the sweep has actually found it there is nothing to report, and the
      plate does not hint. A readout that warns you about something it cannot
      see is a readout that is lying to make you feel better. */
-  const stk=sim.stalker;
-  el.heat.innerHTML = (stk&&stk.seen) ? stk.close.toFixed(2)+' <small>LY</small>' : 'NONE';
+  const th=threatText();
+  el.heat.innerHTML = th.t;
   el.miss.innerHTML = pad(Object.keys(sim.logged).length,1)+' / '+pad(ALIENS.length,1);
 
   alertOf(el.ap).dataset.alert = ok ? '' : d>JUMP_MAX ? '1' : '2';
   alertOf(el.pe).dataset.alert = sim.fuel<9 ? '1' : sim.fuel<18 ? '2' : '';
   alertOf(el.g).dataset.alert  = sim.hull<25 ? '1' : sim.hull<60 ? '2' : '';
   alertOf(el.dv).dataset.alert = sim.air<15 ? '1' : sim.air<35 ? '2' : '';
-  alertOf(el.heat).dataset.alert = !(stk&&stk.seen) ? '' : stk.close<4 ? '1' : '2';
+  alertOf(el.heat).dataset.alert = th.a;
   alertOf(el.miss).dataset.alert = Object.keys(sim.logged).length===ALIENS.length ? '' : '2';
 
   el.met.textContent=fmtClock(sim.t);
@@ -7364,6 +7882,7 @@ function frame(now){
 
   if(!sim.landed) stepNav(wall);
   updateScan(wall);
+  raiderDrift(wall);
   commsTick(wall);
   audioFrame();
   updatePhase();
