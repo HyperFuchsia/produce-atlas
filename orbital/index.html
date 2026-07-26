@@ -352,6 +352,25 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    is drawn ON the tube — scanlines, grille and vignette fall across it the
    same as everything else.
    -------------------------------------------------------------------------- */
+/* The next useful action, always. Not a hint system — a standing order, which
+   is what this console would have had. */
+.box--task{
+  border-color:var(--grid); color:var(--grid);
+  max-width:44vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.box--task[data-urgent="1"]{border-color:var(--hot);color:var(--hot)}
+.box--task[data-urgent="2"]{border-color:var(--ship);color:var(--ship)}
+#ctl .key--go{border-color:var(--grid);color:var(--grid)}
+#ctl .key .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ctl .key--go[data-on="1"]{box-shadow:0 0 16px rgba(34,255,136,.45)}
+#ctl .key--go[data-on="bad"]{border-color:var(--hot);color:var(--hot)}
+#ctl .key--xeno[data-live="rdy"]{
+  border-color:var(--contact); color:var(--white);
+  box-shadow:0 0 18px rgba(255,82,217,.6);
+  animation:xeno-att 1.6s steps(2,end) infinite;
+}
+@keyframes xeno-att{0%,100%{opacity:1}50%{opacity:.72}}
+
 #comms{
   position:absolute; inset:0; z-index:2;
   display:none;
@@ -770,6 +789,15 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 #report.bad #rep-epitaph{color:var(--hot);opacity:.85}
 
 #lex{border:var(--hair) solid var(--frame-dim);padding:5px 6px;display:grid;gap:2px}
+/* Scoped through #lex so it cannot lose to the .lexrow rules further down the
+   sheet. A narrow readout has no room for a bar as well as a number, and the
+   number is the one that says how much of the language you have. */
+@media (max-width:520px){
+  #lex .lexrow{grid-template-columns:minmax(0,1fr) auto}
+  #lex .lexrow .nm{overflow:hidden;text-overflow:ellipsis}
+  #lex .lexrow .bar{display:none}
+  #lex .lexrow .st{font-size:9px;letter-spacing:.04em}
+}
 #lex .hd{
   font-size:9px;letter-spacing:.18em;color:var(--frame);
   border-bottom:var(--hair) solid var(--frame-dim);padding-bottom:3px;margin-bottom:2px;
@@ -785,6 +813,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 }
 .lexrow .bar{
   display:block;width:40px;height:6px;
+  flex:none;
   border:var(--hair) solid var(--frame-dim);position:relative;
 }
 .lexrow .bar i{position:absolute;left:0;top:0;bottom:0;background:currentColor;display:block}
@@ -907,6 +936,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     <span class="box box--ship" id="scan">SCAN 00/28</span>
     <span class="box" id="limbstat">VACUUM</span>
     <span class="spacer"></span>
+    <span class="box box--task" id="task">SELECT A SYSTEM</span>
     <span class="box" id="met">T+00:00:00</span>
   </header>
 
@@ -1085,13 +1115,14 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== CONTROLS ==================== -->
   <section id="ctl">
+    <button class="key key--go" id="k-go">ENGAGE<span class="sub" id="go-lbl">SELECT A SYSTEM</span></button>
+    <button class="key" id="k-near">NEAREST<span class="sub" id="near-lbl">IN RANGE</span></button>
     <button class="key" id="k-prev">◀ PREV<span class="sub">TARGET</span></button>
     <button class="key" id="k-next">NEXT ▶<span class="sub">TARGET</span></button>
-    <button class="key" id="k-near">NEAREST<span class="sub" id="near-lbl">IN RANGE</span></button>
-    <button class="key" id="k-scoop">SCOOP<span class="sub" id="scoop-lbl">FUEL</span></button>
-    <button class="key" id="k-jump">JUMP<span class="sub" id="jump-lbl">—</span></button>
-    <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
+    <button class="key" id="k-scoop">APPROACH<span class="sub" id="scoop-lbl">FUEL</span></button>
     <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">ROUTE</span></button>
+    <button class="key" id="k-jump">PLOT<span class="sub" id="jump-lbl">—</span></button>
+    <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
     <button class="key key--hot" id="k-reset">RESET<span class="sub">NEW SURVEY</span></button>
     <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
@@ -1407,6 +1438,7 @@ const TALK={
    the noise, never enough for a sentence.
    ========================================================================== */
 
+const WORKING_FRAC = 0.66; // comprehension that counts as holding a conversation
 const LEX_FLOOR   = 6;     // glyphs obtainable with no prerequisite
 const LEX_WORKING = 20;    // glyphs that count as being able to hold a conversation
 const LEX_GAIN    = 5;     // glyphs per completed exchange
@@ -1630,7 +1662,7 @@ const TANK      = 42;     // light years of capacity
 const SCAN_LY   = 11.0;   // transmission detection radius
 const JUMP_SECS = 2.6;    // how long a jump takes to run
 
-const AIR_SECS  = 1500;   // twenty-five minutes of air, idling
+const AIR_SECS  = 2700;   // forty-five minutes of air, idling
 const HULL_MAX  = 100;
 
 /* --- vectors, because a corridor is a line and a hazard is a volume ------ */
@@ -1671,9 +1703,9 @@ function pointSeg(p,a,b){
    given the same field identifier fly the same field — which is what makes it
    a chart rather than a slot machine. */
 const HAZ={
-  stream:{ label:'DEBRIS STREAM', density:34, col:'#FF3A2C' },
-  swarm: { label:'METEOR SWARM',  density:26, col:'#FF9A1F' },
-  hulk:  { label:'DRIFTING HULK', density:78, col:'#FF52D9' }
+  stream:{ label:'DEBRIS STREAM', density:22, col:'#FF3A2C' },
+  swarm: { label:'METEOR SWARM',  density:17, col:'#FF9A1F' },
+  hulk:  { label:'DRIFTING HULK', density:52, col:'#FF52D9' }
 };
 
 function lcg(seed){ let s=(seed>>>0)||1; return ()=>{ s=(s*1664525+1013904223)>>>0; return s/4294967296; }; }
@@ -1694,7 +1726,7 @@ function seedHazards(seed){
      started. Nothing is seeded inside it, so the first jump out is safe and
      the operator gets to learn the plot before the field starts costing them
      hull. Everything past it is unsurveyed, and unsurveyed is the point. */
-  const CHARTED=5.2;
+  const CHARTED=7.0;
   const mid=()=>{
     for(let k=0;k<40;k++){
       const [i,j]=pairs[(r()*pairs.length)|0];
@@ -1822,6 +1854,7 @@ function newFlight(){
   sim.wasOutside=false;
   sim.systems={}; sim.view='CHART';
   sim.aid={rng:false, brg:false, elv:false};
+  sim.corridorWarned=false;
   sim.standing={}; for(const k in RACES) sim.standing[k]=0;
   approach.open=false; approach.body=null;
   const ap=$('appr'); if(ap) ap.hidden=true;
@@ -1845,7 +1878,7 @@ function spendAir(secs){
   if(sim.air<=0) die('ANOXIA','ATMOSPHERE EXHAUSTED');
 }
 function airRate(){
-  return 1 + 1.4*(1-sim.hull/HULL_MAX) + (sim.scanOn?0.35:0);
+  return 1 + 1.0*(1-sim.hull/HULL_MAX) + (sim.scanOn?0.15:0);
 }
 function damage(n,cause){
   if(sim.over||n<=0) return;
@@ -1867,6 +1900,7 @@ function raiseHeat(n){
     const h=here();
     const away=STARS.map((st,i)=>({i,d:starDist(h,st)})).sort((a,b)=>b.d-a.d)[0];
     sim.stalker={p:STARS[away.i].p.slice(), seen:false, close:0, contact:0};
+    logLine('SOMETHING ANSWERED THE HAIL. IT IS NOT ON THE CATALOGUE.');
     logLine('UNSCHEDULED RETURN ON HAIL BEARING');
   }
 }
@@ -2057,7 +2091,7 @@ function plotSolve(){
   plot.elv=Math.round(plot.elv*10)/10;
   plot.rng=Math.round(plot.rng*100)/100;
   plot.solved=true; plot.dirty=true;
-  spendAir(14);
+  spendAir(6);
   sndData(260);
   const un=['rng','brg','elv'].filter(a=>!sim.aid[a]);
   logLine(un.length ? 'SOLUTION PARTIAL — NO REDUCTION FOR '+un.map(a=>a.toUpperCase()).join('/')
@@ -2145,7 +2179,7 @@ function plotArrive(j){
     sim.at=j.to; sim.pos=null;
     /* Missing the centre means arriving inside whatever the system has not
        swept up. It scales with how badly you missed. */
-    const d=8+70*(j.res-PLOT_CLEAN)/(PLOT_EDGE-PLOT_CLEAN);
+    const d=3+18*(j.res-PLOT_CLEAN)/(PLOT_EDGE-PLOT_CLEAN);
     logLine('HALO ENTRY — DEBRIS CONTACT ON ARRIVAL');
     damage(d,'ARRIVAL THROUGH SYSTEM HALO');
   }else{
@@ -2156,6 +2190,10 @@ function plotArrive(j){
   stalkerAdvance();
   checkPolicy();
   plot.dirty=true;
+  /* You arrived somewhere; look at it. Engaging a system and then having to
+     find the button that shows you the system is a step that exists for no
+     reason. */
+  if(sim.at>=0 && !sim.over) setView('LOCAL');
 }
 
 /* ==========================================================================
@@ -2303,7 +2341,7 @@ function approachRun(){
   const d=approachDamage(b,approach.alt);
   /* Time in the well. Deeper is slower, and time is the thing you have least
      of. */
-  spendAir(26+34/Math.max(approach.alt,0.12));
+  spendAir(14+16/Math.max(approach.alt,0.12));
   b.taken=true; b.scanned=true;
   const B=BODY[b.k];
   let got='';
@@ -2322,6 +2360,139 @@ function approachRun(){
   if(d>0){ logLine('APPROACH BELOW FLOOR — '+b.id); damage(d,'ATMOSPHERIC ENTRY AT '+b.id); }
   approachStow();
   refresh();
+}
+
+/* ==========================================================================
+   ENGAGE
+   --------------------------------------------------------------------------
+   One key that gets you there. Pick a system, press it, arrive.
+
+   The astrogation computer can always fly a course — that is what an
+   astrogation computer is for, and a vehicle that could not reach the next
+   star would not have left. What the cultures teach is not whether it works
+   but how tightly: with no reductions the computer puts you in the system's
+   halo and you take debris on the way in, and each reduction closes that up
+   until it puts you on the pad. So the mathematics is a difficulty curve
+   rather than a wall, the manual plot is still there for anyone who wants a
+   clean arrival before they have earned one, and nobody is ever stuck.
+   ========================================================================== */
+
+/* How good the computer's own answer is, 0 (unaided) to 1 (fully taught). */
+function aidLevel(){
+  const n=['rng','brg','elv'].reduce((a,k)=>a+(sim.aid[k]?1:0),0);
+  return n/3;
+}
+
+/* The residual the computer will hit, before hull damage is applied.
+
+   Measured against the arrival bands rather than guessed: unaided this
+   straddles the clean/halo boundary, so about half of unaided arrivals are
+   clean and the rest cost a few percent of hull. Each reduction moves the
+   whole distribution inside clean. The point is that an untaught operator is
+   always ABLE to travel and merely arrives untidily — a computer that put you
+   in the halo every single time would kill a new player in four jumps, which
+   is what it did before this was measured. */
+function autoResidual(){
+  const a=aidLevel(), k=plotDrift();
+  const base=(1-a)*0.055 + 0.010;
+  return base*(1+k*k*1.6);
+}
+
+function engageSolve(){
+  const d=sub3(target().p, here().p);
+  const s=vecHeading(d);
+  const err=autoResidual();
+  /* Spread the error over the two angles and the range so it reads as a
+     sloppy solution rather than as a systematically short one. */
+  const ang=err/Math.max(0.6,s.rng)*DEG;
+  const r=()=>(Math.random()*2-1);
+  plot.brg=(s.brg + r()*ang*0.8 + 360)%360;
+  plot.elv=clamp(s.elv + r()*ang*0.8, -90, 90);
+  plot.rng=clamp(s.rng + r()*err*0.5, 0, JUMP_MAX);
+  plot.dirty=true; plot.solved=true;
+  plotUpdate();
+}
+
+/* What ENGAGE will do, computed before it is pressed so the key can say so. */
+function engageState(){
+  if(sim.over)     return {ok:false, why:'VESSEL LOST'};
+  if(sim.jumping)  return {ok:false, why:'JUMP RUNNING'};
+  if(sim.target===sim.at) return {ok:false, why:'ALREADY HERE'};
+  const d=jumpKm();
+  if(d>JUMP_MAX) return {ok:false, why:'TOO FAR — USE AUTO'};
+  if(d>sim.fuel) return {ok:false, why:'NEEDS '+d.toFixed(1)+' LY FUEL'};
+  const res=autoResidual();
+  const band = res<=PLOT_CLEAN ? 'CLEAN' : res<=PLOT_EDGE ? 'HALO' : 'WIDE';
+  return {ok:true, why:d.toFixed(2)+' LY · '+band, res};
+}
+
+/* Press it and go. Everything the manual plot does, done for you: solve,
+   check the corridor, commit. */
+function engage(){
+  const st=engageState();
+  if(!st.ok){ sndAlarm(); logLine('ENGAGE REFUSED — '+st.why); refresh(); return; }
+  if(plot.open) plotStow();
+  if(approach.open) approachStow();
+  engageSolve();
+  /* Warn once about a corridor the survey has actually seen, rather than
+     silently flying into it. The second press goes anyway. */
+  const seen=plotVisibleDamage();
+  if(seen>12 && !sim.corridorWarned){
+    sim.corridorWarned=true;
+    const w=plotVisibleHits()[0];
+    logLine('CORRIDOR CROSSES '+w.h.id+' — ENGAGE AGAIN TO ACCEPT');
+    sndAlarm(); refresh(); return;
+  }
+  sim.corridorWarned=false;
+  logLine('ENGAGED '+target().n+' — '+plot.rng.toFixed(2)+' LY');
+  plotExecute();
+  refresh();
+}
+
+/* --- the standing order --------------------------------------------------
+   One line that always says the next useful thing. It is not a hint system:
+   it is the order the vessel is out here under, restated against whatever the
+   state currently is, which is what the panel would have shown. */
+function objective(){
+  if(sim.over)    return {t:'VESSEL LOST — RESET FOR A NEW ONE', u:'1'};
+  if(sim.jumping) return {t:'JUMP RUNNING', u:''};
+  if(comms.open)  return {t:'TRANSMISSION OPEN — CHOOSE A REPLY', u:''};
+
+  if(sim.air<18)  return {t:'AIR CRITICAL — WORK AN ICE BODY', u:'1'};
+  if(sim.hull<25) return {t:'HULL CRITICAL — WORK A ROCK OR IRON WORLD', u:'1'};
+  const stk=sim.stalker;
+  if(stk&&stk.seen&&stk.close<2.5) return {t:'PROXIMITY — JUMP NOW', u:'1'};
+
+  if(sim.at<0)    return {t:'ADRIFT — PICK A SYSTEM AND ENGAGE', u:'2'};
+
+  /* Standing in a system with a culture in it. */
+  const ali=ALIENS.find(a=>a.star===here().n);
+  if(ali){
+    const c=comprehension(ali.race);
+    if(!sim.logged[ali.id]) return {t:'CULTURE HERE — OPEN CHANNEL', u:''};
+    if(c<WORKING_FRAC)      return {t:'HAIL AGAIN — '+RACES[ali.race].name+' '+Math.round(c*100)+'% DECODED', u:''};
+  }
+
+  /* Resources, in the order they will kill you. */
+  const bodies=sim.at>=0?systemAt(sim.at).filter(b=>!b.taken):[];
+  const has=k=>bodies.some(b=>BODY[b.k].yield===k);
+  if(sim.fuel<14 && has('fuel')) return {t:'FUEL LOW — APPROACH A GAS GIANT HERE', u:'2'};
+  if(sim.air<38  && has('air'))  return {t:'AIR LOW — APPROACH AN ICE BODY HERE', u:'2'};
+  if(sim.hull<62 && has('hull')) return {t:'HULL DAMAGED — APPROACH A ROCK HERE', u:'2'};
+
+  /* Otherwise: where the next culture worth talking to actually is. */
+  const next=ALIENS.filter(a=>comprehension(a.race)<WORKING_FRAC)
+    .filter(a=>{ const L=LADDER[a.race]; return !L.prereq || comprehension(L.prereq)>=WORKING_FRAC; })
+    .sort((a,b)=>LADDER[a.race].tier-LADDER[b.race].tier)[0];
+  if(next){
+    const gi=STARS.findIndex(st=>st.n===next.star);
+    if(gi>=0 && gi!==sim.at){
+      const d=starDist(here(),STARS[gi]);
+      return {t:RACES[next.race].name+' AT '+next.star+' — '+d.toFixed(1)+' LY', u:''};
+    }
+  }
+  if(bodies.length) return {t:'SYSTEM HAS '+bodies.length+' UNWORKED BODIES', u:''};
+  return {t:'PICK A SYSTEM AND ENGAGE', u:''};
 }
 
 /* ==========================================================================
@@ -3124,7 +3295,7 @@ function localPick(mx,my){
     const q=project(bodyPos(b));
     if(!q) continue;
     const d=Math.hypot(q.x-mx,q.y-my);
-    if(d<Math.max(22, b.rad*q.s+14) && (!best||d<best.d)) best={b,d};
+    if(d<Math.max(34, b.rad*q.s+22) && (!best||d<best.d)) best={b,d};
   }
   if(!best) return false;
   approachOpen(best.b);
@@ -3425,18 +3596,20 @@ function drawFrame(){
   corner(W-inset,H-inset,'#3D8BFF');
 
   const gut=inset+cs+10;
+  /* A narrow tube cannot carry four captions without them running into each
+     other, so it carries the two that matter and the attitude moves down to
+     share the bottom rule. */
+  const wide=W>520;
+  const att='AZ '+brg.toFixed(0).padStart(3,'0')+' EL '+(cam.pitch*DEG).toFixed(0).padStart(3,'0');
   label(local ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')
-              : 'CHART · EQUATORIAL · EPOCH J2000',
+              : wide ? 'CHART · EQUATORIAL · EPOCH J2000' : 'CHART · EQUATORIAL',
         gut, 14, '#8CE6FF', true);
-  /* Camera attitude: the chart is a projection and the operator is entitled
-     to know which way it is pointed, in the same units the plot takes. */
-  label('AZ '+brg.toFixed(0).padStart(3,'0')+'  EL '+(cam.pitch*DEG).toFixed(0).padStart(3,'0'),
-        W-gut, 14, '#8CE6FF', true, 'right');
-  label(local ? 'GRID 2 AU · '+(sim.at>=0?systemAt(sim.at).filter(b=>!b.taken).length+' UNWORKED':'NO PRIMARY')
-              : 'FIELD '+cam.dist.toFixed(0)+' LY · GRID 5 LY',
+  if(wide) label(att, W-gut, 14, '#8CE6FF', true, 'right');
+  label(local ? (wide?'GRID 2 AU · '+(sim.at>=0?systemAt(sim.at).filter(b=>!b.taken).length+' UNWORKED':'NO PRIMARY'):'GRID 2 AU')
+              : (wide?'FIELD '+cam.dist.toFixed(0)+' LY · GRID 5 LY':att),
         gut, H-14, '#8CE6FF', false);
-  label((sim.jumping?'JUMP':sim.phase)+
-        (local?'':'  ·  '+len3(h.p).toFixed(1)+' LY FROM SOL'),
+  label(wide ? (sim.jumping?'JUMP':sim.phase)+(local?'':'  ·  '+len3(h.p).toFixed(1)+' LY FROM SOL')
+             : (local?'':len3(h.p).toFixed(1)+' LY'),
         W-gut, H-14, len3(h.p)>POLICY_LY?'#FF3A2C':'#3D8BFF', false, 'right');
 }
 
@@ -4843,7 +5016,7 @@ function commsOpen(a){
   /* A hail is a broadcast, and a broadcast is a bearing. The instrument that
      lets you make progress is the same instrument that says where you are. */
   raiseHeat(0.6);
-  spendAir(10);
+  spendAir(5);
   /* Contact is the standing order; log it the moment a channel is open. */
   sim.logged[a.id]=true;
   comms.mouth=0; comms.mouthT=0; comms.blink=0; comms.charAcc=0;
@@ -5839,7 +6012,7 @@ function approachRefresh(){
   const b=approach.body, B=BODY[b.k];
   const est=floorEstimate(b);
   const y=approachYield(b,approach.alt);
-  const secs=26+34/Math.max(approach.alt,0.12);
+  const secs=14+16/Math.max(approach.alt,0.12);
   $('ap-id').textContent=b.id;
   $('ap-cls').textContent=B.label;
   $('ap-cls').style.color=B.col; $('ap-cls').style.borderColor=B.col;
@@ -6024,7 +6197,8 @@ function refresh(){
 
   const xk=$('k-xeno');
   if(xk){
-    xk.dataset.live = comms.open ? '1' : '';
+    const hereAli=sim.at>=0 && ALIENS.find(a=>a.star===here().n);
+    xk.dataset.live = comms.open ? '1' : hereAli ? 'rdy' : '';
     xk.firstChild.textContent = comms.open ? 'CLOSE CHANNEL' : 'XENO CONTACT';
     $('xeno-lbl').textContent = comms.open
       ? (comms.race?comms.race.name:'')
@@ -6039,8 +6213,20 @@ function refresh(){
   lst.style.color='rgb('+ls.colour.join(',')+')';
   lst.style.borderColor='rgb('+ls.colour.join(',')+')';
 
-  $('jump-lbl').textContent = sim.jumping ? 'RUNNING' : plot.open ? 'STOW PLOT' : 'PLOT COURSE';
+  $('jump-lbl').textContent = sim.jumping ? 'RUNNING' : plot.open ? 'STOW' : 'BY HAND';
   $('k-jump').dataset.on = plot.open ? '1' : '';
+
+  /* The primary key says exactly what pressing it will do, before it is
+     pressed — the distance, and which arrival band the computer can currently
+     manage at that distance. */
+  const eng=engageState();
+  $('go-lbl').textContent = eng.why;
+  $('k-go').dataset.on = eng.ok ? (eng.res<=PLOT_EDGE?'1':'') : 'bad';
+  $('k-go').disabled = !eng.ok;
+
+  const ob=objective();
+  const tb=$('task');
+  if(tb){ tb.textContent=ob.t; tb.dataset.urgent=ob.u; }
   const bodies = sim.at>=0 ? systemAt(sim.at) : [];
   const live = bodies.filter(b=>!b.taken).length;
   $('scoop-lbl').textContent = sim.at<0 ? 'NO PRIMARY'
@@ -6119,9 +6305,14 @@ cv.addEventListener('click',e=>{
     if(i===sim.at || !inFront(st.p)) return;
     const q=project(st.p); if(!q) return;
     const dd=Math.hypot(q.x-mx,q.y-my);
-    if(dd<26 && (!best||dd<best.dd)) best={i,dd};
+    if(dd<34 && (!best||dd<best.dd)) best={i,dd};
   });
-  if(best){ sim.target=best.i; sndKey(); refresh(); }
+  if(best){
+    sim.target=best.i; sndKey();
+    plot.rng=Math.round(Math.min(JUMP_MAX,len3(sub3(target().p,here().p)))*100)/100;
+    plot.dirty=true; if(plot.open) plotRefresh();
+    refresh();
+  }
 });
 
 /* --- Keyboard, for anyone on a desktop ----------------------------------- */
@@ -6135,6 +6326,7 @@ addEventListener('keydown',e=>{
     return;
   }
   if(e.code==='KeyV'){ e.preventDefault(); setView(sim.view==='LOCAL'?'CHART':'LOCAL'); return; }
+  if(e.code==='Enter'||e.code==='KeyG'){ e.preventDefault(); engage(); return; }
   if(e.code==='ArrowLeft'||e.code==='KeyA'){ e.preventDefault(); stepTarget(-1); }
   if(e.code==='ArrowRight'||e.code==='KeyD'){ e.preventDefault(); stepTarget(1); }
   if(e.code==='Enter'||e.code==='Space'){ e.preventDefault(); $('k-jump').click(); }
@@ -6223,6 +6415,8 @@ document.querySelectorAll('#appr .prow .pb').forEach(b=>{
   b.addEventListener('pointercancel',stop);
   b.addEventListener('pointerleave',stop);
 });
+
+$('k-go').addEventListener('click',engage);
 
 $('plot-x').addEventListener('click',plotStow);
 $('plot-solve').addEventListener('click',()=>{ plotSolve(); plotRefresh(); refresh(); });
