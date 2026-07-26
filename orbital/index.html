@@ -2740,6 +2740,7 @@ function commsSetNode(key){
   comms.node=key;
   const n=tree[key];
   comms.text=n.t; comms.shown=0; comms.done=false;
+  comms.spoken=0; comms.speakAt=0; comms.charAcc=0;
   comms.raw=transcribe(n.t, comms.alien.race);
   $('comms-raw').textContent='';
   $('comms-eng').textContent='';
@@ -2768,32 +2769,65 @@ function commsTick(dt){
   if(!comms.open) return;
   const r=comms.race;
 
+  /* The translation trails the signal by a fixed number of characters, so
+     you watch English resolve behind the glyphs rather than beside them. */
+  const LAG=16;
+  /* Only the tail of the signal is shown — the newest glyphs arriving. */
+  const WIN=34;
+  /* Measured: the readback runs at 12.5-16.4 characters a second across the
+     whole catalogue. The glyphs arrive at the same rate, so the two stay in
+     step without the throttle below ever having much to do. */
+  const RATE=15;
+
   if(!comms.done && comms.text){
-    /* Fast: this is a signal arriving, not a person typing. */
-    comms.charAcc=(comms.charAcc||0)+dt*62;
+    /* The signal cannot outrun the readback. If the translator's voice is
+       more than half a second behind, the glyphs stop arriving
+       until it catches up — which is not a throttle, it is the machine
+       working, and it reads as one. */
+    const ctx=snd.ctx;
+    const ahead = ctx ? (comms.speakAt||0)-ctx.currentTime : 0;
+    if(ahead<0.45) comms.charAcc=(comms.charAcc||0)+dt*RATE;
+
     while(comms.charAcc>=1 && comms.shown<comms.text.length){
       comms.charAcc-=1;
       const ch=comms.text[comms.shown++];
       /* The jaw is driven from the English underneath, because that is what
          the creature is actually saying; the glyph is only how we write it. */
       comms.mouthT=viseme(ch);
-      /* The noise belongs to the signal. The translation is silent — it is a
-         machine reading, not a second voice. */
-      if(ch.trim() && comms.shown % r.voice.rate === 0) sndVoice(comms.alien.race);
+      /* The alien sounds out its own glyph — the sound belongs to the
+         character on the wire, not to the English behind it. */
+      if(ch.trim() && comms.shown % r.voice.rate === 0){
+        sndVoice(comms.alien.race, comms.raw[comms.shown-1]);
+      }
     }
 
-    /* The translation trails the signal by a fixed number of characters, so
-       you watch English resolve behind the glyphs rather than beside them. */
-    const LAG=16;
-    /* Only the tail of the signal is shown — the newest glyphs arriving. */
-    const WIN=34;
     $('comms-raw').textContent=comms.raw.slice(Math.max(0,comms.shown-WIN),comms.shown);
-    $('comms-eng').textContent=comms.text.slice(0,Math.max(0,comms.shown-LAG));
+    const eng=comms.text.slice(0,Math.max(0,comms.shown-LAG));
+    $('comms-eng').textContent=eng;
+
+    /* Read aloud whatever the translator has finished. Only complete words —
+       a fragment would be spoken as a different word — and each fragment is
+       queued to start where the last one ended, so the readback is
+       continuous even though it is assembled a word at a time. */
+    const settled=eng.replace(/\S*$/,'');
+    if(settled.length>(comms.spoken||0)){
+      const seg=settled.slice(comms.spoken||0);
+      comms.spoken=settled.length;
+      if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+    }
+
     if(comms.shown>=comms.text.length){
-      /* Let the translator catch up before offering replies. */
+      /* Let the translator catch up, and let the voice finish the sentence,
+         before offering replies. */
+      if(comms.spoken<comms.text.length){
+        const seg=comms.text.slice(comms.spoken||0);
+        comms.spoken=comms.text.length;
+        if(seg.trim()) comms.speakAt=speakEnglish(seg, comms.speakAt||0);
+      }
+      $('comms-eng').textContent=comms.text;
       comms.settle=(comms.settle||0)+dt;
-      if(comms.settle>LAG/62+0.1){
-        $('comms-eng').textContent=comms.text;
+      const rest = snd.ctx ? Math.max(0,(comms.speakAt||0)-snd.ctx.currentTime) : 0;
+      if(comms.settle>0.15 && rest<=0.05){
         comms.done=true; comms.mouthT=0; comms.settle=0;
         commsOptions();
       }
@@ -2843,6 +2877,7 @@ function commsOpen(a){
   /* Contact is the standing order; log it the moment a channel is open. */
   sim.logged[a.id]=true;
   comms.mouth=0; comms.mouthT=0; comms.blink=0; comms.charAcc=0;
+  comms.spoken=0; comms.speakAt=0;
   $('comms').dataset.open='1';
   $('comms-src').textContent=comms.race.name+' · '+a.id;
   $('comms-band').textContent='BAND '+comms.race.band;
@@ -2855,6 +2890,14 @@ function commsOpen(a){
 }
 function commsClose(){
   comms.open=false;
+  /* Cut the readback dead. A translator that keeps talking after the channel
+     is shut is a bug you can hear. */
+  if(snd.speech && snd.ctx){
+    const now=snd.ctx.currentTime;
+    snd.speech.gain.cancelScheduledValues(now);
+    snd.speech.gain.setValueAtTime(0,now);
+  }
+  comms.speakAt=0; comms.spoken=0;
   $('comms').dataset.open='';
   $('viewtools').style.display='';
   $('view').classList.remove('comms-open');
@@ -3174,63 +3217,503 @@ function sndSpinUp(){
 /* One voice per culture. A shared blip with a different centre frequency made
    all four sound like the same instrument transposed; these are built
    differently from each other so they read as different throats. */
-function sndVoice(race){
+/* --------------------------------------------------------------------------
+   ALIEN VOICES
+
+   Four cultures, four different sets of physics — a stridulating file and
+   scraper, a struck inharmonic bar, a resonant gas bladder, a digital
+   oscillator bank. None of them is a mouth, and none of them shares a
+   waveform with any other.
+
+   The glyph currently on the wire picks the note, deterministically, so the
+   same character always makes the same sound. That is what makes the stream
+   read as a language rather than as noise, and it is the same reason the
+   transcription is a fixed mapping rather than a random one.
+   -------------------------------------------------------------------------- */
+
+/* Ring modulation: multiply a signal by a carrier rather than mixing them.
+   The output contains only the sum and difference frequencies, so nothing in
+   it belongs to a harmonic series — the single most reliable way to make a
+   sound that no animal on this planet could produce. */
+function ringMod(ctx,freq,type){
+  const ring=ctx.createGain(); ring.gain.value=0;
+  const car=ctx.createOscillator(); car.type=type||'sine';
+  car.frequency.value=freq;
+  car.connect(ring.gain);
+  return {node:ring, car:car};
+}
+
+function sndVoice(race,ch,at){
   const ctx=A(); if(!ctx||!boot.done) return;
-  const t=ctx.currentTime;
+  const t=(at!=null?at:ctx.currentTime);
   const out=snd.master;
+  /* Deterministic per glyph: a note within the culture's range and a small
+     timbral index. */
+  const code=ch?ch.codePointAt(0):0;
+  const note=code%13, shade=Math.floor(code/13)%5;
 
   if(race==='voth'){
-    /* Insect: two hard chirps, high and clipped. */
+    /* Stridulation. A file drawn across a scraper is a pulse train, not a
+       tone: broadband noise gated at the tooth rate, resonated by the wing
+       case. Two strokes, the second shorter, because that is how a chirp is
+       made. */
     for(let k=0;k<2;k++){
-      const o=ctx.createOscillator(); o.type='square';
-      const f0=1500+Math.random()*1400;
-      o.frequency.setValueAtTime(f0,t+k*0.022);
-      o.frequency.exponentialRampToValueAtTime(f0*0.55,t+k*0.022+0.018);
+      const t0=t+k*0.030, dur=k?0.026:0.040;
+      const n=ctx.createBufferSource(); n.buffer=snd.noise; n.loop=true;
+      /* The tooth rate is the pitch you hear. */
+      const gate=ctx.createGain(); gate.gain.value=0;
+      const teeth=ctx.createOscillator(); teeth.type='square';
+      teeth.frequency.setValueAtTime(180+note*26,t0);
+      teeth.frequency.linearRampToValueAtTime(140+note*20,t0+dur);
+      const depth=ctx.createGain(); depth.gain.value=0.5;
+      teeth.connect(depth).connect(gate.gain);
+      /* Wing-case resonance: two sharp peaks that sweep down as the stroke
+         runs out of wing. */
+      const r1=ctx.createBiquadFilter(); r1.type='bandpass'; r1.Q.value=14;
+      r1.frequency.setValueAtTime(2600+shade*420,t0);
+      r1.frequency.exponentialRampToValueAtTime(1500+shade*260,t0+dur);
+      const r2=ctx.createBiquadFilter(); r2.type='bandpass'; r2.Q.value=9;
+      r2.frequency.setValueAtTime(5200+shade*300,t0);
       const g=ctx.createGain();
-      g.gain.setValueAtTime(0.055,t+k*0.022);
-      g.gain.exponentialRampToValueAtTime(0.0001,t+k*0.022+0.02);
-      o.connect(g).connect(out); o.start(t+k*0.022); o.stop(t+k*0.022+0.03);
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(1.9,t0+0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+      const sum=ctx.createGain(); sum.gain.value=0.7;
+      n.connect(gate);
+      gate.connect(r1).connect(sum);
+      gate.connect(r2).connect(sum);
+      sum.connect(g).connect(out);
+      n.start(t0); n.stop(t0+dur+0.02);
+      teeth.start(t0); teeth.stop(t0+dur+0.02);
     }
-  }else if(race==='kelmoran'){
-    /* Formal: a struck tone through a narrow band, almost a bell. */
-    const o=ctx.createOscillator(); o.type='triangle';
-    o.frequency.setValueAtTime(300+Math.random()*260,t);
-    const bp=ctx.createBiquadFilter(); bp.type='bandpass';
-    bp.frequency.setValueAtTime(700,t);
-    bp.frequency.exponentialRampToValueAtTime(1900,t+0.06);
-    bp.Q.value=6;
-    const g=ctx.createGain();
-    g.gain.setValueAtTime(0.10,t);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+0.075);
-    o.connect(bp).connect(g).connect(out); o.start(t); o.stop(t+0.09);
-  }else if(race==='ssrith'){
-    /* Wet and low: a sawtooth under a breath of filtered noise. */
-    const o=ctx.createOscillator(); o.type='sawtooth';
-    o.frequency.setValueAtTime(70+Math.random()*70,t);
-    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
-    const g=ctx.createGain();
-    g.gain.setValueAtTime(0.10,t);
-    g.gain.exponentialRampToValueAtTime(0.0001,t+0.10);
-    o.connect(lp).connect(g).connect(out); o.start(t); o.stop(t+0.12);
 
-    const n=ctx.createBufferSource(); n.buffer=snd.noise;
-    const nf=ctx.createBiquadFilter(); nf.type='bandpass';
-    nf.frequency.value=2200+Math.random()*1200; nf.Q.value=1.4;
-    const ng=ctx.createGain();
-    ng.gain.setValueAtTime(0.035,t);
-    ng.gain.exponentialRampToValueAtTime(0.0001,t+0.06);
-    n.connect(nf).connect(ng).connect(out); n.start(t); n.stop(t+0.07);
-  }else{
-    /* Machine: pitch quantised to a scale of twelve, no glide at all. */
-    const step=Math.floor(Math.random()*12);
-    const o=ctx.createOscillator(); o.type='square';
-    o.frequency.setValueAtTime(300*Math.pow(2,step/12)*2,t);
+  }else if(race==='kelmoran'){
+    /* A struck bar of something that is not metal. Two partials at an
+       inharmonic ratio — 1 : 2.41, which is a bar mode, not an octave — ring
+       modulated so even those two do not agree. Formal, cold, and it decays
+       like glass. */
+    const f0=430+note*46;
+    const bell=ctx.createGain(); bell.gain.value=1;
+    const rm=ringMod(ctx,f0*0.31,'sine');
+    for(const [mult,amp] of [[1,0.9],[2.41,0.5],[4.09,0.22]]){
+      const o=ctx.createOscillator(); o.type='sine';
+      o.frequency.setValueAtTime(f0*mult,t);
+      const og=ctx.createGain(); og.gain.value=amp;
+      o.connect(og).connect(bell);
+      o.start(t); o.stop(t+0.30);
+    }
+    bell.connect(rm.node);
+    /* A little of the dry bar survives, so it still reads as a struck thing. */
+    const dry=ctx.createGain(); dry.gain.value=0.45;
+    bell.connect(dry);
     const g=ctx.createGain();
-    g.gain.setValueAtTime(0.075,t);
-    g.gain.setValueAtTime(0.075,t+0.024);
-    g.gain.linearRampToValueAtTime(0,t+0.026);
-    o.connect(g).connect(out); o.start(t); o.stop(t+0.03);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.075,t+0.003);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.16+shade*0.02);
+    const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=380;
+    rm.node.connect(g); dry.connect(g);
+    g.connect(hp).connect(out);
+    rm.car.start(t); rm.car.stop(t+0.32);
+
+  }else if(race==='ssrith'){
+    /* A gas bladder in cold water. A sub-bass sawtooth ring modulated at
+       23 Hz, which is below the pitch threshold, so it is heard as a growl
+       rather than as a chord. A wet click on top: the aperture closing. */
+    const f0=48+note*7;
+    const o=ctx.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(f0,t);
+    o.frequency.linearRampToValueAtTime(f0*0.86,t+0.16);
+    const rm=ringMod(ctx,19+shade*3,'sine');
+    /* Ring modulation about zero would cancel the fundamental entirely and
+       leave only the growl; keeping some carrier through keeps the pitch. */
+    const thru=ctx.createGain(); thru.gain.value=0.55;
+    o.connect(rm.node); o.connect(thru);
+    const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=7;
+    lp.frequency.setValueAtTime(240,t);
+    lp.frequency.exponentialRampToValueAtTime(1400,t+0.05);
+    lp.frequency.exponentialRampToValueAtTime(300,t+0.17);
+    /* A throat resonance in parallel with the bladder. Without it this voice
+       is pure sub-bass, which a phone speaker cannot reproduce at all — the
+       same reason the mains hum needed its harmonics passing. */
+    const thr=ctx.createBiquadFilter(); thr.type='bandpass'; thr.Q.value=3.5;
+    thr.frequency.setValueAtTime(560+shade*90,t);
+    thr.frequency.exponentialRampToValueAtTime(340,t+0.16);
+    const thrG=ctx.createGain(); thrG.gain.value=0.85;
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.230,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
+    rm.node.connect(lp); thru.connect(lp);
+    rm.node.connect(thr); o.connect(thr);
+    thr.connect(thrG).connect(g);
+    lp.connect(g).connect(out);
+    o.start(t); o.stop(t+0.20);
+    rm.car.start(t); rm.car.stop(t+0.20);
+
+    /* The click. Short, wet, high — a bubble leaving. */
+    const n=ctx.createBufferSource(); n.buffer=snd.noise;
+    const nf=ctx.createBiquadFilter(); nf.type='bandpass'; nf.Q.value=3.2;
+    nf.frequency.setValueAtTime(1800+shade*500,t);
+    nf.frequency.exponentialRampToValueAtTime(600,t+0.045);
+    const ng=ctx.createGain();
+    ng.gain.setValueAtTime(0.055,t);
+    ng.gain.exponentialRampToValueAtTime(0.0001,t+0.05);
+    n.connect(nf).connect(ng).connect(out); n.start(t); n.stop(t+0.06);
+
+  }else{
+    /* Not a voice at all: an oscillator bank stepping a fixed ladder. Four
+       hard steps inside one glyph, no glide anywhere, and a carrier that is
+       an exact division of the sample clock. It sounds like a machine because
+       nothing about it is continuous. */
+    const base=196*Math.pow(2,(note%12)/12)*(shade<2?4:2);
+    const o=ctx.createOscillator(); o.type='square';
+    const g=ctx.createGain(); g.gain.value=0;
+    const LAD=[0,7,3,10];
+    for(let s=0;s<4;s++){
+      const ts=t+s*0.011;
+      o.frequency.setValueAtTime(base*Math.pow(2,LAD[(s+shade)%4]/12),ts);
+      g.gain.setValueAtTime(s===3?0.058:0.080,ts);
+    }
+    g.gain.setValueAtTime(0.080,t+0.043);
+    g.gain.linearRampToValueAtTime(0,t+0.046);
+    /* A sliver of gated hiss: the data under the carrier. */
+    const n=ctx.createBufferSource(); n.buffer=snd.noise;
+    const nf=ctx.createBiquadFilter(); nf.type='highpass'; nf.frequency.value=4200;
+    const ng=ctx.createGain();
+    ng.gain.setValueAtTime(0.030,t);
+    ng.gain.setValueAtTime(0.030,t+0.040);
+    ng.gain.linearRampToValueAtTime(0,t+0.044);
+    n.connect(nf).connect(ng).connect(out); n.start(t); n.stop(t+0.05);
+    o.connect(g).connect(out); o.start(t); o.stop(t+0.05);
   }
+}
+
+/* ==========================================================================
+   THE TRANSLATOR'S VOICE
+   --------------------------------------------------------------------------
+   The English readback is spoken by a parallel formant synthesiser: a
+   buzzing glottal source and a hiss source, summed and passed through three
+   resonant bandpass filters whose centre frequencies are the formants of the
+   phoneme being made. That is how a Votrax SC-01 or a Speak & Spell worked,
+   and it is why they sound the way they do.
+
+   Two decisions keep it in period rather than making it merely synthetic:
+   formant transitions are stepped, not glided, because the SC-01 had no
+   interpolator; and the pitch is a flat declination with a fixed inflection
+   per syllable, because it had two bits of inflection and nothing else.
+
+   English text is turned into phonemes by dictionary first, rules second —
+   the same order a real synthesiser uses, because English spelling cannot be
+   done by rule alone.
+   ========================================================================== */
+
+/* F1, F2, F3 in hertz, then the manner of articulation. */
+const PHON={
+  /* vowels */
+  IY:[270,2290,3010,'v'], IH:[390,1990,2550,'v'], EH:[530,1840,2480,'v'],
+  AE:[660,1720,2410,'v'], AH:[520,1190,2390,'v'], AA:[730,1090,2440,'v'],
+  AO:[570, 840,2410,'v'], UH:[440,1020,2240,'v'], UW:[300, 870,2240,'v'],
+  ER:[490,1350,1690,'v'], OW:[450, 900,2300,'v'],
+  /* diphthongs carry a second target */
+  AY:[660,1090,2440,'v',[350,2100,2700]], EY:[530,1840,2480,'v',[300,2200,2900]],
+  OY:[570, 840,2410,'v',[350,2100,2700]], AW:[700,1100,2400,'v',[330, 900,2300]],
+  /* nasals */
+  M:[280, 900,2200,'n'], N:[280,1700,2600,'n'], NG:[280,2300,2750,'n'],
+  /* approximants */
+  L:[400,1100,2600,'v'], R:[330,1060,1380,'v'],
+  W:[290, 610,2150,'v'], Y:[260,2070,3020,'v'],
+  /* voiced fricatives */
+  V:[280,1200,2400,'z'], Z:[300,1600,2600,'z'], DH:[290,1400,2400,'z'],
+  ZH:[300,1800,2500,'z'], JH:[300,1900,2600,'z'],
+  /* unvoiced fricatives */
+  F:[400,1300,2400,'f'], S:[400,4600,5800,'f'], TH:[400,1900,2900,'f'],
+  SH:[400,2500,3300,'f'], HH:[400,1400,2200,'f'], CH:[400,2500,3300,'f'],
+  /* stops: closure then burst, at the burst locus */
+  P:[400, 800,2200,'p'], T:[400,1800,2900,'p'], K:[400,1600,2400,'p'],
+  B:[300, 800,2200,'b'], D:[300,1800,2900,'b'], G:[300,1600,2400,'b'],
+  _ :[0,0,0,'q']                                   // silence
+};
+
+/* Words English spelling gets wrong, plus the whole vocabulary of this
+   catalogue that a rule would mangle. A synthesiser is only as good as its
+   exception list. */
+const LEX={
+  A:'AH', THE:'DH AH', OF:'AH V', TO:'T UW', DO:'D UW', DOES:'D AH Z',
+  YOU:'Y UW', YOUR:'Y AO R', ARE:'AA R', IS:'IH Z', WAS:'W AH Z',
+  WERE:'W ER', BE:'B IY', BEEN:'B IH N', WE:'W IY', ONE:'W AH N', TWO:'T UW',
+  HAVE:'HH AE V', GIVE:'G IH V', LIVE:'L IH V', COME:'K AH M', SOME:'S AH M',
+  WHO:'HH UW', WHAT:'W AH T', THERE:'DH EH R', THEIR:'DH EH R',
+  THEY:'DH EY', THEM:'DH EH M', THIS:'DH IH S', THAT:'DH AE T',
+  SAID:'S EH D', KNOW:'N OW', KNOWN:'N OW N', WOULD:'W UH D',
+  COULD:'K UH D', SHOULD:'SH UH D', EITHER:'IY DH ER', ONLY:'OW N L IY',
+  ANY:'EH N IY', MANY:'M EH N IY', AGAIN:'AH G EH N',
+  BEFORE:'B IH F AO R', BECAUSE:'B IH K AO Z', ABOVE:'AH B AH V',
+  ABOUT:'AH B AW T', OTHERS:'AH DH ER Z', OTHER:'AH DH ER',
+  WATER:'W AO T ER', WEATHER:'W EH DH ER', WHETHER:'W EH DH ER',
+  NOTHING:'N AH TH IH NG', ANYTHING:'EH N IY TH IH NG',
+  PATIENT:'P EY SH AH N T', ANCIENT:'EY N SH AH N T',
+  KILOMETRES:'K IH L AA M IH T ER Z', VEHICLE:'V IY IH K AH L',
+  ASSEMBLY:'AH S EH M B L IY', IDENTICAL:'AY D EH N T IH K AH L',
+  COMPLIANCE:'K AH M P L AY AH N S', PAPERWORK:'P EY P ER W ER K',
+  TRAJECTORY:'T R AH JH EH K T ER IY', AUTOPILOT:'AO T OW P AY L AH T',
+  NAVIGATION:'N AE V IH G EY SH AH N', RECOVERY:'R IH K AH V ER IY',
+  RECOVERED:'R IH K AH V ER D', OPERATOR:'AA P ER EY T ER',
+  INSTRUCTION:'IH N S T R AH K SH AH N', CONTINUE:'K AH N T IH N Y UW',
+  CONTINUING:'K AH N T IH N Y UW IH NG',
+  CONTINUATION:'K AH N T IH N Y UW EY SH AH N',
+  COMPREHENSION:'K AA M P R IH HH EH N SH AH N',
+  UNREADABLE:'AH N R IY D AH B AH L', PROPELLANT:'P R AH P EH L AH N T',
+  DESCENDED:'D IH S EH N D IH D', REGISTERED:'R EH JH IH S T ER D',
+  UNDECLARED:'AH N D IH K L EH R D', ACKNOWLEDGE:'AE K N AA L IH JH',
+  TRANSMISSION:'T R AE N Z M IH SH AH N', SURVEY:'S ER V EY',
+  HUNDRED:'HH AH N D R IH D', SEVEN:'S EH V AH N', THREE:'TH R IY',
+  FOUR:'F AO R', ZERO:'Z IH R OW', NINE:'N AY N', YEARS:'Y IH R Z',
+  AGO:'AH G OW', ORBIT:'AO R B IH T', FAILURE:'F EY L Y ER',
+  CHOICE:'CH OY S', KINDNESS:'K AY N D N AH S', STEEPLY:'S T IY P L IY',
+  SLOWLY:'S L OW L IY', COUNTING:'K AW N T IH NG', COUNTED:'K AW N T IH D',
+  THROUGH:'TH R UW', OLDER:'OW L D ER', CONTINENTS:'K AA N T IH N AH N T S',
+  SIMPLY:'S IH M P L IY', RECENT:'R IY S AH N T', PRESENT:'P R EH Z AH N T',
+  RECEIVED:'R IH S IY V D', QUERY:'K W IH R IY', RELAY:'R IY L EY',
+  RELAYING:'R IY L EY IH NG', REQUIRE:'R IH K W AY ER',
+  REQUIRES:'R IH K W AY ER Z', REQUEST:'R IH K W EH S T', BODY:'B AA D IY',
+  PROBLEM:'P R AA B L AH M', SOLUTION:'S AH L UW SH AH N',
+  UPLINKED:'AH P L IH NG K T', COMPUTING:'K AH M P Y UW T IH NG',
+  PERMITTED:'P ER M IH T IH D', ADDITIONAL:'AH D IH SH AH N AH L',
+  RELEASED:'R IH L IY S T', ACCEPTED:'AE K S EH P T IH D',
+  REFUSE:'R IH F Y UW Z', REFUSAL:'R IH F Y UW Z AH L', FILED:'F AY L D',
+  FURTHER:'F ER DH ER', HAPPEN:'HH AE P AH N', TODAY:'T AH D EY',
+  NOTED:'N OW T IH D', THANKS:'TH AE NG K S', ACTIVE:'AE K T IH V',
+  FORMAT:'F AO R M AE T', ORIGIN:'AO R IH JH IH N',
+  CONTENT:'K AA N T EH N T', SEA:'S IY', WAY:'W EY', GLASS:'G L AE S',
+  ANGRY:'AE NG G R IY', PLACES:'P L EY S IH Z',
+  UNDERNEATH:'AH N D ER N IY TH', WAITING:'W EY T IH NG', SHAPE:'SH EY P',
+  SHELL:'SH EH L', TANKS:'T AE NG K S', LEAVE:'L IY V', RATHER:'R AE DH ER',
+  DOWN:'D AW N', GO:'G OW', NOW:'N AW', NO:'N OW', SO:'S OW',
+  MARK:'M AA R K', LEARN:'L ER N', FELL:'F EH L', KEEP:'K IY P',
+  BACK:'B AE K', THIN:'TH IH N', LOW:'L OW', AIR:'EH R', TOP:'T AA P',
+  RIDE:'R AY D', FEEL:'F IY L', PASS:'P AE S', LIKE:'L AY K',
+  SITE:'S AY T', USE:'Y UW Z', STATE:'S T EY T', INTENT:'IH N T EH N T',
+  NEXT:'N EH K S T', DECLARE:'D IH K L EH R', RETURN:'R IH T ER N',
+  SURFACE:'S ER F AH S', LAST:'L AE S T', HARD:'HH AA R D',
+  CLOSE:'K L OW Z', CHANNEL:'CH AE N AH L', END:'EH N D', ASK:'AE S K',
+  FOR:'F AO R', WITH:'W IH DH', WILL:'W IH L', WANT:'W AA N T',
+  NOT:'N AA T', OR:'AO R', AT:'AE T', IT:'IH T', AN:'AE N',
+  AND:'AE N D', ON:'AA N', IN:'IH N', MAY:'M EY', BY:'B AY',
+  FILL:'F IH L', HAPPENED:'HH AE P AH N D', REFUSED:'R IH F Y UW Z D',
+  PERMIT:'P ER M IH T', SOFT:'S AA F T', WHEN:'W EH N', WHERE:'W EH R'
+};
+
+const DIGIT=['ZERO','ONE','TWO','THREE','FOUR','FIVE','SIX','SEVEN','EIGHT','NINE'];
+
+/* Letter-to-sound rules, longest match first. '#' marks the end of the word.
+   Applied only when the dictionary misses. */
+const RULES=[
+  ['TION#','SH AH N'],['SION#','ZH AH N'],['CIAL#','SH AH L'],
+  ['TURE#','CH ER'],['SURE#','ZH ER'],['ABLE#','AH B AH L'],
+  ['ANCE#','AH N S'],['ENCE#','AH N S'],['MENT#','M AH N T'],
+  ['NESS#','N AH S'],['OUGH#','AH F'],['TION','SH AH N'],
+  ['IGHT','AY T'],['IGH','AY'],['EIGH','EY'],
+  ['^KN','N'],['^WR','R'],['^PS','S'],
+  ['CH','CH'],['SH','SH'],['PH','F'],['WH','W'],['CK','K'],['NG','NG'],
+  ['TH','TH'],['QU','K W'],['GH',''],['DGE','JH'],
+  ['EAU','OW'],['EE','IY'],['EA','IY'],['IE','IY'],['EI','IY'],
+  ['OO','UW'],['OU','AW'],['OW','OW'],['OA','OW'],['OE','OW'],
+  ['OI','OY'],['OY','OY'],['AI','EY'],['AY','EY'],['AU','AO'],
+  ['AW','AO'],['EY','IY'],['UE','UW'],['UI','UW'],
+  ['AR','AA R'],['OR','AO R'],['ER','ER'],['IR','ER'],['UR','ER'],
+  ['A_','EY'],['E_','IY'],['I_','AY'],['O_','OW'],['U_','UW'],
+  ['A','AE'],['E','EH'],['I','IH'],['O','AA'],['U','AH'],['Y','IY'],
+  ['B','B'],['C','K'],['D','D'],['F','F'],['G','G'],['H','HH'],
+  ['J','JH'],['K','K'],['L','L'],['M','M'],['N','N'],['P','P'],
+  ['Q','K'],['R','R'],['S','S'],['T','T'],['V','V'],['W','W'],
+  ['X','K S'],['Z','Z'],['\u00E7','S'],['\u011D','JH'],['_','']
+];
+
+const UNVOICED=/[PTKFSXH]$|SH$|CH$|TH$|\u00E7$/;
+
+function g2pWord(w){
+  if(LEX[w]) return LEX[w].split(' ');
+  let suffix='';
+  /* Morphology first: English suffixes are regular even when the stems are
+     not, and stripping them stops the rules seeing a spelling they cannot
+     handle. */
+  if(/ING$/.test(w) && w.length>5){ suffix=' IH NG'; w=w.slice(0,-3); }
+  else if(/LY$/.test(w) && w.length>4){ suffix=' L IY'; w=w.slice(0,-2); }
+  else if(/ED$/.test(w) && w.length>3){
+    const b=w.slice(0,-2);
+    suffix=/[TD]$/.test(b)?' IH D':(UNVOICED.test(b)?' T':' D');
+    w=b;
+  }else if(/ES$/.test(w) && /(S|Z|SH|CH|X)$/.test(w.slice(0,-2)) && w.length>3){
+    suffix=' IH Z'; w=w.slice(0,-2);
+  }else if(/S$/.test(w) && !/SS$/.test(w) && w.length>2){
+    const b=w.slice(0,-1);
+    suffix=UNVOICED.test(b)?' S':' Z';
+    w=b;
+  }
+  if(LEX[w]) return (LEX[w]+suffix).trim().split(' ');
+
+  /* Soft C and G before a front vowel, marked so the rules can see them. */
+  w=w.replace(/C(?=[EIY])/g,'\u00E7').replace(/G(?=[EIY])/g,'\u011D');
+  /* Silent final E lengthens the vowel before it: MAKE, SITE, NOTE. */
+  w=w.replace(/([AEIOU])([BCDFGKLMNPRSTVZ\u00E7\u011D])E$/,'$1_$2');
+
+  const src=w+'#';
+  let out=[], i=0, guard=0;
+  while(i<src.length && guard++<200){
+    if(src[i]==='#'){ break; }
+    let hit=null;
+    for(const [pat,ph] of RULES){
+      let p=pat, atStart=false;
+      if(p[0]==='^'){ atStart=true; p=p.slice(1); if(i!==0) continue; }
+      const final=p.endsWith('#');
+      const body=final?p.slice(0,-1):p;
+      if(src.startsWith(body,i) && (!final || i+body.length===src.length-1)){
+        hit=[body.length,ph]; break;
+      }
+    }
+    if(!hit){ i++; continue; }
+    if(hit[1]) out=out.concat(hit[1].split(' '));
+    i+=hit[0];
+  }
+  return out.concat(suffix.trim()?suffix.trim().split(' '):[]);
+}
+
+function phonemise(text){
+  const seq=[];
+  const tokens=text.toUpperCase().match(/[A-Z']+|[0-9]|[.,;:!?]/g)||[];
+  for(const tk of tokens){
+    if(/^[.,;:!?]$/.test(tk)){
+      seq.push({p:'_', d:/[.!?]/.test(tk)?0.26:0.14});
+      continue;
+    }
+    const w = /^[0-9]$/.test(tk) ? DIGIT[+tk] : tk.replace(/'/g,'');
+    const ps=g2pWord(w);
+    if(!ps.length) continue;
+    /* Stress the first vowel of the word: a synthesiser with no stress at all
+       is unintelligible, and this one has exactly as much as the period
+       hardware did. */
+    let stressed=false;
+    for(const p of ps){
+      if(!PHON[p]) continue;
+      const kind=PHON[p][3];
+      const isVowel=kind==='v'&&/^(IY|IH|EH|AE|AH|AA|AO|UH|UW|ER|OW|AY|EY|OY|AW)$/.test(p);
+      const stress=isVowel&&!stressed;
+      if(stress) stressed=true;
+      seq.push({p, d:phonDur(p,kind,stress), stress});
+    }
+    seq.push({p:'_', d:0.045});                       // word gap
+  }
+  return seq;
+}
+
+function phonDur(p,kind,stress){
+  if(kind==='p') return 0.058;                        // closure + burst
+  if(kind==='b') return 0.048;
+  if(kind==='f') return 0.075;
+  if(kind==='z') return 0.058;
+  if(kind==='n') return 0.058;
+  if(/^(AY|EY|OY|AW)$/.test(p)) return stress?0.135:0.105;
+  if(/^(IY|IH|EH|AE|AH|AA|AO|UH|UW|ER|OW)$/.test(p)) return stress?0.105:0.072;
+  return 0.052;
+}
+
+/* One shared output chain, built lazily: a comms channel, not a mouth. */
+function voiceBus(ctx){
+  if(snd.speech) return snd.speech;
+  /* Measured against the four alien voices: the translation has to be the
+     thing you can make out, so it sits a little above them. */
+  const out=ctx.createGain(); out.gain.value=1.6;
+  /* 300–3400 Hz is a telephone channel and it is what this would be coming
+     down. It also does most of the work of making it sound like 1979. */
+  const hp=ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=280;
+  const lp=ctx.createBiquadFilter(); lp.type='lowpass';  lp.frequency.value=3600;
+  out.connect(hp).connect(lp).connect(snd.master);
+  snd.speech=out;
+  return out;
+}
+
+/* Speak a fragment of English, starting no earlier than `when`. Returns the
+   time the fragment ends, so successive fragments abut. */
+function speakEnglish(text,when){
+  const ctx=A();
+  if(!ctx||!boot.done||!snd.on) return when||0;
+  const seq=phonemise(text);
+  if(!seq.length) return when||0;
+
+  const t0=Math.max(when||0, ctx.currentTime+0.03);
+  const total=seq.reduce((s,x)=>s+x.d,0);
+  const bus=voiceBus(ctx);
+  /* Closing the channel mutes this bus; opening one has to un-mute it. */
+  bus.gain.cancelScheduledValues(t0);
+  bus.gain.setValueAtTime(1,t0);
+
+  const amp=ctx.createGain(); amp.gain.value=0;
+  amp.connect(bus);
+
+  /* Glottal buzz. A sawtooth is the classic approximation of a pulse train
+     and it is what the period chips used. */
+  const glot=ctx.createOscillator(); glot.type='sawtooth';
+  const glotG=ctx.createGain(); glotG.gain.value=0;
+  glot.connect(glotG);
+  const hiss=ctx.createBufferSource(); hiss.buffer=snd.noise; hiss.loop=true;
+  const hissG=ctx.createGain(); hissG.gain.value=0;
+  hiss.connect(hissG);
+  const mix=ctx.createGain(); mix.gain.value=1;
+  glotG.connect(mix); hissG.connect(mix);
+
+  /* Three parallel resonators. Parallel, not cascaded, because that is the
+     topology those chips used and it is why the formants are so separate. */
+  const F=[];
+  for(let i=0;i<3;i++){
+    const bp=ctx.createBiquadFilter(); bp.type='bandpass';
+    bp.Q.value=[8,10,12][i];
+    bp.frequency.value=500;
+    const g=ctx.createGain(); g.gain.value=[1,0.62,0.30][i];
+    mix.connect(bp).connect(g).connect(amp);
+    F.push(bp);
+  }
+
+  let t=t0, syl=0;
+  for(const s of seq){
+    const d=PHON[s.p]||PHON._;
+    const kind=d[3];
+    /* Pitch: a flat declination across the fragment with a two-state
+       inflection per syllable. Two bits, exactly like the hardware. */
+    const decl=1-0.14*((t-t0)/Math.max(0.5,total));
+    const f0=112*decl*(s.stress?1.06:0.97);
+    glot.frequency.setValueAtTime(f0,t);
+
+    if(kind==='q'){
+      amp.gain.setTargetAtTime(0,t,0.008);
+    }else if(kind==='p'||kind==='b'){
+      /* Stop: silence, then a burst at the release locus. */
+      amp.gain.setTargetAtTime(0,t,0.004);
+      const burst=t+(kind==='p'?0.034:0.026);
+      for(let i=0;i<3;i++) F[i].frequency.setValueAtTime(d[i]||500,burst);
+      glotG.gain.setValueAtTime(kind==='b'?0.6:0.0,burst);
+      hissG.gain.setValueAtTime(0.9,burst);
+      amp.gain.setValueAtTime(0.0001,burst);
+      amp.gain.exponentialRampToValueAtTime(0.42,burst+0.004);
+      amp.gain.exponentialRampToValueAtTime(0.02,burst+0.020);
+    }else{
+      for(let i=0;i<3;i++) F[i].frequency.setValueAtTime(d[i]||500,t);
+      /* Diphthongs move to a second target halfway through — the one place
+         this synthesiser is allowed to change formants mid-phoneme. */
+      if(d[4]) for(let i=0;i<3;i++) F[i].frequency.setValueAtTime(d[4][i],t+s.d*0.55);
+      const voiced = kind==='v'||kind==='n'||kind==='z';
+      glotG.gain.setValueAtTime(voiced?(kind==='z'?0.42:0.95):0.0,t);
+      hissG.gain.setValueAtTime(kind==='f'?0.55:(kind==='z'?0.30:0.035),t);
+      const lvl = kind==='f'?0.30 : kind==='n'?0.34 : kind==='z'?0.30 : 0.52;
+      amp.gain.setTargetAtTime(lvl,t,0.010);
+    }
+    t+=s.d;
+  }
+  amp.gain.setTargetAtTime(0,t,0.012);
+
+  glot.start(t0); glot.stop(t+0.12);
+  hiss.start(t0); hiss.stop(t+0.12);
+  glot.onended=()=>{ try{ amp.disconnect(); }catch(_){} };
+  return t+0.02;
 }
 
 function sndOutcome(good){
