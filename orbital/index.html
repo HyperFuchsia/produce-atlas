@@ -245,7 +245,16 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   0%,100%{box-shadow:0 0 10px rgba(255,210,61,.45)}
   50%{box-shadow:0 0 0 rgba(255,210,61,0)}
 }
-#viewtools button[data-on="err"]{border-color:var(--hot);color:var(--hot)}
+#viewtools button[data-on="err"]{border-color:var(--hot);color:var(--hot);animation:none}
+
+/* Output meter. Proof the bus is live: if this moves and you hear nothing,
+   the page is fine and the device is muted. */
+#viewtools button{position:relative}
+#snd-bar{
+  position:absolute; left:0; bottom:0; height:2px; width:100%;
+  background:var(--ship); transform:scaleX(0); transform-origin:0 50%;
+  box-shadow:0 0 6px var(--ship); pointer-events:none;
+}
 @media (prefers-reduced-motion:reduce){ #viewtools button[data-on="0"]{animation:none} }
 
 /* READOUT STRIP ------------------------------------------------------- */
@@ -460,7 +469,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-orbit" data-on="1">CONIC</button>
       <button id="btn-crt"   data-on="1">CRT</button>
       <button id="btn-scan"  data-on="1">SCAN</button>
-      <button id="btn-snd"   data-on="0">AUDIO OFF</button>
+      <button id="btn-snd"   data-on="0">AUDIO OFF<i id="snd-bar"></i></button>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -1822,7 +1831,8 @@ function render(){
 
 const snd={
   ctx:null, on:false, master:null, pingBus:null, noise:null, keeper:null,
-  bed:null, thrust:null, entry:null, entryHi:null, lastAlarm:0, burning:false
+  bed:null, thrust:null, entry:null, entryHi:null, lastAlarm:0, burning:false,
+  meter:null, meterBuf:null, level:0, silentSince:0, err:null
 };
 
 /* iPhones mute Web Audio outright when the hardware ring/silent switch is
@@ -1908,6 +1918,12 @@ function audioInit(){
     src.connect(f).connect(g).connect(master); src.start();
     return {g,f};
   };
+  /* Output meter. The whole point is that a silent speaker and a silent bus
+     look identical from the outside — this separates them. */
+  const an=ctx.createAnalyser(); an.fftSize=1024; an.smoothingTimeConstant=0.3;
+  master.connect(an);
+  snd.meter=an; snd.meterBuf=new Float32Array(an.fftSize);
+
   snd.thrust=mk(340,0.8,'bandpass');
   snd.entry =mk(120,0.9,'lowpass');
   /* Paired mid-band voice so the rumble is felt as roar on a phone rather
@@ -1915,14 +1931,19 @@ function audioInit(){
   snd.entryHi=mk(900,0.5,'bandpass');
 }
 
-function audioToggle(){
+async function audioToggle(){
   audioInit();
   if(!snd.ctx) return false;
   if(!snd.keeper) unlockSession();
-  if(snd.ctx.state==='suspended') snd.ctx.resume();
   snd.on=!snd.on;
   if(snd.keeper){ if(snd.on){ snd.keeper.play().catch(()=>{}); } else snd.keeper.pause(); }
   snd.master.gain.setTargetAtTime(snd.on?0.78:0, snd.ctx.currentTime, 0.05);
+  /* resume() is a promise. Reading ctx.state on the next line reports the
+     state before it settles, which is how a blocked context ended up
+     labelled ON. Wait for it. */
+  if(snd.ctx.state!=='running'){
+    try{ await snd.ctx.resume(); }catch(e){ snd.err=String(e.name||e).slice(0,24); }
+  }
   return snd.on;
 }
 
@@ -1931,10 +1952,15 @@ function audioToggle(){
    not look identical to one that is merely muted. */
 function audioLabel(){
   const el=$('btn-snd'); if(!el) return;
-  if(!snd.ctx){ el.textContent='AUDIO OFF'; el.dataset.on='0'; return; }
-  if(snd.ctx.state!=='running'){ el.textContent='AUDIO ERR'; el.dataset.on='err'; return; }
-  el.textContent = snd.on ? 'AUDIO ON' : 'AUDIO OFF';
-  el.dataset.on  = snd.on ? '1' : '0';
+  const bar='<i id="snd-bar"></i>';
+  const set=(txt,state)=>{ el.innerHTML=txt+bar; el.dataset.on=state; };
+  if(!snd.ctx){ set('AUDIO OFF','0'); return; }
+  if(snd.ctx.state!=='running'){ set('AUDIO BLKD','err'); return; }
+  if(!snd.on){ set('AUDIO OFF','0'); return; }
+  /* Running, enabled, and still no signal after the power-up should have
+     played: the graph is fine and something downstream is muting it. */
+  if(snd.silentSince && performance.now()-snd.silentSince>2500){ set('NO OUTPUT','err'); return; }
+  set('AUDIO ON','1');
 }
 
 const A=()=>snd.on&&snd.ctx ? snd.ctx : null;
@@ -2036,6 +2062,27 @@ function sndOutcome(good){
 function audioFrame(){
   const ctx=A(); if(!ctx) return;
   const now=ctx.currentTime;
+
+  /* Sample the bus and drive the meter. */
+  if(snd.meter){
+    snd.meter.getFloatTimeDomainData(snd.meterBuf);
+    let pk=0;
+    for(let i=0;i<snd.meterBuf.length;i+=4){
+      const a=Math.abs(snd.meterBuf[i]); if(a>pk) pk=a;
+    }
+    snd.level = Math.max(pk, (snd.level||0)*0.86);
+    if(snd.level>snd.levelPeak||0) snd.levelPeak=snd.level;
+    const bar=$('snd-bar');
+    if(bar) bar.style.transform='scaleX('+Math.min(1,snd.level*2.4).toFixed(3)+')';
+
+    /* If the bus has been asked for sound and produced none for two seconds,
+       say so rather than claiming everything is fine. */
+    if(snd.on){
+      if(snd.level>0.01) snd.silentSince=0;
+      else if(!snd.silentSince) snd.silentSince=performance.now();
+      if(snd.silentSince && performance.now()-snd.silentSince>2500) audioLabel();
+    }
+  }
 
   snd.bed.gain.setTargetAtTime(crt.on?1:0, now, 0.2);
 
@@ -2231,9 +2278,14 @@ btnOrbit.node.addEventListener('click',()=>{
 $('btn-snd').addEventListener('click',()=>{
   /* The first press is also the user gesture the browser requires before an
      AudioContext may make any sound at all, which is why audio starts off. */
-  const on=audioToggle();
-  audioLabel();
-  if(on) sndPowerUp();
+  snd.silentSince=0;
+  audioToggle().then(on=>{
+    audioLabel();
+    if(on) sndPowerUp();
+    /* Re-label once the power-up has had time to reach the bus, so the
+       verdict reflects measured output rather than intent. */
+    setTimeout(audioLabel,2800);
+  });
 });
 $('btn-scan').addEventListener('click',()=>{
   sndRelay();
@@ -2492,6 +2544,13 @@ function frame(now){
 /* --- Boot --------------------------------------------------------------- */
 bloomCv=$('bloom');
 audioLabel();
+/* Browsers sometimes leave a context suspended even after the gesture that
+   created it. Any subsequent interaction is another chance to start it. */
+addEventListener('pointerdown',()=>{
+  if(snd.ctx && snd.on && snd.ctx.state!=='running'){
+    snd.ctx.resume().then(audioLabel).catch(()=>{});
+  }
+},{capture:true});
 $('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
 insertOrbit();
