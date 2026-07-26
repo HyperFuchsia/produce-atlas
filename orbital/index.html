@@ -223,7 +223,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 #viewtools button{
   border:var(--hair) solid var(--frame-dim);
   color:var(--label);
-  padding:5px 7px;
+  padding:7px 7px;
+  min-height:32px;
   font-size:9px;
   letter-spacing:.12em;
   background:rgba(0,0,0,.6);
@@ -231,6 +232,21 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   text-align:center;
 }
 #viewtools button[data-on="1"]{border-color:var(--frame);color:var(--white);box-shadow:0 0 8px rgba(61,139,255,.5)}
+
+/* A muted subsystem is a state worth annunciating, not a dim button nobody
+   finds. It pulses amber until it is dealt with, like any other off-nominal
+   lamp on the panel. */
+#viewtools button[data-on="0"]{
+  border-color:var(--ship);
+  color:var(--ship);
+  animation:aud-att 1.9s steps(2,end) infinite;
+}
+@keyframes aud-att{
+  0%,100%{box-shadow:0 0 10px rgba(255,210,61,.45)}
+  50%{box-shadow:0 0 0 rgba(255,210,61,0)}
+}
+#viewtools button[data-on="err"]{border-color:var(--hot);color:var(--hot)}
+@media (prefers-reduced-motion:reduce){ #viewtools button[data-on="0"]{animation:none} }
 
 /* READOUT STRIP ------------------------------------------------------- */
 #read{
@@ -444,7 +460,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-orbit" data-on="1">CONIC</button>
       <button id="btn-crt"   data-on="1">CRT</button>
       <button id="btn-scan"  data-on="1">SCAN</button>
-      <button id="btn-snd"   data-on="0">AUDIO</button>
+      <button id="btn-snd"   data-on="0">AUDIO OFF</button>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -1802,9 +1818,27 @@ function render(){
    ========================================================================== */
 
 const snd={
-  ctx:null, on:false, master:null, pingBus:null, noise:null,
+  ctx:null, on:false, master:null, pingBus:null, noise:null, keeper:null,
   bed:null, thrust:null, entry:null, lastAlarm:0, burning:false
 };
+
+/* iPhones mute Web Audio outright when the hardware ring/silent switch is
+   set to silent — the AudioContext runs, the graph produces signal, and
+   nothing comes out of the speaker. Playing a media element on the same
+   gesture moves the page into a playback audio session, which is the only
+   way a web page can opt out of that. Best effort: on the iOS versions where
+   it does not help, the switch itself is the answer, and the UI now says so. */
+const SILENT_WAV='data:audio/wav;base64,UklGRvQHAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YdAHAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';
+function unlockSession(){
+  try{
+    const a=new Audio(SILENT_WAV);
+    a.loop=true; a.volume=0.001;
+    a.setAttribute('playsinline','');
+    const pr=a.play();
+    if(pr&&pr.catch) pr.catch(()=>{});
+    snd.keeper=a;
+  }catch(_){}
+}
 
 function audioInit(){
   if(snd.ctx) return;
@@ -1875,10 +1909,23 @@ function audioInit(){
 function audioToggle(){
   audioInit();
   if(!snd.ctx) return false;
+  if(!snd.keeper) unlockSession();
   if(snd.ctx.state==='suspended') snd.ctx.resume();
   snd.on=!snd.on;
+  if(snd.keeper){ if(snd.on){ snd.keeper.play().catch(()=>{}); } else snd.keeper.pause(); }
   snd.master.gain.setTargetAtTime(snd.on?0.55:0, snd.ctx.currentTime, 0.05);
   return snd.on;
+}
+
+/* The button is also a status lamp: a subsystem that is off should say so as
+   loudly as any other annunciator, and a context that failed to start should
+   not look identical to one that is merely muted. */
+function audioLabel(){
+  const el=$('btn-snd'); if(!el) return;
+  if(!snd.ctx){ el.textContent='AUDIO OFF'; el.dataset.on='0'; return; }
+  if(snd.ctx.state!=='running'){ el.textContent='AUDIO ERR'; el.dataset.on='err'; return; }
+  el.textContent = snd.on ? 'AUDIO ON' : 'AUDIO OFF';
+  el.dataset.on  = snd.on ? '1' : '0';
 }
 
 const A=()=>snd.on&&snd.ctx ? snd.ctx : null;
@@ -2146,7 +2193,7 @@ $('btn-snd').addEventListener('click',()=>{
   /* The first press is also the user gesture the browser requires before an
      AudioContext may make any sound at all, which is why audio starts off. */
   const on=audioToggle();
-  $('btn-snd').dataset.on=on?'1':'0';
+  audioLabel();
   if(on) sndRelay();
 });
 $('btn-scan').addEventListener('click',()=>{
@@ -2405,6 +2452,7 @@ function frame(now){
 
 /* --- Boot --------------------------------------------------------------- */
 bloomCv=$('bloom');
+audioLabel();
 $('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
 insertOrbit();
