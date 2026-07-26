@@ -1286,7 +1286,7 @@ const RACES={
   unit7:{
     name:'UNIT 7', tag:'AUTONOMOUS RELAY', colour:[255,210,61],
     band:'DIGITAL 2.4', voice:{base:420, spread:260, type:'square', rate:1},
-    eye:'raster', eyes:[[0,-.34,.5]],
+    eye:'raster', eyes:[[0,-.36,.32]],
     mouth:'scope', mouthAt:[0,.34], mouthW:.62,
     extra:'bolts'
   }
@@ -1916,9 +1916,17 @@ function stepNav(dt){
   /* Swarms and wrecks drift, so a corridor that was clear last hour is not
      necessarily clear now. Streams do not: they are the remains of something
      that already happened. */
+  let moved=false;
   for(const h of sim.haz){
     if(!h.drift) continue;
-    h.a=add3(h.a,mul3(h.drift,dt)); h.b=h.a;
+    h.a=add3(h.a,mul3(h.drift,dt)); h.b=h.a; moved=true;
+  }
+  /* A corridor tested against where the field used to be is worse than no
+     test. Re-arm the plate when the field moves — at four hertz, not every
+     frame: the scan is 2,800 distance tests and the swarms move slowly. */
+  if(moved){
+    sim.driftAcc=(sim.driftAcc||0)+dt;
+    if(sim.driftAcc>0.25){ sim.driftAcc=0; if(plot.open) plot.dirty=true; }
   }
   if(sim.jumping){
     const k=(performance.now()-sim.jumping.t0)/sim.jumping.dur;
@@ -3635,26 +3643,37 @@ const skullV = e => clamp((e+1)/2,0,1)*HEAD_V*0.94+0.02;
    a human skull would be about 0.44, so a bust comes out roughly 2.1 units
    wide by 2.35 tall — the proportions of a head-and-shoulders frame.
    Every one of these is visible in the silhouette. */
+/* Per race: the numbers a sculptor would ask for. Radii are on a scale where
+   a human skull would be about 0.44. The four are deliberately not variations
+   on one shape — the read has to survive at thumbnail size, in one colour, so
+   the silhouettes are built to be unmistakable from each other before a
+   single feature is drawn on them:
+
+     VOTH      narrow, tall, angular. A wedge on a thin neck.
+     KEL-MORAN attenuated. A long braincase over almost nothing.
+     SSRITH    wide, low, no neck at all. A mantle.
+     UNIT 7    orthogonal. A box that happens to be pointed at you.
+*/
 const ANATOMY={
   voth:{                                   // arthropod: heavy brow, no chin
-    crown:0.36, brow:0.50, cheek:0.45, jaw:0.27, chin:0.12,
-    browF:0.40, cheekF:0.64, jawF:0.86,
-    neck:0.15, shoulder:0.98, depth:0.80
+    crown:0.30, brow:0.47, cheek:0.40, jaw:0.22, chin:0.09,
+    browF:0.38, cheekF:0.62, jawF:0.86,
+    neck:0.11, shoulder:0.86, depth:0.72
   },
   kelmoran:{                               // tall braincase, drawn face
-    crown:0.47, brow:0.44, cheek:0.35, jaw:0.22, chin:0.10,
-    browF:0.46, cheekF:0.67, jawF:0.86,
-    neck:0.12, shoulder:0.80, depth:0.74
+    crown:0.50, brow:0.42, cheek:0.30, jaw:0.18, chin:0.08,
+    browF:0.50, cheekF:0.70, jawF:0.88,
+    neck:0.09, shoulder:0.62, depth:0.70
   },
-  ssrith:{                                 // broad flat skull, enormous jaw
-    crown:0.33, brow:0.53, cheek:0.51, jaw:0.47, chin:0.30,
-    browF:0.42, cheekF:0.64, jawF:0.86,
-    neck:0.29, shoulder:1.04, depth:0.94
+  ssrith:{                                 // broad flat mantle, enormous jaw
+    crown:0.40, brow:0.62, cheek:0.60, jaw:0.55, chin:0.40,
+    browF:0.36, cheekF:0.58, jawF:0.84,
+    neck:0.40, shoulder:1.06, depth:1.02
   },
   unit7:{                                  // a housing, not a head
-    crown:0.45, brow:0.47, cheek:0.47, jaw:0.46, chin:0.42,
-    browF:0.36, cheekF:0.66, jawF:0.88,
-    neck:0.20, shoulder:0.90, depth:0.86
+    crown:0.44, brow:0.46, cheek:0.46, jaw:0.45, chin:0.42,
+    browF:0.34, cheekF:0.66, jawF:0.88,
+    neck:0.17, shoulder:0.80, depth:0.84
   }
 };
 const DEPTH={}; for(const k in ANATOMY) DEPTH[k]=ANATOMY[k].depth;
@@ -3674,18 +3693,13 @@ function spine(race,v){
   ]);
 }
 
-/* The neck attaches behind the chin, not under it; a lathe cannot express
-   that, so the axis itself moves back as it descends. The brow comes forward
-   by the same mechanism. */
 function centreZ(race,v){
   const a=ANATOMY[race];
   return -0.24*a.depth*sstep(HEAD_V-0.08,0.86,v)
          +0.05*a.depth*gauss(v-browV(race),0.09);
 }
 
-/* How far each ring departs from a circle. This is where the species lives:
-   a brow ridge, an eye socket, a cheekbone, a jaw corner, plating. u=0 is
-   the front of the face, u=±π/2 the temples, u=π the back of the skull. */
+/* How far each ring departs from a circle. This is where the species lives. */
 function section(race,u,v){
   const F=Math.cos(u), S=Math.sin(u);
   const front=Math.max(0,F), side=Math.abs(S);
@@ -3695,46 +3709,49 @@ function section(race,u,v){
 
   if(race==='voth'){
     return 1
-      + 0.032*Math.cos(6*u)                                  // chitin plating
-      + 0.020*Math.sin(v*Math.PI*15)                         // segment banding
-      + 0.14*brow*Math.pow(front,1.4)                        // brow shelf
-      - 0.19*gauss(v-browV(race)-0.035,0.042)                // eye pits
+      + 0.055*Math.cos(6*u)                                  // chitin plating
+      + 0.022*Math.sin(v*Math.PI*15)                         // segment banding
+      + 0.20*brow*Math.pow(front,1.3)                        // brow shelf
+      - 0.22*gauss(v-browV(race)-0.035,0.042)                // eye pits
             *gauss(Math.abs(u)-0.50,0.24)
-      + 0.11*cheek*side*front;
+      + 0.14*cheek*side*front
+      - 0.10*(1-front)*sstep(0.30,0.58,v);                   // flat occiput
   }
   if(race==='kelmoran'){
     return 1
-      + 0.15*gauss(v,0.24)*gauss(S,0.26)                     // sagittal crest
+      + 0.20*gauss(v,0.26)*gauss(S,0.24)                     // sagittal crest
       + 0.07*brow*Math.pow(front,1.8)
-      - 0.12*gauss(v-browV(race)-0.02,0.045)
+      - 0.13*gauss(v-browV(race)-0.02,0.045)
             *gauss(Math.abs(u)-0.36,0.20)
-      - 0.10*cheek*front;                                    // hollow cheeks
+      - 0.14*cheek*front;                                    // hollow cheeks
   }
   if(race==='ssrith'){
     return 1
-      + 0.05*Math.sin(v*Math.PI*11)*Math.pow(side,4)         // gill corrugation
-      + 0.17*jaw*side                                        // jaw corners
-      + 0.09*brow*Math.pow(front,2)
-      - 0.15*gauss(v-browV(race),0.038)
+      + 0.06*Math.sin(v*Math.PI*11)*Math.pow(side,4)         // gill corrugation
+      + 0.26*jaw*side                                        // jaw corners
+      + 0.13*brow*Math.pow(front,2)
+      + 0.12*gauss(v-0.10,0.09)*side                         // mantle flare
+      - 0.16*gauss(v-browV(race),0.038)
             *gauss(Math.abs(u)-0.64,0.26)                    // sensory pits
-      - 0.11*(1-front)*sstep(0.42,0.58,v);                   // flat occiput
+      - 0.14*(1-front)*sstep(0.42,0.58,v);
   }
   /* A machine is not lathed. Quantising both axes turns the surface into
      welded plate. */
-  const qu=Math.round(u/(Math.PI/6))*(Math.PI/6);
-  const qv=Math.round(v*16)/16;
-  const box=1/Math.max(Math.abs(Math.cos(qu)),Math.abs(Math.sin(qu)),0.72);
-  return box*(1-0.06*(Math.abs(qv-browV(race))<0.035?1:0));
+  const qu=Math.round(u/(Math.PI/4))*(Math.PI/4);
+  const qv=Math.round(v*11)/11;
+  const box=1/Math.max(Math.abs(Math.cos(qu)),Math.abs(Math.sin(qu)),0.707);
+  /* A recessed band where the raster sits, and a chamfer top and bottom. */
+  const bay=1-0.10*(Math.abs(qv-browV(race))<0.06?1:0);
+  const chamfer=1-0.16*Math.max(0, 0.10-qv)/0.10 - 0.14*Math.max(0, qv-HEAD_V+0.06)/0.10;
+  return box*bay*chamfer;
 }
 
-/* Shoulders are wide and shallow; a skull is neither. */
 function aspect(race,v){
   const a=ANATOMY[race], sh=sstep(0.74,1.0,v);
-  return [1+sh*0.20, a.depth*(1-sh*0.34)];
+  const wide = race==='ssrith' ? 1.34 : race==='unit7' ? 1.06 : 1.0;
+  return [wide*(1+sh*0.20), a.depth*(1-sh*0.34)];
 }
 
-/* Mouth aperture: pushes the surface in around the mouth and opens a gap
-   that grows with the viseme. */
 function mouthDeform(race,u,v,open){
   const r=RACES[race], mv=skullV(r.mouthAt[1]), w=r.mouthW;
   const front=Math.max(0,Math.cos(u));
@@ -3749,6 +3766,7 @@ function headPoint(race,u,v,open){
 }
 
 /* The face has its own camera: slightly above, slowly breathing. */
+let faceView=[0,0,1];
 function faceProj(p,t){
   const yaw=Math.sin(t*0.34)*0.26, pit=-0.09+Math.sin(t*0.22)*0.045;
   const cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pit), sp=Math.sin(pit);
@@ -3760,6 +3778,300 @@ function faceProj(p,t){
   if(d<=0.2) return null;
   const k=comms.S*4.0/d;
   return {x:comms.ox+x1*k, y:comms.oy-y2*k, z:z2, k};
+}
+/* The view direction expressed in the creature's own frame, so a surface
+   normal can be compared against it without projecting anything. */
+function faceViewDir(t){
+  const yaw=Math.sin(t*0.34)*0.26, pit=-0.09+Math.sin(t*0.22)*0.045;
+  const cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pit), sp=Math.sin(pit);
+  /* inverse of the rotation above applied to [0,0,1] */
+  const z1=cp, y1=-sp;
+  return [ -z1*sy*0 + z1*(-sy)*0 + ( -0*cy ), y1, z1 ]; // placeholder, replaced below
+}
+
+/* --- limbs --------------------------------------------------------------
+   None of these things has an arm. What they have is a chain: a base on the
+   body, a direction, and a sequence of segments each of which bends relative
+   to the one before it. Bending in the chain's own frame rather than in world
+   space is what makes a tentacle curl instead of merely bending, and letting
+   the bend plane precess as it travels is what stops it looking like a piece
+   of wire.
+
+   The wave term runs along the chain with a phase delay, so motion started at
+   the root arrives at the tip late. That lag is the entire difference between
+   something alive and something articulated.
+   -------------------------------------------------------------------------- */
+
+/* Rodrigues rotation: v about a unit axis by an angle. */
+function rot3(v,axis,ang){
+  const c=Math.cos(ang), s=Math.sin(ang), k=nrm3(axis);
+  const kx=[k[1]*v[2]-k[2]*v[1], k[2]*v[0]-k[0]*v[2], k[0]*v[1]-k[1]*v[0]];
+  const kd=k[0]*v[0]+k[1]*v[1]+k[2]*v[2];
+  return [v[0]*c+kx[0]*s+k[0]*kd*(1-c),
+          v[1]*c+kx[1]*s+k[1]*kd*(1-c),
+          v[2]*c+kx[2]*s+k[2]*kd*(1-c)];
+}
+
+/* L: {u,v, out, rise, n, len, taper, curl, droop, wave, rate, amp, twist,
+       rad, style, react} */
+function limbChain(race,L,t,open,phase){
+  const base=headPoint(race, L.u, L.v, 0);
+  /* Outward from the body at the attachment, biased by the limb's own set. */
+  let d=nrm3([Math.sin(L.u)*L.out + (L.bias?L.bias[0]:0),
+              L.rise + (L.bias?L.bias[1]:0),
+              Math.cos(L.u)*L.out + (L.bias?L.bias[2]:0)]);
+  /* A side axis perpendicular to the limb, used as the bend axis. */
+  let s=nrm3([-d[2],0,d[0]]);
+  if(len3(s)<1e-4) s=[1,0,0];
+
+  let p=base.slice();
+  const pts=[p.slice()], dirs=[d.slice()];
+  for(let i=0;i<L.n;i++){
+    const k=i/Math.max(1,L.n-1);
+    /* Curl grows along the chain; the travelling wave lags by k. */
+    let bend = L.curl*(0.35+k*1.3)
+             + Math.sin(t*L.rate - k*L.wave + phase)*L.amp*(0.2+k)
+             + (L.react||0)*open*(0.3+k);
+    if(L.quant) bend=Math.round(bend/L.quant)*L.quant;   // a machine only bends in steps
+    /* Negated so that a positive curl reads as "curls downward", which is the
+       way anyone describing a limb would mean it. The bend axis is the
+       horizontal perpendicular, so the raw rotation goes the other way. */
+    d=rot3(d,s,-bend);
+    if(L.twist) s=rot3(s,d,L.twist);
+    if(L.droop) d=nrm3([d[0], d[1]-L.droop*k, d[2]]);
+    const seg=L.len*(1-L.taper*k);
+    p=add3(p,mul3(d,seg));
+    pts.push(p.slice()); dirs.push(d.slice());
+  }
+  return {pts,dirs};
+}
+
+/* Draw a chain as a volume: a ring at every joint, oriented across the limb,
+   plus rails down the sides and a bright core. In a stroke-only display the
+   rings are what turn a polyline into a limb. */
+function drawLimb(chain,L,t,col){
+  const {pts,dirs}=chain;
+  const N=pts.length;
+  const railA=[], railB=[], core=[];
+  for(let i=0;i<N;i++){
+    const k=i/(N-1);
+    const r=L.rad*(1-0.86*k)*(L.bulge?1+L.bulge*Math.sin(k*Math.PI):1);
+    const d=dirs[Math.min(i,dirs.length-1)];
+    let a=nrm3([-d[2],0,d[0]]); if(len3(a)<1e-4) a=[1,0,0];
+    const b=nrm3([d[1]*a[2]-d[2]*a[1], d[2]*a[0]-d[0]*a[2], d[0]*a[1]-d[1]*a[0]]);
+    const q=faceProj(pts[i],t);
+    core.push(q);
+    if(r>0.004 && (L.rings!==false)){
+      const ring=[];
+      const SEG = L.quant ? 4 : 9;
+      for(let j=0;j<=SEG;j++){
+        const ang=j/SEG*6.2832 + (L.quant?0.785:0);
+        ring.push(faceProj(add3(pts[i], add3(mul3(a,Math.cos(ang)*r), mul3(b,Math.sin(ang)*r))),t));
+      }
+      headStroke(ring, q&&q.z>0?0.5:0.2, 1, 0);
+    }
+    railA.push(faceProj(add3(pts[i],mul3(a,r)),t));
+    railB.push(faceProj(add3(pts[i],mul3(a,-r)),t));
+  }
+  headStroke(railA,0.72,1,3); headStroke(railB,0.72,1,3);
+  headStroke(core,0.92,1.3,5);
+
+  /* Whatever is on the end. This is the part that reads first at small size,
+     so it gets the brightest strokes on the creature. */
+  const tip=pts[N-1], dt=dirs[dirs.length-1];
+  if(L.tip==='claw'){
+    let a=nrm3([-dt[2],0,dt[0]]);
+    for(const sg of [-1,1]){
+      const f=[];
+      for(let i=0;i<=6;i++){
+        const k=i/6;
+        let dd=rot3(dt,a,sg*(0.5+k*1.5));
+        f.push(faceProj(add3(tip,mul3(dd,L.len*0.5*k)),t));
+      }
+      headStroke(f,0.95,1.2,5);
+    }
+  }else if(L.tip==='filament'){
+    for(let f=0;f<3;f++){
+      const ax=nrm3([Math.cos(f*2.1),Math.sin(f*2.1)*0.4,Math.sin(f*2.1)]);
+      const pts2=[];
+      for(let i=0;i<=6;i++){
+        const k=i/6;
+        const dd=nrm3(add3(dt, mul3(ax,k*0.9)));
+        pts2.push(faceProj(add3(tip,mul3(dd,L.len*0.62*k)),t));
+      }
+      headStroke(pts2,0.7,1,3);
+    }
+  }else if(L.tip==='pad'){
+    const a=nrm3([-dt[2],0,dt[0]]);
+    const b=nrm3([dt[1]*a[2]-dt[2]*a[1], dt[2]*a[0]-dt[0]*a[2], dt[0]*a[1]-dt[1]*a[0]]);
+    const ring=[];
+    for(let j=0;j<=10;j++){
+      const ang=j/10*6.2832, r=L.rad*0.34;
+      ring.push(faceProj(add3(tip, add3(mul3(a,Math.cos(ang)*r), mul3(b,Math.sin(ang)*r))),t));
+    }
+    headStroke(ring,0.95,1.2,5);
+  }else if(L.tip==='emitter'){
+    const q=faceProj(tip,t);
+    if(q){
+      const k=0.5+0.5*Math.sin(t*5.2);
+      const ring=[];
+      for(let j=0;j<=8;j++){
+        const ang=j/8*6.2832;
+        ring.push({x:q.x+Math.cos(ang)*(3+k*4), y:q.y+Math.sin(ang)*(3+k*4)});
+      }
+      headStroke(ring,0.6+0.4*k,1.2,7);
+    }
+  }
+}
+
+/* What each culture has instead of arms.
+
+   Reach is n·len·(1−taper/2) and the frame is about three units across, so a
+   limb that extends much past one unit from its attachment walks off the
+   plate. Curl accumulates: the bend of every segment adds, so a total much
+   over two radians closes the limb into a loop. Both of those are the
+   difference between an appendage and a mistake, and both are tuned here
+   rather than discovered at runtime. */
+const LIMBS={
+  /* Mantis manipulators, folded. Four of them in two ranks, every angle hard,
+     because everything on this animal is a hinge. */
+  voth:[
+    {u: 0.95,v:0.80,out:0.85,rise:-0.30,n:4,len:0.26,taper:0.30,curl:-0.62,droop:0.02,
+     wave:1.4,rate:0.9,amp:0.05,twist:0.10,rad:0.072,tip:'claw',react:0.10},
+    {u:-0.95,v:0.80,out:0.85,rise:-0.30,n:4,len:0.26,taper:0.30,curl:-0.62,droop:0.02,
+     wave:1.4,rate:0.9,amp:0.05,twist:-0.10,rad:0.072,tip:'claw',react:0.10},
+    {u: 1.45,v:0.90,out:0.85,rise:-0.50,n:4,len:0.21,taper:0.34,curl:-0.74,droop:0.02,
+     wave:1.6,rate:0.7,amp:0.04,twist:0.08,rad:0.055,tip:'claw',react:0.07},
+    {u:-1.45,v:0.90,out:0.85,rise:-0.50,n:4,len:0.21,taper:0.34,curl:-0.74,droop:0.02,
+     wave:1.6,rate:0.7,amp:0.04,twist:-0.08,rad:0.055,tip:'claw',react:0.07},
+    /* Antennae: long, thin, jointed, splayed, never still. */
+    {u: 0.55,v:0.07,out:1.0,rise:1.5,n:7,len:0.155,taper:0.55,curl:0.14,droop:0.004,
+     wave:2.6,rate:1.5,amp:0.10,twist:0.05,rad:0.020,tip:'filament',react:0.05,
+     bias:[0.42,0,0.10]},
+    {u:-0.55,v:0.07,out:1.0,rise:1.5,n:7,len:0.155,taper:0.55,curl:0.14,droop:0.004,
+     wave:2.6,rate:1.5,amp:0.10,twist:-0.05,rad:0.020,tip:'filament',react:0.05,
+     bias:[-0.42,0,0.10]}
+  ],
+  /* Two very long attenuated arms that hang rather than being held, with a
+     second joint that bends the wrong way. Delicate, formal, unhurried. */
+  kelmoran:[
+    {u: 1.05,v:0.80,out:0.74,rise:-0.72,n:6,len:0.195,taper:0.22,curl:0.42,droop:0.10,
+     wave:2.0,rate:0.55,amp:0.055,twist:0.06,rad:0.062,tip:'filament',react:0.06},
+    {u:-1.05,v:0.80,out:0.74,rise:-0.72,n:6,len:0.195,taper:0.22,curl:0.42,droop:0.10,
+     wave:2.0,rate:0.55,amp:0.055,twist:-0.06,rad:0.062,tip:'filament',react:0.06},
+    /* A second, shorter pair held forward — the ones it gestures with. */
+    {u: 0.72,v:0.86,out:0.62,rise:-0.42,n:4,len:0.17,taper:0.28,curl:-0.34,droop:0.02,
+     wave:1.8,rate:0.8,amp:0.07,twist:0.05,rad:0.046,tip:'filament',react:0.18,bias:[0,0,0.5]},
+    {u:-0.72,v:0.86,out:0.62,rise:-0.42,n:4,len:0.17,taper:0.28,curl:-0.34,droop:0.02,
+     wave:1.8,rate:0.8,amp:0.07,twist:-0.05,rad:0.046,tip:'filament',react:0.18,bias:[0,0,0.5]},
+    /* Fine sensory filaments off the crest. */
+    {u: 0.16,v:0.05,out:0.5,rise:1.5,n:6,len:0.105,taper:0.5,curl:0.16,droop:0.006,
+     wave:2.4,rate:1.1,amp:0.07,twist:0.04,rad:0.014,rings:false,bias:[0.22,0,0.06]},
+    {u:-0.16,v:0.05,out:0.5,rise:1.5,n:6,len:0.105,taper:0.5,curl:0.16,droop:0.006,
+     wave:2.4,rate:1.1,amp:0.07,twist:-0.04,rad:0.014,rings:false,bias:[-0.22,0,0.06]}
+  ],
+  ssrith:[],
+  /* Three armatures on a ring. Every one bends in fifteen-degree steps,
+     because that is what the actuator does. */
+  unit7:[
+    {u: 1.05,v:0.84,out:0.95,rise:-0.45,n:3,len:0.30,taper:0.16,curl:0.44,droop:0,
+     wave:0,rate:0.5,amp:0.035,twist:0,rad:0.085,tip:'pad',quant:0.2618},
+    {u:-1.05,v:0.84,out:0.95,rise:-0.45,n:3,len:0.30,taper:0.16,curl:0.44,droop:0,
+     wave:0,rate:0.5,amp:0.035,twist:0,rad:0.085,tip:'pad',quant:0.2618},
+    {u: 0.00,v:0.92,out:0.35,rise:-0.75,n:3,len:0.24,taper:0.20,curl:0.50,droop:0,
+     wave:0,rate:0.4,amp:0.025,twist:0,rad:0.066,tip:'emitter',quant:0.2618,
+     bias:[0,0,0.55]},
+    /* A sensor mast, straight up, with the emitter on the end. */
+    {u:0,v:0.04,out:0.1,rise:1.6,n:2,len:0.20,taper:0.2,curl:0,droop:0,
+     wave:0,rate:0,amp:0,twist:0,rad:0.042,tip:'emitter',quant:0.2618}
+  ]
+};
+/* The SSRITH crown, built rather than typed: eight tentacles spaced right the
+   way round the mantle so some of them hang behind it, each on its own phase
+   and its own curl so no two are ever in the same part of the same motion.
+   They descend first and curl second — a tentacle that leaves the body
+   horizontally and then bends closes into a hoop, which reads as a handle. */
+for(let i=0;i<8;i++){
+  const a=(i/8)*6.2832 + 0.39;
+  LIMBS.ssrith.push({
+    u:a, v:0.82, out:0.52, rise:-0.95,
+    n:10, len:0.17, taper:0.18, curl:0.125+((i*37)%11)/260, droop:0.018,
+    wave:3.4, rate:0.58+((i*53)%13)/44, amp:0.055, twist:0.05+((i%3)-1)*0.035,
+    rad:0.050, bulge:0.20, tip:'filament', react:0.11
+  });
+}
+/* And two heavy feeding arms held forward under the jaw, which are the ones
+   it would actually reach at you with. */
+LIMBS.ssrith.push(
+  {u: 0.42,v:0.74,out:0.50,rise:-0.42,n:6,len:0.165,taper:0.26,curl:-0.26,droop:0.02,
+   wave:2.4,rate:0.5,amp:0.05,twist:0.05,rad:0.078,bulge:0.3,tip:'pad',react:0.14,
+   bias:[0,0,0.60]},
+  {u:-0.42,v:0.74,out:0.50,rise:-0.42,n:6,len:0.165,taper:0.26,curl:-0.26,droop:0.02,
+   wave:2.4,rate:0.5,amp:0.05,twist:-0.05,rad:0.078,bulge:0.3,tip:'pad',react:0.14,
+   bias:[0,0,0.60]}
+);
+
+/* How much room this creature actually needs.
+
+   The framing used to be four hand-tuned numbers, and hand-tuned numbers do
+   not know that a tentacle hangs a light-year below the shoulder it is
+   attached to. This walks the head silhouette and every limb chain at a
+   spread of phases and returns the real envelope in body units, so the frame
+   is fitted to the animal rather than to a guess about it. It runs once when
+   a channel opens. */
+const ENVELOPE={};
+function computeEnvelope(race){
+  if(ENVELOPE[race]) return ENVELOPE[race];
+  /* Measured in PROJECTED space, not body space. The projection is
+     perspective, so a tentacle swinging toward the camera lands further out
+     on the plate than its coordinates suggest — measuring the model and then
+     projecting it would fit the frame to the wrong number. Running the real
+     projection at unit scale gives extents already in units of S, which
+     solves for S directly. */
+  const S0=comms.S, ox0=comms.ox, oy0=comms.oy;
+  comms.S=1; comms.ox=0; comms.oy=0;
+  let ax=0, y0=1e9, y1=-1e9;
+  const eat=q=>{ if(!q) return;
+                 if(Math.abs(q.x)>ax) ax=Math.abs(q.x);
+                 if(q.y<y0) y0=q.y; if(q.y>y1) y1=q.y; };
+  const set=LIMBS[race]||[];
+  /* Across a full cycle of the camera sway and of the slowest limb, so
+     nothing clips when it swings into frame a few seconds later. */
+  for(let t=0; t<18.5; t+=1.15){
+    for(let i=0;i<=FACE_RINGS;i+=2)
+      for(let j=0;j<FACE_SEG;j+=4)
+        eat(faceProj(headPoint(race, j/FACE_SEG*6.2832, i/FACE_RINGS, 0.5), t));
+    for(let k=0;k<set.length;k++){
+      const L=set[k], ch=limbChain(race,L,t,0.6,k*1.7);
+      for(const p of ch.pts) eat(faceProj(p,t));
+      /* Whatever is on the end reaches past the last joint. */
+      const tip=ch.pts[ch.pts.length-1], dt=ch.dirs[ch.dirs.length-1];
+      for(const sp of [-1,0,1])
+        eat(faceProj(add3(tip, mul3(nrm3([dt[0]+sp*0.9, dt[1], dt[2]+sp*0.4]), L.len*0.7)), t));
+    }
+    /* And the features, which are drawn in screen space around a point on the
+       surface and therefore stick out past it. */
+    const rr=RACES[race];
+    for(const [ex,ey,er] of rr.eyes){
+      const u=Math.asin(clamp(ex/0.62,-1,1))*0.82;
+      const q=faceProj(headPoint(race,u,skullV(ey),0),t);
+      if(!q) continue;
+      const rad=er*q.k*0.62*1.95;
+      eat({x:q.x-rad,y:q.y-rad}); eat({x:q.x+rad,y:q.y+rad});
+    }
+  }
+  comms.S=S0; comms.ox=ox0; comms.oy=oy0;
+  ENVELOPE[race]={w:2*ax*1.05, h:(y1-y0)*1.05, cy:(y0+y1)/2};
+  return ENVELOPE[race];
+}
+
+function drawLimbs(t,open){
+  const race=comms.alien.race;
+  const set=LIMBS[race]||[];
+  for(let i=0;i<set.length;i++){
+    const L=set[i];
+    drawLimb(limbChain(race,L,t,open,i*1.7), L, t);
+  }
 }
 
 function headStroke(pts,alpha,width,glow){
@@ -3778,41 +4090,104 @@ function headStroke(pts,alpha,width,glow){
   cx.shadowBlur=0;
 }
 
+/* One ring of the mesh, drawn with rim brightening and the analyser band.
+
+   The rim term is what makes a wireframe read as a surface rather than as a
+   net: where the surface turns away from the eye, the strokes crowd together
+   in screen space and should be brighter, exactly as they are on a real
+   phosphor display where the beam dwells longer on a tangent. Comparing the
+   lathe's radial normal against the view direction gives that for free.
+
+   The band is an analyser pass sweeping the body — the console measuring the
+   thing it is looking at, which is what it would actually be doing. */
+function ringAlpha(p, near, rim, band){
+  return near ? clamp(0.34 + rim*0.62 + band*0.55, 0, 1)
+              : clamp(0.09 + rim*0.16 + band*0.20, 0, 1);
+}
+
+/* Where the surface is not drawn at all.
+
+   A wireframe has no way to hide anything behind anything, so an eye drawn on
+   top of thirty rings is an eye in a hedge. Cutting the mesh away over the
+   sockets and the mouth gives the features clean black to sit on, which is
+   the only occlusion this display can express — and it is also true: there is
+   a hole there. */
+function meshMask(race,u,v){
+  const r=RACES[race];
+  for(const [ex,ey,er] of r.eyes){
+    const eu=Math.asin(clamp(ex/0.62,-1,1))*0.82, ev=skullV(ey);
+    const du=Math.abs(((u-eu+Math.PI*3)%(Math.PI*2))-Math.PI);
+    if(du<er*1.35 && Math.abs(v-ev)<er*0.62) return true;
+  }
+  const mv=skullV(r.mouthAt[1]);
+  const mu=Math.abs(((u+Math.PI*3)%(Math.PI*2))-Math.PI);
+  if(mu<r.mouthW*1.15 && Math.abs(v-mv)<0.030+open0*0.030) return true;
+  return false;
+}
+let open0=0;
+
+/* Machines get fewer rings: a stack of plates reads as a machine, and thirty
+   of them reads as noise. */
+const RINGSTEP={voth:1, kelmoran:1, ssrith:1, unit7:3};
+
 function drawHead(t,open){
   const race=comms.alien.race;
+  open0=open;
+  /* View direction in the creature's frame. The projection rotates by yaw
+     then pitch; this is [0,0,1] taken back through both. */
+  const yaw=Math.sin(t*0.34)*0.26, pit=-0.09+Math.sin(t*0.22)*0.045;
+  const cy=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pit), sp=Math.sin(pit);
+  const vz=[ -sy*cp, -sp, cy*cp ];
+  /* The analyser band, in body-space height. */
+  const bandY = 1.15 - ((t*0.42)%1.9)*2.6;
 
-  /* Cross sections. Depth fades the far side, which is what makes a
-     transparent wireframe read as solid rather than as a net. The body is
-     dimmer than the head throughout: it is context, not the subject. */
-  for(let i=1;i<FACE_RINGS;i++){
+  const step=RINGSTEP[race]||1;
+  for(let i=1;i<FACE_RINGS;i+=step){
     const v=i/FACE_RINGS;
     const skull=v<=HEAD_V+0.02;
-    const pts=[];
+    const near=[], far=[];
     for(let j=0;j<=FACE_SEG;j++){
-      pts.push(faceProj(headPoint(race,j/FACE_SEG*6.2832,v,open),t));
+      const u=j/FACE_SEG*6.2832;
+      if(skull && meshMask(race,u,v)){ near.push(null); far.push(null); continue; }
+      const p=headPoint(race,u,v,open);
+      const q=faceProj(p,t);
+      (q&&q.z>0?near:far).push(q);
+      (q&&q.z>0?far:near).push(null);
     }
-    const near=pts.map(q=>q&&q.z>0?q:null);
-    const far =pts.map(q=>q&&q.z<=0?q:null);
-    headStroke(far, skull?0.16:0.08, 1, 0);
-    headStroke(near, skull?0.66:0.26, skull?1.1:1, skull?4:0);
+    /* One alpha per ring rather than per point: a stroke can only have one
+       colour, and splitting every ring into thirty-six gradient segments
+       costs more than it shows. Use the ring's brightest rim value. */
+    const p0=headPoint(race,Math.PI/2,v,open);
+    const n0=nrm3([p0[0],0,p0[2]]);
+    const rim=1-Math.abs(n0[0]*vz[0]+n0[1]*vz[1]+n0[2]*vz[2]);
+    const band=Math.exp(-Math.pow((1-Y_SPAN*v - bandY)/0.16,2));
+    headStroke(far,  ringAlpha(null,false,rim,band), 1, 0);
+    headStroke(near, ringAlpha(null,true, rim,band), skull?1.15:1, band>0.4?7:4);
   }
 
-  /* Meridians. Fewer than the rings, so the mesh reads as contour lines on a
-     survey chart rather than as graph paper. */
-  for(let j=0;j<FACE_SEG;j+=3){
+  /* Meridians, denser across the face than around the back — detail belongs
+     where the eye goes. */
+  for(let j=0;j<FACE_SEG;j+=2){
     const u=j/FACE_SEG*6.2832;
-    const pts=[];
-    for(let i=0;i<=FACE_RINGS;i++) pts.push(faceProj(headPoint(race,u,i/FACE_RINGS,open),t));
-    const near=pts.map(q=>q&&q.z>0?q:null);
-    const far =pts.map(q=>q&&q.z<=0?q:null);
-    headStroke(far, 0.08, 1, 0);
-    headStroke(near, 0.30, 1, 0);
+    const front=Math.max(0,Math.cos(u));
+    if(front<0.35 && j%6) continue;
+    const near=[], far=[];
+    for(let i=0;i<=FACE_RINGS;i++){
+      const v=i/FACE_RINGS;
+      if(v<=HEAD_V+0.02 && meshMask(race,u,v)){ near.push(null); far.push(null); continue; }
+      const q=faceProj(headPoint(race,u,v,open),t);
+      (q&&q.z>0?near:far).push(q);
+      (q&&q.z>0?far:near).push(null);
+    }
+    const n0=nrm3([Math.sin(u),0,Math.cos(u)]);
+    const rim=1-Math.abs(n0[0]*vz[0]+n0[1]*vz[1]+n0[2]*vz[2]);
+    headStroke(far, 0.06+rim*0.06, 1, 0);
+    headStroke(near, 0.16+rim*0.34, 1, 0);
   }
 
   /* The silhouette: for each height, the two points where the surface turns
-     away from the camera. Stroking those bright is what separates a solid
-     head from a cloud of lines, and it is the edge that survives when the
-     signal degrades. */
+     away. It is the edge that survives when the signal degrades and it is
+     what the creature is recognised by. */
   const L=[],R=[];
   for(let i=0;i<=FACE_RINGS;i++){
     const v=i/FACE_RINGS;
@@ -3825,7 +4200,7 @@ function drawHead(t,open){
     }
     L.push(lo); R.push(hi);
   }
-  headStroke(L,0.9,1.5,7); headStroke(R,0.9,1.5,7);
+  headStroke(L,0.95,1.6,8); headStroke(R,0.95,1.6,8);
 }
 
 /* Eyes sit on the surface, so they move correctly as the head turns. */
@@ -3840,8 +4215,6 @@ function drawFaceEyes(t){
     const rad=er*q.k*0.62;
 
     if(r.eye==='compound'){
-      /* A compound eye is a lattice, so draw the lattice: a hexagonal rim and
-         the ommatidia tiled inside it on a hex grid. */
       for(let ring=3;ring>=1;ring--){
         const pts=[];
         for(let i=0;i<=6;i++){
@@ -3866,13 +4239,12 @@ function drawFaceEyes(t){
         pupil.push({x:q.x+Math.cos(a)*rad*0.22, y:q.y+Math.sin(a)*rad*0.30*(1-lid)});
       }
       headStroke(pts,0.95,1.3,7); headStroke(inner,0.55,1,3); headStroke(pupil,0.9,1.2,5);
-      for(let i=0;i<12;i++){                                 // iris fibres
+      for(let i=0;i<12;i++){
         const a=i/12*6.2832;
         headStroke([{x:q.x+Math.cos(a)*rad*0.28,y:q.y+Math.sin(a)*rad*0.28*(1-lid)},
                     {x:q.x+Math.cos(a)*rad*0.60,y:q.y+Math.sin(a)*rad*0.60*(1-lid)}],0.32,1,0);
       }
     }else if(r.eye==='pits'){
-      /* Not eyes — thermal pits. They pulse as they sample. */
       const flare=0.62+0.38*Math.sin(t*1.1+ex*7);
       const pts=[],deep=[];
       for(let i=0;i<=20;i++){
@@ -3882,22 +4254,27 @@ function drawFaceEyes(t){
       }
       headStroke(pts,0.9,1.2,6); headStroke(deep,0.65,1,3);
     }else{
-      /* A machine has a raster, and it scans. */
-      const w=rad*1.5, h=rad*0.72;
-      headStroke([{x:q.x-w,y:q.y-h},{x:q.x+w,y:q.y-h},{x:q.x+w,y:q.y+h},
-                  {x:q.x-w,y:q.y+h},{x:q.x-w,y:q.y-h}],0.9,1.3,6);
-      for(let i=-4;i<=4;i++){
-        const yy=q.y+i*h*0.22;
-        headStroke([{x:q.x-w*0.94,y:yy},{x:q.x+w*0.94,y:yy}],0.32,1,0);
+      /* A bezel, a raster, and a bar sweeping down it. This is the brightest
+         thing on the machine because it is the only part of it that is
+         doing anything. */
+      const w=rad*1.6, h=rad*0.80;
+      for(const g of [1.18,1]){
+        headStroke([{x:q.x-w*g,y:q.y-h*g},{x:q.x+w*g,y:q.y-h*g},{x:q.x+w*g,y:q.y+h*g},
+                    {x:q.x-w*g,y:q.y+h*g},{x:q.x-w*g,y:q.y-h*g}],g>1?0.55:0.95,g>1?1:1.4,g>1?0:7);
       }
-      const sw=q.y+Math.sin(t*1.6)*h*0.8;
-      headStroke([{x:q.x-w*0.94,y:sw},{x:q.x+w*0.94,y:sw}],1,1.8,8);
+      for(let i=-5;i<=5;i++){
+        const yy=q.y+i*h*0.17;
+        headStroke([{x:q.x-w*0.94,y:yy},{x:q.x+w*0.94,y:yy}],0.30,1,0);
+      }
+      const sw=q.y+(((t*0.55)%1)*2-1)*h*0.9;
+      headStroke([{x:q.x-w*0.94,y:sw},{x:q.x+w*0.94,y:sw}],1,2.4,10);
+      cx.fillStyle='rgba('+r.colour.join(',')+',0.16)';
+      cx.fillRect(q.x-w*0.94, sw-1.5, w*1.88, 3);
     }
   }
 }
 
-/* The mouth is a hole in the surface; this draws its rim and its mechanism,
-   so the aperture reads rather than merely being a dent. */
+/* The mouth is a hole in the surface; this draws its rim and its mechanism. */
 function drawFaceMouth(t,open){
   const race=comms.alien.race, r=comms.race;
   const mv=skullV(r.mouthAt[1]), w=r.mouthW;
@@ -3912,7 +4289,6 @@ function drawFaceMouth(t,open){
   headStroke(rim,0.95,1.4,7);
 
   if(r.mouth==='jaw'&&open>0.20){
-    /* Teeth, top and bottom, revealed by the gape. */
     for(let i=-4;i<=4;i++){
       const du=i*w/4.2;
       for(const s of [-1,1]){
@@ -3923,8 +4299,6 @@ function drawFaceMouth(t,open){
     }
   }
   if(r.mouth==='mandible'){
-    /* Paired mandibles that spread as the creature articulates, each with a
-       palp hanging from the tip. */
     for(const sgn of [-1,1]){
       const arm=[];
       for(let i=0;i<=10;i++){
@@ -3945,8 +4319,6 @@ function drawFaceMouth(t,open){
     if(a&&b) headStroke([a,b],0.42,1,0);
   }
   if(r.mouth==='scope'){
-    /* Not a mouth: a speaker grille. It has no business moving, so it
-       modulates instead. */
     for(let i=-2;i<=2;i++){
       const dv=mv+i*0.013;
       const bar=[];
@@ -3955,62 +4327,6 @@ function drawFaceMouth(t,open){
         bar.push(q&&q.z>0?q:null);
       }
       headStroke(bar,0.28+0.62*open*Math.exp(-i*i/2.2),1,open>0.3?4:0);
-    }
-  }
-}
-
-function drawFaceExtra(t){
-  const race=comms.alien.race, r=comms.race;
-  if(r.extra==='antennae'){
-    for(const sgn of [-1,1]){
-      const pts=[];
-      for(let i=0;i<=12;i++){
-        const k=i/12;
-        const u=sgn*(0.36+k*0.14);
-        const p=headPoint(race,u,0.075,0);
-        const bend=Math.sin(t*0.8+k*2.2+sgn)*0.05*k;
-        pts.push(faceProj([p[0]*(1+k*0.75)+bend, p[1]+k*0.52, p[2]*(1+k*0.30)+bend*0.4],t));
-      }
-      headStroke(pts,0.7,1.1,4);
-      for(let i=2;i<pts.length;i+=3){                       // jointed segments
-        const a=pts[i], b=pts[i-1];
-        if(!a||!b) continue;
-        const dx=a.y-b.y, dy=b.x-a.x, L=Math.hypot(dx,dy)||1;
-        headStroke([{x:a.x-dx/L*3,y:a.y-dy/L*3},{x:a.x+dx/L*3,y:a.y+dy/L*3}],0.45,1,0);
-      }
-    }
-  }else if(r.extra==='crest'){
-    /* A blade running the midline, front to back over the crown. */
-    for(const h of [1,0.6]){
-      const pts=[];
-      for(let i=0;i<=18;i++){
-        const v=i/18*(HEAD_V*0.95);
-        const p=headPoint(race,0,v,0);
-        pts.push(faceProj([p[0],p[1]+h*0.22*Math.sin(Math.PI*v/(HEAD_V*0.95)),p[2]*1.05],t));
-      }
-      headStroke(pts,h===1?0.75:0.38,h===1?1.3:1,h===1?4:0);
-    }
-  }else if(r.extra==='gills'){
-    for(const sgn of [-1,1]) for(let g=0;g<5;g++){
-      const pts=[];
-      for(let i=0;i<=8;i++){
-        const v=cheekV(race)+0.02+g*0.030+i/8*0.022;
-        pts.push(faceProj(headPoint(race,sgn*(1.24+g*0.06),v,0),t));
-      }
-      headStroke(pts,0.45+0.3*Math.max(0,Math.sin(t*1.4-g*0.5)),1,3);
-    }
-  }else if(r.extra==='bolts'){
-    for(const v of [0.10,HEAD_V*0.88]) for(const u of [-0.88,0.88]){
-      const q=faceProj(headPoint(race,u,v,0),t);
-      if(!q||q.z<=0) continue;
-      const rr=Math.max(3,q.k*0.030);
-      const pts=[];
-      for(let i=0;i<=6;i++){
-        const a=i/6*6.2832+0.5;
-        pts.push({x:q.x+Math.cos(a)*rr, y:q.y+Math.sin(a)*rr});
-      }
-      headStroke(pts,0.65,1,3);
-      headStroke([{x:q.x-rr*0.6,y:q.y},{x:q.x+rr*0.6,y:q.y}],0.45,1,0);
     }
   }
 }
@@ -4025,10 +4341,12 @@ function drawFace(){
      whichever of those the panel is tighter on and centre what is left.
      A comms window on a phone in landscape is a letterbox; on a desk it is a
      tall column. The same face has to sit correctly in both. */
-  const k0=Math.min(comms.W*0.92/2.10, comms.H*0.90/2.45);
+  /* Fit the frame to the animal, measured rather than assumed. */
+  const env=computeEnvelope(comms.alien.race);
+  const k0=Math.min(comms.W*0.94/env.w, comms.H*0.94/env.h);
   comms.S=k0;
   comms.ox=comms.W/2 + Math.sin(t*0.5)*k0*0.02;
-  comms.oy=comms.H/2 - k0*0.175 + Math.sin(t*0.31)*k0*0.02;
+  comms.oy=comms.H/2 - env.cy*k0 + Math.sin(t*0.31)*k0*0.02;
 
   const col=r.colour;
   const rgba=a=>`rgba(${col[0]},${col[1]},${col[2]},${a})`;
@@ -4044,10 +4362,10 @@ function drawFace(){
 
   /* Surface first, then the features that sit on it, then what grows out
      of it — near-to-far within each so the wireframe reads solid. */
+  drawLimbs(t, comms.mouth);
   drawHead(t, comms.mouth);
   drawFaceMouth(t, comms.mouth);
   drawFaceEyes(t);
-  drawFaceExtra(t);
 
   /* A framing bracket, so the face reads as a picture the console is
      receiving rather than a thing in the room. */
@@ -5613,6 +5931,9 @@ cv.addEventListener('click',e=>{
 
 /* --- Keyboard, for anyone on a desktop ----------------------------------- */
 addEventListener('keydown',e=>{
+  /* #boot covers the console and swallows taps, but a keyboard goes straight
+     past it. Nothing is flyable until the self-test finishes. */
+  if(!boot.done) return;
   if(comms.open && /^[1-4]$/.test(e.key)){
     const b=document.querySelectorAll('#comms-opts .opt')[Number(e.key)-1];
     if(b) b.click();
