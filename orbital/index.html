@@ -1471,6 +1471,9 @@ function updateScan(dt){
   if(!sim.scanOn||sim.landed) return;
   sim.sweepPrev=sim.sweep;
   sim.sweep=(sim.sweep+SWEEP_RATE*dt)%(2*Math.PI);
+  /* One soft tick per revolution. A sweep you can hear turning tells you the
+     sensor is live even when it is finding nothing. */
+  if(sim.sweep<sim.sweepPrev) blip(2100,0.03,0.05,0,'sine');
 
   const [slat,slon]=vecToGeo(sim.r,sim.spin);
   const fp=footprintAng();
@@ -1523,7 +1526,7 @@ function updateScan(dt){
     /* Only some clutter is audible. Every return chiming would be two to
        four pings a second forever, which stops being radar chatter and
        starts being a smoke alarm. */
-    if(Math.random()<0.45) sndPing(false);
+    if(Math.random()<0.62) sndPing(false);
 
     /* Roughly one return in four is strong enough to work a track on. */
     if(!sim.transient && !sim.acq && Math.random()<0.28){
@@ -1819,7 +1822,7 @@ function render(){
 
 const snd={
   ctx:null, on:false, master:null, pingBus:null, noise:null, keeper:null,
-  bed:null, thrust:null, entry:null, lastAlarm:0, burning:false
+  bed:null, thrust:null, entry:null, entryHi:null, lastAlarm:0, burning:false
 };
 
 /* iPhones mute Web Audio outright when the hardware ring/silent switch is
@@ -1876,21 +1879,24 @@ function audioInit(){
   /* --- the powered bed ------------------------------------------------- */
   const bedGain=ctx.createGain(); bedGain.gain.value=0; bedGain.connect(master);
   const hum=ctx.createOscillator(); hum.type='sawtooth'; hum.frequency.value=50;
-  const humLp=ctx.createBiquadFilter(); humLp.type='lowpass'; humLp.frequency.value=150;
-  const humG=ctx.createGain(); humG.gain.value=0.055;
+  /* A 50 Hz fundamental is simply absent on a phone speaker — those drivers
+     roll off hard below a few hundred hertz. Passing the sawtooth's harmonics
+     is what makes the hum exist at all on the device this is meant for. */
+  const humLp=ctx.createBiquadFilter(); humLp.type='lowpass'; humLp.frequency.value=900;
+  const humG=ctx.createGain(); humG.gain.value=0.05;
   hum.connect(humLp).connect(humG).connect(bedGain); hum.start();
 
   /* Flyback whine. The real line rate is 15.7 kHz; a lot of phone speakers
      cannot reproduce it and a lot of ears cannot hear it, so the audible
      subharmonic carries the impression instead. */
   const wh=ctx.createOscillator(); wh.type='sine'; wh.frequency.value=7867;
-  const whG=ctx.createGain(); whG.gain.value=0.006;
+  const whG=ctx.createGain(); whG.gain.value=0.011;
   wh.connect(whG).connect(bedGain); wh.start();
 
   const air=ctx.createBufferSource(); air.buffer=buf; air.loop=true;
   const airF=ctx.createBiquadFilter(); airF.type='bandpass';
   airF.frequency.value=520; airF.Q.value=0.6;
-  const airG=ctx.createGain(); airG.gain.value=0.02;
+  const airG=ctx.createGain(); airG.gain.value=0.03;
   air.connect(airF).connect(airG).connect(bedGain); air.start();
   snd.bed=bedGain;
 
@@ -1904,6 +1910,9 @@ function audioInit(){
   };
   snd.thrust=mk(340,0.8,'bandpass');
   snd.entry =mk(120,0.9,'lowpass');
+  /* Paired mid-band voice so the rumble is felt as roar on a phone rather
+     than disappearing into a frequency range the driver cannot produce. */
+  snd.entryHi=mk(900,0.5,'bandpass');
 }
 
 function audioToggle(){
@@ -1913,7 +1922,7 @@ function audioToggle(){
   if(snd.ctx.state==='suspended') snd.ctx.resume();
   snd.on=!snd.on;
   if(snd.keeper){ if(snd.on){ snd.keeper.play().catch(()=>{}); } else snd.keeper.pause(); }
-  snd.master.gain.setTargetAtTime(snd.on?0.55:0, snd.ctx.currentTime, 0.05);
+  snd.master.gain.setTargetAtTime(snd.on?0.78:0, snd.ctx.currentTime, 0.05);
   return snd.on;
 }
 
@@ -1951,7 +1960,7 @@ function sndPing(strong){
   o.frequency.exponentialRampToValueAtTime(f0*0.6,t+(strong?0.5:0.2));
   const g=ctx.createGain();
   g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(strong?0.34:0.055,t+0.006);
+  g.gain.linearRampToValueAtTime(strong?0.42:0.09,t+0.006);
   g.gain.exponentialRampToValueAtTime(0.0001,t+(strong?0.85:0.28));
   o.connect(g).connect(snd.pingBus);
   o.start(t); o.stop(t+1);
@@ -1989,6 +1998,34 @@ function sndAlarm(){
   blip(680,0.16,0.16,0,'square');
   blip(510,0.16,0.16,0.19,'square');
 }
+/* Power-up. The point of this is that there is no ambiguity about whether
+   audio is working: it is the first thing heard, it is mid-band where every
+   speaker can reproduce it, and it is longer than a click. */
+function sndPowerUp(){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime+0.06;
+
+  /* Relay closing, then the bus coming up. */
+  blip(210,0.05,0.16,0.00,'square');
+  blip(420,0.09,0.14,0.05,'square');
+
+  /* A rising three-tone, the way an instrument annunciates a self-test pass. */
+  blip(523.25,0.16,0.26,0.16,'triangle');
+  blip(783.99,0.16,0.26,0.30,'triangle');
+  blip(1046.5,0.40,0.28,0.44,'triangle');
+
+  /* Sonar check into the delay bus, so the tail is audible too. */
+  const o=ctx.createOscillator(); o.type='sine';
+  o.frequency.setValueAtTime(1400,t+0.9);
+  o.frequency.exponentialRampToValueAtTime(700,t+1.35);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0,t+0.9);
+  g.gain.linearRampToValueAtTime(0.3,t+0.91);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+1.5);
+  o.connect(g).connect(snd.pingBus);
+  o.start(t+0.9); o.stop(t+1.6);
+}
+
 function sndOutcome(good){
   if(!A()) return;
   if(good){ blip(523,0.15,0.2,0); blip(784,0.15,0.2,0.14); blip(1046,0.5,0.2,0.28); }
@@ -2011,6 +2048,8 @@ function audioFrame(){
   const lvl=sim.landed?0:clamp(q/7000,0,1);
   snd.entry.g.gain.setTargetAtTime(lvl*0.42, now, 0.15);
   snd.entry.f.frequency.setTargetAtTime(90+lvl*420, now, 0.2);
+  snd.entryHi.g.gain.setTargetAtTime(lvl*0.20, now, 0.15);
+  snd.entryHi.f.frequency.setTargetAtTime(700+lvl*1400, now, 0.2);
 
   const st=limbState();
   if((st.overG||st.steep) && !sim.landed && performance.now()-snd.lastAlarm>1250){
@@ -2194,7 +2233,7 @@ $('btn-snd').addEventListener('click',()=>{
      AudioContext may make any sound at all, which is why audio starts off. */
   const on=audioToggle();
   audioLabel();
-  if(on) sndRelay();
+  if(on) sndPowerUp();
 });
 $('btn-scan').addEventListener('click',()=>{
   sndRelay();
