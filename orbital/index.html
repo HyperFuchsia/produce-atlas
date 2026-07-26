@@ -356,7 +356,9 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    is what this console would have had. */
 .box--task{
   border-color:var(--grid); color:var(--grid);
-  max-width:44vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  /* This is the one line that says what to do next, so it gets the room the
+     two boxes beside it stopped taking. */
+  max-width:72vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .box--task[data-urgent="1"]{border-color:var(--hot);color:var(--hot)}
 .box--task[data-urgent="2"]{border-color:var(--ship);color:var(--ship)}
@@ -700,6 +702,44 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    at three pixels and this rule must not be what takes the phosphor. */
 #read .rd--name .v{overflow:clip;overflow-clip-margin:7px;text-overflow:ellipsis}
 
+/* PROGRESSIVE DISCLOSURE ----------------------------------------------
+   Every readout here reports state honestly, which is the law — but a panel
+   that reports fifty-two things at once reports none of them, because the eye
+   has nowhere to land. So the console shows what the first minute needs and
+   keeps the rest one press away. Nothing is deleted; the difference is when it
+   arrives. Measured before this: 52 things competing on a 390px screen.
+   -------------------------------------------------------------------------- */
+/* Four tiles in a four-column grid with one of them spanning two leaves a
+   single orphan on a second row. Give the name the whole line — it is the
+   longest string on the panel — and let the three resources share the next. */
+#shell:not([data-more="1"]) #read .rd--name{grid-column:1/-1}
+#shell:not([data-more="1"]) .rd--x,
+#shell:not([data-more="1"]) #lex,
+#shell:not([data-more="1"]) #calc,
+#shell:not([data-more="1"]) #sensorlog,
+#shell:not([data-more="1"]) #oplog{display:none}
+/* The two boxes the header can lose: the phase word is on the annunciator and
+   the survey counter is a number nobody acts on. */
+#shell:not([data-more="1"]) .box--x{display:none}
+
+/* The tool strip is display plumbing — camera modes, the grille, drop lines.
+   A stranger meets the game before they meet the settings. */
+#panel-tog{
+  position:absolute; right:6px; top:6px; z-index:3;
+  border:var(--hair) solid var(--frame-dim); color:var(--label);
+  background:rgba(0,0,0,.62);
+  padding:7px 9px; min-height:32px; min-width:56px;
+  font-size:9px; letter-spacing:.14em; text-align:center;
+}
+#panel-tog[aria-expanded="true"]{border-color:var(--white); color:var(--white)}
+#viewtools[data-open=""]{display:none}
+
+/* MORE holds the six controls an operator wants only once they know the game.
+   It expands in place so the primary keys never move under a thumb. */
+#ctl-more{display:contents}
+#ctl-more[hidden]{display:none}
+#k-more[aria-expanded="true"]{border-color:var(--white); color:var(--white)}
+
 /* CONTROL PAD --------------------------------------------------------- */
 #ctl{
   grid-area:ctl;
@@ -962,12 +1002,12 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   <!-- ==================== HEAD ==================== -->
   <header id="head">
     <span id="title">DEEP SURVEY</span>
-    <span class="box" id="phase">ORBIT</span>
-    <span class="box box--ship" id="scan">SCAN 00/28</span>
+    <span class="box box--x" id="phase">ORBIT</span>
+    <span class="box box--ship box--x" id="scan">SCAN 00/28</span>
     <span class="box" id="limbstat">VACUUM</span>
     <span class="spacer"></span>
     <span class="box box--task" id="task">SELECT A SYSTEM</span>
-    <span class="box" id="met">T+00:00:00</span>
+    <span class="box box--x" id="met">T+00:00:00</span>
   </header>
 
   <!-- ==================== VIEWPORT ==================== -->
@@ -981,7 +1021,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <div class="crt-vig"></div>
     </div>
 
-    <div id="viewtools">
+    <button id="panel-tog" aria-expanded="false">PANEL</button>
+    <div id="viewtools" data-open="">
       <button id="btn-view"  data-on="1">CHART</button>
       <button id="btn-cam"   data-on="1">CAM ORB</button>
       <button id="btn-track" data-on="1">DROPS</button>
@@ -1102,14 +1143,17 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== READOUTS ==================== -->
   <section id="read">
+    <!-- Where you are and the three things that can kill you. Everything else
+         is on a control that already says it: the target and its distance are
+         printed on ENGAGE, the body count on APPROACH. -->
     <div class="rd rd--name"><span class="k">Position</span><span class="v" id="r-alt">—</span></div>
-    <div class="rd rd--name"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
-    <div class="rd"><span class="k">Jump dist</span><span class="v" id="r-ap">—</span></div>
     <div class="rd"><span class="k">Fuel</span><span class="v" id="r-pe">—</span></div>
     <div class="rd"><span class="k">Hull</span><span class="v" id="r-g">—</span></div>
     <div class="rd"><span class="k">Air</span><span class="v" id="r-dv">—</span></div>
-    <div class="rd"><span class="k">Contact</span><span class="v" id="r-heat">—</span></div>
-    <div class="rd"><span class="k">Cultures</span><span class="v" id="r-miss">—</span></div>
+    <div class="rd rd--name rd--x"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
+    <div class="rd rd--x"><span class="k">Jump dist</span><span class="v" id="r-ap">—</span></div>
+    <div class="rd rd--x"><span class="k">Contact</span><span class="v" id="r-heat">—</span></div>
+    <div class="rd rd--x"><span class="k">Cultures</span><span class="v" id="r-miss">—</span></div>
 
     <div id="calc">
       <div class="hd">FLIGHT COMPUTATION</div>
@@ -1144,16 +1188,21 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   </section>
 
   <!-- ==================== CONTROLS ==================== -->
+  <!-- Five keys carry the game. The other five are for an operator who already
+       knows it, and they live behind MORE rather than in front of everyone. -->
   <section id="ctl">
     <button class="key key--go" id="k-go">ENGAGE<span class="sub" id="go-lbl">SELECT A SYSTEM</span></button>
     <button class="key" id="k-near">NEAREST<span class="sub" id="near-lbl">IN RANGE</span></button>
-    <button class="key" id="k-prev">◀ PREV<span class="sub">TARGET</span></button>
-    <button class="key" id="k-next">NEXT ▶<span class="sub">TARGET</span></button>
     <button class="key" id="k-scoop">APPROACH<span class="sub" id="scoop-lbl">FUEL</span></button>
-    <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">ROUTE</span></button>
-    <button class="key" id="k-jump">PLOT<span class="sub" id="jump-lbl">—</span></button>
-    <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
-    <button class="key key--hot" id="k-reset">RESET<span class="sub">NEW SURVEY</span></button>
+    <button class="key" id="k-more" aria-expanded="false">MORE<span class="sub" id="more-lbl">5 CONTROLS</span></button>
+    <div id="ctl-more" hidden>
+      <button class="key" id="k-prev">◀ PREV<span class="sub">TARGET</span></button>
+      <button class="key" id="k-next">NEXT ▶<span class="sub">TARGET</span></button>
+      <button class="key" id="k-jump">PLOT<span class="sub" id="jump-lbl">—</span></button>
+      <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">ROUTE</span></button>
+      <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
+      <button class="key key--hot" id="k-reset">RESET<span class="sub">NEW SURVEY</span></button>
+    </div>
     <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
 
@@ -2346,14 +2395,14 @@ function approachOpen(b){
   approach.alt=Math.max(0.35, floorEstimate(b)+0.25);
   approach.dirty=true;
   $('appr').hidden=false;
-  $('viewtools').style.display='none';
+  setPanel(false);
   approachRefresh();
   sndRelay();
 }
 function approachStow(){
   approach.open=false; approach.body=null;
   $('appr').hidden=true;
-  if(!comms.open&&!plot.open) $('viewtools').style.display='';
+
   sndKey();
 }
 function approachNudge(d){
@@ -2407,6 +2456,43 @@ function approachRun(){
    clean arrival before they have earned one, and nobody is ever stuck.
    ========================================================================== */
 
+/* Which culture the operator is actually trying to reach — the lowest rung of
+   the ladder that is not yet fluent and whose prerequisite they already hold.
+   Both the standing order and the primary control read from this, so they can
+   never disagree about where you are going. */
+function nextGoalStar(){
+  const useful=ALIENS.filter(a=>{
+    const L=LADDER[a.race];
+    if(comprehension(a.race)>=1) return false;
+    return !L.prereq || comprehension(L.prereq)>=WORKING_FRAC;
+  }).sort((a,b)=>LADDER[a.race].tier-LADDER[b.race].tier);
+  const pool=useful.length?useful:ALIENS.filter(a=>!sim.logged[a.id]);
+  for(const a of pool){
+    const gi=STARS.findIndex(st=>st.n===a.star);
+    if(gi>=0 && gi!==sim.at) return gi;
+  }
+  return -1;
+}
+
+/* One leg toward that. Nearest-first is a trap: the catalogue holds seven
+   binary pairs, and the closest star to Alpha Centauri A is Alpha Centauri B at
+   two tenths of a light year, so an operator pressing the primary control
+   repeatedly would ping-pong between them forever making no progress. Route by
+   what most reduces the distance remaining instead, and refuse a leg that goes
+   nowhere. */
+const MIN_LEG=0.6;
+function routeStep(){
+  const goal=nextGoalStar();
+  const opts=reachable().filter(o=>o.d<=sim.fuel && o.d>=MIN_LEG);
+  if(!opts.length) return -1;
+  if(goal<0) return opts[opts.length-1].i;
+  const direct=opts.find(o=>o.i===goal);
+  if(direct) return goal;
+  const g=STARS[goal];
+  return opts.map(o=>({i:o.i, score:starDist(STARS[o.i],g)+o.d*0.12}))
+             .sort((a,b)=>a.score-b.score)[0].i;
+}
+
 /* How good the computer's own answer is, 0 (unaided) to 1 (fully taught). */
 function aidLevel(){
   const n=['rng','brg','elv'].reduce((a,k)=>a+(sim.aid[k]?1:0),0);
@@ -2447,7 +2533,18 @@ function engageSolve(){
 function engageState(){
   if(sim.over)     return {ok:false, why:'VESSEL LOST'};
   if(sim.jumping)  return {ok:false, why:'JUMP RUNNING'};
-  if(sim.target===sim.at) return {ok:false, why:'ALREADY HERE'};
+  /* A primary control that refuses is a primary control the operator has to
+     work around. If the target is stale — because arriving made it stale —
+     ENGAGE picks the nearest reachable system rather than complaining. */
+  /* A stale target — usually because arriving made it stale — is routed rather
+     than refused: the control picks the next leg toward whatever the standing
+     order is pointing at. */
+  if(sim.target===sim.at || jumpKm()<MIN_LEG){
+    const nx=routeStep();
+    if(nx<0) return {ok:false, why:'NOTHING IN RANGE — WORK A GAS GIANT'};
+    return {ok:true, pick:nx,
+      why:starDist(here(),STARS[nx]).toFixed(2)+' LY · '+STARS[nx].n};
+  }
   const d=jumpKm();
   if(d>JUMP_MAX) return {ok:false, why:'TOO FAR — USE AUTO'};
   if(d>sim.fuel) return {ok:false, why:'NEEDS '+d.toFixed(1)+' LY FUEL'};
@@ -2461,6 +2558,11 @@ function engageState(){
 function engage(){
   const st=engageState();
   if(!st.ok){ sndAlarm(); logLine('ENGAGE REFUSED — '+st.why); refresh(); return; }
+  if(st.pick!=null && st.pick!==sim.target){
+    sim.target=st.pick;
+    plot.rng=Math.round(Math.min(JUMP_MAX,len3(sub3(target().p,here().p)))*100)/100;
+    plot.dirty=true;
+  }
   if(plot.open) plotStow();
   if(approach.open) approachStow();
   engageSolve();
@@ -2511,15 +2613,11 @@ function objective(){
   if(sim.hull<62 && has('hull')) return {t:'HULL DAMAGED — APPROACH A ROCK HERE', u:'2'};
 
   /* Otherwise: where the next culture worth talking to actually is. */
-  const next=ALIENS.filter(a=>comprehension(a.race)<WORKING_FRAC)
-    .filter(a=>{ const L=LADDER[a.race]; return !L.prereq || comprehension(L.prereq)>=WORKING_FRAC; })
-    .sort((a,b)=>LADDER[a.race].tier-LADDER[b.race].tier)[0];
-  if(next){
-    const gi=STARS.findIndex(st=>st.n===next.star);
-    if(gi>=0 && gi!==sim.at){
-      const d=starDist(here(),STARS[gi]);
-      return {t:RACES[next.race].name+' AT '+next.star+' — '+d.toFixed(1)+' LY', u:''};
-    }
+  const gi=nextGoalStar();
+  if(gi>=0){
+    const ali=ALIENS.find(a=>a.star===STARS[gi].n);
+    const d=starDist(here(),STARS[gi]);
+    return {t:RACES[ali.race].name+' AT '+STARS[gi].n+' — '+d.toFixed(1)+' LY', u:''};
   }
   if(bodies.length) return {t:'SYSTEM HAS '+bodies.length+' UNWORKED BODIES', u:''};
   return {t:'PICK A SYSTEM AND ENGAGE', u:''};
@@ -2531,7 +2629,11 @@ function objective(){
    original displays did it, and it keeps every line a stroke.
    ========================================================================== */
 
-const cam={yaw:-0.6, pitch:0.42, dist:44, fov:1.15, mode:0,
+/* Twenty-four light years frames the reachable neighbourhood — a nine light
+   year jump envelope with room to see what is past it — rather than the whole
+   catalogue collapsed into a clump in the middle. The operator can still pull
+   back; this is where they start. */
+const cam={yaw:-0.6, pitch:0.42, dist:24, fov:1.15, mode:0,
            at:[0,0,0], tgt:[0,0,0]};
 const CAM_MODES=['CAM SPIN','CAM FIX','CAM TGT'];
 
@@ -2836,6 +2938,13 @@ function claimLabel(text,x,y,colour,boxed){
 
 function chartPlane(){
   const c='rgba(61,139,255,';
+  /* The bearing spokes and the range rings are annotated for one reader: the
+     operator plotting a course by hand. That control now lives behind MORE, so
+     its aids do too — twelve bearing labels and five range labels is seventeen
+     things to read before you can press anything, and none of them help
+     somebody whose next action is ENGAGE. The rings themselves stay: they are
+     the boundaries, and a boundary you cannot see is not a boundary. */
+  const annotate = $('shell').dataset.more==='1' || plot.open;
   const ring=(R,col,w)=>{
     const pts=[];
     for(let i=0;i<=64;i++){
@@ -2849,6 +2958,7 @@ function chartPlane(){
   for(const r of PLANE_RINGS){
     if(r===POLICY_LY) continue;
     ring(r, c+0.14+')');
+    if(!annotate) continue;
     const lp=project([r,0,0]);
     if(lp && inFront([r,0,0])) label(r+' LY', lp.x+4, lp.y, 'rgba(61,139,255,0.45)', false);
   }
@@ -2857,8 +2967,11 @@ function chartPlane(){
      so on the plate rather than only in the small print at power-on. */
   const out=len3(here().p)>POLICY_LY;
   ring(POLICY_LY, out?'rgba(255,58,44,0.55)':'rgba(255,154,31,0.34)', 1.3);
+  /* The policy limit keeps its name even in the reduced view, but only once it
+     is the operator's problem: outside it, this is the line that says nobody is
+     coming. */
   const pl=project([POLICY_LY,0,0]);
-  if(pl && inFront([POLICY_LY,0,0]))
+  if((annotate||out) && pl && inFront([POLICY_LY,0,0]))
     label(POLICY_LY+' LY · POLICY LIMIT', pl.x+5, pl.y,
           out?'rgba(255,58,44,0.8)':'rgba(255,154,31,0.6)', out);
 
@@ -2874,7 +2987,7 @@ function chartPlane(){
   strokePolyline(jr.map(p=>inFront(p)?project(p):null),'rgba(34,255,136,0.22)',1,0);
   const jl=[h.p[0]+JUMP_MAX, h.p[1], h.p[2]];
   const jq=project(jl);
-  if(jq && inFront(jl)) label('JUMP '+JUMP_MAX.toFixed(1)+' LY', jq.x+5, jq.y, 'rgba(34,255,136,0.5)', false);
+  if(annotate && jq && inFront(jl)) label('JUMP '+JUMP_MAX.toFixed(1)+' LY', jq.x+5, jq.y, 'rgba(34,255,136,0.5)', false);
   /* And what the tank can pay for, which is usually the tighter of the two. */
   if(sim.fuel<JUMP_MAX-0.05){
     const fr=[];
@@ -2884,7 +2997,7 @@ function chartPlane(){
     }
     strokePolyline(fr.map(p=>inFront(p)?project(p):null),'rgba(255,210,61,0.34)',1,0);
     const fl=[h.p[0]+sim.fuel, h.p[1], h.p[2]], fq=project(fl);
-    if(fq && inFront(fl)) label('FUEL '+sim.fuel.toFixed(1)+' LY', fq.x+5, fq.y+11, 'rgba(255,210,61,0.6)', false);
+    if(annotate && fq && inFront(fl)) label('FUEL '+sim.fuel.toFixed(1)+' LY', fq.x+5, fq.y+11, 'rgba(255,210,61,0.6)', false);
   }
 
   /* Spokes every thirty degrees, labelled with the bearing they are — the
@@ -2898,6 +3011,7 @@ function chartPlane(){
     const q0=project(p0), q1=project(p1);
     if(!q0||!q1) continue;
     strokePolyline([q0,q1],'rgba(61,139,255,0.09)',1,0);
+    if(!annotate) continue;
     const lp=[Math.cos(t)*R*1.04,0,Math.sin(t)*R*1.04];
     if(!inFront(lp)) continue;
     const lq=project(lp);
@@ -2975,9 +3089,18 @@ function drawChart(){
     return 5;
   };
   named.sort((a,b)=>prio(a)-prio(b));
+  /* Seventeen names on a phone chart is seventeen things to read before you can
+     press anything. Unless the operator has asked for detail, name only what
+     they can act on: where they are, where they are going, anything
+     transmitting, and — if there is room left — the systems in range that have
+     something to refuel from. */
+  const LIMIT = $('shell').dataset.more==='1' ? 99
+              : (Math.min(W,H) < 460 ? 5 : 9);
+  let shown=0;
   for(const st of named){
     const pr=prio(st);
     if(pr>4) continue;
+    if(pr>2 && shown>=LIMIT) continue;
     const col = pr===0 ? '#FFD23D' : pr===1 ? '#EAFBFF'
               : pr===2 ? '#FF52D9' : pr===3 ? 'rgba(140,230,255,0.75)'
               : 'rgba(140,230,255,0.45)';
@@ -2986,7 +3109,7 @@ function drawChart(){
     const ali=ALIENS.find(a=>a.star===st.n);
     const txt = (pr===2 && ali && sim.xeno.some(x=>x.id===ali.id))
       ? st.n+' · '+RACES[ali.race].name : st.n;
-    claimLabel(txt, st._q.x+st._r+5, st._q.y-st._r-3, col, false);
+    if(claimLabel(txt, st._q.x+st._r+5, st._q.y-st._r-3, col, false)) shown++;
   }
 
   /* Where we are. */
@@ -3631,16 +3754,24 @@ function drawFrame(){
      share the bottom rule. */
   const wide=W>520;
   const att='AZ '+brg.toFixed(0).padStart(3,'0')+' EL '+(cam.pitch*DEG).toFixed(0).padStart(3,'0');
+  const detail = $('shell').dataset.more==='1';
   label(local ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')
               : wide ? 'CHART · EQUATORIAL · EPOCH J2000' : 'CHART · EQUATORIAL',
         gut, 14, '#8CE6FF', true);
-  if(wide) label(att, W-gut, 14, '#8CE6FF', true, 'right');
-  label(local ? (wide?'GRID 2 AU · '+(sim.at>=0?systemAt(sim.at).filter(b=>!b.taken).length+' UNWORKED':'NO PRIMARY'):'GRID 2 AU')
+  if(wide && detail) label(att, W-gut, 14, '#8CE6FF', true, 'right');
+  if(detail) label(local ? (wide?'GRID 2 AU · '+(sim.at>=0?systemAt(sim.at).filter(b=>!b.taken).length+' UNWORKED':'NO PRIMARY'):'GRID 2 AU')
               : (wide?'FIELD '+cam.dist.toFixed(0)+' LY · GRID 5 LY':att),
         gut, H-14, '#8CE6FF', false);
-  label(wide ? (sim.jumping?'JUMP':sim.phase)+(local?'':'  ·  '+len3(h.p).toFixed(1)+' LY FROM SOL')
-             : (local?'':len3(h.p).toFixed(1)+' LY'),
-        W-gut, H-14, len3(h.p)>POLICY_LY?'#FF3A2C':'#3D8BFF', false, 'right');
+  /* A figure with no label is not a readout. In the reduced view this line only
+     appears when it has something to say — that the vehicle is outside the
+     policy limit, which is the one time the distance from Sol is the operator's
+     problem rather than trivia. */
+  const outside=len3(h.p)>POLICY_LY;
+  if(detail||outside)
+    label(outside ? 'OUTSIDE POLICY LIMIT · '+len3(h.p).toFixed(1)+' LY FROM SOL'
+        : wide ? (sim.jumping?'JUMP':sim.phase)+(local?'':'  ·  '+len3(h.p).toFixed(1)+' LY FROM SOL')
+               : (sim.jumping?'JUMP':sim.phase),
+        W-gut, H-14, outside?'#FF3A2C':'#3D8BFF', false, 'right');
 }
 
 function render(){
@@ -3648,11 +3779,20 @@ function render(){
   /* The tool strip is opaque and sits over the chart, so it is claimed before
      any star gets a chance to write its name underneath it. */
   labelRects=[];
+  /* The strip is now hidden by a data attribute rather than an inline style,
+     so ask the layout whether it is actually there instead of asking the
+     style attribute it no longer uses. */
   const vt=$('viewtools');
-  if(vt && vt.style.display!=='none' && cv){
+  if(vt && vt.dataset.open==='1' && cv){
     const a=vt.getBoundingClientRect(), b=cv.getBoundingClientRect();
     labelRects.push({l:a.left-b.left-6, t:a.top-b.top-4,
                      r:a.right-b.left+6, b:a.bottom-b.top+4});
+  }
+  const pt=$('panel-tog');
+  if(pt && cv){
+    const a2=pt.getBoundingClientRect(), b2=cv.getBoundingClientRect();
+    labelRects.push({l:a2.left-b2.left-6, t:a2.top-b2.top-4,
+                     r:a2.right-b2.left+6, b:a2.bottom-b2.top+4});
   }
   drawStars();
   if(sim.jumping){
@@ -5059,7 +5199,7 @@ function commsOpen(a){
   $('comms-src').textContent=comms.race.name+' · '+a.id;
   const sb=$('comms-stand');
   if(sb){ sb.textContent='YOU: VISITOR · '+stn.k; sb.style.color=stn.c; sb.style.borderColor=stn.c; }
-  $('viewtools').style.display='none';
+  setPanel(false);
   $('view').classList.add('comms-open');
   commsResize();
   commsSetNode('start');
@@ -5076,7 +5216,7 @@ function commsClose(){
   }
   comms.speakAt=0; comms.spoken=0;
   $('comms').dataset.open='';
-  $('viewtools').style.display='';
+
   $('view').classList.remove('comms-open');
   sndRelay();
 }
@@ -6025,7 +6165,7 @@ function plotOpen(){
     logLine('CATALOGUE BEARINGS ARE FROM SOL. YOU ARE NOT AT SOL.');
   }
   $('plot').hidden=false;
-  $('viewtools').style.display='none';
+  setPanel(false);
   plot.dirty=true;
   plotRefresh();
   sndRelay();
@@ -6033,7 +6173,7 @@ function plotOpen(){
 function plotStow(){
   plot.open=false;
   $('plot').hidden=true;
-  if(!comms.open) $('viewtools').style.display='';
+
   sndKey();
 }
 
@@ -6151,7 +6291,10 @@ const el={
 };
 const alertOf=n=>n.parentElement;
 
-const btnTrack={node:$('btn-track'), on:true};
+/* Drop lines resolve depth on a three-dimensional chart, which matters to an
+   operator plotting by hand and to nobody else — and there are seventy of them.
+   Off until asked for, like everything else on the display panel. */
+const btnTrack={node:$('btn-track'), on:false};
 const btnOrbit={node:$('btn-orbit'), on:true};
 
 function refresh(){
@@ -6183,7 +6326,11 @@ function refresh(){
 
   el.met.textContent=fmtClock(sim.t);
   el.phase.textContent=sim.jumping?'JUMP':sim.phase;
-  el.phase.className='box'+(sim.jumping?' box--ship':'');
+  /* Rewriting className here silently stripped box--x, which is what keeps this
+     box out of the reduced view — the fourth time in this project that a later
+     write has quietly undone an earlier one. Toggle the one class this line
+     actually owns. */
+  el.phase.classList.toggle('box--ship', !!sim.jumping);
 
   el.cE.textContent   = t.ra.toFixed(3)+'°';
   el.cA.textContent   = t.dec.toFixed(3)+'°';
@@ -6427,7 +6574,7 @@ function setView(v){
   b.textContent = v==='LOCAL' ? 'NEAR' : 'CHART';
   b.dataset.on='1';
   if(v==='LOCAL'){ if(plot.open) plotStow(); cam.dist=13.5; }
-  else { if(approach.open) approachStow(); cam.dist=44; }
+  else { if(approach.open) approachStow(); cam.dist=24; }
   logLine(v==='LOCAL'?'NEAR FIELD SCAN ACTIVE':'CHART ACTIVE');
   sndRelay(); refresh();
 }
@@ -6450,6 +6597,31 @@ document.querySelectorAll('#appr .prow .pb').forEach(b=>{
 });
 
 $('k-go').addEventListener('click',engage);
+
+/* --- what the console shows -----------------------------------------------
+   Two reveals, both remembered for the session, neither of which moves a key
+   that is already under a thumb. */
+function setMore(on){
+  const sh=$('shell');
+  sh.dataset.more = on ? '1' : '';
+  $('ctl-more').hidden = !on;
+  $('k-more').setAttribute('aria-expanded', on?'true':'false');
+  $('k-more').firstChild.textContent = on ? 'LESS' : 'MORE';
+  $('more-lbl').textContent = on ? 'HIDE DETAIL' : '6 CONTROLS';
+  sndKey();
+  if(typeof resize==='function') resize();
+  refresh();
+}
+$('k-more').addEventListener('click',()=>setMore($('shell').dataset.more!=='1'));
+
+function setPanel(on){
+  $('viewtools').dataset.open = on ? '1' : '';
+  $('panel-tog').setAttribute('aria-expanded', on?'true':'false');
+  $('panel-tog').textContent = on ? 'CLOSE' : 'PANEL';
+  sndKey();
+}
+$('panel-tog').addEventListener('click',
+  ()=>setPanel($('viewtools').dataset.open!=='1'));
 
 $('plot-x').addEventListener('click',plotStow);
 $('plot-solve').addEventListener('click',()=>{ plotSolve(); plotRefresh(); refresh(); });
@@ -6490,7 +6662,7 @@ $('plot-fine').addEventListener('click',()=>{
 
 $('k-home').addEventListener('click',()=>{
   sndRelay();
-  cam.tgt=[0,0,0]; cam.dist=44;
+  cam.tgt=[0,0,0]; cam.dist=24;
   sim.target=0;
   refresh();
 });
