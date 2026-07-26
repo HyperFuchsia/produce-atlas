@@ -361,6 +361,93 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 #btn-hail[data-on="no"]{border-color:var(--frame-dim);color:var(--frame-dim);animation:none}
 @media (prefers-reduced-motion:reduce){#btn-hail[data-on="rdy"]{animation:none}}
 
+/* --------------------------------------------------------------------------
+   POWER-ON
+   A terminal being switched on: the tube strikes, the raster opens, the
+   self-test runs, and the registry asserts who owns the vehicle and which
+   forms you will be filing. Sits above everything.
+
+   The power switch is also the user gesture the browser requires before any
+   audio may play, which is why the boot has sound and nothing before it does.
+   -------------------------------------------------------------------------- */
+#boot{
+  position:fixed; inset:0; z-index:200;
+  background:#000; display:grid; place-items:center;
+  font-family:var(--mono); overflow:hidden;
+  padding:calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom));
+}
+#boot[hidden]{display:none}
+
+/* Phase 0 — the switch. */
+#boot-power{
+  display:grid; place-items:center; gap:14px; text-align:center; cursor:pointer;
+}
+/* An explicit display rule beats the hidden attribute, so the prompt stayed
+   on screen through the whole self-test. State these back. */
+#boot-power[hidden],#boot-log[hidden],#boot-skip[hidden]{display:none}
+#boot-power .ring{
+  width:66px;height:66px;border:2px solid var(--grid);border-radius:50%;
+  display:grid;place-items:center;color:var(--grid);
+  box-shadow:0 0 22px rgba(34,255,136,.35), inset 0 0 16px rgba(34,255,136,.12);
+  animation:pwr 2s steps(2,end) infinite;
+}
+#boot-power .ring b{font-size:24px;line-height:1;font-weight:400}
+#boot-power .lbl{
+  font-size:11px;letter-spacing:.3em;color:var(--label);text-transform:uppercase;
+}
+#boot-power .sub2{font-size:8px;letter-spacing:.18em;color:var(--frame)}
+@keyframes pwr{0%,100%{opacity:1}50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){#boot-power .ring{animation:none}}
+
+/* Phase 1 — the tube striking: a line that snaps open to full raster. */
+#boot-tube{
+  position:absolute; left:0; right:0; top:50%;
+  height:60vh; margin-top:-30vh;
+  background:linear-gradient(to bottom,rgba(34,255,136,0),rgba(220,255,240,.9),rgba(34,255,136,0));
+  transform:scaleY(.004) scaleX(.55); opacity:0;
+}
+#boot-tube.strike{animation:strike 1.05s cubic-bezier(.2,0,0,1) forwards}
+@keyframes strike{
+  0%  {transform:scaleY(.004) scaleX(.55);opacity:0}
+  8%  {transform:scaleY(.004) scaleX(1);  opacity:1}
+  26% {transform:scaleY(.02)  scaleX(1);  opacity:1}
+  48% {transform:scaleY(1)    scaleX(1);  opacity:.55}
+  100%{transform:scaleY(1)    scaleX(1);  opacity:0}
+}
+
+/* Phase 2 — the self-test log. */
+#boot-log{
+  width:100%; max-width:620px; align-self:start;
+  margin-top:2vh;
+  font-size:11px; line-height:1.55; color:var(--grid);
+  text-shadow:0 0 6px rgba(34,255,136,.5);
+  max-height:100%; overflow:hidden;
+}
+#boot-log .row{display:flex;gap:6px;align-items:baseline;white-space:pre}
+#boot-log .row .dots{
+  flex:1; min-width:12px; align-self:center; height:1px;
+  background-image:radial-gradient(circle,currentColor 1px,transparent 1px);
+  background-size:5px 1px; opacity:.5;
+}
+#boot-log .st{color:var(--white)}
+#boot-log .hd{
+  color:var(--white);letter-spacing:.24em;font-size:13px;
+  text-shadow:0 0 10px rgba(234,251,255,.6);
+}
+#boot-log .sub{color:var(--frame);letter-spacing:.16em;font-size:9px}
+#boot-log .sec{color:var(--frame);letter-spacing:.18em;font-size:9px;margin-top:6px}
+#boot-log .warn{color:var(--ship)}
+#boot-log .note{color:var(--label);font-size:10px;line-height:1.45}
+#boot-log .big{
+  color:var(--white);letter-spacing:.2em;font-size:13px;margin-top:8px;
+  text-shadow:0 0 12px rgba(234,251,255,.8);
+}
+#boot-log .gap{height:7px}
+#boot-skip{
+  position:absolute;bottom:12px;right:14px;
+  font-size:8px;letter-spacing:.18em;color:var(--frame-dim);
+}
+
 /* READOUT STRIP ------------------------------------------------------- */
 #read{
   grid-area:read;
@@ -543,6 +630,19 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 </style>
 </head>
 <body>
+
+<div id="boot">
+  <div id="boot-tube" aria-hidden="true"></div>
+
+  <div id="boot-power" role="button" tabindex="0" aria-label="Power on">
+    <span class="ring"><b>⏻</b></span>
+    <span class="lbl">Press to power on</span>
+    <span class="sub2">Halstead-Voss Trans-Orbital · Deck Systems · Terminal 04</span>
+  </div>
+
+  <div id="boot-log" hidden></div>
+  <div id="boot-skip" hidden>TAP TO SKIP</div>
+</div>
 
 <div id="shell">
 
@@ -2081,6 +2181,135 @@ function render(){
 
 
 /* ==========================================================================
+   POWER-ON SEQUENCE
+   --------------------------------------------------------------------------
+   The tube strikes, the self-test runs, and the registry states who owns the
+   vehicle and what will be required of you on recovery. The bureaucracy is
+   the point: this is a commercial lighter with an operating licence and a
+   lapsing insurance policy, not a warship.
+
+   Types: hd, sub, sec (section rule), ok (label + dot leader + status),
+   note, warn, big, gap. `d` is the pause in ms before the next line.
+   ========================================================================== */
+
+const BOOT_SEQ=[
+  ['hd','HALSTEAD-VOSS TRANS-ORBITAL',null,340],
+  ['sub','DECK SYSTEMS · TERMINAL 04 · CRT-A · REV 2.6',null,420],
+  ['gap','',null,140],
+
+  ['sec','— POWER ON SELF TEST —',null,220],
+  ['ok','HIGH TENSION SUPPLY','12.4 kV',90],
+  ['ok','CRT WARM · 15.7 kHz H / 60 Hz V','OK',90],
+  ['ok','APERTURE GRILLE','ALIGNED',90],
+  ['ok','CORE MEMORY 065536 WORDS','VERIFIED',150],
+  ['ok','GUIDANCE PROCESSOR','ONLINE',90],
+  ['ok','INERTIAL PLATFORM','ALIGNED',90],
+  ['ok','TWO-BODY SOLVER · μ 398600.4418','LOADED',90],
+  ['ok','ATMOSPHERIC MODEL · 8.5 km SCALE','LOADED',90],
+  ['ok','SENSOR SWEEP · 3.4 s REVOLUTION','ARMED',90],
+  ['ok','COMMS · VHF / SHF / ELF / DIGITAL','OPEN',90],
+  ['ok','RECOVERY CANOPY · PYRO CONTINUITY','SAFE',150],
+  ['gap','',null,180],
+
+  ['sec','— REGISTRY —',null,220],
+  ['ok','VESSEL','LIGHTER 04 "MAGPIE"',80],
+  ['ok','REGISTRY','18041 / CJ',80],
+  ['ok','CLASS','CREWED RE-ENTRY, ONE',80],
+  ['ok','OWNER OF RECORD','HALSTEAD-VOSS T-O',80],
+  ['ok','OPERATING LICENCE 4471-K','VALID',80],
+  ['warn','INSURANCE · CARRIED · POLICY LAPSES ON UNSCHEDULED DESCENT',null,140],
+  ['ok','CREW COMPLEMENT','001 OF 007',80],
+  ['ok','STANDING ORDER 114','RETURN TO SURFACE',260],
+  ['gap','',null,160],
+
+  ['note','NOTICE: THE OPERATOR IS ACCOUNTABLE FOR ALL CONSUMABLES EXPENDED DURING MANOEUVRE. FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RECOVERY. FAILURE TO FILE VOIDS RECOVERY BONUS.',null,420],
+  ['note','CONTACT WITH NON-SIGNATORY CULTURES IS PERMITTED UNDER SCHEDULE 9 AND MUST BE LOGGED. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING SUCH CONTACT.',null,520],
+  ['gap','',null,200],
+
+  ['big','SYSTEM INITIATED — ALL SUBSYSTEMS FULLY OPERATIONAL',null,700]
+];
+
+const boot={running:false, done:false, i:0, timer:null};
+
+function bootLine(entry){
+  const [kind,label,status]=entry;
+  const log=$('boot-log');
+  const el=document.createElement('div');
+  if(kind==='gap'){ el.className='gap'; }
+  else if(kind==='ok'){
+    el.className='row';
+    el.innerHTML='<span>'+label+'</span><span class="dots"></span><span class="st">'+status+'</span>';
+  }else{
+    el.className=kind;
+    el.textContent=label;
+  }
+  log.appendChild(el);
+  /* Keep the tail in view without a scrollbar. */
+  while(log.scrollHeight>log.clientHeight && log.firstChild) log.removeChild(log.firstChild);
+
+  /* Voice: a teletype tick per line, a relay for a section, a chord at the
+     end. Quiet — the boot should sound like a machine, not a fanfare. */
+  if(kind==='ok')   { sndKey(); if(Math.random()<0.35) blip(1800+Math.random()*900,0.02,0.05,0,'square'); }
+  if(kind==='sec')  { sndRelay(); }
+  if(kind==='hd')   { blip(320,0.10,0.14,0,'triangle'); }
+  if(kind==='warn') { blip(560,0.09,0.13,0,'square'); blip(430,0.11,0.13,0.10,'square'); }
+  if(kind==='note') { blip(1400+Math.random()*400,0.02,0.04,0,'square'); }
+  if(kind==='big')  { sndPowerUp(); }
+}
+
+function bootStep(){
+  if(!boot.running) return;
+  if(boot.i>=BOOT_SEQ.length){ bootFinish(); return; }
+  const entry=BOOT_SEQ[boot.i++];
+  bootLine(entry);
+  boot.timer=setTimeout(bootStep, entry[3]||90);
+}
+
+function bootFinish(){
+  if(boot.done) return;
+  boot.done=true; boot.running=false;
+  clearTimeout(boot.timer);
+  const el=$('boot');
+  el.style.transition='opacity .5s linear';
+  el.style.opacity='0';
+  setTimeout(()=>{ el.hidden=true; el.style.opacity=''; }, 520);
+}
+
+function bootStart(){
+  if(boot.running||boot.done) return;
+  boot.running=true;
+
+  /* This click is the gesture the browser wanted. Take it. */
+  audioToggle().then(()=>{ audioLabel(); });
+
+  $('boot-power').hidden=true;
+  const tube=$('boot-tube');
+  tube.classList.add('strike');
+
+  /* Degauss thump and the flyback coming up to rate. */
+  blip(58,0.35,0.30,0,'sine');
+  blip(92,0.22,0.18,0.05,'sine');
+  const ctx=A();
+  if(ctx){
+    const o=ctx.createOscillator(); o.type='sine';
+    const g=ctx.createGain();
+    const t=ctx.currentTime;
+    o.frequency.setValueAtTime(300,t);
+    o.frequency.exponentialRampToValueAtTime(7867,t+0.9);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.05,t+0.5);
+    g.gain.exponentialRampToValueAtTime(0.008,t+1.1);
+    o.connect(g).connect(snd.master); o.start(t); o.stop(t+1.2);
+  }
+
+  setTimeout(()=>{
+    $('boot-log').hidden=false;
+    $('boot-skip').hidden=false;
+    bootStep();
+  }, 900);
+}
+
+/* ==========================================================================
    COMMS — the face, the voice, and the transmission
    --------------------------------------------------------------------------
    The face is procedural vector geometry, not artwork: an outline, an eye
@@ -3145,6 +3374,17 @@ function frame(now){
 /* --- Boot --------------------------------------------------------------- */
 bloomCv=$('bloom');
 audioLabel();
+
+/* Power switch. Anything on the boot overlay either starts it or skips it. */
+$('boot-power').addEventListener('click',bootStart);
+$('boot-power').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); bootStart(); }
+});
+$('boot').addEventListener('click',e=>{
+  if(!boot.running) return;
+  if(e.target.closest('#boot-power')) return;
+  bootFinish();
+});
 /* Browsers sometimes leave a context suspended even after the gesture that
    created it. Any subsequent interaction is another chance to start it. */
 addEventListener('pointerdown',()=>{
