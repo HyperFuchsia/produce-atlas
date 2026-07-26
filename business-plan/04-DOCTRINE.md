@@ -33,32 +33,46 @@ engineering claim from a marketing one.
 
 ## 2. The foundational position
 
-**Automated decision systems are industrial mechanisms. They have capability
-and they do not have agency.**
-
-Both halves are load-bearing.
+**Automated decision systems have real capability. Whether they have anything
+resembling agency does not matter, and refusing that debate is the stronger
+position.**
 
 *Concede capability entirely.* These systems outperform humans at pattern
 recognition, throughput, and sustained operation. Disputing this makes you
 sound uninformed and costs the room.
 
-*Deny agency entirely.* They do not want, intend, resent, or pursue. They have
-no biological stake in continuing to exist and no drive that a constraint
-frustrates.
+*Refuse the agency question.* A system pursuing a misspecified objective
+creates the same operational problem as a system that "wants" something. The
+remedy is identical either way, so the metaphysical question is **irrelevant to
+what gets built**. Arguing it hands an opponent a debate winnable on
+definitions while the actual case goes unexamined.
 
-The consequence is the whole business: **a mechanism with capability and
-without agency requires a supplied decision layer.** The governor is not a
-brake on the system. It is the component the system structurally lacks. You are
-not restraining it; you are completing it.
+**Revised after adversarial review.** The doctrine previously argued *no
+agency* as a foundational claim. That was an unwinnable and unnecessary fight,
+and it equivocated: "no phenomenal desire" and "no goal-directed behaviour" are
+different claims, and only the second would matter operationally — and it is
+false for agentic systems. The load is now carried by something empirical:
+
+> **The set of actions a system can take on the world is finite, and it is
+> enumerable.**
+
+A finite action space can be bounded, whatever anyone calls the system's
+decision-making. The consequence is the whole business: **a mechanism with
+capability and no supplied constraint requires a decision layer from outside
+itself.** The governor is not a brake. It is the component the system does not
+contain.
 
 ### 2.1 On autonomy
 
-What the industry calls autonomy is **ungoverned automation**. Autonomy is not
-a property that can be conferred on a mechanism by declining to constrain it.
-Removing limits does not grant self-determination; it removes limits.
+What the industry calls autonomy is more usefully described as **ungoverned
+automation**.
 
-This is a definitional claim, not a moral one. It requires no position on
-machine consciousness, and it should never be argued as though it does.
+State this as an *observation*, not a definitional proof. The earlier
+formulation — autonomy is biological, therefore software cannot have it — is
+true by stipulation and establishes nothing empirical; an opponent simply
+declines the definition. The defensible version: removing limits from a
+mechanism demonstrably produces unbounded liability, and unbounded liability is
+uninsurable. That is a claim about consequences, and it is checkable.
 
 ### 2.2 On protected values
 
@@ -144,6 +158,15 @@ and every safety-trained person in the room already accepts it.
 and a sign reading *please do not fall* are not distinguished by how many
 people have fallen. Record the measurement; the level is unchanged.
 
+**Scope limit — added after adversarial review.** The hierarchy is an
+*occupational safety* framework, built for physical hazards to workers. For
+physical actuators it applies directly and is unimpeachable. For financial,
+data, and communication actuators it is an **analogy**, and a safety
+professional will say so. There, cite the equivalent principle from where it
+actually lives — least privilege, separation of duties, dual control, default
+deny. Same conclusion, correct authority, and it is the vocabulary the security
+buyer already speaks.
+
 **Deployment note.** This reframes competitors without insulting them: not
 "you're wrong," but "you're at tier four and tier three exists."
 
@@ -166,7 +189,17 @@ anyone.
 
 **Best counter.** Software has largely escaped product liability via EULAs,
 "licensed not sold," and the economic loss doctrine.
-**Answer.** That shield is eroding — the EU's revised Product Liability
+**Second counter, and the stronger one.** *A governor with no field record is
+not a reasonable alternative design — it is a product with a claim attached.*
+**Answer.** Correct, and this must be stated as a **trajectory, not a present
+fact.** Three things are not yet true: no field record exists, "reasonable"
+requires demonstrated effectiveness rather than availability, and jurisdictions
+differ (risk-utility versus consumer-expectation). Admit the circularity openly
+too — the product would create the duty that makes the product necessary. That
+mechanism is real and historically demonstrated, and it completes only through
+adoption and evidence.
+
+**Answer to the software-shield objection.** That shield is eroding — the EU's revised Product Liability
 Directive brings software and AI systems in scope as products. And it never
 covered physical injury well, which is exactly the beachhead. This is also why
 the EU may be the better first market on legal mechanics alone.
@@ -217,9 +250,20 @@ uncontrollable. What firms tell investors and what they tell the public differ.
 
 **Support.** Public capital expenditure, public risk statements.
 
-**Strength — moderate to strong, with a precision requirement.** The argument
-proves the risk is believed **bounded and priced** — not that it is believed
-zero. Investors routinely fund ventures with real tail risk when returns
+**Best counter, and it is fatal to the strong form.** *The risk is real, and
+someone will build this regardless, so better us.* Under race dynamics,
+enormous investment and sincere alarm are entirely consistent. Any version of
+this argument framed as "both cannot be true" dies to that one sentence.
+
+**Strength — moderate, and only in the narrow form.** Do not argue hypocrisy.
+Argue **observable control**: these firms set access, pricing, data retention,
+and termination, and exercise all four daily. Control is checkable; sincerity is
+not, and is not needed. The commercial payload survives intact — a party
+exercising that much control while disclaiming responsibility for outcomes is
+transferring risk onto the buyer, which is a fact about contracts.
+
+The old strong form also confused two things: capital allocation demonstrates
+**expected-value-positive**, not **risk-believed-absent**. Investors routinely fund ventures with real tail risk when returns
 justify it. Stated as "they know it's safe" the claim overreaches and is easy
 to puncture. Stated as "their own capital behaviour says the risk is bounded
 and quantifiable, which is precisely the premise of underwriting it" it holds
@@ -286,6 +330,19 @@ loads; NIST AI RMF; ISO/IEC 42001.
 rhetorical one. You are the boring, proven answer to a problem everyone else is
 treating as unprecedented.
 
+**Best counter, and it lands.** *Most of those regimes were created by
+legislation after mass casualties, not by a private firm publishing a standard.*
+True, and it is the weakness at the load-bearing point. Boilers exploded for
+decades before the code; machine guarding followed maimings. The usual sequence
+is disaster, outrage, statute. Also drop any "every time" phrasing — leaded
+petrol, asbestos, CFCs, and thalidomide were banned, not governed to a middle.
+
+**How to hold the argument.** Split the stack. The statutory regimes establish
+**what a working control looks like** — that part is unimpeachable. The two
+insurer-led bodies establish that **a private body can get there first**, and
+they are the exception rather than the pattern. That is the bet the firm is
+making, and saying so is more credible than concealing it.
+
 **Price-Anderson deserves separate mention.** Commercial nuclear power exists
 only because a liability framework was constructed for it. No insurer would
 write reactors; without the framework, none would have been built. That is the
@@ -302,9 +359,11 @@ that speed reduces but never removes.
 **Support.** Ordinary reliability reasoning; scheduling delays, GC pauses,
 dropped packets, bursts between polls.
 
-**Strength — very strong technically.** This is the argument that establishes
-credibility with engineers, and it works precisely because it rejects the more
-impressive-sounding claim.
+**Strength — very strong technically**, with one narrowing. Inline enforcement
+removes the **timing** failure mode. It does not make the governor infallible:
+it can crash, be misconfigured, or enforce a wrong threshold, which is why it is
+proof-tested and carries its own rated probability of failure on demand. Saying
+inline has "no probability of failure" is itself a zero claim and breaks rule 1.
 
 **Deployment note.** Also a competitive instrument. Any product claiming
 microsecond enforcement of rich policy has measured the fast path and described
@@ -329,8 +388,13 @@ listening.
 bound the downside. The gap between current and full utilisation is
 measurable, and it is the business case.
 
-**Strength — strong commercially**, weak as an abstraction. It only works with
-the client's own numbers in it. Every proposal opens with their delta
+**Strength — unproven, and it is load-bearing.** No evidence supports fear as
+*the* driver. Integration cost, data quality, unclear return, skills, and change
+management are all commonly cited by the people actually deploying. Liability
+fear is one constraint among several and its share is unknown. Treat this as a
+**hypothesis to measure on the first three engagements**, not a premise.
+
+It only works with the client's own numbers in it. Every proposal opens with their delta
 calculated, not with a generic claim about the industry.
 
 **Why it matters more than the safety argument.** Risk products are cost

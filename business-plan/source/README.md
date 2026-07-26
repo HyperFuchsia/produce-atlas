@@ -20,6 +20,24 @@ and the difference matters.**
 Read `THE-CASE.md` to understand what the business is. Consult `04-DOCTRINE.md`
 before writing anything external.
 
+## [`CRITIQUE.md`](CRITIQUE.md)
+
+The adversarial review that produced v2. Fifteen findings, each naming the
+failure, how a hostile reader defeats it, and the fix applied.
+
+Read it when tempted to restore a stronger-sounding version of a claim. Nearly
+every finding was the same failure: **an argument that was strong enough,
+pushed one step further than the evidence supported.** The capital-allocation
+point was true and became a dilemma. The precedent stack was persuasive and
+became "every time." The kill-switch line was sharp and became a proof.
+
+Three findings were self-undermining — the document broke rules it set for
+itself, which is the most expensive kind of error, because an opponent who
+spots one gets to question everything else for free.
+
+The findings are also propagated into [`../04-DOCTRINE.md`](../04-DOCTRINE.md),
+so the argument register and the reading document cannot drift apart.
+
 ## Three editorial decisions
 
 Recorded here so they are not mistaken for omissions, and so a future reader
