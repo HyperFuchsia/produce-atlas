@@ -2269,6 +2269,9 @@ function bootFinish(){
   if(boot.done) return;
   boot.done=true; boot.running=false;
   clearTimeout(boot.timer);
+  last=performance.now();          // do not hand the loop a 7-second delta
+  try{ render(); refresh(); }catch(_){}
+
   const el=$('boot');
   el.style.transition='opacity .5s linear';
   el.style.opacity='0';
@@ -2682,14 +2685,23 @@ function audioInit(){
   master.connect(comp).connect(ctx.destination);
   snd.master=master;
 
+  /* Everything the simulation makes goes through here, and it stays shut
+     until the boot completes. The self-test should not be scored by the
+     sensor sweep — boot audio belongs to the terminal, world audio belongs
+     to the vehicle, and the vehicle is not flying yet. */
+  const world=ctx.createGain();
+  world.gain.value=0;
+  world.connect(master);
+  snd.world=world;
+
   /* Sonar tail: a short feedback delay, so a ping rings the compartment. */
   const delay=ctx.createDelay(1);  delay.delayTime.value=0.19;
   const fb=ctx.createGain();       fb.gain.value=0.34;
   const damp=ctx.createBiquadFilter(); damp.type='lowpass'; damp.frequency.value=2200;
   const bus=ctx.createGain();
-  bus.connect(master);
+  bus.connect(world);
   bus.connect(delay); delay.connect(damp); damp.connect(fb); fb.connect(delay);
-  damp.connect(master);
+  damp.connect(world);
   snd.pingBus=bus;
 
   /* One second of noise, looped, shared by every noise voice. */
@@ -2728,7 +2740,7 @@ function audioInit(){
     const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
     const f=ctx.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
     const g=ctx.createGain(); g.gain.value=0;
-    src.connect(f).connect(g).connect(master); src.start();
+    src.connect(f).connect(g).connect(world); src.start();
     return {g,f};
   };
   /* Output meter. The whole point is that a silent speaker and a silent bus
@@ -2791,7 +2803,7 @@ function blip(freq,dur,vol,delay,type,bus){
 }
 
 function sndPing(strong){
-  const ctx=A(); if(!ctx) return;
+  const ctx=A(); if(!ctx||!boot.done) return;
   const t=ctx.currentTime;
   const o=ctx.createOscillator(); o.type='sine';
   const f0= strong ? 780 : 1100+Math.random()*700;
@@ -2806,13 +2818,13 @@ function sndPing(strong){
 }
 
 function sndAcquire(){
-  if(!A()) return;
+  if(!A()||!boot.done) return;
   blip(740,0.13,0.20,0,'sine');
   blip(1108,0.16,0.20,0.11,'sine');
   for(let i=0;i<16;i++) blip(700+Math.random()*2100,0.022,0.045,0.26+i*0.034,'square');
 }
 function sndTrack(){                       // an uncorrelated return being worked
-  if(!A()) return;
+  if(!A()||!boot.done) return;
   blip(520,0.07,0.10,0,'triangle');
   for(let i=0;i<6;i++) blip(900+Math.random()*900,0.018,0.028,0.06+i*0.03,'square');
 }
@@ -2897,7 +2909,10 @@ function audioFrame(){
     }
   }
 
+  /* The tube is powered from the moment the switch is thrown, so the bed
+     comes up with the boot. The world bus does not. */
   snd.bed.gain.setTargetAtTime(crt.on?1:0, now, 0.2);
+  snd.world.gain.setTargetAtTime(boot.done?1:0, now, 0.18);
 
   const burning=!!sim.burn && sim.dv>0 && !sim.landed;
   snd.thrust.g.gain.setTargetAtTime(burning?0.13:0, now, 0.04);
@@ -2912,7 +2927,7 @@ function audioFrame(){
   snd.entryHi.f.frequency.setTargetAtTime(700+lvl*1400, now, 0.2);
 
   const st=limbState();
-  if((st.overG||st.steep) && !sim.landed && performance.now()-snd.lastAlarm>1250){
+  if(boot.done && (st.overG||st.steep) && !sim.landed && performance.now()-snd.lastAlarm>1250){
     snd.lastAlarm=performance.now();
     sndAlarm();
   }
@@ -3305,6 +3320,16 @@ function resize(){
 let last=performance.now(), acc=0;
 function frame(now){
   const wall=Math.min((now-last)/1000,0.1); last=now;
+
+  /* Nothing about the vehicle happens until the terminal has finished coming
+     up. The mission clock starts when you take control, the sensor is not
+     sweeping, and the globe is not drawn — the boot overlay is opaque, so
+     there is nothing to draw it for. */
+  if(!boot.done){
+    audioFrame();
+    requestAnimationFrame(frame);
+    return;
+  }
 
   if(!sim.landed){
     autopilot(wall);
