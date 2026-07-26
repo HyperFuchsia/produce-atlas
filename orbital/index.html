@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="theme-color" content="#000000">
-<title>DEORBITAL DESCENT — Orbital Console</title>
+<title>DEEP SURVEY — Stellar Navigation Console</title>
 <meta name="description" content="A flyable cassette-futurism orbital console: real two-body orbital mechanics, a 3-D wireframe planet, and a deorbit-and-land objective. Touch operable.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23000'/%3E%3Cg fill='none' stroke='%2322FF88' stroke-width='1.5'%3E%3Ccircle cx='12' cy='13' r='7'/%3E%3Cpath d='M5 13h14M12 6v14'/%3E%3C/g%3E%3Cpath d='M2 6h6M5 3v6' stroke='%233D8BFF' stroke-width='1.5'/%3E%3C/svg%3E">
 <style>
@@ -770,7 +770,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== HEAD ==================== -->
   <header id="head">
-    <span id="title">DEORBITAL DESCENT</span>
+    <span id="title">DEEP SURVEY</span>
     <span class="box" id="phase">ORBIT</span>
     <span class="box box--ship" id="scan">SCAN 00/28</span>
     <span class="box" id="limbstat">VACUUM</span>
@@ -791,8 +791,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
     <div id="viewtools">
       <button id="btn-cam"   data-on="1">CAM ORB</button>
-      <button id="btn-track" data-on="1">TRACK</button>
-      <button id="btn-orbit" data-on="1">CONIC</button>
+      <button id="btn-track" data-on="1">DROPS</button>
+      <button id="btn-orbit" data-on="1">GRID</button>
       <button id="btn-crt"   data-on="1">CRT</button>
       <button id="btn-scan"  data-on="1">SCAN</button>
       <button id="btn-snd"   data-on="0">AUDIO OFF<i id="snd-bar"></i></button>
@@ -828,29 +828,29 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== READOUTS ==================== -->
   <section id="read">
-    <div class="rd"><span class="k">Altitude</span><span class="v" id="r-alt">—</span></div>
-    <div class="rd"><span class="k">Velocity</span><span class="v" id="r-vel">—</span></div>
-    <div class="rd"><span class="k">Apoapsis</span><span class="v" id="r-ap">—</span></div>
-    <div class="rd"><span class="k">Periapsis</span><span class="v" id="r-pe">—</span></div>
-    <div class="rd"><span class="k">G-load</span><span class="v" id="r-g">—</span></div>
-    <div class="rd"><span class="k">Delta-V</span><span class="v" id="r-dv">—</span></div>
-    <div class="rd"><span class="k">Thermal</span><span class="v" id="r-heat">—</span></div>
-    <div class="rd"><span class="k">Pred. miss</span><span class="v" id="r-miss">—</span></div>
+    <div class="rd"><span class="k">Position</span><span class="v" id="r-alt">—</span></div>
+    <div class="rd"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
+    <div class="rd"><span class="k">Jump dist</span><span class="v" id="r-ap">—</span></div>
+    <div class="rd"><span class="k">Fuel</span><span class="v" id="r-pe">—</span></div>
+    <div class="rd"><span class="k">Class</span><span class="v" id="r-g">—</span></div>
+    <div class="rd"><span class="k">Planets</span><span class="v" id="r-dv">—</span></div>
+    <div class="rd"><span class="k">From Sol</span><span class="v" id="r-heat">—</span></div>
+    <div class="rd"><span class="k">Cultures</span><span class="v" id="r-miss">—</span></div>
 
     <div id="calc">
       <div class="hd">FLIGHT COMPUTATION</div>
-      <div class="calcrow"><span class="s">ε  specific energy</span><span class="n" id="c-e">—</span></div>
-      <div class="calcrow"><span class="s">a  semi-major</span><span class="n" id="c-a">—</span></div>
-      <div class="calcrow"><span class="s">e  eccentricity</span><span class="n" id="c-ecc">—</span></div>
-      <div class="calcrow"><span class="s">i  inclination</span><span class="n" id="c-inc">—</span></div>
-      <div class="calcrow"><span class="s">Ω  asc. node</span><span class="n" id="c-raan">—</span></div>
-      <div class="calcrow"><span class="s">ν  true anomaly</span><span class="n" id="c-nu">—</span></div>
-      <div class="calcrow"><span class="s">h  ang. momentum</span><span class="n" id="c-h">—</span></div>
-      <div class="calcrow"><span class="s">γ  flight path</span><span class="n" id="c-fpa">—</span></div>
-      <div class="calcrow"><span class="s">q  dyn. pressure</span><span class="n" id="c-q">—</span></div>
-      <div class="calcrow"><span class="s">φ  sub-latitude</span><span class="n" id="c-lat">—</span></div>
-      <div class="calcrow"><span class="s">λ  sub-longitude</span><span class="n" id="c-lon">—</span></div>
-      <div class="calcrow"><span class="s">T  orbital period</span><span class="n" id="c-per">—</span></div>
+      <div class="calcrow"><span class="s">α  right ascension</span><span class="n" id="c-e">—</span></div>
+      <div class="calcrow"><span class="s">δ  declination</span><span class="n" id="c-a">—</span></div>
+      <div class="calcrow"><span class="s">r  distance from Sol</span><span class="n" id="c-ecc">—</span></div>
+      <div class="calcrow"><span class="s">x  equatorial</span><span class="n" id="c-inc">—</span></div>
+      <div class="calcrow"><span class="s">y  equatorial</span><span class="n" id="c-raan">—</span></div>
+      <div class="calcrow"><span class="s">z  equatorial</span><span class="n" id="c-nu">—</span></div>
+      <div class="calcrow"><span class="s">sp spectral class</span><span class="n" id="c-h">—</span></div>
+      <div class="calcrow"><span class="s">Δv jump cost</span><span class="n" id="c-fpa">—</span></div>
+      <div class="calcrow"><span class="s">R  reachable now</span><span class="n" id="c-q">—</span></div>
+      <div class="calcrow"><span class="s">S  scan radius</span><span class="n" id="c-lat">—</span></div>
+      <div class="calcrow"><span class="s">N  catalogue size</span><span class="n" id="c-lon">—</span></div>
+      <div class="calcrow"><span class="s">T  elapsed</span><span class="n" id="c-per">—</span></div>
     </div>
 
     <div id="sensorlog">
@@ -861,14 +861,14 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== CONTROLS ==================== -->
   <section id="ctl">
-    <button class="key" id="k-pro"   data-burn="pro">PRO<span class="sub">ACCEL ▲</span></button>
-    <button class="key" id="k-retro" data-burn="retro">RETRO<span class="sub">BRAKE ▼</span></button>
-    <button class="key" id="k-norm"  data-burn="norm">NORM<span class="sub">INCL ◀</span></button>
-    <button class="key" id="k-anti"  data-burn="anti">ANTI<span class="sub">INCL ▶</span></button>
-    <button class="key" id="k-warp">WARP<span class="sub" id="warp-lbl">×1</span></button>
-    <button class="key" id="k-lz">LZ<span class="sub" id="lz-lbl">—</span></button>
-    <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">DEORBIT</span></button>
-    <button class="key key--hot" id="k-reset">RESET<span class="sub">RE-INSERT</span></button>
+    <button class="key" id="k-prev">◀ PREV<span class="sub">TARGET</span></button>
+    <button class="key" id="k-next">NEXT ▶<span class="sub">TARGET</span></button>
+    <button class="key" id="k-near">NEAREST<span class="sub" id="near-lbl">IN RANGE</span></button>
+    <button class="key" id="k-scoop">SCOOP<span class="sub" id="scoop-lbl">FUEL</span></button>
+    <button class="key" id="k-jump">JUMP<span class="sub" id="jump-lbl">—</span></button>
+    <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
+    <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">ROUTE</span></button>
+    <button class="key key--hot" id="k-reset">RESET<span class="sub">NEW SURVEY</span></button>
     <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
 
@@ -877,19 +877,9 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 <script>
 /* ==========================================================================
    1.  CONSTANTS AND VECTOR MATH
-   Real units throughout: kilometres, seconds, km/s. Nothing here is faked,
-   which is why the readouts agree with each other.
+   Distances are light years throughout, from published astrometry. Nothing
+   here is invented, which is why the chart is the real neighbourhood.
    ========================================================================== */
-
-const R_P      = 6371;              // planet radius, km
-const MU       = 398600.4418;       // gravitational parameter, km^3/s^2
-const SIDEREAL = 86164.1;           // rotation period, s
-const ATM_TOP  = 130;               // sensible atmosphere, km
-const SCALE_H  = 8.5;               // density scale height, km
-const RHO_0    = 1.225;             // sea-level density, kg/m^3
-const BALLISTIC= 120;               // m/Cd·A, kg/m^2
-const THRUST   = 0.028;             // km/s^2 — one axis of the RCS block
-const DV_START = 2400;              // m/s of manoeuvring propellant
 
 const V = {
   add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
@@ -911,43 +901,7 @@ function lerpAngle(cur,target,k){
 }
 const DEG=180/Math.PI;
 
-/* Surface latitude/longitude → inertial position, given planet spin. */
-function geoToVec(latDeg,lonDeg,spin,radius){
-  const la=latDeg/DEG, lo=lonDeg/DEG+spin;
-  return [radius*Math.cos(la)*Math.cos(lo), radius*Math.sin(la), radius*Math.cos(la)*Math.sin(lo)];
-}
-/* Inertial position → surface latitude/longitude, undoing planet spin. */
-function vecToGeo(p,spin){
-  const m=V.len(p);
-  const lat=Math.asin(clamp(p[1]/m,-1,1))*DEG;
-  let lon=(Math.atan2(p[2],p[0])-spin)*DEG;
-  lon=((lon+180)%360+360)%360-180;
-  return [lat,lon];
-}
-/* Destination point at an angular distance and bearing from a start point.
-   Ping rings are drawn with this so they bend with the sphere instead of
-   sitting on it as flat circles — the detail that makes a ring read as
-   something happening ON the planet. */
-function destPoint(latDeg,lonDeg,bearing,angDist){
-  const p1=latDeg/DEG, l1=lonDeg/DEG;
-  const sp=Math.sin(p1), cp=Math.cos(p1);
-  const sd=Math.sin(angDist), cd=Math.cos(angDist);
-  const p2=Math.asin(clamp(sp*cd+cp*sd*Math.cos(bearing),-1,1));
-  const l2=l1+Math.atan2(Math.sin(bearing)*sd*cp, cd-sp*Math.sin(p2));
-  return [p2*DEG, l2*DEG];
-}
-/* Initial bearing from one surface point to another. */
-function bearingTo(lat1,lon1,lat2,lon2){
-  const p1=lat1/DEG,p2=lat2/DEG,dl=(lon2-lon1)/DEG;
-  return Math.atan2(Math.sin(dl)*Math.cos(p2),
-    Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl));
-}
 
-function greatCircleKm(lat1,lon1,lat2,lon2){
-  const p1=lat1/DEG,p2=lat2/DEG,dl=(lon2-lon1)/DEG;
-  const c=Math.sin(p1)*Math.sin(p2)+Math.cos(p1)*Math.cos(p2)*Math.cos(dl);
-  return Math.acos(clamp(c,-1,1))*R_P;
-}
 
 
 /* ==========================================================================
@@ -958,83 +912,130 @@ function greatCircleKm(lat1,lon1,lat2,lon2){
    Pairs are [lng, lat].
    ========================================================================== */
 
-const COASTS={
-africa:[-5.6,35.9,3,37,10,37.2,15,32.4,20,32.9,25,31.6,32,31.4,34.4,28,35.5,23.8,37.2,21.5,39,15,43.3,11.6,48,11.5,51.4,11.9,48.5,5,44,4,41,-2,39.5,-7,40.5,-15,35.5,-20,32.6,-25.7,32.5,-28.5,27,-33.6,20,-34.8,18.5,-34.3,15,-27,12,-19,11.7,-15.9,12.2,-6,9.3,0,9.5,4,3.4,6.4,-3,5,-7.5,4.4,-13,9,-16.5,12,-17.5,14.7,-16.3,20,-13,27.7,-9.8,30,-6,35,-5.6,35.9],
-eurasia:[-5.6,36,-9.5,38.7,-8.9,43.4,-1.8,43.4,-4.8,48.4,-1.5,49.6,2,51,4.3,52.4,8.1,53.6,8.5,54.9,10.5,57.7,8,58.1,5.3,60.4,5,62.5,10,64,14.5,68,18,69.8,25,71,29.7,70.5,33,68.9,40,66,44,68,55,68.5,60,70,69,73,73.5,71.5,80,73.5,86,73.5,92,75.5,100,76.5,105,77.5,113,73.5,120,73.5,128,73,136,71.5,141,72.5,152,70.5,160,69.5,170,69.8,180,68.9,-179,65.6,-172,64.5,-174,60.5,177,62.5,170,60,163,58,162,60,158,57,156,51,159,53.5,155,58,150,59.5,143,59,137,55,140,52,135,48.5,131,43.5,129,42,128,38,129,35.2,126.5,34.3,126,37.5,125,39.8,122,39.5,119,39,121,37.5,119,35,121,32.2,120,30,119.5,27,117,24.5,114,22.5,110,21.5,108.5,21.5,106,20.5,108.5,15.5,109.5,11.5,106.5,8.6,104.5,10.5,100.5,13.5,99,10.5,100.5,7,103.5,1.4,100.3,5.5,98.5,8,98,13,97,16.5,94,18,90.5,22.5,87,21.5,84,19,80.3,15.9,80.2,13.1,79.5,10.3,77.5,8.1,75.8,11.6,73,15.5,72.6,20,70,22.5,68.5,23.8,66.5,25,61,25.2,57.5,25.5,56.5,26.6,52,29.5,48.5,30.2,48,29.5,50.5,26.5,51.5,24.5,54.5,24.5,56.4,25.6,59.5,22.5,58,20,55,18,52,17,48,14,45,12.8,43.5,12.8,42.5,15.5,39,21,37.5,24.5,35,28,34.3,29.5,34.5,31.5,35.5,33.5,35.9,36,32.5,36.8,30.5,36.3,27,36.8,26,38.5,26.5,40.3,29,41.1,26.5,40.5,24,40.5,23,37.5,21,38.5,19.5,40.5,18.5,42.5,15.5,44,13.5,45.5,12.3,45.4,8.8,44.4,5,43.3,3.3,42.3,0.9,41,-0.5,39.5,-2.5,36.8,-5.6,36],
-northAmerica:[-168,65.7,-164,60.5,-162,58.5,-158,57,-153,57.5,-152,59,-148,60.5,-140,60,-136,58.5,-131,53.5,-127,50.5,-124,48.5,-124,43,-122,37,-118,34,-117,32.5,-114,28,-110,24,-106,23,-105,20,-101,17,-95,16,-92,15,-87,13.5,-83,8.5,-79,9,-82,9.5,-83.5,11,-87,15.9,-88,16,-90,16,-91,18.5,-87,21.5,-90,21,-94,18.5,-97,22,-97.5,26,-94,29.5,-90,29,-88,30.4,-84,30,-82.5,27,-80,25.2,-81,31.5,-78,33.8,-76,35.2,-75.5,37,-74,40.5,-71,41.5,-70,42,-68,44,-66,45,-64,46,-60,47,-56,51,-55,52.5,-60,55,-64,60,-70,62.5,-78,62.5,-78,70,-85,70,-95,70,-105,68.5,-115,70,-125,70,-133,69.5,-141,70,-150,70.5,-157,71.4,-164,68.9,-168,65.7],
-southAmerica:[-79,9,-77,8,-75,11,-71,12,-66,10.5,-62,10.5,-60,8,-55,6,-51,4,-50,0,-48,-1,-44,-2.5,-38,-5,-35,-6,-35,-8,-39,-13,-39,-18,-41,-22,-45,-24,-48,-25.5,-52,-32,-57,-35,-57,-38,-62,-39,-63,-41,-65,-45,-68,-48,-69,-52,-68,-55,-71,-55,-75,-52,-74,-46,-73,-42,-73,-37,-71,-33,-70,-23,-71,-18,-76,-14,-79,-8,-81,-6,-80,-3,-80,1,-79,9],
-australia:[114,-22,113,-26,115,-32,118,-35,123,-34,129,-32,134,-33,138,-35,141,-38,146,-39,150,-37,153,-31,153,-25,146,-19,142,-11,141,-12,137,-12,136,-15,131,-12,129,-15,125,-14,122,-18,114,-22],
-greenland:[-45,60,-52,64,-53,68,-55,71,-58,75,-65,76,-68,78,-60,82,-45,83,-30,82,-22,76,-25,72,-32,68,-38,65,-43,60,-45,60],
-britain:[-5.2,50.1,-3,51.5,-4,53.4,-3,54.9,-5,56.4,-3,58.6,-2,57.5,-1.5,54.5,1.7,52.7,.5,51,-5.2,50.1],
-japan:[130.9,31,132.5,33.5,135,33.5,136.9,34.6,140,35,141,38.3,141.5,41.5,140,45.5,143,44.3,145.5,43.4,143,42,140.5,41.5,138,37,135.5,35.5,132,34.5,130.9,33.5,129.5,32.5,130.9,31],
-madagascar:[43.5,-12,49,-12.5,50,-15,48,-20,47,-25,45,-25.5,43.5,-22,44,-17,43.5,-12],
-newGuinea:[131,-1,135,-1,141,-2.5,144,-3.5,147,-6,150,-9,147,-10,143,-9,138,-8.5,134,-8,131,-5,130.5,-2,131,-1],
-borneo:[109,2,113,3.5,117,4.5,119,5.5,118,3,117,-1,114,-3.5,110,-3,109,0,109,2],
-sumatra:[95,5.5,98,3.5,100,0,103,-2,106,-6,104,-6,100,-2,97,1.5,95,5.5],
-newZealand:[173,-35,175,-37,178,-38,177,-39.5,175,-41.5,172,-40.5,171,-43,168,-44,167,-46,170,-46,173,-42,174,-41,173,-35],
-antarctica:[-180,-78,-160,-77,-140,-74,-120,-73,-100,-73,-80,-72,-60,-65,-45,-61,-30,-70,-10,-71,10,-70,30,-68,50,-66,70,-67,90,-66,110,-66,130,-66,150,-70,165,-77,180,-78]
-};
-
-/* Landing zones. Real coordinates, so the ground track behaves sensibly. */
-const ZONES=[
-  {id:'LZ-01', name:'CANAVERAL',   lat: 28.5, lon: -80.6},
-  {id:'LZ-02', name:'BAIKONUR',    lat: 45.9, lon:  63.3},
-  {id:'LZ-03', name:'WOOMERA',     lat:-30.9, lon: 136.5},
-  {id:'LZ-04', name:'KOUROU',      lat:  5.2, lon: -52.8},
-  {id:'LZ-05', name:'JIUQUAN',     lat: 40.9, lon: 100.3},
-  {id:'LZ-06', name:'EDWARDS',     lat: 34.9, lon:-117.9}
-];
-
-/* Restricted / thermal contours — drawn red, like the reference plate. */
-const HAZARDS=[
-  {name:'THERMAL A', lat: 12, lon:  22, r: 17},
-  {name:'RESTRICTED', lat:-24, lon: -58, r: 13},
-  {name:'STORM CELL', lat: 40, lon: 168, r: 15}
-];
-
-/* Surface emitters the sensor can find. Real tracking and downlink stations,
-   because inventing sixteen fictional ones would have been the same amount of
-   work and told you nothing. */
-const EMITTERS=[
-  {lat: 35.4, lon:-116.9, cls:'DSN ARRAY',  name:'GOLDSTONE'},
-  {lat: 40.4, lon:  -4.2, cls:'DSN ARRAY',  name:'ROBLEDO'},
-  {lat:-35.4, lon: 149.0, cls:'DSN ARRAY',  name:'TIDBINBILLA'},
-  {lat:-25.9, lon:  27.7, cls:'DSN ARRAY',  name:'HARTEBEESTHOEK'},
-  {lat: 36.1, lon: 138.4, cls:'DSN ARRAY',  name:'USUDA'},
-  {lat: 78.2, lon:  15.4, cls:'POLAR LINK', name:'SVALSAT'},
-  {lat: 67.9, lon:  21.1, cls:'POLAR LINK', name:'ESRANGE'},
-  {lat: 78.9, lon:  11.9, cls:'GEODETIC',   name:'NY-ALESUND'},
-  {lat: -7.9, lon: -14.4, cls:'TRACKING',   name:'ASCENSION'},
-  {lat: -7.3, lon:  72.4, cls:'TRACKING',   name:'DIEGO GARCIA'},
-  {lat: -3.0, lon:  40.2, cls:'TRACKING',   name:'MALINDI'},
-  {lat:  8.7, lon: 167.7, cls:'RANGE RADAR',name:'KWAJALEIN'},
-  {lat:-23.7, lon: 133.9, cls:'SIGINT',     name:'ALICE SPRINGS'},
-  {lat: 76.5, lon: -68.7, cls:'EARLY WARN', name:'PITUFFIK'},
-  {lat: 54.4, lon:  -0.7, cls:'EARLY WARN', name:'FYLINGDALES'},
-  {lat: 39.1, lon:-121.4, cls:'EARLY WARN', name:'BEALE'},
-  {lat:  5.2, lon: -52.8, cls:'TRACKING',   name:'KOUROU'},
-  {lat:-31.8, lon: 115.9, cls:'TRACKING',   name:'PERTH'},
-  {lat:-33.2, lon: -70.7, cls:'TRACKING',   name:'SANTIAGO'},
-  {lat: 47.9, lon:  11.1, cls:'DSN ARRAY',  name:'WEILHEIM'},
-  {lat: 35.9, lon: 140.7, cls:'GEODETIC',   name:'KASHIMA'},
-  {lat: 56.0, lon:  37.9, cls:'DSN ARRAY',  name:'BEAR LAKES'},
-  {lat: 25.0, lon: 102.8, cls:'DSN ARRAY',  name:'KUNMING'},
-  {lat: 31.1, lon: 121.2, cls:'GEODETIC',   name:'SHESHAN'},
-  {lat:-72.0, lon:   2.5, cls:'POLAR LINK', name:'TROLL'},
-  {lat:-77.8, lon: 166.7, cls:'POLAR LINK', name:'MCMURDO'},
-  {lat:-46.5, lon: 168.4, cls:'POLAR LINK', name:'AWARUA'},
-  {lat: 68.3, lon:-133.5, cls:'POLAR LINK', name:'INUVIK'}
-];
-
 /* ==========================================================================
-   XENOLOGY
-   Four transmitting cultures at fixed points on the surface. Each is defined
-   by geometry rather than artwork: a head outline, an eye rule, a mouth
-   mechanism and a voice, all drawn as strokes so they belong to the same
-   display as everything else.
+   2.  THE STELLAR NEIGHBOURHOOD
+   --------------------------------------------------------------------------
+   Real stars, real positions. Right ascension and declination in degrees and
+   distance in light years, from published astrometry; the chart converts them
+   to equatorial Cartesian, so the three-dimensional arrangement you fly
+   through is the actual arrangement of the solar neighbourhood rather than a
+   scatter of invented points.
 
-   Coordinates are in a normalised face space, x and y both -1 to 1.
+     ra, dec  degrees
+     d        light years
+     sp       spectral class
+     pl       confirmed planets
    ========================================================================== */
+
+const STARS=[
+  {n:'SOL',              ra:0,       dec:0,       d:0,      sp:'G2V',   pl:8, note:'ORIGIN'},
+  {n:'PROXIMA CENTAURI', ra:217.429, dec:-62.679, d:4.246,  sp:'M5.5Ve',pl:3},
+  {n:'ALPHA CENTAURI A', ra:219.902, dec:-60.834, d:4.365,  sp:'G2V',   pl:0},
+  {n:'ALPHA CENTAURI B', ra:219.896, dec:-60.838, d:4.365,  sp:'K1V',   pl:0},
+  {n:"BARNARD'S STAR",   ra:269.452, dec:4.693,   d:5.963,  sp:'M4.0Ve',pl:1},
+  {n:'LUHMAN 16',        ra:162.328, dec:-53.319, d:6.516,  sp:'L7.5',  pl:0},
+  {n:'WISE 0855-0714',   ra:133.786, dec:-7.244,  d:7.27,   sp:'Y2',    pl:0},
+  {n:'WOLF 359',         ra:164.120, dec:7.014,   d:7.856,  sp:'M6.0V', pl:2},
+  {n:'LALANDE 21185',    ra:165.834, dec:35.970,  d:8.307,  sp:'M2.0V', pl:4},
+  {n:'SIRIUS A',         ra:101.287, dec:-16.716, d:8.659,  sp:'A1V',   pl:0},
+  {n:'SIRIUS B',         ra:101.289, dec:-16.720, d:8.659,  sp:'DA2',   pl:0},
+  {n:'LUYTEN 726-8',     ra:24.756,  dec:-17.950, d:8.791,  sp:'M5.5V', pl:0},
+  {n:'ROSS 154',         ra:282.456, dec:-23.836, d:9.700,  sp:'M3.5V', pl:0},
+  {n:'ROSS 248',         ra:355.481, dec:44.178,  d:10.30,  sp:'M5.5V', pl:0},
+  {n:'EPSILON ERIDANI',  ra:53.233,  dec:-9.458,  d:10.475, sp:'K2V',   pl:1},
+  {n:'LACAILLE 9352',    ra:346.467, dec:-35.853, d:10.742, sp:'M0.5V', pl:4},
+  {n:'ROSS 128',         ra:176.934, dec:0.800,   d:11.007, sp:'M4.0V', pl:1},
+  {n:'EZ AQUARII',       ra:350.727, dec:-17.032, d:11.10,  sp:'M5.0V', pl:0},
+  {n:'61 CYGNI A',       ra:316.716, dec:38.749,  d:11.403, sp:'K5V',   pl:0},
+  {n:'61 CYGNI B',       ra:316.730, dec:38.740,  d:11.403, sp:'K7V',   pl:0},
+  {n:'PROCYON A',        ra:114.826, dec:5.225,   d:11.462, sp:'F5IV',  pl:0},
+  {n:'PROCYON B',        ra:114.828, dec:5.222,   d:11.462, sp:'DQZ',   pl:0},
+  {n:'STRUVE 2398 A',    ra:282.457, dec:59.632,  d:11.525, sp:'M3.0V', pl:0},
+  {n:'STRUVE 2398 B',    ra:282.460, dec:59.628,  d:11.525, sp:'M3.5V', pl:0},
+  {n:'GROOMBRIDGE 34 A', ra:4.595,   dec:44.023,  d:11.624, sp:'M1.5V', pl:2},
+  {n:'GROOMBRIDGE 34 B', ra:4.598,   dec:44.018,  d:11.624, sp:'M3.5V', pl:0},
+  {n:'DX CANCRI',        ra:128.558, dec:26.777,  d:11.68,  sp:'M6.5V', pl:0},
+  {n:'EPSILON INDI',     ra:330.840, dec:-56.786, d:11.867, sp:'K5V',   pl:1},
+  {n:'TAU CETI',         ra:26.017,  dec:-15.938, d:11.912, sp:'G8.5V', pl:4},
+  {n:'GJ 1061',          ra:53.996,  dec:-44.512, d:11.98,  sp:'M5.5V', pl:3},
+  {n:'YZ CETI',          ra:26.573,  dec:-16.996, d:12.11,  sp:'M4.5V', pl:3},
+  {n:"LUYTEN'S STAR",    ra:111.855, dec:5.225,   d:12.348, sp:'M3.5V', pl:2},
+  {n:"TEEGARDEN'S STAR", ra:43.256,  dec:16.881,  d:12.497, sp:'M7.0V', pl:2},
+  {n:'SCR 1845-6357',    ra:281.417, dec:-63.958, d:12.57,  sp:'M8.5V', pl:0},
+  {n:"KAPTEYN'S STAR",   ra:77.920,  dec:-45.010, d:12.83,  sp:'M1.5V', pl:0},
+  {n:'LACAILLE 8760',    ra:315.673, dec:-38.867, d:12.95,  sp:'M0.0V', pl:0},
+  {n:'KRUGER 60 A',      ra:340.470, dec:57.696,  d:13.08,  sp:'M3.0V', pl:0},
+  {n:'KRUGER 60 B',      ra:340.474, dec:57.692,  d:13.08,  sp:'M4.0V', pl:0},
+  {n:'DEN 1048-3956',    ra:162.161, dec:-39.943, d:13.2,   sp:'M8.5V', pl:0},
+  {n:'ROSS 614',         ra:99.658,  dec:-2.803,  d:13.35,  sp:'M4.5V', pl:0},
+  {n:'WOLF 1061',        ra:247.586, dec:-12.661, d:14.05,  sp:'M3.0V', pl:3},
+  {n:"VAN MAANEN'S STAR",ra:12.480,  dec:5.393,   d:14.07,  sp:'DZ8',   pl:0},
+  {n:'GLIESE 1',         ra:1.354,   dec:-37.357, d:14.17,  sp:'M1.5V', pl:0},
+  {n:'TZ ARIETIS',       ra:46.418,  dec:5.226,   d:14.59,  sp:'M4.5V', pl:1},
+  {n:'GLIESE 674',       ra:262.163, dec:-46.895, d:14.85,  sp:'M3.0V', pl:1},
+  {n:'GLIESE 687',       ra:264.108, dec:68.337,  d:14.84,  sp:'M3.0V', pl:2},
+  {n:'LHS 292',          ra:162.716, dec:-11.328, d:14.9,   sp:'M6.5V', pl:0},
+  {n:'GJ 1245 A',        ra:298.061, dec:44.416,  d:15.2,   sp:'M5.5V', pl:0},
+  {n:'LP 145-141',       ra:176.457, dec:-64.843, d:15.06,  sp:'DQ6',   pl:0},
+  {n:'GJ 1002',          ra:3.607,   dec:-7.535,  d:15.8,   sp:'M5.5V', pl:2},
+  {n:'GLIESE 876',       ra:343.324, dec:-14.264, d:15.24,  sp:'M3.5V', pl:4},
+  {n:'LHS 288',          ra:160.360, dec:-57.166, d:15.6,   sp:'M5.5V', pl:0},
+  {n:'GLIESE 412 A',     ra:165.877, dec:43.526,  d:15.83,  sp:'M1.0V', pl:0},
+  {n:'GROOMBRIDGE 1618', ra:152.842, dec:49.462,  d:15.85,  sp:'K7V',   pl:0},
+  {n:'AD LEONIS',        ra:154.901, dec:19.870,  d:15.94,  sp:'M3.0V', pl:0},
+  {n:'GLIESE 832',       ra:323.392, dec:-49.011, d:16.20,  sp:'M1.5V', pl:2},
+  {n:'GLIESE 682',       ra:264.834, dec:-44.319, d:16.33,  sp:'M3.5V', pl:2},
+  {n:'40 ERIDANI',       ra:63.818,  dec:-7.653,  d:16.34,  sp:'K0.5V', pl:1},
+  {n:'EV LACERTAE',      ra:342.976, dec:44.334,  d:16.47,  sp:'M3.5V', pl:0},
+  {n:'70 OPHIUCHI',      ra:271.365, dec:2.502,   d:16.59,  sp:'K0V',   pl:0},
+  {n:'ALTAIR',           ra:297.696, dec:8.868,   d:16.73,  sp:'A7V',   pl:0},
+  {n:'SIGMA DRACONIS',   ra:293.090, dec:69.661,  d:18.80,  sp:'K0V',   pl:0},
+  {n:'ETA CASSIOPEIAE',  ra:12.276,  dec:57.815,  d:19.32,  sp:'F9V',   pl:0},
+  {n:'36 OPHIUCHI',      ra:258.837, dec:-26.601, d:19.50,  sp:'K2V',   pl:0},
+  {n:'82 ERIDANI',       ra:45.000,  dec:-43.070, d:19.70,  sp:'G8V',   pl:3},
+  {n:'DELTA PAVONIS',    ra:302.182, dec:-66.182, d:19.92,  sp:'G8IV',  pl:0},
+  {n:'GLIESE 570',       ra:224.361, dec:-21.446, d:19.40,  sp:'K4V',   pl:0},
+  {n:'XI BOOTIS',        ra:222.849, dec:19.100,  d:21.90,  sp:'G8V',   pl:0},
+  {n:'GJ 667C',          ra:259.745, dec:-34.997, d:23.60,  sp:'M1.5V', pl:2},
+  {n:'VEGA',             ra:279.234, dec:38.784,  d:25.04,  sp:'A0V',   pl:0},
+  {n:'FOMALHAUT',        ra:344.413, dec:-29.622, d:25.13,  sp:'A3V',   pl:1}
+];
+
+/* Spectral class drives colour, size and how bright the star is plotted. A
+   real HR-diagram ordering, so an O star is not the same dot as a brown dwarf
+   and the chart carries information rather than decoration. */
+const SPECTRAL={
+  O:[155,176,255], B:[170,191,255], A:[213,224,255], F:[249,245,255],
+  G:[255,237,180], K:[255,193,120], M:[255,120,86],
+  L:[190,80,70],   T:[140,60,90],   Y:[110,60,120],  D:[210,230,255]
+};
+function starColour(sp){
+  const c=SPECTRAL[sp[0]]||SPECTRAL.M;
+  return c;
+}
+function starSize(sp){
+  const k=sp[0];
+  if(k==='O'||k==='B') return 3.4;
+  if(k==='A') return 2.9;
+  if(k==='F') return 2.5;
+  if(k==='G') return 2.2;
+  if(k==='K') return 1.9;
+  if(k==='D') return 1.2;
+  if(k==='L'||k==='T'||k==='Y') return 1.1;
+  return 1.6;
+}
+
+/* Equatorial Cartesian, light years. Computed once at load. */
+const RA_D=Math.PI/180;
+STARS.forEach(st=>{
+  const ra=st.ra*RA_D, de=st.dec*RA_D;
+  st.p=[st.d*Math.cos(de)*Math.cos(ra),
+        st.d*Math.sin(de),
+        st.d*Math.cos(de)*Math.sin(ra)];
+  st.col=starColour(st.sp);
+  st.sz=starSize(st.sp);
+});
+const starDist=(a,b)=>Math.hypot(a.p[0]-b.p[0],a.p[1]-b.p[1],a.p[2]-b.p[2]);
 
 const RACES={
   voth:{
@@ -1103,10 +1104,10 @@ function transcribe(text,race){
 /* Where they transmit from. Spread wide so reaching a new one is a flight,
    not a wait. */
 const ALIENS=[
-  {id:'AX-1', race:'voth',     lat:-14.8, lon:-141.2, place:'CENTRAL PACIFIC BASIN'},
-  {id:'AX-2', race:'kelmoran', lat:-74.6, lon:  27.4, place:'QUEEN MAUD ICE'},
-  {id:'AX-3', race:'ssrith',   lat: -3.9, lon: -62.5, place:'AMAZON LITTORAL'},
-  {id:'AX-4', race:'unit7',    lat: 67.8, lon: 104.9, place:'PUTORANA SHIELD'}
+  {id:'AX-1', race:'voth',     star:'TAU CETI',        place:'TAU CETI · 4 PLANETS'},
+  {id:'AX-2', race:'kelmoran', star:'EPSILON ERIDANI', place:'EPSILON ERIDANI · INNER BELT'},
+  {id:'AX-3', race:'ssrith',   star:'GLIESE 876',      place:'GLIESE 876 · 4 PLANETS'},
+  {id:'AX-4', race:'unit7',    star:"BARNARD'S STAR",  place:"BARNARD'S STAR · DRIFTING"}
 ];
 
 /* Conversation trees. `grant` fires once, when the node is first reached. */
@@ -1217,293 +1218,101 @@ const SPRITES={
 
 
 /* ==========================================================================
-   3.  SIMULATION STATE
+   3.  NAVIGATION STATE
+   --------------------------------------------------------------------------
+   No orbital mechanics: this vehicle crosses interstellar distance, and the
+   honest model for that is a range-limited jump against a finite tank rather
+   than a two-body integration.
+
+   The economy comes out of the real catalogue. Fuel is scooped from systems
+   that actually have confirmed planets, so which stars can refuel you is
+   astronomy rather than level design, and the route you can fly is a genuine
+   consequence of where the planets are.
    ========================================================================== */
 
+const JUMP_MAX  = 9.0;    // furthest single jump, light years
+const TANK      = 42;     // light years of capacity
+const SCAN_LY   = 11.0;   // transmission detection radius
+const JUMP_SECS = 2.6;    // how long a jump takes to run
+
 const sim={
-  r:[0,0,0], v:[0,0,0],
-  t:0, spin:0,
-  dv:DV_START,
-  warp:1,
-  burn:null,
-  phase:'ORBIT',
-  heat:0, heatPeak:0, g:0, gPeak:0, chute:false,
-  zone:0,
-  sweep:0,             // sensor sweep bearing, radians
-  sweepPrev:0,
-  pings:[],            // live ping rings
-  found:[],            // acquired emitters, in order of acquisition
-  acq:null,            // permanent acquisition bracket, animating
-  transient:null,      // uncorrelated return being worked
+  at:0, target:1,
+  fuel:TANK, scooped:{},
+  t:0,
+  jumping:null,
+  phase:'IDLE',
   scanOn:true,
-  xeno:[],             // alien transmitters detected
-  hailReady:null,      // one currently inside the footprint
-  track:[],            // predicted ground track, [lat,lon] pairs
-  impact:null,         // predicted touchdown point, or null while still in orbit
-  trackAge:1e9,
+  sweep:0, sweepPrev:0,
+  pings:[], found:[], acq:null, transient:null,
+  xeno:[], hailReady:null,
+  logged:{},
   landed:null,
-  auto:false, autoState:'idle', autoSol:null, autoPe:70, autoFireAt:0,
-  contacts:[]
+  clutterAge:0
 };
 
-function insertOrbit(){
-  const alt=408, r=R_P+alt, inc=51.6/DEG;
-  const speed=Math.sqrt(MU/r);
+const here    = ()=>STARS[sim.at];
+const target  = ()=>STARS[sim.target];
+const jumpKm  = ()=>starDist(here(),target());
+const canJump = ()=>{
+  const d=jumpKm();
+  return sim.target!==sim.at && d<=JUMP_MAX && d<=sim.fuel && !sim.jumping;
+};
 
-  /* Build the orbit from an explicit orthonormal basis so the inclination
-     is exactly what it says on the label. The spin axis is +Y, so an orbit
-     normal of (sin i, cos i, 0) makes angle i with the equator; the
-     ascending node then sits on +Z, and v = ĥ × r̂ closes the triad. */
-  sim.r=[0,0,r];
-  sim.v=[speed*Math.cos(inc), -speed*Math.sin(inc), 0];
-
-  sim.t=0; sim.spin=0; sim.dv=DV_START; sim.warp=1; sim.burn=null;
-  sim.phase='ORBIT'; sim.heat=0; sim.heatPeak=0; sim.g=0; sim.gPeak=0; sim.landed=null; sim.chute=false;
-  sim.auto=false; sim.autoState='idle'; sim.autoSol=null; sim.trackAge=1e9;
-  sim.sweep=0; sim.sweepPrev=0; sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null; sim.clutterAge=0;
-  sim.xeno=[]; sim.hailReady=null;
-
-  sim.contacts=[
-    mkContact('station', 780, 51.6,   40, '#FF52D9', 'ORBITAL PLATFORM'),
-    mkContact('relay',  1420, 82.0,  190, '#FF52D9', 'RELAY SAT 7'),
-    mkContact('derelict',560, 28.0,  300, '#FF9A1F', 'DERELICT — NO IFF')
-  ];
+function newFlight(){
+  sim.at=0; sim.target=1; sim.fuel=TANK; sim.scooped={};
+  sim.t=0; sim.jumping=null; sim.phase='IDLE';
+  sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null;
+  sim.xeno=[]; sim.hailReady=null; sim.logged={}; sim.landed=null;
+  sim.sweep=0; sim.sweepPrev=0; sim.clutterAge=0;
+  cam.tgt=[0,0,0]; cam.at=[0,0,0];
 }
 
-/* Contacts are on clean circular orbits; they are scenery with correct
-   geometry, not a second physics problem. */
-function mkContact(sprite,alt,incDeg,phaseDeg,colour,label){
-  const r=R_P+alt, inc=incDeg/DEG, ph=phaseDeg/DEG;
-  return {sprite,r,inc,ph,colour,label,n:Math.sqrt(MU/(r*r*r))};
+/* Fuel is scooped once per system, and only where there is something to scoop
+   from. A bare star gives you nothing. */
+function canScoop(){
+  const st=here();
+  return st.pl>0 && !sim.scooped[sim.at] && sim.fuel<TANK-0.01;
 }
-function contactPos(c,t){
-  const a=c.ph+c.n*t;
-  const x=c.r*Math.cos(a), y=c.r*Math.sin(a)*Math.sin(c.inc), z=c.r*Math.sin(a)*Math.cos(c.inc);
-  return [x,y,z];
-}
-
-/* --- Forces ------------------------------------------------------------ */
-function density(alt){ return alt>ATM_TOP?0:RHO_0*Math.exp(-alt/SCALE_H); }
-
-function accel(r,v){
-  const rm=V.len(r);
-  let a=V.mul(r,-MU/(rm*rm*rm));            // gravity
-
-  const alt=rm-R_P;
-  if(alt<ATM_TOP){                           // drag
-    const rho=density(alt);
-    const vms=V.len(v)*1000;
-    /* Chutes drop the ballistic coefficient by an order of magnitude, which
-       is what turns a 90 m/s terminal fall into a survivable 14 m/s. */
-    const B = sim.chute ? BALLISTIC/10 : BALLISTIC;
-    const aDrag=0.5*rho*vms*vms/B/1000;   // km/s^2
-    a=V.add(a,V.mul(V.unit(v),-aDrag));
-  }
-
-  if(sim.burn && sim.dv>0){                  // RCS
-    const vh=V.unit(v), rh=V.unit(r);
-    const nh=V.unit(V.cross(r,v));
-    const dir={pro:vh, retro:V.mul(vh,-1), norm:nh, anti:V.mul(nh,-1)}[sim.burn];
-    if(dir) a=V.add(a,V.mul(dir,THRUST));
-  }
-  return a;
+function scoop(){
+  if(!canScoop()) return false;
+  const st=here();
+  sim.scooped[sim.at]=true;
+  /* More planets, more to work with — again straight from the catalogue. */
+  sim.fuel=Math.min(TANK, sim.fuel + 6 + st.pl*3);
+  return true;
 }
 
-/* Velocity Verlet. Stable enough for a 90-minute orbit at these step sizes,
-   and it conserves energy far better than Euler, which matters because the
-   apoapsis readout would otherwise drift while you sit and watch it. */
-function step(dt){
-  const a0=accel(sim.r,sim.v);
-  const rNew=V.add(V.add(sim.r,V.mul(sim.v,dt)),V.mul(a0,0.5*dt*dt));
-  const a1=accel(rNew,V.add(sim.v,V.mul(a0,dt)));
-  sim.r=rNew;
-  sim.v=V.add(sim.v,V.mul(V.add(a0,a1),0.5*dt));
+function beginJump(){
+  if(!canJump()) return false;
+  const d=jumpKm();
+  sim.jumping={from:sim.at, to:sim.target, t0:performance.now(), dur:JUMP_SECS*1000, d};
+  sim.phase='JUMP';
+  return true;
+}
+
+function stepNav(dt){
   sim.t+=dt;
-  sim.spin+=2*Math.PI*dt/SIDEREAL;
-  if(sim.burn && sim.dv>0) sim.dv=Math.max(0,sim.dv-THRUST*1000*dt);
-
-  /* Heating: the standard convective proxy, sqrt(rho)·v³, normalised so a
-     nominal 70 km-periapsis entry peaks near 0.7 and a steep one runs past
-     the structural limit. */
-  const alt=V.len(sim.r)-R_P;
-  const rho=density(alt), vms=V.len(sim.v)*1000;
-  const q=Math.sqrt(rho)*vms*vms*vms/9e9;
-  sim.heat=sim.heat*0.94+q*0.06;
-  if(sim.heat>sim.heatPeak) sim.heatPeak=sim.heat;
-
-  /* Deceleration load. This, not heating, is what a steep return from low
-     orbit actually threatens you with: a ballistic Soyuz entry pulls 8-9 g
-     where a guided one pulls 4. You cannot burn up coming back from 400 km,
-     so the vehicle is lost to structural load instead. */
-  const B2 = sim.chute ? BALLISTIC/10 : BALLISTIC;
-  const gNow = (0.5*rho*vms*vms/B2)/9.80665;
-  sim.g = sim.g*0.9 + gNow*0.1;
-  if(sim.g>sim.gPeak) sim.gPeak=sim.g;
-
-  /* Chutes are automatic, and only once slow enough not to shred them. */
-  if(!sim.chute && alt<8 && V.len(sim.v)<0.4) sim.chute=true;
-}
-
-/* --- Orbital elements from the state vector ----------------------------- */
-function elements(){
-  const r=sim.r, v=sim.v;
-  const rm=V.len(r), vm=V.len(v);
-  const energy=vm*vm/2-MU/rm;
-  const a=-MU/(2*energy);
-  const h=V.cross(r,v), hm=V.len(h);
-  const ev=V.sub(V.mul(V.cross(v,h),1/MU),V.mul(r,1/rm));
-  const e=V.len(ev);
-  const inc=Math.acos(clamp(h[1]/hm,-1,1));   // +Y is the spin axis here
-  /* Node vector n = ŷ × h, with +Y as the spin axis. */
-  const n=[h[2],0,-h[0]], nm=V.len(n);
-  let raan=nm>1e-9?Math.atan2(n[2],n[0]):0;
-  let nu=0;
-  if(e>1e-8){
-    nu=Math.acos(clamp(V.dot(ev,r)/(e*rm),-1,1));
-    if(V.dot(r,v)<0) nu=2*Math.PI-nu;
-  }
-  const fpa=Math.asin(clamp(V.dot(V.unit(r),V.unit(v)),-1,1));
-  return {
-    rm, vm, alt:rm-R_P, energy, a, e, hm, inc,
-    raan:((raan*DEG)+360)%360, nu:nu*DEG, fpa:fpa*DEG,
-    ap:a>0?a*(1+e)-R_P:Infinity,
-    pe:a*(1-e)-R_P,
-    T:a>0?2*Math.PI*Math.sqrt(a*a*a/MU):Infinity
-  };
-}
-
-/* Forward propagation of a throwaway copy. Used both for the drawn ground
-   track and for deorbit targeting, so the marker you aim at and the
-   autopilot's answer come from the same model. */
-function propagate(r0,v0,spin0,maxSteps,dtBase){
-  let r=r0.slice(), v=v0.slice(), spin=spin0;
-  const track=[];
-  for(let i=0;i<maxSteps;i++){
-    const rm=V.len(r);
-    const alt=rm-R_P;
-    /* Short steps where drag bends the path, long ones on the vacuum coast. */
-    const dt = alt<80 ? Math.min(dtBase,2) : dtBase;
-    let a=V.mul(r,-MU/(rm*rm*rm));
-    if(alt<ATM_TOP){
-      const rho=density(alt), vms=V.len(v)*1000;
-      a=V.add(a,V.mul(V.unit(v),-0.5*rho*vms*vms/BALLISTIC/1000));
+  if(sim.jumping){
+    const k=(performance.now()-sim.jumping.t0)/sim.jumping.dur;
+    if(k>=1){
+      sim.fuel=Math.max(0,sim.fuel-sim.jumping.d);
+      sim.at=sim.jumping.to;
+      sim.jumping=null;
+      sim.phase='IDLE';
+      /* Arriving somewhere is what re-opens the survey. */
+      sim.pings=[]; sim.acq=null; sim.transient=null;
+      sndSpinUp();
     }
-    r=V.add(V.add(r,V.mul(v,dt)),V.mul(a,0.5*dt*dt));
-    const rm2=V.len(r);
-    let a1=V.mul(r,-MU/(rm2*rm2*rm2));
-    const alt2=rm2-R_P;
-    if(alt2<ATM_TOP){
-      const rho=density(alt2), vms=V.len(v)*1000;
-      a1=V.add(a1,V.mul(V.unit(v),-0.5*rho*vms*vms/BALLISTIC/1000));
-    }
-    v=V.add(v,V.mul(V.add(a,a1),0.5*dt));
-    spin+=2*Math.PI*dt/SIDEREAL;
-    const g=vecToGeo(r,spin);
-    track.push(g);
-    if(rm2<=R_P) return {track, impact:g};
   }
-  return {track, impact:null};
 }
 
-function predictTrack(){
-  const el=elements();
-  const span=Math.min(isFinite(el.T)?el.T*1.15:5600, 7200);
-  const res=propagate(sim.r,sim.v,sim.spin,240,span/240);
-  sim.track=res.track;
-  sim.impact=res.impact;
-  sim.trackAge=0;
+/* Nearest star that is both reachable and not where we already are — used by
+   the target stepper so cycling never offers a jump that cannot be made. */
+function reachable(){
+  return STARS.map((st,i)=>({i,d:starDist(here(),st)}))
+              .filter(o=>o.i!==sim.at && o.d<=JUMP_MAX)
+              .sort((a,b)=>a.d-b.d);
 }
-
-/* Where would the vehicle come down if the deorbit burn were made from this
-   state, aiming at this periapsis? Applies the impulsive delta-v from
-   vis-viva, then flies the result to the ground. */
-function impactFrom(r,v,spin,peKm){
-  const rm=V.len(r);
-  const targetPe=R_P+peKm;
-  if(rm<=targetPe) return null;
-  const aNew=(rm+targetPe)/2;
-  const vNew=Math.sqrt(Math.max(0,MU*(2/rm-1/aNew)));
-  const vm=V.len(v);
-  if(vNew>=vm) return null;                       // already lower than that
-  const res=propagate(r,V.mul(V.unit(v),vNew),spin,900,10);
-  if(!res.impact) return null;
-  return { geo:res.impact, dv:(vm-vNew)*1000 };
-}
-
-/* The trajectory does not depend on which pad you are aiming at, so one
-   propagation is scored against every pad. That is what makes a horizon of
-   several orbits affordable — and it is why AUTO can answer "where can I
-   actually get down" rather than only "how close to this one". */
-function scoreAllZones(geo){
-  let best=null;
-  for(let i=0;i<ZONES.length;i++){
-    const km=greatCircleKm(geo[0],geo[1],ZONES[i].lat,ZONES[i].lon);
-    if(!best||km<best.km) best={km,zone:i};
-  }
-  return best;
-}
-
-/* Vacuum coast, used to walk the search's reference state forward. */
-function coast(r,v,spin,dt,steps){
-  const h=dt/steps;
-  for(let i=0;i<steps;i++){
-    const rm=V.len(r);
-    const a=V.mul(r,-MU/(rm*rm*rm));
-    r=V.add(V.add(r,V.mul(v,h)),V.mul(a,0.5*h*h));
-    const rm2=V.len(r);
-    const a1=V.mul(r,-MU/(rm2*rm2*rm2));
-    v=V.add(v,V.mul(V.add(a,a1),0.5*h));
-    spin+=2*Math.PI*h/SIDEREAL;
-  }
-  return {r,v,spin};
-}
-
-/* Solve for the deorbit. Searches burn time across the next orbit and a half
-   and, at each candidate, three entry corridors — a steeper burn lands the
-   vehicle sooner, so corridor depth is a downrange control as well as a
-   thermal one. Returns the best (time, periapsis) pair it can find.
-
-   This is the piece that makes AUTO worth having. A retrograde burn made at
-   an arbitrary moment lands you on the far side of the planet; the pad is
-   only reachable from a narrow window, and finding that window is precisely
-   the skill the manual controls ask for. */
-function solveDeorbit(){
-  const el=elements();
-  const T=isFinite(el.T)&&el.T>0?el.T:5600;
-
-  /* Coarse sweep across three orbits, then a fine sweep around the winner.
-     Three orbits is enough because every pad is a candidate, not just the
-     selected one. */
-  const sweep=(t0,span,N,corridors,r0,v0,spin0)=>{
-    let r=r0.slice(), v=v0.slice(), spin=spin0, best=null;
-    const dt=span/N;
-    for(let i=0;i<=N;i++){
-      for(const pe of corridors){
-        const im=impactFrom(r,v,spin,pe);
-        if(im){
-          const sc=scoreAllZones(im.geo);
-          if(!best||sc.km<best.km) best={km:sc.km, zone:sc.zone, wait:t0+i*dt, pe, dv:im.dv};
-        }
-      }
-      if(i<N){ const nx=coast(r,v,spin,dt,4); r=nx.r; v=nx.v; spin=nx.spin; }
-    }
-    return best;
-  };
-
-  const horizon=Math.min(T*3,18000);
-  const coarse=sweep(0,horizon,66,[45,70,105],sim.r,sim.v,sim.spin);
-  if(!coarse) return null;
-
-  /* Refine: step the reference state to just before the coarse winner and
-     resweep a narrow window at high resolution. */
-  const half=horizon/66;
-  const t0=Math.max(0,coarse.wait-half);
-  const nx=coast(sim.r,sim.v,sim.spin,t0,Math.max(2,Math.round(t0/40)));
-  const fine=sweep(t0,half*2,24,[35,45,55,70,85,105],nx.r,nx.v,nx.spin);
-
-  return (fine && fine.km<coarse.km) ? fine : coarse;
-}
-
 
 /* ==========================================================================
    4.  CAMERA AND 3-D PROJECTION
@@ -1511,20 +1320,24 @@ function solveDeorbit(){
    original displays did it, and it keeps every line a stroke.
    ========================================================================== */
 
-const cam={yaw:-0.6, pitch:0.35, dist:2.05, fov:1.15, mode:0, tYaw:null, tPitch:null};
-const CAM_MODES=['CAM ORB','CAM FIX','CAM LZ'];
+const cam={yaw:-0.6, pitch:0.42, dist:44, fov:1.15, mode:0,
+           at:[0,0,0], tgt:[0,0,0]};
+const CAM_MODES=['CAM SPIN','CAM FIX','CAM TGT'];
 
 let ctx, cv, W=0, H=0, CX=0, CY=0, F=0, DPR=1;
 
 /* World → camera. The world is rotated by the camera's inverse orientation,
    then viewed from (0,0,dist) looking down −z. */
 function toCam(p){
+  /* Relative to the focus point, so the camera orbits wherever the vehicle
+     currently is rather than always about the origin. */
+  const ax=p[0]-cam.at[0], ay=p[1]-cam.at[1], az=p[2]-cam.at[2];
   const cy=Math.cos(cam.yaw), sy=Math.sin(cam.yaw);
   const cp=Math.cos(cam.pitch), sp=Math.sin(cam.pitch);
-  const x1= p[0]*cy + p[2]*sy;
-  const z1=-p[0]*sy + p[2]*cy;
-  const y2= p[1]*cp - z1*sp;
-  const z2= p[1]*sp + z1*cp;
+  const x1= ax*cy + az*sy;
+  const z1=-ax*sy + az*cy;
+  const y2= ay*cp - z1*sp;
+  const z2= ay*sp + z1*cp;
   return [x1,y2,z2];
 }
 /* Returns null when the point is behind the eye. */
@@ -1535,12 +1348,9 @@ function project(p){
   const s=F/depth;
   return {x:CX+c[0]*s, y:CY-c[1]*s, d:depth, s};
 }
-/* True when a point on the unit sphere faces the eye — the perspective
-   horizon, which is tighter than a hemisphere. */
-function onNearSide(p){
-  const c=toCam(p);
-  return c[2] > 1/cam.dist;
-}
+/* Nothing occludes anything on a star chart, so visibility is only ever
+   "in front of the eye". */
+function inFront(p){ return toCam(p)[2] < cam.dist-0.2; }
 
 function strokePolyline(pts, colour, width, glow, close){
   ctx.strokeStyle=colour; ctx.lineWidth=width;
@@ -1701,459 +1511,356 @@ function drawStars(){
   }
 }
 
-function drawGraticule(){
-  const col='rgba(34,255,136,';
-  for(let lat=-75; lat<=75; lat+=15){
-    const pts=[];
-    for(let lon=-180; lon<=180; lon+=5){
-      const p=geoToVec(lat,lon,sim.spin,1);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts, col+(lat===0?0.75:0.26)+')', 1, 0);
-  }
-  for(let lon=-180; lon<180; lon+=15){
-    const pts=[];
-    for(let lat=-88; lat<=88; lat+=5){
-      const p=geoToVec(lat,lon,sim.spin,1);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts, col+(lon===0?0.75:0.26)+')', 1, 0);
-  }
-}
-
-function drawCoasts(){
-  for(const k in COASTS){
-    const arr=COASTS[k], pts=[];
-    for(let i=0;i<arr.length;i+=2){
-      const p=geoToVec(arr[i+1],arr[i],sim.spin,1.002);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts,'rgba(216,255,60,0.95)',1.1,0);
-  }
-}
-
-/* Hazard contours: closed rings on the surface, drawn red. */
-function drawHazards(){
-  for(const hz of HAZARDS){
-    const pts=[];
-    for(let a=0;a<=360;a+=12){
-      const th=a/DEG;
-      /* An irregular ring, so it reads as a contour rather than a circle. */
-      const rr=hz.r*(1+0.22*Math.sin(3*th)+0.12*Math.cos(5*th));
-      const lat=hz.lat+rr*Math.sin(th)*0.6;
-      const lon=hz.lon+rr*Math.cos(th)/Math.max(0.25,Math.cos(hz.lat/DEG));
-      const p=geoToVec(lat,lon,sim.spin,1.004);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts,'rgba(255,58,44,0.9)',1.1,0,true);
-  }
-}
-
-function drawGroundTrack(){
-  if(!btnTrack.on || sim.track.length<2) return;
-  const pts=sim.track.map(([la,lo])=>{
-    const p=geoToVec(la,lo,sim.spin,1.006);
-    return onNearSide(p)?project(p):null;
-  });
-  ctx.setLineDash([3,4]);
-  strokePolyline(pts,'rgba(140,230,255,0.85)',1,0);
-  ctx.setLineDash([]);
-
-  /* Predicted touchdown. Drawn as an X rather than a dot so it never reads
-     as one more point on the track. */
-  if(sim.impact){
-    const p=geoToVec(sim.impact[0],sim.impact[1],sim.spin,1.006);
-    if(onNearSide(p)){
-      const q=project(p);
-      if(q){
-        const s=7;
-        ctx.strokeStyle='#FFD23D'; ctx.lineWidth=1.6;
-        ctx.shadowColor='#FFD23D'; ctx.shadowBlur=10;
-        ctx.beginPath();
-        ctx.moveTo(q.x-s,q.y-s); ctx.lineTo(q.x+s,q.y+s);
-        ctx.moveTo(q.x+s,q.y-s); ctx.lineTo(q.x-s,q.y+s);
-        ctx.stroke(); ctx.shadowBlur=0;
-        label('PRED IMPACT',q.x+11,q.y+11,'#FFD23D',true);
-      }
-    }
-  }
-}
-
-/* The conic, sampled in the orbital plane from the current state vector. */
-function drawConic(){
-  if(!btnOrbit.on) return;
-  const el=elements();
-  if(!isFinite(el.a)||el.a<=0) return;
-  const r=sim.r, v=sim.v;
-  const h=V.cross(r,v), hm=V.len(h);
-  const ev=V.sub(V.mul(V.cross(v,h),1/MU),V.mul(r,1/V.len(r)));
-  const e=V.len(ev);
-  const ph = e>1e-8 ? V.unit(ev) : V.unit(r);
-  const wh = V.unit(h);
-  const qh = V.cross(wh,ph);
-  const p  = hm*hm/MU;
-
-  const pts=[];
-  for(let i=0;i<=180;i++){
-    const nu=i/180*2*Math.PI;
-    const rr=p/(1+e*Math.cos(nu));
-    if(rr<R_P*0.98||rr>R_P*40){ pts.push(null); continue; }
-    const w=V.add(V.mul(ph,rr*Math.cos(nu)),V.mul(qh,rr*Math.sin(nu)));
-    const s=V.mul(w,1/R_P);
-    /* An orbit passes behind the planet: hide the occluded half. */
-    const cc=toCam(s);
-    const behind = cc[2] < 0 && Math.hypot(cc[0],cc[1]) < 1;
-    pts.push(behind?null:project(s));
-  }
-  strokePolyline(pts,'rgba(255,210,61,0.8)',1.1,0);
-}
-
 /* ==========================================================================
-   ATMOSPHERIC LIMB ANNUNCIATOR
+   THE CHART
    --------------------------------------------------------------------------
-   The outline of the planet is not drawn as decoration. The limb is the
-   atmosphere seen edge-on, so it is given the job of reporting the entry
-   corridor, and it is legible from across the room without reading a single
-   digit:
-
-     FILL   the arc lit clockwise from the top is how far the trajectory
-            reaches into the atmosphere. Nothing lit means periapsis is in
-            vacuum. A full ring means it intersects the ground.
-     RATE   the strobe frequency is deceleration load. A slow half-hertz
-            heartbeat in orbit, a hard eight-hertz strobe at peak g.
-     COLOUR ice for vacuum, amber for a good corridor, red when the burn is
-            committed to something too steep or the vehicle is over 8 g.
-     WIDTH  thickens with dynamic pressure, so the outline visibly hardens
-            as the air does.
-
-   A second ring outside it is the atmosphere shell itself at 130 km, drawn
-   only once the trajectory reaches it. You can fly the entire deorbit burn
-   watching the outline alone — that is the test this has to pass.
+   A three-dimensional star field is unreadable on its own: every point is
+   ambiguous in depth. The fix is as old as star atlases — a reference plane
+   through the origin, and a dropped line from every star to it. The line
+   tells you the height, the foot tells you the position, and the pair makes
+   the arrangement legible.
    ========================================================================== */
 
-/* Apparent screen radius of the limb of a sphere of radius a, under the same
-   perspective the rest of the scene uses. For a camera at distance d the
-   horizon sits at depth a²/d, not at the sphere's centre — using the centre
-   would draw the outline slightly too large and it would not sit on the
-   coastlines. */
-function limbRadius(a){
-  const d=cam.dist;
-  if(d<=a) return null;
-  const x=a*Math.sqrt(1-(a*a)/(d*d));
-  const depth=d-(a*a)/d;
-  return F*x/depth;
+const PLANE_RINGS=[5,10,15,20,25];
+
+/* Screen-space label placement. Seventy stars inside a nine-light-year ball
+   all want to write their name in the same forty pixels, so labels are
+   claimed against a rect list in priority order: where we are, where we are
+   going, who is transmitting, what has planets, then everything else if
+   there is still room. */
+let labelRects=[];
+function claimLabel(text,x,y,colour,boxed){
+  ctx.font='9px '+getComputedStyle(document.body).fontFamily;
+  const w=ctx.measureText(text).width;
+  const r={l:x-3,t:y-8,r:x+w+5,b:y+8};
+  for(const o of labelRects)
+    if(!(r.r<o.l||r.l>o.r||r.b<o.t||r.t>o.b)) return false;
+  labelRects.push(r);
+  label(text,x,y,colour,boxed);
+  return true;
 }
 
-function limbState(){
-  const el=elements();
-  const alt=el.alt;
-  const inAtm=alt<ATM_TOP;
-
-  /* How far the trajectory reaches into the atmosphere, 0 to 1. */
-  const fill = el.pe>=ATM_TOP ? 0 : clamp((ATM_TOP-el.pe)/ATM_TOP,0,1);
-
-  /* Committed to a corridor that will overload the vehicle, but not there
-     yet — the warning that is worth having before it is too late to fix. */
-  const steep = !inAtm && el.pe<25;
-  const overG = sim.g>8;
-
-  const rho=density(alt), vms=el.vm*1000;
-  const q=0.5*rho*vms*vms;                       // dynamic pressure, Pa
-
-  return {
-    fill, steep, overG, q, inAtm,
-    load: clamp(sim.g/10,0,1),
-    colour: (steep||overG) ? [255,58,44] : fill>0 ? [255,210,61] : [140,230,255],
-    /* Short enough to sit in a phone header next to three other boxes. */
-    caption: overG      ? 'LOAD '+sim.g.toFixed(1)+' G'
-           : steep      ? 'TOO STEEP'
-           : inAtm      ? 'IFACE Q '+Math.round(q)+' PA'
-           : fill>0     ? 'IFACE PE '+Math.round(el.pe)+' KM'
-           :              'VACUUM'
-  };
-}
-
-function drawLimb(){
-  const st=limbState();
-  const rl=limbRadius(1.0);
-  if(!rl) return;
-  const c=st.colour;
-  const rgb=(al)=>'rgba('+c[0]+','+c[1]+','+c[2]+','+al+')';
-
-  /* Strobe. Rate is load; in vacuum it settles to a slow heartbeat so the
-     annunciator still reads as powered rather than failed. */
-  const rate = 0.5 + st.load*7.5 + (st.inAtm?1.0:0);
-  const duty = 0.58 - st.load*0.18;
-  const lit  = (((performance.now()/1000)*rate)%1) < duty;
-
-  const width = 1.2 + clamp(st.q/9000,0,1)*2.6;
-  const SEG=60, GAP=0.16;                        // 60 arcs with a hairline gap
-  const step=2*Math.PI/SEG;
-  const nLit=Math.round(st.fill*SEG);
-
-  ctx.save();
-  ctx.lineCap='butt';
-
-  /* The atmosphere shell, drawn only once the trajectory reaches it. */
-  if(st.fill>0){
-    const ra=limbRadius(1+ATM_TOP/R_P);
-    if(ra){
-      ctx.setLineDash([4,5]);
-      ctx.strokeStyle=rgb(0.18+0.3*st.fill);
-      ctx.lineWidth=1;
-      ctx.beginPath(); ctx.arc(CX,CY,ra,0,2*Math.PI); ctx.stroke();
-      ctx.setLineDash([]);
+function chartPlane(){
+  const c='rgba(61,139,255,';
+  /* Range rings on the reference plane, labelled in light years. */
+  for(const r of PLANE_RINGS){
+    const pts=[];
+    for(let i=0;i<=64;i++){
+      const a=i/64*6.2832;
+      pts.push([Math.cos(a)*r, 0, Math.sin(a)*r]);
+    }
+    const proj=pts.map(p=>inFront(p)?project(p):null);
+    strokePolyline(flatten(proj), c+(r===10?0.30:0.16)+')', 1, 0);
+    const lp=project([r,0,0]);
+    if(lp && inFront([r,0,0])) label(r+' LY', lp.x+4, lp.y, 'rgba(61,139,255,0.5)', false);
+  }
+  /* Spokes every thirty degrees. */
+  for(let a=0;a<360;a+=30){
+    const t=a*RA_D, R=PLANE_RINGS[PLANE_RINGS.length-1];
+    const p0=[0,0,0], p1=[Math.cos(t)*R,0,Math.sin(t)*R];
+    if(inFront(p0)&&inFront(p1)){
+      const q0=project(p0), q1=project(p1);
+      if(q0&&q1) strokePolyline([q0,q1],'rgba(61,139,255,0.10)',1,0);
     }
   }
+}
 
-  for(let i=0;i<SEG;i++){
-    const a0=-Math.PI/2+i*step+GAP*step*0.5;
-    const a1=a0+step-GAP*step;
-    const on=i<nLit;
-    ctx.beginPath();
-    ctx.arc(CX,CY,rl,a0,a1);
-    if(on){
-      ctx.strokeStyle=rgb(lit?0.95:0.3);
-      ctx.lineWidth=width;
-      if(lit){ ctx.shadowColor=rgb(1); ctx.shadowBlur=10; }
-    }else{
-      ctx.strokeStyle='rgba(140,230,255,0.34)';
-      ctx.lineWidth=1.1;
-      ctx.shadowBlur=0;
+/* strokePolyline wants a flat [x,y,...] list for geographic work; on the
+   chart the points are already projected, so pass them through. */
+function flatten(proj){ return proj; }
+
+function dropLine(st){
+  const foot=[st.p[0],0,st.p[2]];
+  if(!inFront(st.p)||!inFront(foot)) return;
+  const a=project(st.p), b=project(foot);
+  if(!a||!b) return;
+  const up=st.p[1]>=0;
+  ctx.strokeStyle= up ? 'rgba(61,139,255,0.30)' : 'rgba(255,82,217,0.22)';
+  ctx.lineWidth=1;
+  ctx.setLineDash([2,3]);
+  ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+  ctx.setLineDash([]);
+  /* A tick at the foot: where the star sits on the plane. */
+  ctx.strokeStyle='rgba(61,139,255,0.4)';
+  ctx.beginPath();
+  ctx.moveTo(b.x-2,b.y); ctx.lineTo(b.x+2,b.y);
+  ctx.moveTo(b.x,b.y-2); ctx.lineTo(b.x,b.y+2);
+  ctx.stroke();
+}
+
+function drawChart(){
+  if(btnOrbit.on) chartPlane();
+
+  /* Far to near, so nearer stars overprint. */
+  const order=STARS.map((st,i)=>({st,i,z:toCam(st.p)[2]}))
+                   .filter(o=>o.z<cam.dist-0.2)
+                   .sort((a,b)=>a.z-b.z);
+
+  if(btnTrack.on) for(const {st,i} of order) dropLine(st);
+
+  for(const {st,i} of order){
+    const q=project(st.p); if(!q) continue;
+    const c=st.col;
+    const near = i===sim.at, tgt = i===sim.target;
+    /* Apparent size falls with distance from the eye, as it must. */
+    const r=Math.max(1.1, st.sz*(28/Math.max(6,q.d)));
+
+    ctx.fillStyle='rgb('+c[0]+','+c[1]+','+c[2]+')';
+    ctx.shadowColor='rgb('+c[0]+','+c[1]+','+c[2]+')';
+    ctx.shadowBlur=Math.min(18,r*4);
+    ctx.beginPath(); ctx.arc(q.x,q.y,r,0,6.2832); ctx.fill();
+    ctx.shadowBlur=0;
+
+    /* Systems with planets get a ring — the catalogue's own data, and the
+       thing that decides where you can refuel. */
+    if(st.pl>0){
+      ctx.strokeStyle='rgba('+c[0]+','+c[1]+','+c[2]+',0.55)';
+      ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(q.x,q.y,r+4,0,6.2832); ctx.stroke();
     }
-    ctx.stroke();
+
+    /* Label only what is worth reading at this zoom. */
+    st._q=q; st._r=r;
+  }
+
+  /* Labels, highest priority first, each claiming its own patch of screen. */
+  const named=order.map(o=>o.st).filter(st=>st._q);
+  const prio=st=>{
+    const i=STARS.indexOf(st);
+    if(i===sim.at) return 0;
+    if(i===sim.target) return 1;
+    if(ALIENS.some(a=>a.star===st.n)) return 2;
+    if(st.pl>0) return 3;
+    if(starDist(here(),st)<=JUMP_MAX) return 4;
+    return 5;
+  };
+  named.sort((a,b)=>prio(a)-prio(b));
+  for(const st of named){
+    const pr=prio(st);
+    if(pr>4) continue;
+    const col = pr===0 ? '#FFD23D' : pr===1 ? '#EAFBFF'
+              : pr===2 ? '#FF52D9' : pr===3 ? 'rgba(140,230,255,0.75)'
+              : 'rgba(140,230,255,0.45)';
+    /* A transmitting system says who is transmitting, rather than being
+       labelled twice — once by the chart and again by the beacon. */
+    const ali=ALIENS.find(a=>a.star===st.n);
+    const txt = (pr===2 && ali && sim.xeno.some(x=>x.id===ali.id))
+      ? st.n+' · '+RACES[ali.race].name : st.n;
+    claimLabel(txt, st._q.x+st._r+5, st._q.y-st._r-3, col, false);
+  }
+
+  /* Where we are. */
+  const hq=project(here().p);
+  if(hq){
+    const pulse=0.6+0.4*Math.sin(performance.now()/420);
+    ctx.strokeStyle='rgba(255,210,61,'+pulse.toFixed(2)+')';
+    ctx.lineWidth=1.4; ctx.shadowColor='#FFD23D'; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(hq.x,hq.y,12,0,6.2832); ctx.stroke();
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      ctx.beginPath();
+      ctx.moveTo(hq.x+dx*15,hq.y+dy*15); ctx.lineTo(hq.x+dx*21,hq.y+dy*21);
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    drawSprite(SPRITES.vessel,hq.x,hq.y-26,2,'#FFD23D',9);
+  }
+
+  /* The jump under consideration. Green if it can be made, red if not — the
+     line itself answers the question. */
+  const tq=project(target().p);
+  if(hq&&tq&&sim.target!==sim.at){
+    const ok=canJump();
+    const col= ok ? 'rgba(34,255,136,0.9)' : 'rgba(255,58,44,0.75)';
+    ctx.setLineDash(ok?[]:[4,4]);
+    strokePolyline([hq,tq],col,1.4,8);
+    ctx.setLineDash([]);
+    const mid={x:(hq.x+tq.x)/2,y:(hq.y+tq.y)/2};
+    label(jumpKm().toFixed(2)+' LY', mid.x+6, mid.y-6, ok?'#22FF88':'#FF3A2C', true);
+
+    const r2=Math.max(5,18*(28/Math.max(6,tq.d)));
+    ctx.strokeStyle='#EAFBFF'; ctx.lineWidth=1.2;
+    ctx.shadowColor='#EAFBFF'; ctx.shadowBlur=8;
+    for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+      const x=tq.x+sx*(r2+7), y=tq.y+sy*(r2+7);
+      ctx.beginPath();
+      ctx.moveTo(x, y-sy*6); ctx.lineTo(x, y); ctx.lineTo(x-sx*6, y);
+      ctx.stroke();
+    }
     ctx.shadowBlur=0;
   }
+}
 
-  /* Four index marks. These carry the slow heartbeat that says the
-     annunciator is powered even when nothing is lit. */
-  const beat=0.55+0.45*Math.abs(Math.sin(performance.now()/900));
-  ctx.strokeStyle=st.fill>0?rgb(0.9):'rgba(140,230,255,'+(0.45*beat).toFixed(2)+')';
-  ctx.lineWidth=1.6;
-  for(let k=0;k<4;k++){
-    const a=-Math.PI/2+k*Math.PI/2;
-    ctx.beginPath();
-    ctx.moveTo(CX+Math.cos(a)*(rl-6), CY+Math.sin(a)*(rl-6));
-    ctx.lineTo(CX+Math.cos(a)*(rl+7), CY+Math.sin(a)*(rl+7));
-    ctx.stroke();
+/* Transmitting systems, once detected, keep a magenta ring. */
+function drawXeno(){
+  if(!sim.scanOn) return;
+  for(const x of sim.xeno){
+    const st=STARS[x.si];
+    if(!inFront(st.p)) continue;
+    const q=project(st.p); if(!q) continue;
+    /* Ring only: the name is carried by the chart label. Scaled with range so
+       four of them near the origin do not merge into one blob. */
+    const pulse=0.5+0.5*Math.sin(performance.now()/260);
+    const rr=Math.max(7, 18*(28/Math.max(6,q.d)));
+    ctx.strokeStyle='rgba(255,82,217,'+pulse.toFixed(2)+')';
+    ctx.lineWidth=1.3; ctx.shadowColor='#FF52D9'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(q.x,q.y,rr,0,6.2832); ctx.stroke();
+    ctx.shadowBlur=0;
   }
+}
 
-  ctx.textAlign='left';
-  ctx.restore();
+/* Live returns from the survey sweep. */
+function drawPings(){
+  const now=performance.now();
+  for(const p of sim.pings){
+    const k=(now-p.t0)/1000/p.life;
+    if(k>1) continue;
+    const st=STARS[p.si];
+    if(!inFront(st.p)) continue;
+    const q=project(st.p); if(!q) continue;
+    const col = p.alien ? '255,82,217' : p.weak ? '140,230,255' : '255,210,61';
+    ctx.strokeStyle='rgba('+col+','+((1-k)*0.8).toFixed(3)+')';
+    ctx.lineWidth=p.weak?1:1.2;
+    ctx.beginPath(); ctx.arc(q.x,q.y,4+k*(p.weak?7:14),0,6.2832); ctx.stroke();
+  }
 }
 
 /* ==========================================================================
-   SENSOR SWEEP
-   The footprint is the vehicle's true horizon circle — acos(R/(R+h)) — so it
-   genuinely widens as you climb and collapses on entry. A bearing line
-   rotates through it, and an emitter is acquired when the sweep crosses it.
-   Nothing here is decorative: what the display shows is what the geometry
-   allows the sensor to see.
+   SURVEY SWEEP
+   The sensor turns through bearing as before, but the footprint is now a
+   sphere of radius SCAN_LY around the vehicle rather than a horizon circle,
+   so what it can hear is a real function of where you have flown to.
    ========================================================================== */
-
-const SWEEP_RATE = 2*Math.PI/3.4;      // radians per second, one turn in 3.4 s
-
-function footprintAng(){
-  const rm=V.len(sim.r);
-  return Math.acos(clamp(R_P/rm,-1,1));  // angular radius, radians
-}
-
-function emitterId(i){ return 'SIG-'+(4100+i*137%900+i).toString().padStart(4,'0'); }
+const SWEEP_RATE=2*Math.PI/3.4;
 
 function updateScan(dt){
-  if(!sim.scanOn||sim.landed) return;
+  if(!sim.scanOn||sim.jumping) return;
   sim.sweepPrev=sim.sweep;
   sim.sweep=(sim.sweep+SWEEP_RATE*dt)%(2*Math.PI);
-  /* One soft tick per revolution. A sweep you can hear turning tells you the
-     sensor is live even when it is finding nothing. */
   if(sim.sweep<sim.sweepPrev) blip(2100,0.03,0.05,0,'sine');
 
-  const [slat,slon]=vecToGeo(sim.r,sim.spin);
-  const fp=footprintAng();
   const now=performance.now();
+  const h=here();
+  sim.hailReady=null;
 
-  for(let i=0;i<EMITTERS.length;i++){
-    const e=EMITTERS[i];
-    const d=greatCircleKm(slat,slon,e.lat,e.lon)/R_P;      // angular separation
-    if(d>fp) continue;                                      // below the horizon
+  for(let i=0;i<STARS.length;i++){
+    if(i===sim.at) continue;
+    const st=STARS[i];
+    const d=starDist(h,st);
+    if(d>SCAN_LY) continue;
 
-    /* Did the sweep line cross this bearing during the frame? */
-    let b=bearingTo(slat,slon,e.lat,e.lon);
+    /* Bearing in the reference plane, so the sweep line means something. */
+    let b=Math.atan2(st.p[2]-h.p[2], st.p[0]-h.p[0]);
     if(b<0) b+=2*Math.PI;
     let a0=sim.sweepPrev, a1=sim.sweep;
     if(a1<a0) a1+=2*Math.PI;
     let bb=b; if(bb<a0) bb+=2*Math.PI;
     if(bb<a0||bb>a1) continue;
 
-    sim.pings.push({lat:e.lat, lon:e.lon, t0:now, life:1.5, max:0.10});
-    sndPing(true);
-
-    const known=sim.found.some(f=>f.i===i);
-    if(!known){
-      const rangeKm=greatCircleKm(slat,slon,e.lat,e.lon);
-      const alt=V.len(sim.r)-R_P;
-      const slant=Math.sqrt(rangeKm*rangeKm+alt*alt);
-      /* Signal strength falls with slant range; the number moves for a
-         reason rather than being a random flourish. */
-      const sig=clamp(Math.round(100*Math.pow(1200/Math.max(slant,200),0.9)),8,99);
-      sim.found.push({i, id:emitterId(i), name:e.name, cls:e.cls, sig,
-                      lat:e.lat, lon:e.lon, t:sim.t});
-      sim.acq={i, t0:now};
-      /* A correlated contact takes the display. Clutter can wait. */
-      sim.transient=null;
-      sndAcquire();
+    const ali=ALIENS.find(a=>a.star===st.n);
+    if(ali){
+      sim.pings.push({si:i, t0:now, life:1.8, alien:true});
+      if(!sim.xeno.some(x=>x.id===ali.id)){
+        sim.xeno.push({id:ali.id, race:ali.race, si:i});
+        sndAcquire();
+      }
+    }else{
+      sim.pings.push({si:i, t0:now, life:1.1});
+      if(!sim.found.some(f=>f.si===i)){
+        const sig=clamp(Math.round(100*Math.pow(3/Math.max(d,1),0.7)),8,99);
+        sim.found.push({si:i, id:'SYS-'+pad(i,3), name:st.n, cls:st.sp, sig});
+        sndPing(true);
+      }
     }
   }
 
-  /* Alien transmitters. Same footprint and same sweep rule as a ground
-     station, so getting one on the air means actually flying over it. */
-  sim.hailReady=null;
-  for(const a of ALIENS){
-    const d=greatCircleKm(slat,slon,a.lat,a.lon)/R_P;
-    if(d>fp) continue;
-    sim.hailReady=a;
-    let b=bearingTo(slat,slon,a.lat,a.lon); if(b<0)b+=2*Math.PI;
-    let a0=sim.sweepPrev,a1=sim.sweep; if(a1<a0)a1+=2*Math.PI;
-    let bb=b; if(bb<a0)bb+=2*Math.PI;
-    if(bb<a0||bb>a1) continue;
-    sim.pings.push({lat:a.lat, lon:a.lon, t0:now, life:1.8, max:0.13, alien:true});
-    if(!sim.xeno.some(x=>x.id===a.id)){
-      sim.xeno.push({id:a.id, race:a.race, lat:a.lat, lon:a.lon});
-      sndAcquire();
-    }
-  }
+  /* An alien is hailable when we are standing in its system. */
+  const hereAlien=ALIENS.find(a=>a.star===h.n);
+  if(hereAlien) sim.hailReady=hereAlien;
 
-  /* Unidentified returns: clutter from terrain and sea state inside the
-     footprint. They ping and fade without ever resolving to a contact, which
-     is both what a real sweep looks like and what keeps the tube busy while
-     the vehicle is over open ocean. */
+  /* Background returns, so the sweep is never silent between finds. */
   sim.clutterAge=(sim.clutterAge||0)+dt;
-  if(sim.clutterAge>0.22+Math.random()*0.5){
+  if(sim.clutterAge>0.3+Math.random()*0.6){
     sim.clutterAge=0;
-    const b=Math.random()*2*Math.PI;
-    const d=(0.32+0.63*Math.sqrt(Math.random()))*fp;
-    const [la,lo]=destPoint(slat,slon,b,d);
-    sim.pings.push({lat:la, lon:lo, t0:now, life:0.95, max:0.045, weak:true});
-    /* Only some clutter is audible. Every return chiming would be two to
-       four pings a second forever, which stops being radar chatter and
-       starts being a smoke alarm. */
-    if(Math.random()<0.62) sndPing(false);
-
-    /* Roughly one return in four is strong enough to work a track on. */
-    if(!sim.transient && !sim.acq && Math.random()<0.28){
-      const rng=Math.round(d*R_P);
-      sim.transient={
-        lat:la, lon:lo, t0:now,
-        id:'UNID-'+String(1000+((Math.abs(la*97+lo*31)|0)%8999)),
-        brg:String(Math.round(((b*DEG)+360)%360)).padStart(3,'0'),
-        rng:String(rng)
-      };
-      sndTrack();
+    const cand=STARS.map((st,i)=>({i,d:starDist(h,st)})).filter(o=>o.d<=SCAN_LY&&o.i!==sim.at);
+    if(cand.length){
+      const pick=cand[(Math.random()*cand.length)|0];
+      sim.pings.push({si:pick.i, t0:now, life:0.9, weak:true});
+      if(Math.random()<0.5) sndPing(false);
+      if(!sim.transient && !sim.acq && Math.random()<0.3){
+        sim.transient={si:pick.i, t0:now,
+          id:'UNID-'+String(1000+((pick.i*613)%8999)),
+          brg:String(Math.round(Math.random()*359)).padStart(3,'0'),
+          rng:pick.d.toFixed(2)};
+        sndTrack();
+      }
     }
   }
-
-  /* Retire finished rings. */
   sim.pings=sim.pings.filter(p=>(now-p.t0)/1000<p.life);
 }
 
-/* A ring on the surface at a given angular radius. */
-function surfaceRing(lat,lon,ang,colour,width,steps){
+function drawSweep(){
+  if(!sim.scanOn||sim.jumping) return;
+  const h=here();
+  /* The detection sphere, drawn where it is legible: as a ring in the plane. */
   const pts=[];
-  const n=steps||30;
-  for(let i=0;i<=n;i++){
-    const [la,lo]=destPoint(lat,lon,i/n*2*Math.PI,ang);
-    const p=geoToVec(la,lo,sim.spin,1.008);
-    pts.push(onNearSide(p)?project(p):null);
+  for(let i=0;i<=64;i++){
+    const a=i/64*6.2832;
+    pts.push([h.p[0]+Math.cos(a)*SCAN_LY, h.p[1], h.p[2]+Math.sin(a)*SCAN_LY]);
   }
-  strokePolyline(pts,colour,width,0);
-}
+  strokePolyline(pts.map(p=>inFront(p)?project(p):null),'rgba(140,230,255,0.22)',1,0);
 
-function drawFootprint(){
-  if(!sim.scanOn||sim.landed) return;
-  const [slat,slon]=vecToGeo(sim.r,sim.spin);
-  const fp=footprintAng();
-
-  surfaceRing(slat,slon,fp,'rgba(140,230,255,0.30)',1,44);
-  surfaceRing(slat,slon,fp*0.66,'rgba(140,230,255,0.16)',1,36);
-  surfaceRing(slat,slon,fp*0.33,'rgba(140,230,255,0.16)',1,28);
-
-  /* The sweep line, with a decaying tail so the direction of rotation reads. */
   for(let k=0;k<7;k++){
     const b=sim.sweep-k*0.09;
-    const pts=[];
-    for(let j=0;j<=12;j++){
-      const [la,lo]=destPoint(slat,slon,b,fp*j/12);
-      const p=geoToVec(la,lo,sim.spin,1.008);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts,'rgba(34,255,136,'+(0.55*(1-k/7)).toFixed(3)+')',k?1:1.5,0);
+    const p0=h.p, p1=[h.p[0]+Math.cos(b)*SCAN_LY, h.p[1], h.p[2]+Math.sin(b)*SCAN_LY];
+    if(!inFront(p0)||!inFront(p1)) continue;
+    const q0=project(p0), q1=project(p1);
+    if(q0&&q1) strokePolyline([q0,q1],'rgba(34,255,136,'+(0.5*(1-k/7)).toFixed(3)+')',k?1:1.5,0);
   }
 }
 
-function drawPings(){
-  const now=performance.now();
-  for(const p of sim.pings){
-    const k=(now-p.t0)/1000/p.life;
-    if(k>1) continue;
-    /* Two rings, offset in phase, expanding and fading. */
-    if(p.alien){
-      for(const off of [0,0.3,0.6]){
-        const kk=k+off; if(kk>1) continue;
-        surfaceRing(p.lat,p.lon,kk*p.max,
-          'rgba(255,82,217,'+((1-kk)*0.9).toFixed(3)+')',1.6,28);
-      }
-      continue;
-    }
-    if(p.weak){
-      surfaceRing(p.lat,p.lon,k*p.max,
-        'rgba(140,230,255,'+((1-k)*0.5).toFixed(3)+')',1,16);
-      continue;
-    }
-    for(const off of [0,0.35]){
-      const kk=k+off;
-      if(kk>1) continue;
-      surfaceRing(p.lat,p.lon,kk*p.max,
-        'rgba(255,210,61,'+((1-kk)*0.85).toFixed(3)+')',1.4,26);
-    }
-  }
-}
-
-/* Alien transmitters, once found, keep a magenta beacon and designation. */
-function drawXeno(){
-  if(!sim.scanOn) return;
-  for(const x of sim.xeno){
-    const p=geoToVec(x.lat,x.lon,sim.spin,1.008);
-    if(!onNearSide(p)) continue;
-    const q=project(p); if(!q) continue;
-    const pulse=0.55+0.45*Math.sin(performance.now()/260);
-    drawSprite(SPRITES.beacon,q.x,q.y,2,'rgba(255,82,217,'+pulse.toFixed(2)+')',10);
-    ctx.strokeStyle='rgba(255,82,217,0.8)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.arc(q.x,q.y,9,0,6.2832); ctx.stroke();
-    const cc=toCam(p);
-    if(cc[2]>0.3) label(x.id+' '+RACES[x.race].name, q.x+11, q.y-9, '#FF52D9', true);
-  }
-}
-
-/* Acquired emitters keep a permanent tick and designation. */
-function drawFound(){
-  if(!sim.scanOn) return;
-  for(const f of sim.found){
-    const p=geoToVec(f.lat,f.lon,sim.spin,1.008);
-    if(!onNearSide(p)) continue;
-    const q=project(p); if(!q) continue;
-    ctx.strokeStyle='rgba(255,210,61,0.9)'; ctx.lineWidth=1;
+/* The jump itself: the field streaks past. */
+function drawJump(){
+  if(!sim.jumping) return;
+  const k=clamp((performance.now()-sim.jumping.t0)/sim.jumping.dur,0,1);
+  const amp=Math.sin(k*Math.PI);
+  ctx.save();
+  ctx.strokeStyle='rgba(234,251,255,'+(0.5*amp).toFixed(3)+')';
+  ctx.lineWidth=1;
+  for(let i=0;i<70;i++){
+    const a=(i*137.5)%360*RA_D;
+    const r0=40+((i*53)%Math.max(1,Math.min(W,H)));
+    const len=30+amp*220;
     ctx.beginPath();
-    ctx.moveTo(q.x-4,q.y); ctx.lineTo(q.x+4,q.y);
-    ctx.moveTo(q.x,q.y-4); ctx.lineTo(q.x,q.y+4);
+    ctx.moveTo(CX+Math.cos(a)*r0, CY+Math.sin(a)*r0);
+    ctx.lineTo(CX+Math.cos(a)*(r0+len), CY+Math.sin(a)*(r0+len));
     ctx.stroke();
-    const cc=toCam(p);
-    if(cc[2]>0.35) label(f.id,q.x+6,q.y-6,'rgba(255,210,61,0.75)',false);
   }
+  ctx.restore();
+  label('JUMP  '+sim.jumping.d.toFixed(2)+' LY  '+Math.round(k*100)+'%',
+        CX, CY+Math.min(W,H)*0.32, '#EAFBFF', true, 'center');
+}
+
+/* The chart's annunciator. Same job the planet's limb had: state readable at
+   a glance without parsing a digit. Colour is whether the selected jump can
+   be made, and it says which. */
+function limbState(){
+  const d=jumpKm(), ok=canJump();
+  const colour = sim.jumping ? [234,251,255]
+               : sim.fuel<6  ? [255,58,44]
+               : ok          ? [34,255,136]
+               : d>JUMP_MAX  ? [255,210,61]
+               :               [255,58,44];
+  const caption = sim.jumping ? 'JUMP RUNNING'
+               : sim.fuel<6   ? 'FUEL CRITICAL'
+               : ok           ? 'JUMP READY '+d.toFixed(1)+' LY'
+               : d>JUMP_MAX   ? 'BEYOND RANGE'
+               :                'INSUFFICIENT FUEL';
+  return {fill:sim.fuel/TANK, colour, caption, ok};
 }
 
 /* Four brackets converging on a point, then an identification block typed on
-   a character at a time. Shared by permanent station acquisitions and by the
-   transient returns, so both read as the same instrument doing the same job. */
+   a character at a time. Shared by contact acquisitions and by transient
+   returns, so both read as the same instrument doing the same job. */
 function drawTarget(q, age, lines, colour, headColour, alpha){
   const close=clamp(age/0.55,0,1);
   const r=42-30*close;
@@ -2172,16 +1879,11 @@ function drawTarget(q, age, lines, colour, headColour, alpha){
   if(age>0.5){
     const chars=Math.floor((age-0.5)*46);
     ctx.font='9px '+getComputedStyle(document.body).fontFamily;
-
-    /* Throw the block toward whichever side has room. The tool strip lives on
-       the right edge and the vessel marker sits at the centre, so a callout
-       pinned to one corner would sooner or later land on both. */
     const wide=Math.max(...lines.map(l=>ctx.measureText(l).width));
     const fx = (q.x + r + 16 + wide > W-78) ? -1 : 1;
     const fy = (q.y - r - 8 < 14) ? 1 : -1;
     const bx = q.x + fx*(r+12);
     const by = q.y + fy*r + (fy<0 ? 4 : -4 - (lines.length-1)*12);
-
     ctx.textAlign = fx>0 ? 'left' : 'right';
     ctx.textBaseline='middle';
     ctx.strokeStyle=colour; ctx.lineWidth=1;
@@ -2189,7 +1891,6 @@ function drawTarget(q, age, lines, colour, headColour, alpha){
     ctx.moveTo(q.x+fx*r, q.y+fy*r);
     ctx.lineTo(bx-fx*4, by+(fy<0?-2:(lines.length-1)*12+2));
     ctx.stroke();
-
     let used=0;
     lines.forEach((ln,i)=>{
       if(used>=chars) return;
@@ -2207,92 +1908,31 @@ function drawAcquire(){
   if(!sim.acq) return;
   const age=(performance.now()-sim.acq.t0)/1000;
   if(age>2.2){ sim.acq=null; return; }
-  const e=EMITTERS[sim.acq.i];
-  const rec=sim.found.find(f=>f.i===sim.acq.i);
+  const rec=sim.found.find(f=>f.si===sim.acq.si);
   if(!rec) return;
-  const p=geoToVec(e.lat,e.lon,sim.spin,1.008);
-  if(!onNearSide(p)) return;
-  const q=project(p); if(!q) return;
+  const st=STARS[sim.acq.si];
+  if(!inFront(st.p)) return;
+  const q=project(st.p); if(!q) return;
   drawTarget(q, age, [rec.id, rec.name, rec.cls, 'SIG '+rec.sig+'%'],
              'rgba(255,210,61,0.9)', '#EAFBFF', 1);
 }
 
-/* Transient returns. A real sweep throws up far more uncorrelated contacts
-   than it ever resolves to something named: the sensor locates them, fails to
-   correlate, and drops the track. Drawn in ice rather than amber so a return
-   that never resolves is never mistaken for one that did. */
+/* Returns the survey cannot correlate. Ice rather than amber, so a track
+   that never resolved is never mistaken for one that did. */
 function drawTransient(){
   const tr=sim.transient;
   if(!tr) return;
   const age=(performance.now()-tr.t0)/1000;
   if(age>2.0){ sim.transient=null; return; }
-  const p=geoToVec(tr.lat,tr.lon,sim.spin,1.008);
-  if(!onNearSide(p)) return;
-  const q=project(p); if(!q) return;
+  const st=STARS[tr.si];
+  if(!inFront(st.p)) return;
+  const q=project(st.p); if(!q) return;
   const fade = age>1.6 ? 1-(age-1.6)/0.4 : 1;
-  drawTarget(q, age, [tr.id,'SURFACE RETURN','BRG '+tr.brg+'  '+tr.rng+' KM','NO CORRELATION'],
+  drawTarget(q, age, [tr.id,'UNCORRELATED RETURN','BRG '+tr.brg+'  '+tr.rng+' LY','NO IDENTIFICATION'],
              'rgba(140,230,255,0.85)', '#8CE6FF', fade);
 }
 
-function drawZone(){
-  const z=ZONES[sim.zone];
-  const c=geoToVec(z.lat,z.lon,sim.spin,1.004);
-  if(!onNearSide(c)) return;
-  const q=project(c); if(!q) return;
-
-  /* Concentric range rings — a real approach aid, and the reference's look. */
-  for(const ringKm of [250,750,1500]){
-    const pts=[];
-    const angDeg=(ringKm/R_P)*DEG;
-    for(let a=0;a<=360;a+=15){
-      const th=a/DEG;
-      const lat=z.lat+angDeg*Math.sin(th);
-      const lon=z.lon+angDeg*Math.cos(th)/Math.max(0.25,Math.cos(z.lat/DEG));
-      const p=geoToVec(lat,lon,sim.spin,1.004);
-      pts.push(onNearSide(p)?project(p):null);
-    }
-    strokePolyline(pts,'rgba(255,58,44,0.55)',1,0,true);
-  }
-  drawSprite(SPRITES.beacon,q.x,q.y,2,'#FF3A2C',9);
-  label(z.id+' '+z.name,q.x+10,q.y-10,'#FF3A2C',true);
-}
-
-function drawContacts(){
-  for(const c of sim.contacts){
-    const w=contactPos(c,sim.t);
-    const s=V.mul(w,1/R_P);
-    const cc=toCam(s);
-    if(cc[2]<0 && Math.hypot(cc[0],cc[1])<1) continue;   // occluded by the planet
-    const q=project(s); if(!q) continue;
-    const px=clamp(Math.round(3/q.d*2.2),1,3);
-    drawSprite(SPRITES[c.sprite],q.x,q.y,px,c.colour,8);
-    if(cc[2]>0.15) label(c.label,q.x+9,q.y+9,c.colour,false);
-  }
-}
-
-function drawVessel(){
-  const s=V.mul(sim.r,1/R_P);
-  const q=project(s); if(!q) return;
-  drawSprite(SPRITES.vessel,q.x,q.y,3,'#FFD23D',12);
-
-  /* Velocity vector, scaled so it is readable rather than to scale. */
-  const tip=V.add(s,V.mul(V.unit(sim.v),0.22));
-  const t=project(tip);
-  if(t){
-    strokePolyline([q,t],'rgba(255,210,61,0.9)',1.2,7);
-    label('V',t.x+4,t.y,'#FFD23D',false);
-  }
-  /* Nadir line to the sub-point — the thing you are actually aiming. */
-  const sub=project(V.mul(V.unit(sim.r),1.0));
-  if(sub){
-    ctx.setLineDash([2,3]);
-    strokePolyline([q,sub],'rgba(255,210,61,0.45)',1,0);
-    ctx.setLineDash([]);
-  }
-  label('OWNSHIP', q.x+12, q.y-12, '#FFD23D', true);
-}
-
-/* The instrument frame drawn inside the viewport: crosses and corner ticks. */
+/* The instrument frame drawn inside the viewport. */
 function drawFrame(){
   const m=Math.min(W,H);
   const cs=clamp(m*0.055,14,30);
@@ -2302,36 +1942,38 @@ function drawFrame(){
   drawCross(inset,H-inset,cs,'#3D8BFF');
   drawCross(W-inset,H-inset,cs,'#3D8BFF');
 
-  const el=elements();
-  const [lat,lon]=vecToGeo(sim.r,sim.spin);
-  const gut=inset+cs+10;              // clear of the corner crosses
-  label('SYS :BL: '+(el.vm).toFixed(2)+' :OB:', gut, 14, '#8CE6FF', true);
-  label('P.O.R.  '+fmtLat(lat)+'  '+fmtLon(lon), gut, H-14, '#8CE6FF', false);
-  label(CAM_MODES[cam.mode], W-gut, H-14, '#3D8BFF', false, 'right');
+  const gut=inset+cs+10;
+  const h=here();
+  label('CHART · EQUATORIAL · '+cam.dist.toFixed(0)+' LY FIELD', gut, 14, '#8CE6FF', true);
+  label('P.O.R.  '+h.n+'  '+h.sp, gut, H-14, '#8CE6FF', false);
+  label(sim.jumping?'JUMP':'IDLE', W-gut, H-14, '#3D8BFF', false, 'right');
 }
 
 function render(){
   beginFrame();
+  /* The tool strip is opaque and sits over the chart, so it is claimed before
+     any star gets a chance to write its name underneath it. */
+  labelRects=[];
+  const vt=$('viewtools');
+  if(vt && vt.style.display!=='none' && cv){
+    const a=vt.getBoundingClientRect(), b=cv.getBoundingClientRect();
+    labelRects.push({l:a.left-b.left-6, t:a.top-b.top-4,
+                     r:a.right-b.left+6, b:a.bottom-b.top+4});
+  }
   drawStars();
-  drawGraticule();
-  drawCoasts();
-  drawHazards();
-  drawLimb();
-  drawFootprint();
-  drawZone();
-  drawPings();
-  drawFound();
-  drawXeno();
-  drawGroundTrack();
-  drawConic();
-  drawContacts();
-  drawVessel();
-  drawTransient();
-  drawAcquire();
+  if(sim.jumping){
+    drawJump();
+  }else{
+    drawSweep();
+    drawChart();
+    drawPings();
+    drawXeno();
+    drawTransient();
+    drawAcquire();
+  }
   drawFrame();
   if(crt.on){ drawSparkle(); drawBloom(); }
 }
-
 
 /* ==========================================================================
    POWER-ON SEQUENCE
@@ -2351,15 +1993,14 @@ const LOAD_ITEMS=[
   ['CRT WARM · 15.7 kHz H / 60 Hz V','OK'],
   ['APERTURE GRILLE','ALIGNED'],
   ['CORE MEMORY 065536 WORDS','VERIFIED'],
-  ['GUIDANCE PROCESSOR','ONLINE'],
-  ['INERTIAL PLATFORM','ALIGNED'],
-  ['TWO-BODY SOLVER · μ 398600.4418','LOADED'],
-  ['ATMOSPHERIC MODEL · 8.5 km SCALE','LOADED'],
-  ['COASTLINE VECTOR SET · 14 MASSES','LOADED'],
-  ['SENSOR SWEEP · 3.4 s REVOLUTION','ARMED'],
+  ['ASTROMETRIC CATALOGUE · 72 SYSTEMS','LOADED'],
+  ['PARALLAX SOLUTIONS · EQUATORIAL','VERIFIED'],
+  ['JUMP GOVERNOR · 9.0 LY CEILING','ARMED'],
+  ['CONTAINMENT · 42 LY CAPACITY','NOMINAL'],
+  ['SURVEY SWEEP · 11.0 LY RADIUS','ARMED'],
   ['XENOLINGUISTIC TABLES · 4 CULTURES','LOADED'],
   ['COMMS · VHF / SHF / ELF / DIGITAL','OPEN'],
-  ['RECOVERY CANOPY · PYRO CONTINUITY','SAFE']
+  ['DEAD RECKONING · SOL DATUM','SET']
 ];
 
 /* Where the load falters. `back` re-reads ground already covered, which is
@@ -2375,16 +2016,16 @@ const STALLS=[
 const REG_SEQ=[
   ['gap','',null,80],
   ['sec','— REGISTRY —',null,180],
-  ['ok','VESSEL','LIGHTER 04 "MAGPIE"',60],
+  ['ok','VESSEL','SURVEY 04 "MAGPIE"',60],
   ['ok','REGISTRY','18041 / CJ',60],
-  ['ok','CLASS','CREWED RE-ENTRY, ONE',60],
+  ['ok','CLASS','LONG SURVEY, CREW ONE',60],
   ['ok','OWNER OF RECORD','HALSTEAD-VOSS T-O',60],
   ['ok','OPERATING LICENCE 4471-K','VALID',60],
-  ['warn','INSURANCE · CARRIED · POLICY LAPSES ON UNSCHEDULED DESCENT',null,120],
+  ['warn','INSURANCE · CARRIED · POLICY VOID BEYOND 25 LY FROM SOL',null,120],
   ['ok','CREW COMPLEMENT','001 OF 007',60],
-  ['ok','STANDING ORDER 114','RETURN TO SURFACE',200],
+  ['ok','STANDING ORDER 114','LOG ALL TRANSMITTING CULTURES',200],
   ['gap','',null,120],
-  ['note','NOTICE: FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RECOVERY. FAILURE TO FILE VOIDS RECOVERY BONUS. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING CONTACT WITH NON-SIGNATORY CULTURES.',null,340],
+  ['note','NOTICE: FUEL IS RECOVERABLE ONLY FROM SYSTEMS WITH CONFIRMED PLANETS. FORM 22-B MUST BE FILED WITHIN 72 HOURS OF RETURN. THE COMPANY ACCEPTS NO LIABILITY FOR UNDERTAKINGS GIVEN DURING CONTACT WITH NON-SIGNATORY CULTURES.',null,340],
   ['gap','',null,140],
   ['big','SYSTEM INITIATED — ALL SUBSYSTEMS FULLY OPERATIONAL',null,700]
 ];
@@ -2531,7 +2172,7 @@ function bootLoadFrame(now){
     boot.phase='reg';
     boot.pct=100; bootPaintLoad();
     $('load-lbl').textContent='LOAD COMPLETE';
-    $('load-note').textContent='13 OF 13 ITEMS · 0 FAULTS OUTSTANDING';
+    $('load-note').textContent='12 OF 12 ITEMS · 0 FAULTS OUTSTANDING';
     sndStatus();
     boot.timer=setTimeout(bootStep,420);
     return;
@@ -2874,27 +2515,31 @@ function commsTick(dt){
   /* Strength falls with range, so opening a channel from the far side of the
      planet works but looks like it: weak signal, heavier dropout. Flying to
      the source is still worth doing. */
-  const [slat,slon]=vecToGeo(sim.r,sim.spin);
-  const km=greatCircleKm(slat,slon,comms.alien.lat,comms.alien.lon);
-  const base=clamp(96-(km/R_P)*(180/Math.PI)*0.42,18,96);
+  /* Strength falls with real distance to the transmitting system, so
+     standing in it is a clean channel and hailing from six light years out
+     is not. */
+  const si=STARS.findIndex(st=>st.n===comms.alien.star);
+  const ly = si<0 ? 0 : starDist(here(),STARS[si]);
+  const base=clamp(97-ly*6.2,16,97);
   comms.sig=Math.round(base+4*Math.sin(performance.now()/900));
   $('comms-sig').textContent='SIG '+comms.sig+'%';
   comms.glitchRate = comms.sig<45 ? 0.03 : 0.006;
 }
 
 function applyGrant(kind){
-  if(kind==='fuel'){ sim.dv=Math.min(DV_START, sim.dv+900); }
-  if(kind==='zone'){
-    if(!ZONES.some(z=>z.id==='LZ-07'))
-      ZONES.push({id:'LZ-07', name:'MAUD STATION', lat:-70.2, lon:23.4});
-  }
-  if(kind==='hazard'){ comms.hazardKnown=true; }
-  if(kind==='solve'){ sim.dv=Math.min(DV_START, sim.dv+250); sim.autoBoost=true; }
+  /* Talking is worth doing: every culture gives something that changes what
+     the route can be. */
+  if(kind==='fuel')   sim.fuel=Math.min(TANK, sim.fuel+14);
+  if(kind==='zone')   sim.scooped={};                  // the Assembly clears your scoop record
+  if(kind==='hazard') sim.fuel=Math.min(TANK, sim.fuel+6);
+  if(kind==='solve')  sim.fuel=Math.min(TANK, sim.fuel+9);
   sndAcquire();
 }
 
 function commsOpen(a){
   comms.open=true; comms.alien=a; comms.race=RACES[a.race];
+  /* Contact is the standing order; log it the moment a channel is open. */
+  sim.logged[a.id]=true;
   comms.mouth=0; comms.mouthT=0; comms.blink=0; comms.charAcc=0;
   $('comms').dataset.open='1';
   $('comms-src').textContent=comms.race.name+' · '+a.id;
@@ -3297,7 +2942,6 @@ function audioFrame(){
   const ctx=A(); if(!ctx) return;
   const now=ctx.currentTime;
 
-  /* Sample the bus and drive the meter. */
   if(snd.meter){
     snd.meter.getFloatTimeDomainData(snd.meterBuf);
     let pk=0;
@@ -3305,12 +2949,8 @@ function audioFrame(){
       const a=Math.abs(snd.meterBuf[i]); if(a>pk) pk=a;
     }
     snd.level = Math.max(pk, (snd.level||0)*0.86);
-    if(snd.level>snd.levelPeak||0) snd.levelPeak=snd.level;
     const bar=$('snd-bar');
     if(bar) bar.style.transform='scaleX('+Math.min(1,snd.level*2.4).toFixed(3)+')';
-
-    /* If the bus has been asked for sound and produced none for two seconds,
-       say so rather than claiming everything is fine. */
     if(snd.on){
       if(snd.level>0.01) snd.silentSince=0;
       else if(!snd.silentSince) snd.silentSince=performance.now();
@@ -3318,25 +2958,21 @@ function audioFrame(){
     }
   }
 
-  /* The tube is powered from the moment the switch is thrown, so the bed
-     comes up with the boot. The world bus does not. */
   snd.bed.gain.setTargetAtTime(crt.on?1:0, now, 0.2);
   snd.world.gain.setTargetAtTime(boot.done?1:0, now, 0.18);
 
-  const burning=!!sim.burn && sim.dv>0 && !sim.landed;
-  snd.thrust.g.gain.setTargetAtTime(burning?0.13:0, now, 0.04);
+  /* The drive under load during a jump, and nothing at all between them —
+     there is no medium out here to make a noise in. */
+  const jumping=!!sim.jumping;
+  const k = jumping ? clamp((performance.now()-sim.jumping.t0)/sim.jumping.dur,0,1) : 0;
+  const env = jumping ? Math.sin(k*Math.PI) : 0;
+  snd.thrust.g.gain.setTargetAtTime(env*0.16, now, 0.05);
+  snd.entry.g.gain.setTargetAtTime(env*0.34, now, 0.08);
+  snd.entry.f.frequency.setTargetAtTime(90+env*520, now, 0.12);
+  snd.entryHi.g.gain.setTargetAtTime(env*0.14, now, 0.08);
+  snd.entryHi.f.frequency.setTargetAtTime(600+env*2200, now, 0.12);
 
-  const el=elements();
-  const rho=density(el.alt), vms=el.vm*1000;
-  const q=0.5*rho*vms*vms;
-  const lvl=sim.landed?0:clamp(q/7000,0,1);
-  snd.entry.g.gain.setTargetAtTime(lvl*0.42, now, 0.15);
-  snd.entry.f.frequency.setTargetAtTime(90+lvl*420, now, 0.2);
-  snd.entryHi.g.gain.setTargetAtTime(lvl*0.20, now, 0.15);
-  snd.entryHi.f.frequency.setTargetAtTime(700+lvl*1400, now, 0.2);
-
-  const st=limbState();
-  if(boot.done && (st.overG||st.steep) && !sim.landed && performance.now()-snd.lastAlarm>1250){
+  if(boot.done && sim.fuel<6 && !sim.landed && performance.now()-snd.lastAlarm>2200){
     snd.lastAlarm=performance.now();
     sndAlarm();
   }
@@ -3380,52 +3016,43 @@ const btnTrack={node:$('btn-track'), on:true};
 const btnOrbit={node:$('btn-orbit'), on:true};
 
 function refresh(){
-  const e=elements();
-  const [lat,lon]=vecToGeo(sim.r,sim.spin);
-  const z=ZONES[sim.zone];
+  const h=here(), t=target();
+  const d=jumpKm(), ok=canJump();
 
-  el.alt.innerHTML  = fmtKm(e.alt)+' <small>KM</small>';
-  el.vel.innerHTML  = e.vm.toFixed(3)+' <small>KM/S</small>';
-  el.ap.innerHTML   = fmtKm(e.ap)+' <small>KM</small>';
-  el.pe.innerHTML   = fmtKm(e.pe)+' <small>KM</small>';
-  el.g.innerHTML    = sim.g.toFixed(1)+' <small>G</small>';
-  el.dv.innerHTML   = Math.round(sim.dv)+' <small>M/S</small>';
-  el.heat.innerHTML = (sim.heat*100).toFixed(0)+' <small>%</small>';
+  el.alt.innerHTML  = h.n;
+  el.vel.innerHTML  = t.n;
+  el.ap.innerHTML   = d.toFixed(2)+' <small>LY</small>';
+  el.pe.innerHTML   = sim.fuel.toFixed(1)+' <small>LY</small>';
+  el.g.innerHTML    = t.sp;
+  el.dv.innerHTML   = String(t.pl);
+  el.heat.innerHTML = t.d.toFixed(2)+' <small>LY</small>';
+  el.miss.innerHTML = pad(Object.keys(sim.logged).length,1)+' / '+pad(ALIENS.length,1);
 
-  /* Predicted miss is the number the deorbit burn is actually aiming at.
-     While the trajectory still clears the atmosphere there is no impact to
-     predict, and saying so is better than showing a stale figure. */
-  const miss = sim.impact ? greatCircleKm(sim.impact[0],sim.impact[1],z.lat,z.lon) : null;
-  el.miss.innerHTML = miss==null ? 'IN ORBIT' : fmtKm(miss)+' <small>KM</small>';
-  alertOf(el.miss).dataset.alert = miss==null ? '' : miss<600 ? '' : miss<2000 ? '2' : '1';
-
-  alertOf(el.g).dataset.alert    = sim.g>9?'1' : sim.g>5?'2' : '';
-  alertOf(el.pe).dataset.alert   = e.pe<0?'1' : e.pe<ATM_TOP?'2' : '';
-  alertOf(el.heat).dataset.alert = sim.heat>0.85?'1' : sim.heat>0.5?'2' : '';
-  alertOf(el.dv).dataset.alert   = sim.dv<200?'2' : '';
-  alertOf(el.alt).dataset.alert  = e.alt<ATM_TOP?'2' : '';
+  alertOf(el.ap).dataset.alert = ok ? '' : d>JUMP_MAX ? '1' : '2';
+  alertOf(el.pe).dataset.alert = sim.fuel<9 ? '1' : sim.fuel<18 ? '2' : '';
+  alertOf(el.dv).dataset.alert = t.pl>0 ? '' : '';
+  alertOf(el.miss).dataset.alert = Object.keys(sim.logged).length===ALIENS.length ? '' : '2';
 
   el.met.textContent=fmtClock(sim.t);
-  el.phase.textContent=sim.phase;
-  el.phase.className='box'+(sim.phase==='ORBIT'?'':' box--hot');
+  el.phase.textContent=sim.jumping?'JUMP':sim.phase;
+  el.phase.className='box'+(sim.jumping?' box--ship':'');
 
-  el.cE.textContent   = e.energy.toFixed(3)+' MJ/kg';
-  el.cA.textContent   = fmtKm(e.a)+' km';
-  el.cEcc.textContent = e.e.toFixed(5);
-  el.cInc.textContent = (e.inc*DEG).toFixed(3)+'°';
-  el.cRaan.textContent= e.raan.toFixed(2)+'°';
-  el.cNu.textContent  = e.nu.toFixed(2)+'°';
-  el.cH.textContent   = Math.round(e.hm)+' km²/s';
-  el.cFpa.textContent = e.fpa.toFixed(3)+'°';
-  const rho=density(e.alt), vms=e.vm*1000;
-  el.cQ.textContent   = (0.5*rho*vms*vms).toFixed(1)+' Pa';
-  el.cLat.textContent = fmtLat(lat);
-  el.cLon.textContent = fmtLon(lon);
-  el.cPer.textContent = isFinite(e.T)? fmtDur(e.T) : '—';
+  el.cE.textContent   = t.ra.toFixed(3)+'°';
+  el.cA.textContent   = t.dec.toFixed(3)+'°';
+  el.cEcc.textContent = t.d.toFixed(3)+' ly';
+  el.cInc.textContent = t.p[0].toFixed(2);
+  el.cRaan.textContent= t.p[1].toFixed(2);
+  el.cNu.textContent  = t.p[2].toFixed(2);
+  el.cH.textContent   = t.sp;
+  el.cFpa.textContent = d.toFixed(3)+' ly';
+  el.cQ.textContent   = String(reachable().length);
+  el.cPer.textContent = fmtClock(sim.t).replace('T+','');
+  el.cLat.textContent = SCAN_LY.toFixed(1)+' ly';
+  el.cLon.textContent = String(STARS.length);
 
   const hb=$('btn-hail');
   if(hb){
-    const rdy=!!sim.hailReady && !sim.landed;
+    const rdy=!!sim.hailReady;
     hb.dataset.on = comms.open ? '1' : rdy ? 'rdy' : 'no';
     hb.textContent = comms.open ? 'END' : rdy ? 'HAIL' : 'NO SIG';
   }
@@ -3436,19 +3063,23 @@ function refresh(){
     xk.firstChild.textContent = comms.open ? 'CLOSE CHANNEL' : 'XENO CONTACT';
     $('xeno-lbl').textContent = comms.open
       ? (comms.race?comms.race.name:'')
-      : sim.hailReady ? 'SIGNAL IN RANGE' : 'OPEN CHANNEL';
+      : sim.hailReady ? 'SIGNAL IN THIS SYSTEM' : 'OPEN CHANNEL';
   }
 
-  $('scan').textContent='SCAN '+pad(sim.found.length,2)+'/'+pad(EMITTERS.length,2);
+  $('scan').textContent='SURVEY '+pad(sim.found.length,2)+'/'+pad(STARS.length,2);
 
-  /* The limb is the lamp; this is its legend. Same colour, same words, so
-     the outline is readable rather than merely atmospheric. */
   const ls=limbState();
   const lst=$('limbstat');
   lst.textContent=ls.caption;
   lst.style.color='rgb('+ls.colour.join(',')+')';
   lst.style.borderColor='rgb('+ls.colour.join(',')+')';
-  $('btn-scan').dataset.on=sim.scanOn?'1':'';
+
+  $('jump-lbl').textContent = sim.jumping ? 'RUNNING'
+    : ok ? d.toFixed(2)+' LY' : d>JUMP_MAX ? 'OUT OF RANGE' : 'NO FUEL';
+  $('k-jump').dataset.on = ok ? '1' : '';
+  $('scoop-lbl').textContent = canScoop() ? 'AVAILABLE' : sim.scooped[sim.at] ? 'SPENT' : 'NONE HERE';
+  $('k-scoop').dataset.on = canScoop() ? '1' : '';
+  $('near-lbl').textContent = reachable().length+' IN RANGE';
 
   const rows=$('sensorrows');
   if(rows){
@@ -3456,124 +3087,11 @@ function refresh(){
       ? sim.found.slice(-7).reverse().map(f=>
           '<div class="calcrow"><span class="s">'+f.id+' '+f.cls+'</span>'+
           '<span class="n sig">'+f.name+'</span></div>').join('')
-      : '<div class="calcrow"><span class="s">sweeping — no contacts</span></div>';
+      : '<div class="calcrow"><span class="s">sweeping — no returns</span></div>';
   }
-
-  $('lz-lbl').textContent=z.id.replace('LZ-','LZ');
-  $('warp-lbl').textContent='×'+sim.warp;
-  $('k-auto').dataset.on=sim.auto?'1':'';
-  $('auto-lbl').textContent = !sim.auto ? 'DEORBIT'
-    : sim.autoState==='solve' ? 'SOLVING'
-    : sim.autoState==='burn'  ? 'BURNING'
-    : sim.autoSol!=null ? 'T-'+fmtDur(Math.max(0,sim.autoFireAt-sim.t)) : 'ARMED';
 }
 
-/* --- Burn keys: hold to thrust, on touch and mouse alike ---------------- */
-function bindBurn(node,dir){
-  const on=ev=>{
-    ev.preventDefault();
-    if(sim.landed) return;
-    sndKey();
-    sim.burn=dir; sim.warp=1; node.dataset.live='1';
-    if(node.setPointerCapture&&ev.pointerId!=null){ try{node.setPointerCapture(ev.pointerId);}catch(_){} }
-  };
-  const off=()=>{ if(sim.burn===dir) sim.burn=null; node.dataset.live=''; };
-  node.addEventListener('pointerdown',on);
-  node.addEventListener('pointerup',off);
-  node.addEventListener('pointercancel',off);
-  node.addEventListener('pointerleave',off);
-}
-bindBurn($('k-pro'),'pro');
-bindBurn($('k-retro'),'retro');
-bindBurn($('k-norm'),'norm');
-bindBurn($('k-anti'),'anti');
-
-/* A coast to periapsis is half an orbit — roughly 46 minutes. Without a
-   high tier the wait is the whole experience, so ×300 puts it at ten
-   seconds. The atmosphere clamps this back down; see the loop. */
-const WARPS=[1,10,60,300];
-$('k-warp').addEventListener('click',()=>{
-  sndRelay();
-  sim.warp=WARPS[(WARPS.indexOf(sim.warp)+1)%WARPS.length];
-  refresh();
-});
-$('k-lz').addEventListener('click',()=>{
-  sndRelay();
-  sim.zone=(sim.zone+1)%ZONES.length;
-  refresh();
-});
-$('k-auto').addEventListener('click',()=>{
-  sndRelay();
-  sim.auto=!sim.auto;
-  sim.autoState=sim.auto?'solve':'idle';
-  sim.autoSol=null;
-  if(!sim.auto && sim.burn==='retro') sim.burn=null;
-  refresh();
-});
-$('k-reset').addEventListener('click',()=>{
-  sndRelay(); insertOrbit(); hideReport(); refresh(); });
-$('rep-again').addEventListener('click',()=>{
-  sndRelay(); insertOrbit(); hideReport(); refresh(); });
-
-$('btn-cam').addEventListener('click',()=>{
-  sndRelay();
-  cam.mode=(cam.mode+1)%CAM_MODES.length;
-  $('btn-cam').textContent=CAM_MODES[cam.mode];
-});
-btnTrack.node.addEventListener('click',()=>{
-  sndRelay();
-  btnTrack.on=!btnTrack.on; btnTrack.node.dataset.on=btnTrack.on?'1':'';
-});
-btnOrbit.node.addEventListener('click',()=>{
-  sndRelay();
-  btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
-});
-/* The dedicated key. Opens a channel from anywhere and cycles the cultures,
-   so the scene is reachable without first flying to a transmitter — the
-   flying is then about signal quality rather than about access. */
-$('k-xeno').addEventListener('click',()=>{
-  sndRelay();
-  if(comms.open){ commsClose(); return; }
-  const a = sim.hailReady || ALIENS[(comms.cycle=(comms.cycle||0))%ALIENS.length];
-  if(!sim.hailReady) comms.cycle++;
-  commsOpen(a);
-});
-
-$('btn-hail').addEventListener('click',()=>{
-  if(comms.open){ commsClose(); return; }
-  const a=sim.hailReady;
-  if(!a){ sndKey(); return; }
-  sndRelay();
-  commsOpen(a);
-});
-$('comms-x').addEventListener('click',()=>{ sndKey(); commsClose(); });
-
-$('btn-snd').addEventListener('click',()=>{
-  /* The first press is also the user gesture the browser requires before an
-     AudioContext may make any sound at all, which is why audio starts off. */
-  snd.silentSince=0;
-  audioToggle().then(on=>{
-    audioLabel();
-    if(on) sndPowerUp();
-    /* Re-label once the power-up has had time to reach the bus, so the
-       verdict reflects measured output rather than intent. */
-    setTimeout(audioLabel,2800);
-  });
-});
-$('btn-scan').addEventListener('click',()=>{
-  sndRelay();
-  sim.scanOn=!sim.scanOn;
-  $('btn-scan').dataset.on=sim.scanOn?'1':'';
-  if(!sim.scanOn){ sim.pings=[]; sim.acq=null; sim.transient=null; }
-});
-$('btn-crt').addEventListener('click',()=>{
-  sndRelay();
-  crt.on=!crt.on;
-  $('btn-crt').dataset.on=crt.on?'1':'';
-  $('view').classList.toggle('crt-on',crt.on);
-});
-
-/* --- Viewport gestures: one finger orbits, two fingers zoom -------------- */
+/* --- Viewport gestures: one finger orbits the chart, two fingers zoom ----- */
 const pointers=new Map();
 let pinch0=0, dist0=0;
 cv=$('stage');
@@ -3589,16 +3107,15 @@ cv.addEventListener('pointermove',e=>{
   const prev=pointers.get(e.pointerId); if(!prev) return;
   const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-
   if(pointers.size===1){
-    cam.mode=1;                                  // taking manual control
+    cam.mode=1;                                   // taking manual control
     $('btn-cam').textContent=CAM_MODES[1];
     cam.yaw   -= dx*0.006;
-    cam.pitch  = clamp(cam.pitch+dy*0.006,-1.35,1.35);
+    cam.pitch  = clamp(cam.pitch+dy*0.006,-1.45,1.45);
   }else if(pointers.size===2 && pinch0>0){
     const [a,b]=[...pointers.values()];
     const d=Math.hypot(a.x-b.x,a.y-b.y);
-    cam.dist=clamp(dist0*pinch0/Math.max(d,1),1.22,14);
+    cam.dist=clamp(dist0*pinch0/Math.max(d,1),4,90);
   }
 });
 const dropPointer=e=>{ pointers.delete(e.pointerId); if(pointers.size<2) pinch0=0; };
@@ -3606,24 +3123,163 @@ cv.addEventListener('pointerup',dropPointer);
 cv.addEventListener('pointercancel',dropPointer);
 cv.addEventListener('wheel',e=>{
   e.preventDefault();
-  cam.dist=clamp(cam.dist*(1+Math.sign(e.deltaY)*0.09),1.22,14);
+  cam.dist=clamp(cam.dist*(1+Math.sign(e.deltaY)*0.09),4,90);
 },{passive:false});
+cv.style.cursor='grab';
 
-/* --- Keyboard, for anyone on a desktop ---------------------------------- */
-const KEYMAP={KeyW:'pro',ArrowUp:'pro',KeyS:'retro',ArrowDown:'retro',
-              KeyA:'norm',ArrowLeft:'norm',KeyD:'anti',ArrowRight:'anti'};
-addEventListener('keydown',e=>{
-  const d=KEYMAP[e.code];
-  if(d && !e.repeat){ e.preventDefault(); sim.burn=d; sim.warp=1; sndKey();
-    const n=document.querySelector('[data-burn="'+d+'"]'); if(n) n.dataset.live='1'; }
-  if(e.code==='KeyT'){ $('k-warp').click(); }
-  if(e.code==='KeyL'){ $('k-lz').click(); }
-  if(e.code==='KeyR'){ $('k-reset').click(); }
+/* Tapping a star selects it as the jump target — the chart is the control. */
+cv.addEventListener('click',e=>{
+  if(sim.jumping) return;
+  const r=cv.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  let best=null;
+  STARS.forEach((st,i)=>{
+    if(i===sim.at || !inFront(st.p)) return;
+    const q=project(st.p); if(!q) return;
+    const dd=Math.hypot(q.x-mx,q.y-my);
+    if(dd<26 && (!best||dd<best.dd)) best={i,dd};
+  });
+  if(best){ sim.target=best.i; sndKey(); refresh(); }
 });
-addEventListener('keyup',e=>{
-  const d=KEYMAP[e.code];
-  if(d){ if(sim.burn===d) sim.burn=null;
-    const n=document.querySelector('[data-burn="'+d+'"]'); if(n) n.dataset.live=''; }
+
+/* --- Keyboard, for anyone on a desktop ----------------------------------- */
+addEventListener('keydown',e=>{
+  if(comms.open && /^[1-4]$/.test(e.key)){
+    const b=document.querySelectorAll('#comms-opts .opt')[Number(e.key)-1];
+    if(b) b.click();
+    return;
+  }
+  if(e.code==='ArrowLeft'||e.code==='KeyA'){ e.preventDefault(); stepTarget(-1); }
+  if(e.code==='ArrowRight'||e.code==='KeyD'){ e.preventDefault(); stepTarget(1); }
+  if(e.code==='Enter'||e.code==='Space'){ e.preventDefault(); $('k-jump').click(); }
+  if(e.code==='KeyF') $('k-scoop').click();
+  if(e.code==='KeyN') $('k-near').click();
+  if(e.code==='KeyX') $('k-xeno').click();
+  if(e.code==='KeyR') $('k-reset').click();
+});
+
+/* --- Navigation keys ---------------------------------------------------- */
+function stepTarget(dir){
+  /* Cycle by distance from here, so stepping walks outward through the
+     neighbourhood rather than through catalogue order. */
+  const order=STARS.map((st,i)=>({i,d:starDist(here(),st)}))
+                   .filter(o=>o.i!==sim.at)
+                   .sort((a,b)=>a.d-b.d);
+  let k=order.findIndex(o=>o.i===sim.target);
+  if(k<0) k=0; else k=(k+dir+order.length)%order.length;
+  sim.target=order[k].i;
+  sndKey(); refresh();
+}
+
+$('k-prev').addEventListener('click',()=>stepTarget(-1));
+$('k-next').addEventListener('click',()=>stepTarget(1));
+
+$('k-near').addEventListener('click',()=>{
+  sndKey();
+  const r=reachable();
+  if(r.length) sim.target=r[0].i;
+  refresh();
+});
+
+$('k-scoop').addEventListener('click',()=>{
+  if(scoop()){ sndData(320); sndSpinUp(); }
+  else sndKey();
+  refresh();
+});
+
+$('k-jump').addEventListener('click',()=>{
+  if(beginJump()){ sndRelay(); sndData(500); }
+  else { sndKey(); sndAlarm(); }
+  refresh();
+});
+
+$('k-home').addEventListener('click',()=>{
+  sndRelay();
+  cam.tgt=[0,0,0]; cam.dist=44;
+  sim.target=0;
+  refresh();
+});
+
+/* AUTO plots the next leg of a route to the nearest culture not yet logged,
+   choosing a reachable stepping stone that reduces the remaining distance. */
+$('k-auto').addEventListener('click',()=>{
+  sndRelay();
+  const want=ALIENS.filter(a=>!sim.logged[a.id])
+                   .map(a=>STARS.findIndex(st=>st.n===a.star))
+                   .filter(i=>i>=0);
+  if(!want.length){ sndStatus(); refresh(); return; }
+  let best=null;
+  for(const gi of want){
+    const goal=STARS[gi];
+    for(const o of reachable()){
+      const after=starDist(STARS[o.i],goal);
+      const score=after+o.d*0.15;
+      if(o.d>sim.fuel) continue;
+      if(!best||score<best.score) best={score,i:o.i};
+    }
+    const direct=reachable().find(o=>o.i===gi);
+    if(direct && direct.d<=sim.fuel) best={score:-1,i:gi};
+  }
+  if(best){ sim.target=best.i; sndStatus(); }
+  else sndAlarm();
+  refresh();
+});
+
+$('k-reset').addEventListener('click',()=>{ sndRelay(); newFlight(); hideReport(); refresh(); });
+
+/* --- Chart and channel toggles ------------------------------------------- */
+btnTrack.node.addEventListener('click',()=>{
+  sndRelay();
+  btnTrack.on=!btnTrack.on; btnTrack.node.dataset.on=btnTrack.on?'1':'';
+});
+btnOrbit.node.addEventListener('click',()=>{
+  sndRelay();
+  btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
+});
+$('btn-scan').addEventListener('click',()=>{
+  sndRelay();
+  sim.scanOn=!sim.scanOn;
+  $('btn-scan').dataset.on=sim.scanOn?'1':'';
+  if(!sim.scanOn){ sim.pings=[]; sim.acq=null; sim.transient=null; }
+});
+$('btn-crt').addEventListener('click',()=>{
+  sndRelay();
+  crt.on=!crt.on;
+  $('btn-crt').dataset.on=crt.on?'1':'';
+  $('view').classList.toggle('crt-on',crt.on);
+});
+$('btn-snd').addEventListener('click',()=>{
+  snd.silentSince=0;
+  audioToggle().then(on=>{
+    audioLabel();
+    if(on) sndPowerUp();
+    setTimeout(audioLabel,2800);
+  });
+});
+
+/* The dedicated key. Opens a channel from anywhere and cycles the cultures,
+   so the scene is reachable without first flying to the transmitter — the
+   flying is then about signal quality rather than about access. */
+$('k-xeno').addEventListener('click',()=>{
+  sndRelay();
+  if(comms.open){ commsClose(); refresh(); return; }
+  const a = sim.hailReady || ALIENS[(comms.cycle=(comms.cycle||0))%ALIENS.length];
+  if(!sim.hailReady) comms.cycle++;
+  commsOpen(a);
+  refresh();
+});
+$('btn-hail').addEventListener('click',()=>{
+  if(comms.open){ commsClose(); refresh(); return; }
+  if(!sim.hailReady){ sndKey(); return; }
+  sndRelay(); commsOpen(sim.hailReady); refresh();
+});
+$('comms-x').addEventListener('click',()=>{ sndKey(); commsClose(); refresh(); });
+$('rep-again').addEventListener('click',()=>{ sndRelay(); newFlight(); hideReport(); refresh(); });
+
+$('btn-cam').addEventListener('click',()=>{
+  sndRelay();
+  cam.mode=(cam.mode+1)%CAM_MODES.length;
+  $('btn-cam').textContent=CAM_MODES[cam.mode];
 });
 
 /* --- Outcome ------------------------------------------------------------ */
@@ -3639,91 +3295,39 @@ function showReport(good,title,sub,big,detail){
 function hideReport(){ $('report').dataset.show=''; }
 
 function checkOutcome(){
-  const alt=V.len(sim.r)-R_P;
-
-  if(sim.g>12 && !sim.landed){
-    sim.landed=true; sim.phase='LOST'; sim.burn=null; sndOutcome(false);
-    showReport(false,'STRUCTURAL FAILURE','DECELERATION LOAD EXCEEDED LIMIT',
-      sim.gPeak.toFixed(1)+' g',
-      'The entry was too steep. Keep periapsis between 40 and 80 km — below that the '+
-      'vehicle arrives deep in the atmosphere still carrying orbital velocity.');
-    return;
-  }
-  if(alt<=0 && !sim.landed){
-    sim.landed=true; sim.burn=null;
-    const [lat,lon]=vecToGeo(sim.r,sim.spin);
-    const z=ZONES[sim.zone];
-    const miss=greatCircleKm(lat,lon,z.lat,z.lon);
-    const vImp=V.len(sim.v)*1000;
-    const survived = vImp<120;                    // chutes out and slowed
-    const onTarget = miss<600;
-    sim.phase = survived ? (onTarget?'DOWN':'OFF-TGT') : 'LOST';
-
-    sndOutcome(survived&&onTarget);
-    if(survived && onTarget){
-      showReport(true,'TOUCHDOWN','VEHICLE RECOVERED AT '+z.name, fmtKm(miss)+' km',
-        'Miss distance from '+z.id+'. Touchdown at '+vImp.toFixed(0)+' m/s under canopy. '+
-        'Peak load '+sim.gPeak.toFixed(1)+' g, peak thermal '+(sim.heatPeak*100).toFixed(0)+'%. '+Math.round(sim.dv)+' m/s propellant remaining.');
-    }else if(survived){
-      showReport(false,'OFF-TARGET LANDING','VEHICLE INTACT, OUTSIDE RECOVERY RANGE', fmtKm(miss)+' km',
-        'Down safely at '+vImp.toFixed(0)+' m/s but '+fmtKm(miss)+' km from '+z.id+'. '+
-        'Start the retrograde burn earlier in the orbit — watch PRED MISS and fire when it bottoms out.');
-    }else{
-      showReport(false,'SURFACE IMPACT','VEHICLE DESTROYED', vImp.toFixed(0)+' m/s',
-        'Entry was too steep for the canopy to deploy ('+sim.gPeak.toFixed(1)+' g peak), '+fmtKm(miss)+' km from '+z.id+'. '+
-        'Hold periapsis between 40 and 80 km.');
-    }
-  }
-}
-
-/* Autopilot. Two states: ARMED, where it coasts and watches the predicted
-   landing point until burning now would put the vehicle nearest the pad;
-   and BURNING, where it walks periapsis into the corridor and hands back.
-
-   It aims rather than firing blind, because a retrograde burn made at the
-   wrong point in the orbit lands you on the far side of the planet — which
-   is exactly the thing the player has to learn to do by hand. */
-function autopilot(dt){
-  if(!sim.auto || sim.landed) return;
-  const e=elements();
-
-  if(sim.autoState==='solve'){
-    const sol=solveDeorbit();
-    if(!sol){ sim.autoState='burn'; sim.autoPe=70; return; }
-    sim.autoSol=sol.km;
-    sim.autoPe=sol.pe;
-    sim.zone=sol.zone;          // adopt the pad the solution can actually reach
-    sim.autoFireAt=sim.t+sol.wait;
-    sim.autoState= sol.wait<2 ? 'burn' : 'wait';
-    return;
-  }
-
-  if(sim.autoState==='wait'){
-    sim.warp=300;
-    if(sim.t>=sim.autoFireAt){ sim.autoState='burn'; }
-    return;
-  }
-
-  if(sim.autoState==='burn'){
-    if(e.pe>sim.autoPe && sim.dv>0){ sim.burn='retro'; sim.warp=1; }
-    else {
-      /* Corridor established. Hand the vehicle back and restore compression
-         so the coast to entry is not a real-time three-quarters of an hour. */
-      sim.burn=null; sim.auto=false; sim.autoState='idle'; sim.warp=300;
-    }
-  }
-}
-
-/* --- Phase labelling ---------------------------------------------------- */
-function updatePhase(){
   if(sim.landed) return;
-  const alt=V.len(sim.r)-R_P;
-  const e=elements();
-  if(alt<ATM_TOP)      sim.phase = sim.chute ? 'CHUTES' : alt<45 ? 'DESCENT' : 'ENTRY';
-  else if(e.pe<ATM_TOP) sim.phase='DEORBIT';
-  else                  sim.phase='ORBIT';
+
+  /* Every culture logged: the standing order is discharged. */
+  if(Object.keys(sim.logged).length>=ALIENS.length){
+    sim.landed=true;
+    sndOutcome(true);
+    showReport(true,'SURVEY COMPLETE','ALL TRANSMITTING CULTURES LOGGED',
+      Object.keys(sim.logged).length+' / '+ALIENS.length,
+      'Contact established with every culture in the catalogue. '+
+      sim.fuel.toFixed(1)+' ly of range remaining. '+
+      sim.found.length+' of '+STARS.length+' systems surveyed. File Form 22-B on return.');
+    return;
+  }
+
+  /* Stranded: no jump left that the tank can pay for. */
+  if(!sim.jumping && sim.fuel<0.05 && !canScoop()){
+    const any=reachable().some(o=>o.d<=sim.fuel);
+    if(!any){
+      sim.landed=true;
+      sndOutcome(false);
+      showReport(false,'STRANDED','NO REACHABLE SYSTEM WITHIN REMAINING RANGE',
+        here().n,
+        'The tank is dry and this system has nothing to scoop. '+
+        Object.keys(sim.logged).length+' of '+ALIENS.length+' cultures were logged. '+
+        'Fuel is only found where there are planets — plan the route through them.');
+    }
+  }
 }
 
+function updatePhase(){
+  if(sim.landed){ sim.phase='DONE'; return; }
+  sim.phase = sim.jumping ? 'JUMP' : comms.open ? 'COMMS' : 'IDLE';
+}
 
 /* ==========================================================================
    8.  LOOP
@@ -3748,76 +3352,36 @@ function resize(){
 
 let last=performance.now(), acc=0;
 function frame(now){
-  const wall=Math.min((now-last)/1000,0.1); last=now;
+  const wall=Math.min((now-(last||now))/1000,0.1); last=now;
 
-  /* Nothing about the vehicle happens until the terminal has finished coming
-     up. The mission clock starts when you take control, the sensor is not
-     sweeping, and the globe is not drawn — the boot overlay is opaque, so
-     there is nothing to draw it for. */
   if(!boot.done){
     audioFrame();
     requestAnimationFrame(frame);
     return;
   }
 
-  if(!sim.landed){
-    autopilot(wall);
-
-    /* Time compression is clamped by where the vehicle is. Inside the
-       atmosphere the trajectory changes fast and you want the controls, so
-       warp is capped rather than obeyed — and the readout shows the capped
-       value, not the requested one. */
-    const altNow=V.len(sim.r)-R_P;
-    /* Graded so the pacing follows the drama: the thin skim from the
-       interface down to 70 km compresses hard, the heating band runs at ×10,
-       and the last 25 km is nearly real time. */
-    const subsonic = V.len(sim.v)<0.35;
-    if(sim.chute && sim.warp<25) sim.warp=25;   // nothing to control under canopy
-    const cap = altNow<25 ? (subsonic?25:4)
-              : altNow<70 ? 10
-              : altNow<ATM_TOP ? 30 : 300;
-    if(sim.warp>cap) sim.warp=cap;
-
-    /* Sub-step so accuracy never depends on frame rate or warp factor, and
-       tighten the step where drag makes the path curve hardest. */
-    let simDt=wall*sim.warp;
-    const maxStep = altNow<40 ? 0.15 : altNow<80 ? 0.35 : altNow<ATM_TOP ? 0.8 : 1.5;
-    let guard=0;
-    while(simDt>1e-6 && guard++<600){
-      const d=Math.min(simDt,maxStep);
-      step(d);
-      simDt-=d;
-      if(V.len(sim.r)-R_P<=0) break;
-    }
-    updatePhase();
-    checkOutcome();
-  }
-
-  /* Camera modes. Manual drag switches to CAM FIX and stays there.
-
-     A surface point at longitude L sits at sphere angle L + spin, and the
-     projection rotates the world by -yaw about the polar axis, so the point
-     faces the eye when yaw = L + spin - pi/2. Both terms matter: dropping
-     the spin leaves the camera locked to inertial space while the planet
-     turns underneath it, which points the view at the wrong hemisphere. */
-  if(cam.mode===0){
-    const [lat,lon]=vecToGeo(sim.r,sim.spin);
-    cam.yaw   = lerpAngle(cam.yaw, lon/DEG + sim.spin - Math.PI/2, 0.05);
-    cam.pitch += (lat/DEG - cam.pitch)*0.05;
-  }else if(cam.mode===2){
-    const z=ZONES[sim.zone];
-    cam.yaw   = lerpAngle(cam.yaw, z.lon/DEG + sim.spin - Math.PI/2, 0.05);
-    cam.pitch += (z.lat/DEG - cam.pitch)*0.05;
-  }
-
+  if(!sim.landed) stepNav(wall);
   updateScan(wall);
   commsTick(wall);
   audioFrame();
-  sim.trackAge+=wall;
-  if(sim.trackAge>0.6 && !sim.landed) predictTrack();
+  updatePhase();
+  checkOutcome();
+
+  /* The camera eases to whatever we are looking at: the vehicle normally,
+     the target while a jump is being considered, and it rides the jump. */
+  const focus = sim.jumping
+    ? (()=>{ const k=clamp((performance.now()-sim.jumping.t0)/sim.jumping.dur,0,1);
+             const A=STARS[sim.jumping.from].p, B=STARS[sim.jumping.to].p;
+             return [A[0]+(B[0]-A[0])*k, A[1]+(B[1]-A[1])*k, A[2]+(B[2]-A[2])*k]; })()
+    : cam.mode===2 ? target().p
+    : here().p;
+  cam.tgt=focus;
+  for(let i=0;i<3;i++) cam.at[i]+=(cam.tgt[i]-cam.at[i])*Math.min(1,wall*3.2);
+
+  if(cam.mode===0 && !sim.jumping) cam.yaw+=wall*0.045;
 
   F=Math.min(W,H)/(2*Math.tan(cam.fov/2));
-  if(!comms.open) render();
+  render();
 
   acc+=wall;
   if(acc>0.1){ acc=0; refresh(); }
@@ -3849,9 +3413,8 @@ addEventListener('pointerdown',()=>{
 $('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
 new ResizeObserver(()=>{ if(comms.open) commsResize(); }).observe($('face-wrap'));
-insertOrbit();
+newFlight();
 resize();
-predictTrack();
 refresh();
 requestAnimationFrame(frame);
 </script>
