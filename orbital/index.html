@@ -308,10 +308,11 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 .key--hot:hover{color:var(--white);border-color:var(--white)}
 
 /* CALC FEED — the "futuristic calculations" column ---------------------- */
-#calc{display:none}
+#calc,#sensorlog{display:none}
 .calcrow{display:flex;justify-content:space-between;gap:6px;font-size:10px}
 .calcrow .s{color:var(--frame)}
 .calcrow .n{color:var(--white)}
+  .calcrow .n.sig{color:var(--ship)}
 
 /* REPORT OVERLAY ------------------------------------------------------- */
 #report{
@@ -374,6 +375,17 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     gap:6px;
   }
   .key{min-height:54px}
+  #sensorlog{
+    display:block;
+    grid-column:1/-1;
+    border:var(--hair) solid var(--frame-dim);
+    padding:6px;
+  }
+  #sensorlog .hd{
+    font-size:8px;letter-spacing:.16em;color:var(--frame);
+    border-bottom:var(--hair) solid var(--frame-dim);
+    padding-bottom:4px;margin-bottom:5px;
+  }
   #calc{
     display:block;
     grid-column:1/-1;
@@ -408,6 +420,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   <header id="head">
     <span id="title">DEORBITAL DESCENT</span>
     <span class="box" id="phase">ORBIT</span>
+    <span class="box box--ship" id="scan">SCAN 00/16</span>
     <span class="spacer"></span>
     <span class="box" id="met">T+00:00:00</span>
   </header>
@@ -428,6 +441,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-track" data-on="1">TRACK</button>
       <button id="btn-orbit" data-on="1">CONIC</button>
       <button id="btn-crt"   data-on="1">CRT</button>
+      <button id="btn-scan"  data-on="1">SCAN</button>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -466,6 +480,11 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <div class="calcrow"><span class="s">φ  sub-latitude</span><span class="n" id="c-lat">—</span></div>
       <div class="calcrow"><span class="s">λ  sub-longitude</span><span class="n" id="c-lon">—</span></div>
       <div class="calcrow"><span class="s">T  orbital period</span><span class="n" id="c-per">—</span></div>
+    </div>
+
+    <div id="sensorlog">
+      <div class="hd">SENSOR ACQUISITION</div>
+      <div id="sensorrows"><div class="calcrow"><span class="s">no contacts</span></div></div>
     </div>
   </section>
 
@@ -510,6 +529,14 @@ const V = {
   unit:a=>{const m=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/m,a[1]/m,a[2]/m];}
 };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+/* Interpolate toward an angle the short way round, so a camera tracking past
+   the antimeridian eases across it instead of unwinding the long way. */
+function lerpAngle(cur,target,k){
+  let d=(target-cur)%(2*Math.PI);
+  if(d> Math.PI) d-=2*Math.PI;
+  if(d<-Math.PI) d+=2*Math.PI;
+  return cur+d*k;
+}
 const DEG=180/Math.PI;
 
 /* Surface latitude/longitude → inertial position, given planet spin. */
@@ -525,6 +552,25 @@ function vecToGeo(p,spin){
   lon=((lon+180)%360+360)%360-180;
   return [lat,lon];
 }
+/* Destination point at an angular distance and bearing from a start point.
+   Ping rings are drawn with this so they bend with the sphere instead of
+   sitting on it as flat circles — the detail that makes a ring read as
+   something happening ON the planet. */
+function destPoint(latDeg,lonDeg,bearing,angDist){
+  const p1=latDeg/DEG, l1=lonDeg/DEG;
+  const sp=Math.sin(p1), cp=Math.cos(p1);
+  const sd=Math.sin(angDist), cd=Math.cos(angDist);
+  const p2=Math.asin(clamp(sp*cd+cp*sd*Math.cos(bearing),-1,1));
+  const l2=l1+Math.atan2(Math.sin(bearing)*sd*cp, cd-sp*Math.sin(p2));
+  return [p2*DEG, l2*DEG];
+}
+/* Initial bearing from one surface point to another. */
+function bearingTo(lat1,lon1,lat2,lon2){
+  const p1=lat1/DEG,p2=lat2/DEG,dl=(lon2-lon1)/DEG;
+  return Math.atan2(Math.sin(dl)*Math.cos(p2),
+    Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl));
+}
+
 function greatCircleKm(lat1,lon1,lat2,lon2){
   const p1=lat1/DEG,p2=lat2/DEG,dl=(lon2-lon1)/DEG;
   const c=Math.sin(p1)*Math.sin(p2)+Math.cos(p1)*Math.cos(p2)*Math.cos(dl);
@@ -572,6 +618,40 @@ const HAZARDS=[
   {name:'THERMAL A', lat: 12, lon:  22, r: 17},
   {name:'RESTRICTED', lat:-24, lon: -58, r: 13},
   {name:'STORM CELL', lat: 40, lon: 168, r: 15}
+];
+
+/* Surface emitters the sensor can find. Real tracking and downlink stations,
+   because inventing sixteen fictional ones would have been the same amount of
+   work and told you nothing. */
+const EMITTERS=[
+  {lat: 35.4, lon:-116.9, cls:'DSN ARRAY',  name:'GOLDSTONE'},
+  {lat: 40.4, lon:  -4.2, cls:'DSN ARRAY',  name:'ROBLEDO'},
+  {lat:-35.4, lon: 149.0, cls:'DSN ARRAY',  name:'TIDBINBILLA'},
+  {lat:-25.9, lon:  27.7, cls:'DSN ARRAY',  name:'HARTEBEESTHOEK'},
+  {lat: 36.1, lon: 138.4, cls:'DSN ARRAY',  name:'USUDA'},
+  {lat: 78.2, lon:  15.4, cls:'POLAR LINK', name:'SVALSAT'},
+  {lat: 67.9, lon:  21.1, cls:'POLAR LINK', name:'ESRANGE'},
+  {lat: 78.9, lon:  11.9, cls:'GEODETIC',   name:'NY-ALESUND'},
+  {lat: -7.9, lon: -14.4, cls:'TRACKING',   name:'ASCENSION'},
+  {lat: -7.3, lon:  72.4, cls:'TRACKING',   name:'DIEGO GARCIA'},
+  {lat: -3.0, lon:  40.2, cls:'TRACKING',   name:'MALINDI'},
+  {lat:  8.7, lon: 167.7, cls:'RANGE RADAR',name:'KWAJALEIN'},
+  {lat:-23.7, lon: 133.9, cls:'SIGINT',     name:'ALICE SPRINGS'},
+  {lat: 76.5, lon: -68.7, cls:'EARLY WARN', name:'PITUFFIK'},
+  {lat: 54.4, lon:  -0.7, cls:'EARLY WARN', name:'FYLINGDALES'},
+  {lat: 39.1, lon:-121.4, cls:'EARLY WARN', name:'BEALE'},
+  {lat:  5.2, lon: -52.8, cls:'TRACKING',   name:'KOUROU'},
+  {lat:-31.8, lon: 115.9, cls:'TRACKING',   name:'PERTH'},
+  {lat:-33.2, lon: -70.7, cls:'TRACKING',   name:'SANTIAGO'},
+  {lat: 47.9, lon:  11.1, cls:'DSN ARRAY',  name:'WEILHEIM'},
+  {lat: 35.9, lon: 140.7, cls:'GEODETIC',   name:'KASHIMA'},
+  {lat: 56.0, lon:  37.9, cls:'DSN ARRAY',  name:'BEAR LAKES'},
+  {lat: 25.0, lon: 102.8, cls:'DSN ARRAY',  name:'KUNMING'},
+  {lat: 31.1, lon: 121.2, cls:'GEODETIC',   name:'SHESHAN'},
+  {lat:-72.0, lon:   2.5, cls:'POLAR LINK', name:'TROLL'},
+  {lat:-77.8, lon: 166.7, cls:'POLAR LINK', name:'MCMURDO'},
+  {lat:-46.5, lon: 168.4, cls:'POLAR LINK', name:'AWARUA'},
+  {lat: 68.3, lon:-133.5, cls:'POLAR LINK', name:'INUVIK'}
 ];
 
 /* Pixel sprites. Genuine bitmaps, drawn blocky, because that is what a
@@ -640,6 +720,13 @@ const sim={
   phase:'ORBIT',
   heat:0, heatPeak:0, g:0, gPeak:0, chute:false,
   zone:0,
+  sweep:0,             // sensor sweep bearing, radians
+  sweepPrev:0,
+  pings:[],            // live ping rings
+  found:[],            // acquired emitters, in order of acquisition
+  acq:null,            // permanent acquisition bracket, animating
+  transient:null,      // uncorrelated return being worked
+  scanOn:true,
   track:[],            // predicted ground track, [lat,lon] pairs
   impact:null,         // predicted touchdown point, or null while still in orbit
   trackAge:1e9,
@@ -662,6 +749,7 @@ function insertOrbit(){
   sim.t=0; sim.spin=0; sim.dv=DV_START; sim.warp=1; sim.burn=null;
   sim.phase='ORBIT'; sim.heat=0; sim.heatPeak=0; sim.g=0; sim.gPeak=0; sim.landed=null; sim.chute=false;
   sim.auto=false; sim.autoState='idle'; sim.autoSol=null; sim.trackAge=1e9;
+  sim.sweep=0; sim.sweepPrev=0; sim.pings=[]; sim.found=[]; sim.acq=null; sim.transient=null; sim.clutterAge=0;
 
   sim.contacts=[
     mkContact('station', 780, 51.6,   40, '#FF52D9', 'ORBITAL PLATFORM'),
@@ -1208,6 +1296,246 @@ function drawConic(){
   strokePolyline(pts,'rgba(255,210,61,0.8)',1.1,0);
 }
 
+/* ==========================================================================
+   SENSOR SWEEP
+   The footprint is the vehicle's true horizon circle — acos(R/(R+h)) — so it
+   genuinely widens as you climb and collapses on entry. A bearing line
+   rotates through it, and an emitter is acquired when the sweep crosses it.
+   Nothing here is decorative: what the display shows is what the geometry
+   allows the sensor to see.
+   ========================================================================== */
+
+const SWEEP_RATE = 2*Math.PI/3.4;      // radians per second, one turn in 3.4 s
+
+function footprintAng(){
+  const rm=V.len(sim.r);
+  return Math.acos(clamp(R_P/rm,-1,1));  // angular radius, radians
+}
+
+function emitterId(i){ return 'SIG-'+(4100+i*137%900+i).toString().padStart(4,'0'); }
+
+function updateScan(dt){
+  if(!sim.scanOn||sim.landed) return;
+  sim.sweepPrev=sim.sweep;
+  sim.sweep=(sim.sweep+SWEEP_RATE*dt)%(2*Math.PI);
+
+  const [slat,slon]=vecToGeo(sim.r,sim.spin);
+  const fp=footprintAng();
+  const now=performance.now();
+
+  for(let i=0;i<EMITTERS.length;i++){
+    const e=EMITTERS[i];
+    const d=greatCircleKm(slat,slon,e.lat,e.lon)/R_P;      // angular separation
+    if(d>fp) continue;                                      // below the horizon
+
+    /* Did the sweep line cross this bearing during the frame? */
+    let b=bearingTo(slat,slon,e.lat,e.lon);
+    if(b<0) b+=2*Math.PI;
+    let a0=sim.sweepPrev, a1=sim.sweep;
+    if(a1<a0) a1+=2*Math.PI;
+    let bb=b; if(bb<a0) bb+=2*Math.PI;
+    if(bb<a0||bb>a1) continue;
+
+    sim.pings.push({lat:e.lat, lon:e.lon, t0:now, life:1.5, max:0.10});
+
+    const known=sim.found.some(f=>f.i===i);
+    if(!known){
+      const rangeKm=greatCircleKm(slat,slon,e.lat,e.lon);
+      const alt=V.len(sim.r)-R_P;
+      const slant=Math.sqrt(rangeKm*rangeKm+alt*alt);
+      /* Signal strength falls with slant range; the number moves for a
+         reason rather than being a random flourish. */
+      const sig=clamp(Math.round(100*Math.pow(1200/Math.max(slant,200),0.9)),8,99);
+      sim.found.push({i, id:emitterId(i), name:e.name, cls:e.cls, sig,
+                      lat:e.lat, lon:e.lon, t:sim.t});
+      sim.acq={i, t0:now};
+      /* A correlated contact takes the display. Clutter can wait. */
+      sim.transient=null;
+    }
+  }
+
+  /* Unidentified returns: clutter from terrain and sea state inside the
+     footprint. They ping and fade without ever resolving to a contact, which
+     is both what a real sweep looks like and what keeps the tube busy while
+     the vehicle is over open ocean. */
+  sim.clutterAge=(sim.clutterAge||0)+dt;
+  if(sim.clutterAge>0.22+Math.random()*0.5){
+    sim.clutterAge=0;
+    const b=Math.random()*2*Math.PI;
+    const d=(0.32+0.63*Math.sqrt(Math.random()))*fp;
+    const [la,lo]=destPoint(slat,slon,b,d);
+    sim.pings.push({lat:la, lon:lo, t0:now, life:0.95, max:0.045, weak:true});
+
+    /* Roughly one return in four is strong enough to work a track on. */
+    if(!sim.transient && !sim.acq && Math.random()<0.28){
+      const rng=Math.round(d*R_P);
+      sim.transient={
+        lat:la, lon:lo, t0:now,
+        id:'UNID-'+String(1000+((Math.abs(la*97+lo*31)|0)%8999)),
+        brg:String(Math.round(((b*DEG)+360)%360)).padStart(3,'0'),
+        rng:String(rng)
+      };
+    }
+  }
+
+  /* Retire finished rings. */
+  sim.pings=sim.pings.filter(p=>(now-p.t0)/1000<p.life);
+}
+
+/* A ring on the surface at a given angular radius. */
+function surfaceRing(lat,lon,ang,colour,width,steps){
+  const pts=[];
+  const n=steps||30;
+  for(let i=0;i<=n;i++){
+    const [la,lo]=destPoint(lat,lon,i/n*2*Math.PI,ang);
+    const p=geoToVec(la,lo,sim.spin,1.008);
+    pts.push(onNearSide(p)?project(p):null);
+  }
+  strokePolyline(pts,colour,width,0);
+}
+
+function drawFootprint(){
+  if(!sim.scanOn||sim.landed) return;
+  const [slat,slon]=vecToGeo(sim.r,sim.spin);
+  const fp=footprintAng();
+
+  surfaceRing(slat,slon,fp,'rgba(140,230,255,0.30)',1,44);
+  surfaceRing(slat,slon,fp*0.66,'rgba(140,230,255,0.16)',1,36);
+  surfaceRing(slat,slon,fp*0.33,'rgba(140,230,255,0.16)',1,28);
+
+  /* The sweep line, with a decaying tail so the direction of rotation reads. */
+  for(let k=0;k<7;k++){
+    const b=sim.sweep-k*0.09;
+    const pts=[];
+    for(let j=0;j<=12;j++){
+      const [la,lo]=destPoint(slat,slon,b,fp*j/12);
+      const p=geoToVec(la,lo,sim.spin,1.008);
+      pts.push(onNearSide(p)?project(p):null);
+    }
+    strokePolyline(pts,'rgba(34,255,136,'+(0.55*(1-k/7)).toFixed(3)+')',k?1:1.5,0);
+  }
+}
+
+function drawPings(){
+  const now=performance.now();
+  for(const p of sim.pings){
+    const k=(now-p.t0)/1000/p.life;
+    if(k>1) continue;
+    /* Two rings, offset in phase, expanding and fading. */
+    if(p.weak){
+      surfaceRing(p.lat,p.lon,k*p.max,
+        'rgba(140,230,255,'+((1-k)*0.5).toFixed(3)+')',1,16);
+      continue;
+    }
+    for(const off of [0,0.35]){
+      const kk=k+off;
+      if(kk>1) continue;
+      surfaceRing(p.lat,p.lon,kk*p.max,
+        'rgba(255,210,61,'+((1-kk)*0.85).toFixed(3)+')',1.4,26);
+    }
+  }
+}
+
+/* Acquired emitters keep a permanent tick and designation. */
+function drawFound(){
+  if(!sim.scanOn) return;
+  for(const f of sim.found){
+    const p=geoToVec(f.lat,f.lon,sim.spin,1.008);
+    if(!onNearSide(p)) continue;
+    const q=project(p); if(!q) continue;
+    ctx.strokeStyle='rgba(255,210,61,0.9)'; ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(q.x-4,q.y); ctx.lineTo(q.x+4,q.y);
+    ctx.moveTo(q.x,q.y-4); ctx.lineTo(q.x,q.y+4);
+    ctx.stroke();
+    const cc=toCam(p);
+    if(cc[2]>0.35) label(f.id,q.x+6,q.y-6,'rgba(255,210,61,0.75)',false);
+  }
+}
+
+/* Four brackets converging on a point, then an identification block typed on
+   a character at a time. Shared by permanent station acquisitions and by the
+   transient returns, so both read as the same instrument doing the same job. */
+function drawTarget(q, age, lines, colour, headColour, alpha){
+  const close=clamp(age/0.55,0,1);
+  const r=42-30*close;
+  const arm=9;
+  ctx.globalAlpha=alpha;
+  ctx.strokeStyle=headColour; ctx.lineWidth=1.4;
+  ctx.shadowColor=headColour; ctx.shadowBlur=8;
+  for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+    const x=q.x+sx*r, y=q.y+sy*r;
+    ctx.beginPath();
+    ctx.moveTo(x, y+sy*-arm); ctx.lineTo(x, y); ctx.lineTo(x+sx*-arm, y);
+    ctx.stroke();
+  }
+  ctx.shadowBlur=0;
+
+  if(age>0.5){
+    const chars=Math.floor((age-0.5)*46);
+    ctx.font='9px '+getComputedStyle(document.body).fontFamily;
+
+    /* Throw the block toward whichever side has room. The tool strip lives on
+       the right edge and the vessel marker sits at the centre, so a callout
+       pinned to one corner would sooner or later land on both. */
+    const wide=Math.max(...lines.map(l=>ctx.measureText(l).width));
+    const fx = (q.x + r + 16 + wide > W-78) ? -1 : 1;
+    const fy = (q.y - r - 8 < 14) ? 1 : -1;
+    const bx = q.x + fx*(r+12);
+    const by = q.y + fy*r + (fy<0 ? 4 : -4 - (lines.length-1)*12);
+
+    ctx.textAlign = fx>0 ? 'left' : 'right';
+    ctx.textBaseline='middle';
+    ctx.strokeStyle=colour; ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(q.x+fx*r, q.y+fy*r);
+    ctx.lineTo(bx-fx*4, by+(fy<0?-2:(lines.length-1)*12+2));
+    ctx.stroke();
+
+    let used=0;
+    lines.forEach((ln,i)=>{
+      if(used>=chars) return;
+      const shown=ln.slice(0,Math.max(0,chars-used));
+      used+=ln.length;
+      ctx.fillStyle= i===0 ? headColour : colour;
+      ctx.fillText(shown, bx, by+i*12);
+    });
+    ctx.textAlign='left';
+  }
+  ctx.globalAlpha=1;
+}
+
+function drawAcquire(){
+  if(!sim.acq) return;
+  const age=(performance.now()-sim.acq.t0)/1000;
+  if(age>2.2){ sim.acq=null; return; }
+  const e=EMITTERS[sim.acq.i];
+  const rec=sim.found.find(f=>f.i===sim.acq.i);
+  if(!rec) return;
+  const p=geoToVec(e.lat,e.lon,sim.spin,1.008);
+  if(!onNearSide(p)) return;
+  const q=project(p); if(!q) return;
+  drawTarget(q, age, [rec.id, rec.name, rec.cls, 'SIG '+rec.sig+'%'],
+             'rgba(255,210,61,0.9)', '#EAFBFF', 1);
+}
+
+/* Transient returns. A real sweep throws up far more uncorrelated contacts
+   than it ever resolves to something named: the sensor locates them, fails to
+   correlate, and drops the track. Drawn in ice rather than amber so a return
+   that never resolves is never mistaken for one that did. */
+function drawTransient(){
+  const tr=sim.transient;
+  if(!tr) return;
+  const age=(performance.now()-tr.t0)/1000;
+  if(age>2.0){ sim.transient=null; return; }
+  const p=geoToVec(tr.lat,tr.lon,sim.spin,1.008);
+  if(!onNearSide(p)) return;
+  const q=project(p); if(!q) return;
+  const fade = age>1.6 ? 1-(age-1.6)/0.4 : 1;
+  drawTarget(q, age, [tr.id,'SURFACE RETURN','BRG '+tr.brg+'  '+tr.rng+' KM','NO CORRELATION'],
+             'rgba(140,230,255,0.85)', '#8CE6FF', fade);
+}
+
 function drawZone(){
   const z=ZONES[sim.zone];
   const c=geoToVec(z.lat,z.lon,sim.spin,1.004);
@@ -1290,11 +1618,16 @@ function render(){
   drawGraticule();
   drawCoasts();
   drawHazards();
+  drawFootprint();
   drawZone();
+  drawPings();
+  drawFound();
   drawGroundTrack();
   drawConic();
   drawContacts();
   drawVessel();
+  drawTransient();
+  drawAcquire();
   drawFrame();
   if(crt.on){ drawSparkle(); drawBloom(); }
 }
@@ -1381,6 +1714,18 @@ function refresh(){
   el.cLon.textContent = fmtLon(lon);
   el.cPer.textContent = isFinite(e.T)? fmtDur(e.T) : '—';
 
+  $('scan').textContent='SCAN '+pad(sim.found.length,2)+'/'+pad(EMITTERS.length,2);
+  $('btn-scan').dataset.on=sim.scanOn?'1':'';
+
+  const rows=$('sensorrows');
+  if(rows){
+    rows.innerHTML = sim.found.length
+      ? sim.found.slice(-7).reverse().map(f=>
+          '<div class="calcrow"><span class="s">'+f.id+' '+f.cls+'</span>'+
+          '<span class="n sig">'+f.name+'</span></div>').join('')
+      : '<div class="calcrow"><span class="s">sweeping — no contacts</span></div>';
+  }
+
   $('lz-lbl').textContent=z.id.replace('LZ-','LZ');
   $('warp-lbl').textContent='×'+sim.warp;
   $('k-auto').dataset.on=sim.auto?'1':'';
@@ -1440,6 +1785,11 @@ btnTrack.node.addEventListener('click',()=>{
 });
 btnOrbit.node.addEventListener('click',()=>{
   btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
+});
+$('btn-scan').addEventListener('click',()=>{
+  sim.scanOn=!sim.scanOn;
+  $('btn-scan').dataset.on=sim.scanOn?'1':'';
+  if(!sim.scanOn){ sim.pings=[]; sim.acq=null; sim.transient=null; }
 });
 $('btn-crt').addEventListener('click',()=>{
   crt.on=!crt.on;
@@ -1656,17 +2006,24 @@ function frame(now){
     checkOutcome();
   }
 
-  /* Camera modes. Manual drag switches to CAM FIX and stays there. */
+  /* Camera modes. Manual drag switches to CAM FIX and stays there.
+
+     A surface point at longitude L sits at sphere angle L + spin, and the
+     projection rotates the world by -yaw about the polar axis, so the point
+     faces the eye when yaw = L + spin - pi/2. Both terms matter: dropping
+     the spin leaves the camera locked to inertial space while the planet
+     turns underneath it, which points the view at the wrong hemisphere. */
   if(cam.mode===0){
     const [lat,lon]=vecToGeo(sim.r,sim.spin);
-    cam.yaw   += (( -(lon+90)/DEG ) - cam.yaw)*0.04;
-    cam.pitch += (( lat/DEG*0.6 ) - cam.pitch)*0.04;
+    cam.yaw   = lerpAngle(cam.yaw, lon/DEG + sim.spin - Math.PI/2, 0.05);
+    cam.pitch += (lat/DEG - cam.pitch)*0.05;
   }else if(cam.mode===2){
     const z=ZONES[sim.zone];
-    cam.yaw   += (( -(z.lon+90)/DEG - sim.spin ) - cam.yaw)*0.04;
-    cam.pitch += (( z.lat/DEG*0.7 ) - cam.pitch)*0.04;
+    cam.yaw   = lerpAngle(cam.yaw, z.lon/DEG + sim.spin - Math.PI/2, 0.05);
+    cam.pitch += (z.lat/DEG - cam.pitch)*0.05;
   }
 
+  updateScan(wall);
   sim.trackAge+=wall;
   if(sim.trackAge>0.6 && !sim.landed) predictTrack();
 
