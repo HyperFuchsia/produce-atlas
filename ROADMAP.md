@@ -98,3 +98,19 @@ Not suggestions. A cycle that breaks one has failed even if the feature works.
    it.
 7. **`node orbital/build.mjs`** before finishing; zero document-shell tags.
 8. **Say what you did not do.** Ship the part that works and state the rest.
+
+---
+
+## GATE RECORD
+
+Cycles that were stopped, and why. Kept here rather than in a log nobody
+reads, because the point of a gate is that its refusals are visible.
+
+- **A1, first attempt — stopped before Verify.** A design agent edited
+  `orbital/index.html` in the operator's working tree and left six temporary
+  scripts and four screenshots behind. Design is advisory; the change had not
+  been weighed against the other two designs, had not been verified, and had
+  not been near the fidelity panel. Reverted. The workflow was the fault, not
+  the agent: only the Build phase now has write authority, Build asserts it is
+  not in the operator's tree before it starts, and the cycle refuses to ship if
+  that assertion turns out to be wrong.

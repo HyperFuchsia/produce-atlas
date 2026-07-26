@@ -106,6 +106,16 @@ const LENSES = [
 const designs = await parallel(LENSES.map((l,i) => () => agent(
   `${HOUSE}${CTX}
 
+YOU ARE ADVISORY. You produce a design, in text, and nothing else.
+
+  - DO NOT edit, create, move or delete any file. Not the game, not a test
+    script, not a screenshot. Your entire output is the structured answer.
+  - DO NOT run anything that writes to disk. Read the file, reason about it,
+    and describe what should change.
+  - The operator's working tree is not yours. A later phase builds this, in
+    isolation, once three designs have been weighed against each other. If you
+    build it now you have pre-empted that and your work will be reverted.
+
 TASK. Read ${CHARTER} first, then ${FILE}, then design this change.
 Your lens: ${l}. A design that violates a MUST clause will be discarded before
 it is built, so do not propose one.
@@ -135,6 +145,9 @@ const PLAN = await agent(
 THREE CANDIDATE DESIGNS:
 ${DTEXT}
 
+YOU ARE ADVISORY. Write the instruction; do not carry it out. Edit no files
+and run nothing that writes to disk.
+
 TASK. Pick one as the spine, graft in anything better from the others, and cut
 anything that overreaches. Say which way you went where they disagreed.
 
@@ -156,7 +169,12 @@ const BUILT = await agent(
 THE PLAN:
 ${PLAN}
 
-TASK. Build it, in your own git worktree.
+TASK. Build it. You are the ONLY phase permitted to write anything.
+
+You have been given your own git worktree. Confirm it before you start:
+run 'git rev-parse --show-toplevel' and check the answer is NOT ${REPO}. If it
+IS ${REPO}, stop immediately and report that isolation failed — do not build in
+the operator's tree.
 
   1. Create a branch off ${BASE} named 'claude/auto-${ITEM.id.toLowerCase()}'.
   2. Make the change in orbital/index.html. Follow the plan. If the plan is
@@ -190,6 +208,11 @@ if(!BUILT || !BUILT.sha){
   log('build produced nothing — stopping before any push')
   return { built:false, item:ITEM.id, reason:'build agent returned no commit' }
 }
+if(BUILT.worktree === REPO){
+  log('build ran in the operator tree rather than a worktree — refusing to ship')
+  return { built:false, item:ITEM.id,
+           reason:'isolation failed: build agent worked in '+REPO+' instead of a worktree' }
+}
 
 /* -------------------------------------------------------------- verify --- */
 phase('Verify')
@@ -212,8 +235,12 @@ BRANCH: ${BUILT.branch}   WORKTREE: ${BUILT.worktree}
 
 TASK. ${c}
 
-Work in ${BUILT.worktree}. Do not fix anything — report. Delete any script you
-write. Be specific: what breaks, how you triggered it, what you measured.`,
+Work ONLY inside ${BUILT.worktree}. Never touch ${REPO} itself — that is the
+operator's tree and it is out of bounds to every phase but Build.
+
+Do not fix anything; report. Any temporary script you write goes in the
+worktree and is deleted before you finish. Be specific: what breaks, how you
+triggered it, what you measured.`,
   { label:`verify:${i===0?'regression':'claims'}`, phase:'Verify', schema:{
     type:'object',
     properties:{
@@ -279,6 +306,8 @@ const VERDICTS = await parallel(JURORS.map((j,i) => () => agent(
 You are a fidelity juror. You are not a code reviewer and you are not here to
 suggest improvements — there is a pull request for those. You answer one
 question: does this work betray what this thing is?
+
+You are read-only. Edit nothing, anywhere, including the worktree.
 
 Read ${CHARTER} in full. Then read the diff on branch ${BUILT.branch} in
 ${BUILT.worktree}:  git diff ${BASE}...${BUILT.branch}
