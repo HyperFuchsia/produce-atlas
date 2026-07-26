@@ -682,6 +682,23 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 .rd[data-alert="1"] .v{color:var(--hot)}
 .rd[data-alert="2"]{border-color:var(--warn)}
 .rd[data-alert="2"] .v{color:var(--warn)}
+/* Six of these readouts carry a quantity and two carry a designation. A
+   quantity can be rounded until it fits; a name cannot, and the catalogue's
+   longest runs seventeen characters against a cell that holds eight. The strip
+   was already paying for this — row three held the lexicon alone with three
+   cells empty beside it — so the two name tiles take the width the numbers
+   never needed, and the chart is not asked for a pixel. */
+#read .rd--name{grid-column:span 2}
+/* Contact and Cultures now share row three with the lexicon, which is twice
+   their height. Left to stretch they draw as boxes empty below the value, and
+   empty stroke reports nothing. */
+#read .rd{align-self:start}
+/* The label already admits when it has been cut; the value did not, so a name
+   too long for its cell ended mid-glyph and ALPHA CENTAURI B arrived as ALPHA
+   CE — the tile naming a star the vehicle is not at. Clip rather than hidden,
+   with a margin the width of the bloom, because the tile itself already clips
+   at three pixels and this rule must not be what takes the phosphor. */
+#read .rd--name .v{overflow:clip;overflow-clip-margin:7px;text-overflow:ellipsis}
 
 /* CONTROL PAD --------------------------------------------------------- */
 #ctl{
@@ -888,12 +905,25 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   }
   #title{font-size:16px}
   .rd .v{font-size:17px}
+  /* Up here the strip is a single column, and a two-column span does not clamp
+     to it — it invents a second track and shears a readout that was already
+     wide enough to hold the longest name in the catalogue. */
+  #read .rd--name{grid-column:auto}
 }
 
 /* Very short landscape phones: drop the readout font, keep everything. */
 @media (max-height:420px) and (orientation:landscape){
   .rd .v{font-size:13px}
   .key{min-height:38px;font-size:9px}
+}
+
+/* Below about 348px the wide name tile stops holding seventeen characters at
+   fifteen, and the two components of ALPHA CENTAURI would arrive as the same
+   string. The whole strip steps together so no readout is demoted relative to
+   another, and thirteen is the size the console already drops to on a short
+   landscape phone. */
+@media (max-width:359px){
+  .rd .v{font-size:13px}
 }
 
 @media (prefers-reduced-motion:reduce){
@@ -1072,8 +1102,8 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 
   <!-- ==================== READOUTS ==================== -->
   <section id="read">
-    <div class="rd"><span class="k">Position</span><span class="v" id="r-alt">—</span></div>
-    <div class="rd"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
+    <div class="rd rd--name"><span class="k">Position</span><span class="v" id="r-alt">—</span></div>
+    <div class="rd rd--name"><span class="k">Target</span><span class="v" id="r-vel">—</span></div>
     <div class="rd"><span class="k">Jump dist</span><span class="v" id="r-ap">—</span></div>
     <div class="rd"><span class="k">Fuel</span><span class="v" id="r-pe">—</span></div>
     <div class="rd"><span class="k">Hull</span><span class="v" id="r-g">—</span></div>
@@ -6128,8 +6158,11 @@ function refresh(){
   const h=here(), t=target();
   const d=jumpKm(), ok=canJump();
 
-  el.alt.innerHTML  = h.n;
-  el.vel.innerHTML  = t.n;
+  /* These two are the only readouts whose value is catalogue text rather than a
+     number with a unit, and five of the names carry an apostrophe. Nothing here
+     is markup, so nothing here is parsed as markup. */
+  el.alt.textContent = h.n;
+  el.vel.textContent = t.n;
   el.ap.innerHTML   = d.toFixed(2)+' <small>LY</small>';
   el.pe.innerHTML   = sim.fuel.toFixed(1)+' <small>LY</small>';
   el.g.innerHTML    = Math.round(sim.hull)+' <small>%</small>';

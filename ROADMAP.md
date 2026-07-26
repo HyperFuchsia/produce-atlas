@@ -23,7 +23,7 @@ ticked once you have merged it.
 
 ### A — the console is not yet honest at every size
 
-- [ ] A1 · Star names truncate in the readout tiles — POSITION reads "PROXIMA CI". Fit, abbreviate or ticker them at every width. · blocked-by:
+- [x] A1 · Star names truncate in the readout tiles — POSITION reads "PROXIMA CI". Fit, abbreviate or ticker them at every width. · blocked-by:
 - [ ] A2 · The comms panel in landscape gives the face a 134px canvas. A creature is unreadable at that size; rebalance the grid so landscape gets a usable portrait. · blocked-by:
 - [ ] A3 · The operations log is hidden below 820px, so a phone player never learns why anything happened to them. Give it somewhere to live in portrait. · blocked-by:
 - [ ] A4 · Long star names overflow the chart labels at small field sizes; the collision system drops them instead of shortening them. · blocked-by:
