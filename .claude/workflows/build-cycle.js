@@ -1,12 +1,13 @@
 export const meta = {
   name: 'build-cycle',
   description: 'Take the top unblocked ROADMAP item, build it, verify it, open a PR',
-  whenToUse: 'When the operator asks for a build cycle. Never scheduled — fired on request only.',
+  whenToUse: 'One turn of continuous development: the next roadmap item, built, verified, judged against the charter, and shipped to a pull request for the operator to merge.',
   phases: [
     { title: 'Pick',    detail: 'read ROADMAP.md and take the top unblocked item' },
     { title: 'Design',  detail: 'three independent approaches, judged' },
     { title: 'Build',   detail: 'one agent, one file, on a fresh branch' },
     { title: 'Verify',  detail: 'measure at three viewports; hunt regressions' },
+    { title: 'Fidelity', detail: 'three judges with authority to discard the branch' },
     { title: 'Ship',    detail: 'commit, push the branch, open the pull request' }
   ]
 }
@@ -14,6 +15,7 @@ export const meta = {
 const REPO = '/home/user/produce-atlas'
 const FILE = `${REPO}/orbital/index.html`
 const BASE = 'claude/80s-scifi-interface-vywhr3'
+const CHARTER = `${REPO}/FIDELITY.md`
 
 const HOUSE = `
 PROJECT — DEEP SURVEY
@@ -30,6 +32,12 @@ AESTHETIC — NOT NEGOTIABLE
   Everything on screen REPORTS STATE — nothing decorates. All sound is
   synthesised in Web Audio; no samples. One file, no external assets. Fully
   playable one-handed on a phone in portrait.
+
+THE CHARTER
+  ${CHARTER} states what this is and what it is not. READ IT BEFORE YOU DO
+  ANYTHING. A panel with authority to discard your branch will judge your work
+  against it. Its MUST clauses outrank the roadmap, outrank the plan, and
+  outrank anything you think would be an improvement.
 
 HOUSE RULES
   1. Measure, do not assert. Every claim must come from a number you produced.
@@ -98,7 +106,9 @@ const LENSES = [
 const designs = await parallel(LENSES.map((l,i) => () => agent(
   `${HOUSE}${CTX}
 
-TASK. Read ${FILE} and design this change. Your lens: ${l}.
+TASK. Read ${CHARTER} first, then ${FILE}, then design this change.
+Your lens: ${l}. A design that violates a MUST clause will be discarded before
+it is built, so do not propose one.
 
 Give the actual approach: which functions change and how, what new state is
 needed with field names and initial values, what appears on screen with its
@@ -234,6 +244,105 @@ finding is wrong, say why rather than changing code to satisfy it.`,
   )
 }
 
+/* ------------------------------------------------------------ fidelity --- */
+phase('Fidelity')
+
+/* The only phase that can stop the cycle. Three judges read the charter and
+   the diff; two KILL votes discard the branch.
+
+   Drift is the failure mode of continuous automation — not bad work, work
+   that is fine on its own terms and is slowly not this thing any more. A
+   reviewer that can only request changes cannot stop that, because every
+   individual change is defensible. This one can only be answered by not
+   shipping. */
+const JURORS = [
+  `THE SURFACE. Clauses 2.1 and 2.2. Read the actual diff, line by line. Any
+   fill, gradient, texture, image, border-radius, drop shadow, or non-semantic
+   use of colour is a kill. Any mark added to the screen that cannot answer
+   "what does this tell the operator" is a kill. Check the CSS by reading it,
+   not by trusting the description.`,
+  `THE SUBSTANCE. Clauses 2.3, 2.4, 2.5 and 2.7. External assets, samples,
+   libraries, network requests, invented astronomy, a computation replaced by a
+   random roll, a humanoid or comic alien, a jump scare, or a state in which a
+   new operator cannot act at all — each is a kill. Verify the claims about
+   real data against the catalogue in the file.`,
+  `THE HAND. Clause 2.6 and section 3. Anything needing a keyboard, a hover, a
+   target under 34px, or that breaks 60 fps or overflows at 390x844, 844x390 or
+   1280x900 is a kill — verify by running it, not by reading it. Text out of
+   register, comments that restate code, or a system bolted beside the
+   architecture rather than into it are kills only if flagrant.`
+];
+
+const VERDICTS = await parallel(JURORS.map((j,i) => () => agent(
+  `${HOUSE}${CTX}
+
+You are a fidelity juror. You are not a code reviewer and you are not here to
+suggest improvements — there is a pull request for those. You answer one
+question: does this work betray what this thing is?
+
+Read ${CHARTER} in full. Then read the diff on branch ${BUILT.branch} in
+${BUILT.worktree}:  git diff ${BASE}...${BUILT.branch}
+
+YOUR REMIT. ${j}
+
+RULES.
+  - Cite the clause. "Feels off" is not a kill. "Adds border-radius: 4px to
+    .opt, violating 2.1" is.
+  - Do NOT kill for scope, taste, or a better idea you have.
+  - Do NOT kill for a bug — bugs are Verify's job, and a bug is fixable.
+  - Do kill for a MUST violation even if the work is excellent and even if the
+    roadmap item asked for it.
+  - If you find nothing, say PASS. A juror who invents a violation to look
+    thorough is worse than one who misses one.`,
+  { label:`juror:${i+1}`, phase:'Fidelity', schema:{
+    type:'object',
+    properties:{
+      verdict:{type:'string', enum:['PASS','KILL']},
+      violations:{type:'array', items:{type:'object', properties:{
+        clause:{type:'string'}, what:{type:'string'}, where:{type:'string'}
+      }, required:['clause','what','where']}},
+      notes:{type:'array', items:{type:'string'},
+        description:'things worth saying in the PR that are NOT kills'}
+    }, required:['verdict','violations','notes'] } }
+)))
+
+const kills = VERDICTS.filter(Boolean).filter(v=>v.verdict==='KILL');
+const cited = kills.flatMap(v=>v.violations);
+const NOTES = VERDICTS.filter(Boolean).flatMap(v=>v.notes);
+
+if(kills.length >= 2){
+  log(`FIDELITY KILL — ${kills.length}/3 jurors, ${cited.length} citation(s)`);
+  await agent(
+    `${HOUSE}
+
+Branch ${BUILT.branch} for roadmap item ${ITEM.id} was DISCARDED by the
+fidelity panel. ${kills.length} of 3 jurors voted to kill.
+
+CITATIONS:
+${cited.map(v=>`- ${v.clause} — ${v.what}  (${v.where})`).join('\n')}
+
+TASK. In the main repository at ${REPO} (not the worktree):
+  1. Append an entry to REJECTED.md — create it if it does not exist, with a
+     heading explaining that it is the record of work the fidelity gate
+     refused. The entry states the item, the date-free cycle identity, what was
+     attempted, every clause cited, and one sentence on what a future cycle
+     should do differently. Write it plainly; it is for the operator to read.
+  2. Do NOT commit it. Leave it in the working tree and report that you did.
+  3. Do NOT push the branch. Do NOT open a pull request.
+
+A gate that rejects silently is indistinguishable from a gate that is broken,
+so the record matters more than the tidiness.`,
+    { label:'record-kill', phase:'Fidelity' }
+  );
+  return {
+    built:false, killed:true, item:`${ITEM.id} — ${ITEM.title}`,
+    branch:BUILT.branch, jurors:`${kills.length}/3`,
+    citations: cited.map(v=>`${v.clause}: ${v.what}`),
+    note:'branch discarded, nothing pushed, reason recorded in REJECTED.md'
+  };
+}
+log(`fidelity panel: ${3-kills.length}/3 pass`);
+
 /* ---------------------------------------------------------------- ship --- */
 phase('Ship')
 
@@ -244,6 +353,7 @@ BUILD: ${BUILT.summary}
 MEASURED: ${BUILT.measured.join(' | ')}
 UNFINISHED: ${BUILT.unfinished.join(' | ') || 'nothing'}
 VERIFICATION FINDINGS: ${JSON.stringify(findings.filter(Boolean).flatMap(f=>f.findings))}
+FIDELITY PANEL NOTES (not blocking, but say them): ${NOTES.join(' | ') || 'none'}
 
 TASK. Ship it for review. In ${BUILT.worktree}:
 
