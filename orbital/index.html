@@ -444,6 +444,7 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button id="btn-orbit" data-on="1">CONIC</button>
       <button id="btn-crt"   data-on="1">CRT</button>
       <button id="btn-scan"  data-on="1">SCAN</button>
+      <button id="btn-snd"   data-on="0">AUDIO</button>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -1473,6 +1474,7 @@ function updateScan(dt){
     if(bb<a0||bb>a1) continue;
 
     sim.pings.push({lat:e.lat, lon:e.lon, t0:now, life:1.5, max:0.10});
+    sndPing(true);
 
     const known=sim.found.some(f=>f.i===i);
     if(!known){
@@ -1487,6 +1489,7 @@ function updateScan(dt){
       sim.acq={i, t0:now};
       /* A correlated contact takes the display. Clutter can wait. */
       sim.transient=null;
+      sndAcquire();
     }
   }
 
@@ -1501,6 +1504,10 @@ function updateScan(dt){
     const d=(0.32+0.63*Math.sqrt(Math.random()))*fp;
     const [la,lo]=destPoint(slat,slon,b,d);
     sim.pings.push({lat:la, lon:lo, t0:now, life:0.95, max:0.045, weak:true});
+    /* Only some clutter is audible. Every return chiming would be two to
+       four pings a second forever, which stops being radar chatter and
+       starts being a smoke alarm. */
+    if(Math.random()<0.45) sndPing(false);
 
     /* Roughly one return in four is strong enough to work a track on. */
     if(!sim.transient && !sim.acq && Math.random()<0.28){
@@ -1511,6 +1518,7 @@ function updateScan(dt){
         brg:String(Math.round(((b*DEG)+360)%360)).padStart(3,'0'),
         rng:String(rng)
       };
+      sndTrack();
     }
   }
 
@@ -1771,6 +1779,200 @@ function render(){
 
 
 /* ==========================================================================
+   AUDIO
+   --------------------------------------------------------------------------
+   Entirely synthesised — no samples, so the file stays self-contained and
+   there is nothing to fetch behind a CSP.
+
+   The same rule the display follows applies here: sound reports state, it
+   does not decorate. Everything continuous is driven from the simulation in
+   the frame loop rather than from input, so the thruster is audible whether
+   you pressed the key or the autopilot did, and the entry rumble tracks
+   dynamic pressure because that is what it is a readout of.
+
+     bed      mains hum and flyback whine — the console being powered.
+              Tied to the CRT toggle, because it is the tube making it.
+     ping     sonar return. Quiet and randomly pitched for clutter, loud and
+              low for a correlated contact.
+     acquire  two-tone chirp then a data burst while the ID types on.
+     thrust   band-passed noise while the RCS is firing.
+     entry    low rumble, gain and pitch from dynamic pressure.
+     alarm    slow two-tone while over 8 g or committed to a steep corridor.
+     key      contact click on a control. The only input-driven sound.
+   ========================================================================== */
+
+const snd={
+  ctx:null, on:false, master:null, pingBus:null, noise:null,
+  bed:null, thrust:null, entry:null, lastAlarm:0, burning:false
+};
+
+function audioInit(){
+  if(snd.ctx) return;
+  const AC=window.AudioContext||window.webkitAudioContext;
+  if(!AC) return;
+  const ctx=new AC();
+  snd.ctx=ctx;
+
+  /* A compressor on the bus keeps a burst of simultaneous pings from
+     clipping on a phone speaker. */
+  const comp=ctx.createDynamicsCompressor();
+  comp.threshold.value=-14; comp.ratio.value=6; comp.attack.value=0.003;
+  const master=ctx.createGain();
+  master.gain.value=0;
+  master.connect(comp).connect(ctx.destination);
+  snd.master=master;
+
+  /* Sonar tail: a short feedback delay, so a ping rings the compartment. */
+  const delay=ctx.createDelay(1);  delay.delayTime.value=0.19;
+  const fb=ctx.createGain();       fb.gain.value=0.34;
+  const damp=ctx.createBiquadFilter(); damp.type='lowpass'; damp.frequency.value=2200;
+  const bus=ctx.createGain();
+  bus.connect(master);
+  bus.connect(delay); delay.connect(damp); damp.connect(fb); fb.connect(delay);
+  damp.connect(master);
+  snd.pingBus=bus;
+
+  /* One second of noise, looped, shared by every noise voice. */
+  const n=ctx.sampleRate;
+  const buf=ctx.createBuffer(1,n,ctx.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<n;i++) d[i]=Math.random()*2-1;
+  snd.noise=buf;
+
+  /* --- the powered bed ------------------------------------------------- */
+  const bedGain=ctx.createGain(); bedGain.gain.value=0; bedGain.connect(master);
+  const hum=ctx.createOscillator(); hum.type='sawtooth'; hum.frequency.value=50;
+  const humLp=ctx.createBiquadFilter(); humLp.type='lowpass'; humLp.frequency.value=150;
+  const humG=ctx.createGain(); humG.gain.value=0.055;
+  hum.connect(humLp).connect(humG).connect(bedGain); hum.start();
+
+  /* Flyback whine. The real line rate is 15.7 kHz; a lot of phone speakers
+     cannot reproduce it and a lot of ears cannot hear it, so the audible
+     subharmonic carries the impression instead. */
+  const wh=ctx.createOscillator(); wh.type='sine'; wh.frequency.value=7867;
+  const whG=ctx.createGain(); whG.gain.value=0.006;
+  wh.connect(whG).connect(bedGain); wh.start();
+
+  const air=ctx.createBufferSource(); air.buffer=buf; air.loop=true;
+  const airF=ctx.createBiquadFilter(); airF.type='bandpass';
+  airF.frequency.value=520; airF.Q.value=0.6;
+  const airG=ctx.createGain(); airG.gain.value=0.02;
+  air.connect(airF).connect(airG).connect(bedGain); air.start();
+  snd.bed=bedGain;
+
+  /* --- continuous voices, gated by simulation state -------------------- */
+  const mk=(freq,q,type)=>{
+    const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+    const f=ctx.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
+    const g=ctx.createGain(); g.gain.value=0;
+    src.connect(f).connect(g).connect(master); src.start();
+    return {g,f};
+  };
+  snd.thrust=mk(340,0.8,'bandpass');
+  snd.entry =mk(120,0.9,'lowpass');
+}
+
+function audioToggle(){
+  audioInit();
+  if(!snd.ctx) return false;
+  if(snd.ctx.state==='suspended') snd.ctx.resume();
+  snd.on=!snd.on;
+  snd.master.gain.setTargetAtTime(snd.on?0.55:0, snd.ctx.currentTime, 0.05);
+  return snd.on;
+}
+
+const A=()=>snd.on&&snd.ctx ? snd.ctx : null;
+
+function blip(freq,dur,vol,delay,type,bus){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime+(delay||0);
+  const o=ctx.createOscillator(); o.type=type||'sine'; o.frequency.setValueAtTime(freq,t);
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(vol,t+0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g).connect(bus||snd.master);
+  o.start(t); o.stop(t+dur+0.02);
+}
+
+function sndPing(strong){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime;
+  const o=ctx.createOscillator(); o.type='sine';
+  const f0= strong ? 780 : 1100+Math.random()*700;
+  o.frequency.setValueAtTime(f0,t);
+  o.frequency.exponentialRampToValueAtTime(f0*0.6,t+(strong?0.5:0.2));
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(strong?0.34:0.055,t+0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+(strong?0.85:0.28));
+  o.connect(g).connect(snd.pingBus);
+  o.start(t); o.stop(t+1);
+}
+
+function sndAcquire(){
+  if(!A()) return;
+  blip(740,0.13,0.20,0,'sine');
+  blip(1108,0.16,0.20,0.11,'sine');
+  for(let i=0;i<16;i++) blip(700+Math.random()*2100,0.022,0.045,0.26+i*0.034,'square');
+}
+function sndTrack(){                       // an uncorrelated return being worked
+  if(!A()) return;
+  blip(520,0.07,0.10,0,'triangle');
+  for(let i=0;i<6;i++) blip(900+Math.random()*900,0.018,0.028,0.06+i*0.03,'square');
+}
+function sndKey(){
+  const ctx=A(); if(!ctx) return;
+  const t=ctx.currentTime;
+  const src=ctx.createBufferSource(); src.buffer=snd.noise;
+  const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=2400; f.Q.value=1.6;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0.16,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+0.035);
+  src.connect(f).connect(g).connect(snd.master);
+  src.start(t); src.stop(t+0.05);
+}
+function sndRelay(){                       // heavier contact for a mode change
+  const ctx=A(); if(!ctx) return;
+  sndKey();
+  blip(160,0.07,0.13,0,'square');
+}
+function sndAlarm(){
+  if(!A()) return;
+  blip(680,0.16,0.16,0,'square');
+  blip(510,0.16,0.16,0.19,'square');
+}
+function sndOutcome(good){
+  if(!A()) return;
+  if(good){ blip(523,0.15,0.2,0); blip(784,0.15,0.2,0.14); blip(1046,0.5,0.2,0.28); }
+  else    { blip(220,0.3,0.2,0,'sawtooth'); blip(150,0.7,0.2,0.22,'sawtooth'); }
+}
+
+/* Continuous voices follow simulation state, not input. */
+function audioFrame(){
+  const ctx=A(); if(!ctx) return;
+  const now=ctx.currentTime;
+
+  snd.bed.gain.setTargetAtTime(crt.on?1:0, now, 0.2);
+
+  const burning=!!sim.burn && sim.dv>0 && !sim.landed;
+  snd.thrust.g.gain.setTargetAtTime(burning?0.13:0, now, 0.04);
+
+  const el=elements();
+  const rho=density(el.alt), vms=el.vm*1000;
+  const q=0.5*rho*vms*vms;
+  const lvl=sim.landed?0:clamp(q/7000,0,1);
+  snd.entry.g.gain.setTargetAtTime(lvl*0.42, now, 0.15);
+  snd.entry.f.frequency.setTargetAtTime(90+lvl*420, now, 0.2);
+
+  const st=limbState();
+  if((st.overG||st.steep) && !sim.landed && performance.now()-snd.lastAlarm>1250){
+    snd.lastAlarm=performance.now();
+    sndAlarm();
+  }
+}
+
+/* ==========================================================================
    6.  FORMATTING — an instrument never prints a bare number
    ========================================================================== */
 const pad=(n,w)=>String(Math.floor(Math.abs(n))).padStart(w,'0');
@@ -1885,6 +2087,7 @@ function bindBurn(node,dir){
   const on=ev=>{
     ev.preventDefault();
     if(sim.landed) return;
+    sndKey();
     sim.burn=dir; sim.warp=1; node.dataset.live='1';
     if(node.setPointerCapture&&ev.pointerId!=null){ try{node.setPointerCapture(ev.pointerId);}catch(_){} }
   };
@@ -1904,39 +2107,56 @@ bindBurn($('k-anti'),'anti');
    seconds. The atmosphere clamps this back down; see the loop. */
 const WARPS=[1,10,60,300];
 $('k-warp').addEventListener('click',()=>{
+  sndRelay();
   sim.warp=WARPS[(WARPS.indexOf(sim.warp)+1)%WARPS.length];
   refresh();
 });
 $('k-lz').addEventListener('click',()=>{
+  sndRelay();
   sim.zone=(sim.zone+1)%ZONES.length;
   refresh();
 });
 $('k-auto').addEventListener('click',()=>{
+  sndRelay();
   sim.auto=!sim.auto;
   sim.autoState=sim.auto?'solve':'idle';
   sim.autoSol=null;
   if(!sim.auto && sim.burn==='retro') sim.burn=null;
   refresh();
 });
-$('k-reset').addEventListener('click',()=>{ insertOrbit(); hideReport(); refresh(); });
-$('rep-again').addEventListener('click',()=>{ insertOrbit(); hideReport(); refresh(); });
+$('k-reset').addEventListener('click',()=>{
+  sndRelay(); insertOrbit(); hideReport(); refresh(); });
+$('rep-again').addEventListener('click',()=>{
+  sndRelay(); insertOrbit(); hideReport(); refresh(); });
 
 $('btn-cam').addEventListener('click',()=>{
+  sndRelay();
   cam.mode=(cam.mode+1)%CAM_MODES.length;
   $('btn-cam').textContent=CAM_MODES[cam.mode];
 });
 btnTrack.node.addEventListener('click',()=>{
+  sndRelay();
   btnTrack.on=!btnTrack.on; btnTrack.node.dataset.on=btnTrack.on?'1':'';
 });
 btnOrbit.node.addEventListener('click',()=>{
+  sndRelay();
   btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
 });
+$('btn-snd').addEventListener('click',()=>{
+  /* The first press is also the user gesture the browser requires before an
+     AudioContext may make any sound at all, which is why audio starts off. */
+  const on=audioToggle();
+  $('btn-snd').dataset.on=on?'1':'0';
+  if(on) sndRelay();
+});
 $('btn-scan').addEventListener('click',()=>{
+  sndRelay();
   sim.scanOn=!sim.scanOn;
   $('btn-scan').dataset.on=sim.scanOn?'1':'';
   if(!sim.scanOn){ sim.pings=[]; sim.acq=null; sim.transient=null; }
 });
 $('btn-crt').addEventListener('click',()=>{
+  sndRelay();
   crt.on=!crt.on;
   $('btn-crt').dataset.on=crt.on?'1':'';
   $('view').classList.toggle('crt-on',crt.on);
@@ -1983,7 +2203,7 @@ const KEYMAP={KeyW:'pro',ArrowUp:'pro',KeyS:'retro',ArrowDown:'retro',
               KeyA:'norm',ArrowLeft:'norm',KeyD:'anti',ArrowRight:'anti'};
 addEventListener('keydown',e=>{
   const d=KEYMAP[e.code];
-  if(d && !e.repeat){ e.preventDefault(); sim.burn=d; sim.warp=1;
+  if(d && !e.repeat){ e.preventDefault(); sim.burn=d; sim.warp=1; sndKey();
     const n=document.querySelector('[data-burn="'+d+'"]'); if(n) n.dataset.live='1'; }
   if(e.code==='KeyT'){ $('k-warp').click(); }
   if(e.code==='KeyL'){ $('k-lz').click(); }
@@ -2011,7 +2231,7 @@ function checkOutcome(){
   const alt=V.len(sim.r)-R_P;
 
   if(sim.g>12 && !sim.landed){
-    sim.landed=true; sim.phase='LOST'; sim.burn=null;
+    sim.landed=true; sim.phase='LOST'; sim.burn=null; sndOutcome(false);
     showReport(false,'STRUCTURAL FAILURE','DECELERATION LOAD EXCEEDED LIMIT',
       sim.gPeak.toFixed(1)+' g',
       'The entry was too steep. Keep periapsis between 40 and 80 km — below that the '+
@@ -2028,6 +2248,7 @@ function checkOutcome(){
     const onTarget = miss<600;
     sim.phase = survived ? (onTarget?'DOWN':'OFF-TGT') : 'LOST';
 
+    sndOutcome(survived&&onTarget);
     if(survived && onTarget){
       showReport(true,'TOUCHDOWN','VEHICLE RECOVERED AT '+z.name, fmtKm(miss)+' km',
         'Miss distance from '+z.id+'. Touchdown at '+vImp.toFixed(0)+' m/s under canopy. '+
@@ -2169,6 +2390,7 @@ function frame(now){
   }
 
   updateScan(wall);
+  audioFrame();
   sim.trackAge+=wall;
   if(sim.trackAge>0.6 && !sim.landed) predictTrack();
 
