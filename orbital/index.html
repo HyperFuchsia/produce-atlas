@@ -122,6 +122,92 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
 }
 #stage{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
 
+/* --------------------------------------------------------------------------
+   THE TUBE
+   Layers that turn a clean render into a filmed cathode-ray display. Order,
+   bottom to top: image, bloom, scanlines, aperture grille, interlace roll,
+   glass vignette. Everything above the image is pointer-events:none — you
+   are looking through the tube, not at it.
+   -------------------------------------------------------------------------- */
+
+/* Bloom. A half-resolution copy of the frame, blurred and screen-blended, so
+   bright strokes scatter into the glass the way phosphor actually does. */
+#bloom{
+  position:absolute;inset:0;width:100%;height:100%;
+  pointer-events:none;z-index:1;
+  mix-blend-mode:screen;
+  opacity:.42;
+}
+
+#crt{position:absolute;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+
+/* Horizontal raster. The single most important tell. */
+.crt-scan{
+  position:absolute;inset:0;
+  background:repeating-linear-gradient(to bottom,
+    rgba(0,0,0,0) 0, rgba(0,0,0,0) 2px,
+    rgba(0,0,0,.36) 2px, rgba(0,0,0,.36) 3px);
+}
+
+/* Aperture grille. A colour tube splits the beam into vertical R/G/B stripes;
+   at this pitch you do not see stripes, you see the chromatic fringing that
+   makes bright text sit on glass rather than on paper. */
+.crt-grille{
+  position:absolute;inset:0;
+  mix-blend-mode:overlay;opacity:.16;
+  background:repeating-linear-gradient(to right,
+    rgba(255,0,0,.65) 0,rgba(255,0,0,.65) 1px,
+    rgba(0,255,0,.65) 1px,rgba(0,255,0,.65) 2px,
+    rgba(0,0,255,.65) 2px,rgba(0,0,255,.65) 3px);
+}
+
+/* Interlace roll: the beat frequency between the field rate and the camera
+   photographing it. Slow, faint, and almost subliminal. */
+.crt-roll{
+  position:absolute;left:0;right:0;height:26%;
+  background:linear-gradient(to bottom,
+    transparent 0,
+    rgba(255,255,255,.05) 44%,
+    rgba(255,255,255,.10) 50%,
+    rgba(255,255,255,.05) 56%,
+    transparent 100%);
+  animation:crt-roll 6.4s linear infinite;
+  will-change:transform;
+}
+@keyframes crt-roll{from{transform:translate3d(0,-30%,0)}to{transform:translate3d(0,400%,0)}}
+
+.crt-vig{
+  position:absolute;inset:0;
+  background:
+    radial-gradient(132% 120% at 50% 50%, transparent 52%, rgba(0,0,0,.45) 84%, rgba(0,0,0,.86) 100%),
+    radial-gradient(60% 60% at 0% 0%, rgba(0,0,0,.5), transparent 70%),
+    radial-gradient(60% 60% at 100% 100%, rgba(0,0,0,.5), transparent 70%);
+}
+
+/* Mains ripple on the high-voltage supply. Amplitude small enough that you
+   register it as life rather than as a fault. */
+#view.crt-on{animation:crt-hv 5.3s linear infinite}
+@keyframes crt-hv{
+  0%,100%{opacity:1}
+  9%{opacity:.985}10%{opacity:1}
+  22%{opacity:.945}23.5%{opacity:1}
+  38%{opacity:.975}39%{opacity:1}
+  47%{opacity:.93}48.5%{opacity:1}
+  61%{opacity:.99}62%{opacity:1}
+  73%{opacity:.94}74.5%{opacity:1}
+  81%{opacity:.97}82%{opacity:1}
+  92%{opacity:.955}93.5%{opacity:1}
+}
+
+/* CRT off: a clean render, for anyone who wants to actually read it. */
+#view:not(.crt-on) #crt,
+#view:not(.crt-on) #bloom{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  .crt-roll{display:none}
+  #view.crt-on{animation:none}
+}
+
 /* An operable overlay sits above the canvas; everything else is drawn. */
 /* Parked on the right edge, vertically centred: the corners belong to the
    registration crosses, and the middle of that edge is the only strip of the
@@ -329,11 +415,19 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
   <!-- ==================== VIEWPORT ==================== -->
   <main id="view">
     <canvas id="stage"></canvas>
+    <canvas id="bloom" aria-hidden="true"></canvas>
+    <div id="crt" aria-hidden="true">
+      <div class="crt-scan"></div>
+      <div class="crt-grille"></div>
+      <div class="crt-roll"></div>
+      <div class="crt-vig"></div>
+    </div>
 
     <div id="viewtools">
       <button id="btn-cam"   data-on="1">CAM ORB</button>
       <button id="btn-track" data-on="1">TRACK</button>
       <button id="btn-orbit" data-on="1">CONIC</button>
+      <button id="btn-crt"   data-on="1">CRT</button>
     </div>
 
     <div id="report" role="dialog" aria-modal="true">
@@ -898,7 +992,7 @@ function label(text,x,y,colour,boxed,align){
     ctx.strokeStyle=colour; ctx.lineWidth=1; ctx.shadowBlur=0;
     ctx.strokeRect(Math.round(bx)+.5, Math.round(y-7)+.5, Math.round(w+8), 14);
   }
-  ctx.fillStyle=colour; ctx.shadowColor=colour; ctx.shadowBlur=5;
+  ctx.fillStyle=colour;
   ctx.fillText(text, align==='right'?x-3:align==='center'?x:x+2, y);
   ctx.shadowBlur=0;
 }
@@ -907,6 +1001,92 @@ function label(text,x,y,colour,boxed,align){
 /* ==========================================================================
    5.  THE FRAME
    ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   TUBE BEHAVIOUR
+   Persistence, sparkle, beam jitter and the bloom pass. These run on the
+   canvas; the raster and glass live in CSS above it.
+   -------------------------------------------------------------------------- */
+const crt={on:true, fade:0.5, jx:0, jy:0, tearUntil:0, tearOff:0};
+let bloomCv=null, bloomCtx=null;
+
+/* Phosphor colours a speck can be struck in — the same five the display
+   draws with, so the sparkle belongs to the image rather than sitting on it. */
+const SPARK=['#EAFBFF','#22FF88','#D8FF3C','#8CE6FF','#FFD23D','#FF52D9'];
+
+/* Open the frame. With the tube live the previous frame is dimmed rather than
+   erased, so anything that moves drags a short phosphor trail behind it —
+   the characteristic smear of a vector display. Beam jitter goes into the
+   transform here, including the occasional horizontal tear. */
+function beginFrame(){
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(!crt.on){ ctx.clearRect(0,0,W,H); return; }
+
+  ctx.fillStyle='rgba(0,0,0,'+crt.fade+')';
+  ctx.fillRect(0,0,W,H);
+
+  crt.jx=(Math.random()-0.5)*0.8;
+  crt.jy=(Math.random()-0.5)*0.6;
+  const now=performance.now();
+  if(now>crt.tearUntil && Math.random()<0.0045){
+    crt.tearUntil=now+70+Math.random()*90;
+    crt.tearOff=(Math.random()-0.5)*11;
+  }
+  const tx = now<crt.tearUntil ? crt.tearOff : 0;
+  ctx.setTransform(DPR,0,0,DPR,(crt.jx+tx)*DPR,crt.jy*DPR);
+}
+
+/* Sparkle. Phosphor grain: specks struck at random across the tube, weighted
+   toward the centre where the image actually is, decaying through the
+   persistence fade so each one twinkles rather than blinking. */
+function drawSparkle(){
+  const rad=Math.min(W,H)*0.55;
+  for(let i=0;i<70;i++){
+    const a=Math.random()*6.283185;
+    const r=Math.sqrt(Math.random())*rad;
+    const x=(CX+Math.cos(a)*r)|0, y=(CY+Math.sin(a)*r)|0;
+    const c=SPARK[(Math.random()*SPARK.length)|0];
+    const big=Math.random()<0.2;
+    ctx.fillStyle=c;
+    ctx.globalAlpha=0.22+Math.random()*0.78;
+    if(big){ ctx.shadowColor=c; ctx.shadowBlur=9; }
+    ctx.fillRect(x,y,big?2:1,big?2:1);
+    if(big) ctx.shadowBlur=0;
+  }
+  /* A few specks anywhere on the tube, so the corners are not dead. */
+  for(let i=0;i<22;i++){
+    ctx.fillStyle=SPARK[(Math.random()*SPARK.length)|0];
+    ctx.globalAlpha=0.15+Math.random()*0.5;
+    ctx.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);
+  }
+  /* A few land hot. These are what make the tube read as alive rather than
+     as a texture laid over the top of it. */
+  if(Math.random()<0.55){
+    const n=1+((Math.random()*3)|0);
+    for(let i=0;i<n;i++){
+      const a=Math.random()*6.283185, r=Math.sqrt(Math.random())*rad*0.9;
+      const c=SPARK[(Math.random()*SPARK.length)|0];
+      ctx.fillStyle=c; ctx.shadowColor=c; ctx.shadowBlur=16;
+      ctx.globalAlpha=0.85;
+      ctx.fillRect((CX+Math.cos(a)*r)|0,(CY+Math.sin(a)*r)|0,2,2);
+    }
+  }
+  ctx.globalAlpha=1; ctx.shadowBlur=0;
+}
+
+/* Bloom pass: copy the frame at half resolution into a canvas that CSS blurs
+   and screen-blends back over the top. One drawImage per frame. */
+function drawBloom(){
+  if(!bloomCtx) return;
+  bloomCtx.setTransform(1,0,0,1,0,0);
+  bloomCtx.filter='none';
+  bloomCtx.clearRect(0,0,bloomCv.width,bloomCv.height);
+  /* Blurring here costs a quarter-resolution buffer; doing it with a CSS
+     filter would blur the whole compositor layer every frame instead. */
+  bloomCtx.filter='blur(2px)';
+  bloomCtx.drawImage(cv,0,0,bloomCv.width,bloomCv.height);
+  bloomCtx.filter='none';
+}
 
 let stars=[];
 function seedStars(){
@@ -929,7 +1109,7 @@ function drawGraticule(){
       const p=geoToVec(lat,lon,sim.spin,1);
       pts.push(onNearSide(p)?project(p):null);
     }
-    strokePolyline(pts, col+(lat===0?0.75:0.26)+')', 1, lat===0?7:0);
+    strokePolyline(pts, col+(lat===0?0.75:0.26)+')', 1, 0);
   }
   for(let lon=-180; lon<180; lon+=15){
     const pts=[];
@@ -937,7 +1117,7 @@ function drawGraticule(){
       const p=geoToVec(lat,lon,sim.spin,1);
       pts.push(onNearSide(p)?project(p):null);
     }
-    strokePolyline(pts, col+(lon===0?0.75:0.26)+')', 1, lon===0?7:0);
+    strokePolyline(pts, col+(lon===0?0.75:0.26)+')', 1, 0);
   }
 }
 
@@ -948,7 +1128,7 @@ function drawCoasts(){
       const p=geoToVec(arr[i+1],arr[i],sim.spin,1.002);
       pts.push(onNearSide(p)?project(p):null);
     }
-    strokePolyline(pts,'rgba(216,255,60,0.92)',1.1,6);
+    strokePolyline(pts,'rgba(216,255,60,0.95)',1.1,0);
   }
 }
 
@@ -965,7 +1145,7 @@ function drawHazards(){
       const p=geoToVec(lat,lon,sim.spin,1.004);
       pts.push(onNearSide(p)?project(p):null);
     }
-    strokePolyline(pts,'rgba(255,58,44,0.85)',1.1,7,true);
+    strokePolyline(pts,'rgba(255,58,44,0.9)',1.1,0,true);
   }
 }
 
@@ -976,7 +1156,7 @@ function drawGroundTrack(){
     return onNearSide(p)?project(p):null;
   });
   ctx.setLineDash([3,4]);
-  strokePolyline(pts,'rgba(140,230,255,0.8)',1,6);
+  strokePolyline(pts,'rgba(140,230,255,0.85)',1,0);
   ctx.setLineDash([]);
 
   /* Predicted touchdown. Drawn as an X rather than a dot so it never reads
@@ -1025,7 +1205,7 @@ function drawConic(){
     const behind = cc[2] < 0 && Math.hypot(cc[0],cc[1]) < 1;
     pts.push(behind?null:project(s));
   }
-  strokePolyline(pts,'rgba(255,210,61,0.75)',1.1,7);
+  strokePolyline(pts,'rgba(255,210,61,0.8)',1.1,0);
 }
 
 function drawZone(){
@@ -1045,7 +1225,7 @@ function drawZone(){
       const p=geoToVec(lat,lon,sim.spin,1.004);
       pts.push(onNearSide(p)?project(p):null);
     }
-    strokePolyline(pts,'rgba(255,58,44,0.5)',1,4,true);
+    strokePolyline(pts,'rgba(255,58,44,0.55)',1,0,true);
   }
   drawSprite(SPRITES.beacon,q.x,q.y,2,'#FF3A2C',9);
   label(z.id+' '+z.name,q.x+10,q.y-10,'#FF3A2C',true);
@@ -1105,7 +1285,7 @@ function drawFrame(){
 }
 
 function render(){
-  ctx.clearRect(0,0,W,H);
+  beginFrame();
   drawStars();
   drawGraticule();
   drawCoasts();
@@ -1116,6 +1296,7 @@ function render(){
   drawContacts();
   drawVessel();
   drawFrame();
+  if(crt.on){ drawSparkle(); drawBloom(); }
 }
 
 
@@ -1259,6 +1440,11 @@ btnTrack.node.addEventListener('click',()=>{
 });
 btnOrbit.node.addEventListener('click',()=>{
   btnOrbit.on=!btnOrbit.on; btnOrbit.node.dataset.on=btnOrbit.on?'1':'';
+});
+$('btn-crt').addEventListener('click',()=>{
+  crt.on=!crt.on;
+  $('btn-crt').dataset.on=crt.on?'1':'';
+  $('view').classList.toggle('crt-on',crt.on);
 });
 
 /* --- Viewport gestures: one finger orbits, two fingers zoom -------------- */
@@ -1423,6 +1609,11 @@ function resize(){
   cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
   ctx=cv.getContext('2d');
   ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(bloomCv){
+    bloomCv.width=Math.max(1,Math.round(W*0.42));
+    bloomCv.height=Math.max(1,Math.round(H*0.42));
+    bloomCtx=bloomCv.getContext('2d');
+  }
   CX=W/2; CY=H/2;
   F=Math.min(W,H)/(2*Math.tan(cam.fov/2));
   seedStars();
@@ -1489,6 +1680,8 @@ function frame(now){
 }
 
 /* --- Boot --------------------------------------------------------------- */
+bloomCv=$('bloom');
+$('view').classList.add('crt-on');
 new ResizeObserver(resize).observe($('stage'));
 insertOrbit();
 resize();
