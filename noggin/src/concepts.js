@@ -5,9 +5,11 @@
    being takes and says one thing about it, so the explanation happens in the
    scene and the text is only the commentary.
 
-   Steps run in order. `form` morphs the being; `wire` switches a wireframe
-   overlay on or off; `gap` is the pause after the line, which is what gives
-   the change time to land before the next sentence arrives. */
+   Steps run in order. `form` morphs the being ('self' returns it to its own
+   shape); `phase` changes what it is made of; `wire` switches a wireframe
+   overlay on or off; `gap` is the pause after the line, and `hold` waits on
+   the scene instead of on a clock — which is what gives the change time to
+   land before the next sentence arrives. */
 (function (NG) {
   'use strict';
 
@@ -20,13 +22,51 @@
     line: { kind: 'box', hx: 0.024, hy: 1.0, hz: 0.024, color: [0.88, 0.93, 1.0] },
     square: { kind: 'box', hx: 0.85, hy: 0.85, hz: 0.024, color: [0.78, 0.88, 1.0] },
     cube: { kind: 'box', hx: 0.72, hy: 0.72, hz: 0.72, color: [0.68, 0.83, 1.0] },
-    seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] }
+    seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] },
+    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, color: [0.42, 0.62, 0.92] },
+    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, color: [0.72, 0.82, 1.0] }
   };
 
   C.LESSONS = {
+    /* Asked what it is made of, it does not answer — it demonstrates, at
+       length, at its own pace, and does not wait for you to catch up. */
+    matter: {
+      match: ['solid liquid or gas', 'solid liquid and gas', 'solid or liquid',
+        'liquid or gas', 'liquid or a gas', 'are you solid', 'are you a solid',
+        'are you a liquid', 'are you a gas', 'state of matter', 'states of matter',
+        'what are you made of', 'what are you made out of'],
+      steps: [
+        { text: 'Solid, liquid or gas.', phase: 'poised', gap: 0.85 },
+
+        { text: 'Hold on. Let me check.', phase: 'solid', hold: 'land', gap: 0.45 },
+
+        /* It asks, and the gap is exactly long enough to make you start
+           thinking of an answer. */
+        { text: 'What do you think now?', gap: 1.7 },
+
+        { text: 'No. Do not answer. I was not finished.',
+          form: 'puddle', phase: 'liquid', gap: 0.25 },
+
+        { text: 'This is a puddle of me. I have no idea how I am still talking.', gap: 1.9 },
+
+        { text: 'And this—', form: 'cloud', phase: 'gas', gap: 0.2 },
+
+        { text: '—is gas. Try grabbing me now. Go on. Try.', gap: 2.2 },
+
+        { text: 'So: all three, obviously. I am whichever one is funnier at the time.',
+          form: 'self', phase: 'free', gap: 0.6 },
+
+        { text: 'Ask me something harder. I have been practising.' }
+      ]
+    },
+
     dimensions: {
-      match: ['fourth dimension', '4th dimension', 'forth dimension', ' 4d', 'tesseract',
-        'hypercube', 'dimension', 'dimensions', 'higher dimension'],
+      /* Deliberately no bare "dimension": "what are its dimensions" is a
+         question about a specimen's size, not a request for a physics lesson. */
+      match: ['fourth dimension', '4th dimension', 'forth dimension', ' 4d ', 'tesseract',
+        'hypercube', 'higher dimension', 'other dimension', 'more dimensions',
+        'dimensions look like', 'dimension look like', 'what is a dimension',
+        'explain dimensions', 'the dimensions work'],
       steps: [
         { text: 'The fourth dimension. Right. I cannot show you one, but I can show you its shadow. Start from nothing and we will build up to it.', gap: 0.9 },
 

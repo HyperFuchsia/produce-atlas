@@ -1688,6 +1688,29 @@
     }
   };
 
+  /* Landing on something. An impact does two things at once: the face that
+     struck decelerates into the body, and the ring around it is thrown
+     outward. Only the first reads as a dent; both together read as weight. */
+  Softbody.prototype.impact = function (dir, strength) {
+    const pos = this.pos, vel = this.vel;
+    const dx = dir[0], dy = dir[1], dz = dir[2];
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const px = pos[i3], py = pos[i3 + 1], pz = pos[i3 + 2];
+      const l = Math.sqrt(px * px + py * py + pz * pz) || 1;
+      const nx = px / l, ny = py / l, nz = pz / l;
+      const d = nx * dx + ny * dy + nz * dz;
+      if (d <= 0) continue;                    /* the far side is untouched */
+      const w = d * d * strength;
+      vel[i3] -= dx * w; vel[i3 + 1] -= dy * w; vel[i3 + 2] -= dz * w;
+      /* Whatever of the surface direction is perpendicular to the impact is
+         where the displaced volume has to go. */
+      vel[i3] += (nx - dx * d) * w * 0.75;
+      vel[i3 + 1] += (ny - dy * d) * w * 0.75;
+      vel[i3 + 2] += (nz - dz * d) * w * 0.75;
+    }
+  };
+
   NG.Softbody = Softbody;
 })(window.NG = window.NG || {});
 
@@ -1899,6 +1922,27 @@
       out[0] = (dx / m) * spec.hx;
       out[1] = (dy / m) * spec.hy;
       out[2] = (dz / m) * spec.hz;
+      return out;
+    }
+    /* A liquid at rest: wide, domed on top, nearly flat underneath, with a
+       rim that is not quite a circle. Latitude drives height and the
+       horizontal part of the direction is kept as-is, so the shell flattens
+       into a disc without any part of it folding through another. */
+    if (spec.kind === 'puddle') {
+      const az = Math.atan2(dz, dx);
+      const lobe = 1 + 0.10 * Math.sin(az * 3 + 0.7) + 0.06 * Math.sin(az * 5 - 1.3);
+      out[0] = dx * spec.radius * lobe;
+      out[1] = dy * (dy > 0 ? spec.dome : spec.base);
+      out[2] = dz * spec.radius * lobe;
+      return out;
+    }
+    /* A gas has no profile worth revolving. Three interfering sines give a
+       lumpy blob the shader can then churn, and keeping it radial means the
+       shape stays star-convex, so picking and the camera fit still work. */
+    if (spec.kind === 'cloud') {
+      const n = Math.sin(dx * 3.1 + 1.7) * Math.sin(dy * 2.6 - 0.9) * Math.sin(dz * 3.4 + 2.2);
+      const r = spec.radius * (1 + spec.wobble * n);
+      out[0] = dx * r; out[1] = dy * r; out[2] = dz * r;
       return out;
     }
 
@@ -2483,9 +2527,11 @@
    being takes and says one thing about it, so the explanation happens in the
    scene and the text is only the commentary.
 
-   Steps run in order. `form` morphs the being; `wire` switches a wireframe
-   overlay on or off; `gap` is the pause after the line, which is what gives
-   the change time to land before the next sentence arrives. */
+   Steps run in order. `form` morphs the being ('self' returns it to its own
+   shape); `phase` changes what it is made of; `wire` switches a wireframe
+   overlay on or off; `gap` is the pause after the line, and `hold` waits on
+   the scene instead of on a clock — which is what gives the change time to
+   land before the next sentence arrives. */
 (function (NG) {
   'use strict';
 
@@ -2498,13 +2544,51 @@
     line: { kind: 'box', hx: 0.024, hy: 1.0, hz: 0.024, color: [0.88, 0.93, 1.0] },
     square: { kind: 'box', hx: 0.85, hy: 0.85, hz: 0.024, color: [0.78, 0.88, 1.0] },
     cube: { kind: 'box', hx: 0.72, hy: 0.72, hz: 0.72, color: [0.68, 0.83, 1.0] },
-    seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] }
+    seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] },
+    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, color: [0.42, 0.62, 0.92] },
+    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, color: [0.72, 0.82, 1.0] }
   };
 
   C.LESSONS = {
+    /* Asked what it is made of, it does not answer — it demonstrates, at
+       length, at its own pace, and does not wait for you to catch up. */
+    matter: {
+      match: ['solid liquid or gas', 'solid liquid and gas', 'solid or liquid',
+        'liquid or gas', 'liquid or a gas', 'are you solid', 'are you a solid',
+        'are you a liquid', 'are you a gas', 'state of matter', 'states of matter',
+        'what are you made of', 'what are you made out of'],
+      steps: [
+        { text: 'Solid, liquid or gas.', phase: 'poised', gap: 0.85 },
+
+        { text: 'Hold on. Let me check.', phase: 'solid', hold: 'land', gap: 0.45 },
+
+        /* It asks, and the gap is exactly long enough to make you start
+           thinking of an answer. */
+        { text: 'What do you think now?', gap: 1.7 },
+
+        { text: 'No. Do not answer. I was not finished.',
+          form: 'puddle', phase: 'liquid', gap: 0.25 },
+
+        { text: 'This is a puddle of me. I have no idea how I am still talking.', gap: 1.9 },
+
+        { text: 'And this—', form: 'cloud', phase: 'gas', gap: 0.2 },
+
+        { text: '—is gas. Try grabbing me now. Go on. Try.', gap: 2.2 },
+
+        { text: 'So: all three, obviously. I am whichever one is funnier at the time.',
+          form: 'self', phase: 'free', gap: 0.6 },
+
+        { text: 'Ask me something harder. I have been practising.' }
+      ]
+    },
+
     dimensions: {
-      match: ['fourth dimension', '4th dimension', 'forth dimension', ' 4d', 'tesseract',
-        'hypercube', 'dimension', 'dimensions', 'higher dimension'],
+      /* Deliberately no bare "dimension": "what are its dimensions" is a
+         question about a specimen's size, not a request for a physics lesson. */
+      match: ['fourth dimension', '4th dimension', 'forth dimension', ' 4d ', 'tesseract',
+        'hypercube', 'higher dimension', 'other dimension', 'more dimensions',
+        'dimensions look like', 'dimension look like', 'what is a dimension',
+        'explain dimensions', 'the dimensions work'],
       steps: [
         { text: 'The fourth dimension. Right. I cannot show you one, but I can show you its shadow. Start from nothing and we will build up to it.', gap: 0.9 },
 
@@ -2752,7 +2836,8 @@
           'A placeholder. This sphere is what I look like when no one has told me otherwise.'
         ]),
         'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
-        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it. Or ask me what the fourth dimension looks like.']
+        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.',
+        'Or ask me something I cannot hand you. What the fourth dimension looks like. Whether I am a solid, a liquid or a gas.']
       };
     }
 
@@ -2907,6 +2992,9 @@
   const LINGER = 20;
   const FADE = 1.2;
   const MAX_VISIBLE = 3;
+  /* Ceiling on a scene hold. A condition that never arrives must not be able
+     to strand the conversation with lines still queued behind it. */
+  const HOLD_MAX = 8;
 
   function Chat(audio, brain, els) {
     this.audio = audio;
@@ -2921,6 +3009,8 @@
     this.full = '';
     this.shown = 0;
     this.gap = 0;
+    this.hold = null;       /* predicate: true while the scene is still busy */
+    this.holdFor = 0;
     this.lastActivity = -1e9;
     this._blip = 0;
     this.onSpawn = null;
@@ -2984,12 +3074,19 @@
     }
   };
 
-  /* Run an ordered script: each item may carry its own action and its own
-     pause, which is what lets an explanation pace itself against what the
-     scene is doing. */
+  /* Run an ordered script: each item may carry its own action, its own pause,
+     and its own condition to wait on, which is what lets an explanation pace
+     itself against what the scene is doing. A `hold` beats a `gap` for
+     anything physical — the line after a fall should land when the body does,
+     not after however long the fall was guessed to take. */
   Chat.prototype.script = function (items) {
     for (let i = 0; i < items.length; i++) {
-      this.queue.push({ text: items[i].text, after: items[i].after || null, gap: items[i].gap });
+      this.queue.push({
+        text: items[i].text,
+        after: items[i].after || null,
+        gap: items[i].gap,
+        hold: items[i].hold || null
+      });
     }
   };
 
@@ -2997,6 +3094,10 @@
     const text = String(raw || '').trim();
     if (!text) return;
     this.lastActivity = 0;
+
+    /* Typing is always allowed to break a wait: whatever the scene was doing,
+       the person in front of it takes priority. */
+    this.hold = null;
 
     /* A second send finishes the current line rather than stacking up. Run its
        pending callback too, or an interrupted line would swallow its spawn. */
@@ -3026,12 +3127,18 @@
     this._ageLines(dt);
 
     if (!this.typingEl) {
+      if (this.hold) {
+        this.holdFor += dt;
+        if (this.holdFor < HOLD_MAX && this.hold()) return;
+        this.hold = null;
+      }
       if (this.gap > 0) { this.gap -= dt; return; }
       if (!this.queue.length) return;
       const item = this.queue.shift();
       this.full = item.text;
       this._after = item.after;
       this._gap = item.gap !== undefined ? item.gap : LINE_GAP;
+      this._hold = item.hold || null;
       this.shown = 0;
       this.typingEl = this._append('him typing', '');
       return;
@@ -3052,6 +3159,11 @@
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
       this.gap = this._gap;
+      this.hold = this._hold;
+      this.holdFor = 0;
+      this._hold = null;
+      /* The action runs after the hold is armed, so a hold can wait on
+         whatever the action just set in motion. */
       this._runAfter();
     }
   };
@@ -3145,6 +3257,8 @@ layout(location = 4) in float aStretch;
 uniform mat4 uModel;
 uniform mat4 uViewProj;
 uniform mat4 uLightVP;
+uniform float uTime;
+uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
 
 out vec3 vWPos;
 out vec3 vNor;
@@ -3154,7 +3268,18 @@ out float vStretch;
 out vec4 vLPos;
 
 void main() {
-  vec4 wp = uModel * vec4(aPos, 1.0);
+  vec3 p = aPos;
+  /* A gas has no surface to hold still. Three interfering sines push the
+     shell along its own normal so the cloud churns rather than sitting there
+     being a lumpy ball. The solver never sees this, so picking and the camera
+     fit still work against the shape underneath. */
+  if (uGas > 0.001) {
+    float n = sin(p.x * 2.6 + uTime * 1.7)
+            * sin(p.y * 2.2 - uTime * 1.3)
+            * sin(p.z * 2.9 + uTime * 1.9);
+    p += normalize(aNor) * n * 0.34 * uGas;
+  }
+  vec4 wp = uModel * vec4(p, 1.0);
   vec3 wn = mat3(uModel) * aNor;
   vWPos = wp.xyz;
   vNor = wn;
@@ -3191,6 +3316,8 @@ uniform vec3 uCoreColor;
 uniform float uVoice;        /* 0..1, rises while it is speaking */
 uniform float uMorph;        /* 0 = itself, 1 = fully wearing a form */
 uniform vec3 uFormColor;
+uniform float uGas;          /* 0 = a surface, 1 = a cloud of itself */
+uniform float uInert;        /* 0 = alive and looking at you, 1 = an object */
 
 out vec4 oColor;
 ${COMMON}
@@ -3286,12 +3413,46 @@ void main() {
       vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
       vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
       form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
-      form += iri * pow(1.0 - ndvAll, 3.0) * 0.55;
-      form += uFocusColor * focus * 0.5;
+      // The film along the rim and the focal point are the two things that
+      // make it look inhabited, so an inert body has to lose both — otherwise
+      // turning to stone just tints a thing that is still obviously awake.
+      form += (iri * pow(1.0 - ndvAll, 3.0) * 0.55 + uFocusColor * focus * 0.5)
+            * (1.0 - uInert);
+      // What replaces them is a plain rim light, so a dark solid still has an
+      // edge against a dark room instead of reading as a hole.
+      form += uRimColor * pow(1.0 - ndvAll, 3.2) * 0.35 * uInert;
       col = mix(col, form, uMorph);
     }
 
-    oColor = vec4(col, 1.0);
+    // Vapour. Nothing here is a surface any more: brightness comes from how
+    // much of it you are looking through, so the silhouette goes soft and the
+    // middle nearly vanishes. Alpha is the accumulation weight — the renderer
+    // draws this additively, front and back faces both, so the cloud is
+    // thickest exactly where there is most of it in the way.
+    float alpha = 1.0;
+    if (uGas > 0.001) {
+      // Two octaves of drifting noise, squared. A single smooth term left the
+      // shell looking like frosted glass; the point of the square is to make
+      // the density patchy rather than evenly hazy.
+      float n1 = sin(vWPos.x * 5.1 + uTime * 1.9)
+               * sin(vWPos.y * 4.3 - uTime * 1.5)
+               * sin(vWPos.z * 4.7 + uTime * 1.7);
+      float n2 = sin(vWPos.x * 11.3 - uTime * 2.7)
+               * sin(vWPos.y * 9.7 + uTime * 2.2)
+               * sin(vWPos.z * 10.9 - uTime * 3.1);
+      float churn = clamp(0.5 + 0.55 * n1 + 0.30 * n2, 0.0, 1.0);
+      // Thin toward the silhouette, not thick: a cloud has no edge, and
+      // brightening the rim is exactly what made it look like an object.
+      float body = ndvAll;
+      vec3 vapour = (uCoreColor * 0.5 + vec3(0.55, 0.62, 0.78)) * (0.35 + 0.90 * churn);
+      vapour += uFocusColor * focus * 0.6;
+      col = mix(col, vapour, uGas);
+      // Squared, so the density falls off hard toward the silhouette and the
+      // closed shell stops having a visible outline at all.
+      alpha = mix(1.0, 0.26 * (0.12 + churn * churn * 1.5) * (0.03 + 0.97 * body * body), uGas);
+    }
+
+    oColor = vec4(col, alpha);
     return;
   }
 
@@ -3605,7 +3766,10 @@ void main() {
 
   Renderer.prototype._buildFloor = function () {
     const gl = this.gl;
-    const y = -3.35, e = 30;
+    /* Published, because anything that has to land on the floor needs to know
+       where the floor is. */
+    const y = this.floorY = -3.35;
+    const e = 30;
     const verts = new Float32Array([
       -e, y, -e, e, y, -e, e, y, e,
       -e, y, -e, e, y, e, -e, y, e
@@ -3964,8 +4128,12 @@ void main() {
     gl.useProgram(pr.p);
     gl.uniformMatrix4fv(pr.u.uModel, false, state.model);
     gl.uniformMatrix4fv(pr.u.uLightVP, false, state.lightVP);
-    gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
-    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    /* A cloud casting a hard-edged shadow is the one thing that would give
+       the gas away, so above halfway it stops casting one. */
+    if (!(state.gas > 0.5)) {
+      gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
+      gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    }
     this.drawProps(state.props, pr);
   };
 
@@ -4048,8 +4216,28 @@ void main() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
     gl.uniform1i(pr.u.uShadow, 0);
+
+    /* Vapour accumulates instead of occluding: additive, no depth write, and
+       with culling off it is drawn through both faces, which is what makes it
+       thicken toward the silhouette on its own. */
+    const gas = state.gas || 0;
+    gl.uniform1f(pr.u.uGas, gas);
+    gl.uniform1f(pr.u.uInert, state.inert || 0);
+    if (gas > 0.01) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.depthMask(false);
+    }
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    if (gas > 0.01) {
+      gl.disable(gl.BLEND);
+      gl.depthMask(true);
+    }
+    /* Props share this program, and the billow in the vertex shader is not
+       material-gated, so it has to be switched off before they are drawn. */
+    gl.uniform1f(pr.u.uGas, 0);
+
     this.drawProps(state.props, pr);
     this.drawProps(state.halos, pr);
 
@@ -4301,6 +4489,64 @@ void main() {
     osc.start(t); osc.stop(t + 0.09);
   };
 
+  /* Something heavy arriving on the floor. A sine dropping fast under a
+     filtered noise transient — the noise is the contact, the sine is the mass
+     behind it. strength 0..1. */
+  Audio.prototype.thud = function (strength) {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const s = Math.max(0.1, Math.min(1, strength));
+    const dur = 0.30 + s * 0.30;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110 + s * 60, t);
+    osc.frequency.exponentialRampToValueAtTime(28, t + dur);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.20 + s * 0.24, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + dur + 0.05);
+
+    this._noise(0.09 + s * 0.06, 'lowpass', 260 + s * 340, 0.7, 0.16 + s * 0.14, t);
+  };
+
+  /* Losing structural integrity. A wide band sagging downward, wet rather
+     than percussive. */
+  Audio.prototype.slosh = function () {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const f = this._noise(0.75, 'bandpass', 900, 1.6, 0.13, t);
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(140, t + 0.7);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(52, t + 0.6);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.11, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+    osc.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + 0.7);
+  };
+
+  /* Boiling off. The band climbs and opens out, which is the opposite
+     gesture to the slosh and reads as leaving rather than arriving. */
+  Audio.prototype.hiss = function () {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const f = this._noise(1.1, 'bandpass', 380, 2.4, 0.10, t);
+    f.frequency.setValueAtTime(380, t);
+    f.frequency.exponentialRampToValueAtTime(5200, t + 0.95);
+    f.Q.setValueAtTime(2.4, t);
+    f.Q.linearRampToValueAtTime(0.5, t + 0.95);
+  };
+
   Audio.prototype.click = function () {
     if (!this.ready || !this.enabled) return;
     this._noise(0.05, 'highpass', 2400, 0.8, 0.08, this.ctx.currentTime);
@@ -4366,6 +4612,44 @@ void main() {
     base: [0.026, 0.029, 0.025]
   };
 
+  /* What it is currently made of. Asked whether it is a solid, a liquid or a
+     gas, it does not answer in words — it becomes each one, and each one has
+     to behave differently or the demonstration is a lie.
+
+     `freeze` suppresses the idle drift, because the funniest part of turning
+     to stone is that it stops floating first. `fall` hands it over to gravity.
+     `rise` is where it settles when nothing is pulling it down. */
+  const GRAVITY = 9.4;
+  const MATTER = {
+    free:   { stiffness: 165, coupling: 900,  damping: 5.5,  freeze: 0,    gas: 0, inert: 0,    halo: 1,    fall: false, rise: 0 },
+    /* Stopped dead, still deciding — so it holds still but stays awake. */
+    poised: { stiffness: 210, coupling: 900,  damping: 7.0,  freeze: 1,    gas: 0, inert: 0,    halo: 0.75, fall: false, rise: 0 },
+    solid:  { stiffness: 470, coupling: 700,  damping: 9.0,  freeze: 1,    gas: 0, inert: 1,    halo: 0,    fall: true,  rise: 0 },
+    /* Floppiness is bought with damping and coupling, not by dropping the
+       restoring force: the spring is what carries the body to its new shape
+       at all, and a first attempt at k=38 left it lagging so far behind the
+       melt that the shell tore itself into shards. Slow and heavily coupled
+       reads as liquid; weightless does not. */
+    liquid: { stiffness: 110, coupling: 1400, damping: 2.8,  freeze: 1,    gas: 0, inert: 0.25, halo: 0,    fall: true,  rise: 0 },
+    gas:    { stiffness: 95,  coupling: 1500, damping: 3.4,  freeze: 0.55, gas: 1, inert: 0,    halo: 0,    fall: false, rise: 0.4 }
+  };
+
+  /* How each state is lit. `amount` is how far it stops being iridescent —
+     stone is fully opaque and dead, vapour keeps most of its own glow. The
+     stone is dark on purpose: the joke only lands if the change is obvious
+     across the room. */
+  const SKIN = {
+    free:   { color: [0.90, 0.90, 0.90], amount: 0 },
+    poised: null,                                        /* undecided: unchanged */
+    solid:  { color: [0.11, 0.115, 0.13], amount: 1 },
+    liquid: { color: [0.42, 0.62, 0.92], amount: 1 },
+    gas:    { color: [0.72, 0.82, 1.00], amount: 0.35 }
+  };
+
+  /* A beat between hardening and dropping, so the fall reads as a consequence
+     of turning to stone rather than as the same event. */
+  const HARDEN_BEAT = 0.45;
+
   /* Nothing occupies the sides any more. The only reserved area is the
      dialogue band along the bottom, so the stage is centred horizontally and
      lifted clear of it. */
@@ -4415,6 +4699,24 @@ void main() {
     this.leanDir = [0, 0, 0];
     this.voice = 0;
     this.focusDir = [0, 0, 1];
+
+    /* State of matter. `fallY` is a vertical offset on top of the drift, so
+       gravity can act on it without the idle motion having to know. */
+    this.phase = 'free';
+    this.fallY = 0;
+    this.fallV = 0;
+    this.fallDelay = 0;
+    this.landed = false;
+    this.restLow = 1.15;
+    this.freeze = 0;
+    this.gas = 0;
+    this.inert = 0;
+    this.poolColor = BEING.pool.slice();
+    this.haloScale = 1;
+    this.spin = 0;
+    this.stageBias = 0;
+    this.shake = 0;
+
     this.halos = [];
     this.wire = null;          /* wireframe overlay, e.g. the tesseract */
     this.wireSpin = 0;
@@ -4469,6 +4771,7 @@ void main() {
       this.dirs[i * 3 + 1] = y / l;
       this.dirs[i * 3 + 2] = z / l;
     }
+    this._measureRest();
   };
 
   /* ---- becoming ------------------------------------------------------------ */
@@ -4476,7 +4779,7 @@ void main() {
   /* Any specimen can be expressed on the being's own topology, so becoming one
      is a morph of rest positions. The solver keeps running throughout, which is
      what makes the change wobble instead of snapping. */
-  App.prototype.becomeForm = function (entry) {
+  App.prototype.becomeForm = function (entry, quiet) {
     if (!entry || entry.kind !== 'point') this.hideTesseract();
     const n = this.mesh.total;
     const target = new Float32Array(n * 3);
@@ -4501,41 +4804,146 @@ void main() {
     this.morph.target = entry ? 1 : 0;
     this.morph.form = entry;
 
-    /* A shove so the change is felt, not just seen. */
-    this.body.impulse([0, 0, 0], 4.0, -2.2);
-    this.lean = 1;
-    M.set3(this.leanDir, 0, 0.2, 0.9);
-    this.audio.boing(0.5);
+    /* A shove so the change is felt, not just seen. Melting is the exception:
+       a boing on the way to becoming a puddle undoes the whole gag. */
+    if (!quiet) {
+      this.body.impulse([0, 0, 0], 4.0, -2.2);
+      this.lean = 1;
+      M.set3(this.leanDir, 0, 0.2, 0.9);
+      this.audio.boing(0.5);
+    }
+  };
+
+  /* How far it reaches, and how far below its centre it ends — the second is
+     what decides where it comes to rest on the floor, and it changes as the
+     shape does, so a puddle settles lower than a ball. */
+  App.prototype._measureRest = function () {
+    const rest = this.body.rest;
+    let reach = 0, low = 0;
+    for (let i = 0; i < rest.length; i += 3) {
+      const r = Math.hypot(rest[i], rest[i + 1], rest[i + 2]);
+      if (r > reach) reach = r;
+      if (-rest[i + 1] > low) low = -rest[i + 1];
+    }
+    this.beingReach = reach;
+    this.restLow = low;
   };
 
   App.prototype.updateMorph = function (dt) {
     const m = this.morph;
-    if (!m.to) return;
 
-    if (m.t < 1) {
-      m.t = Math.min(1, m.t + dt / m.dur);
-      const e = M.smoothstep(0, 1, m.t);
-      const rest = this.body.rest;
-      const from = m.from, to = m.to;
-      for (let i = 0; i < rest.length; i++) {
-        rest[i] = from[i] + (to[i] - from[i]) * e;
-      }
-      /* The keep-out reads rest radii every step, so they track the morph. */
-      this.body.refreshRestLengths();
-      m.amount += (m.target - m.amount) * Math.min(1, dt * 3.5);
+    /* How it is lit eases independently of what shape it is, so it can turn to
+       stone without changing form at all. */
+    m.amount += (m.target - m.amount) * Math.min(1, dt * 3.5);
 
-      if (m.t >= 1) {
-        /* Geodesic grab distances are only worth recomputing once, at the end. */
-        this.body.refreshEdgeLengths();
-        m.amount = m.target;
-        this.beingReach = 0;
-        for (let i = 0; i < rest.length; i += 3) {
-          const r = Math.hypot(rest[i], rest[i + 1], rest[i + 2]);
-          if (r > this.beingReach) this.beingReach = r;
-        }
-        this.refitCamera();
-      }
+    if (!m.to || m.t >= 1) return;
+
+    m.t = Math.min(1, m.t + dt / m.dur);
+    const e = M.smoothstep(0, 1, m.t);
+    const rest = this.body.rest;
+    const from = m.from, to = m.to;
+    for (let i = 0; i < rest.length; i++) {
+      rest[i] = from[i] + (to[i] - from[i]) * e;
     }
+    /* The keep-out reads rest radii every step, so they track the morph, and
+       so does the floor contact — which is how a melt slumps rather than
+       dropping through in one go. */
+    this.body.refreshRestLengths();
+    this._measureRest();
+
+    if (m.t >= 1) {
+      /* Geodesic grab distances are only worth recomputing once, at the end. */
+      this.body.refreshEdgeLengths();
+      m.amount = m.target;
+      this.refitCamera();
+    }
+  };
+
+  /* ---- states of matter ------------------------------------------------- */
+
+  App.prototype.enterPhase = function (name) {
+    const p = MATTER[name];
+    if (!p) return;
+    this.phase = name;
+    if (name !== 'free') this.hideTesseract();
+
+    this.body.stiffness = p.stiffness;
+    this.body.coupling = p.coupling;
+    this.body.damping = p.damping;
+
+    const skin = SKIN[name];
+    if (skin) {
+      this.formColor = skin.color.slice();
+      this.morph.target = skin.amount;
+    }
+
+    if (p.fall) {
+      this.landed = false;
+      this.fallV = 0;
+    }
+    if (name === 'solid') {
+      this.fallDelay = HARDEN_BEAT;
+      this.audio.boing(0.15);
+    } else if (name === 'liquid') {
+      this.audio.slosh();
+    } else if (name === 'gas') {
+      this.audio.hiss();
+    }
+  };
+
+  App.prototype.updateMatter = function (dt) {
+    const p = MATTER[this.phase] || MATTER.free;
+
+    this.freeze += (p.freeze - this.freeze) * Math.min(1, dt * 4);
+    this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 2.2 : 3.0));
+    this.inert += (p.inert - this.inert) * Math.min(1, dt * 3.5);
+    this.haloScale += (p.halo - this.haloScale) * Math.min(1, dt * 3);
+    /* It lights the table under it because it is luminous. Once it is not,
+       the light under it has to go out too. */
+    const lit = 1 - this.inert;
+    this.poolColor[0] = BEING.pool[0] * lit;
+    this.poolColor[1] = BEING.pool[1] * lit;
+    this.poolColor[2] = BEING.pool[2] * lit;
+
+    if (p.fall) {
+      if (this.fallDelay > 0) {
+        this.fallDelay -= dt;
+      } else {
+        this.fallV -= GRAVITY * dt;
+        this.fallY += this.fallV * dt;
+      }
+      const floorY = this.renderer.floorY + this.restLow;
+      if (this.fallY <= floorY) {
+        const speed = -this.fallV;
+        this.fallY = floorY;
+        this.fallV = 0;
+        if (!this.landed) {
+          this.landed = true;
+          if (speed > 1.2) this.onLand(speed);
+        }
+      }
+    } else {
+      /* Nothing holding it down: it drifts back to where it lives. */
+      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * 1.6);
+      this.fallV = 0;
+      this.landed = false;
+    }
+
+    /* Follow it down, but not all the way — losing it out of the bottom of
+       the frame would be worse than the floor creeping up the shot. */
+    const wantBias = Math.min(0, this.fallY) * 0.62;
+    this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
+    if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
+  };
+
+  /* The squash is what carries the weight. A body this stiff barely deforms
+     from the impulse alone, so the impulse is sized for the read: about a
+     fifth of its own radius at terminal speed, gone again inside a second. */
+  App.prototype.onLand = function (speed) {
+    const s = M.clamp(speed / 6, 0.2, 1);
+    this.body.impact([0, -1, 0], 6.5 * s);
+    this.audio.thud(s);
+    this.shake = 0.16 * s;
   };
 
   App.prototype.resize = function () {
@@ -4622,16 +5030,27 @@ void main() {
     const host = $('chips');
     const input = $('prompt');
 
-    ['an apple', 'a pineapple', 'cacao', 'a watermelon', 'help'].forEach(function (label) {
+    /* Two of these are the only thing telling anyone that it does more than
+       fetch fruit, so they carry their own phrasing rather than being fed
+       through one template. */
+    const CHIPS = [
+      { label: 'an apple', send: "let's talk about an apple" },
+      { label: 'a pineapple', send: "let's talk about a pineapple" },
+      { label: 'solid, liquid or gas?', send: 'are you a solid, liquid or gas?' },
+      { label: 'the fourth dimension', send: 'what does the fourth dimension look like?' },
+      { label: 'help', send: 'help' }
+    ];
+
+    CHIPS.forEach(function (chip) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
-      b.textContent = label;
+      b.textContent = chip.label;
       /* mousedown, not click: the field blurs before click would land. */
       b.addEventListener('mousedown', function (e) { e.preventDefault(); });
       b.addEventListener('click', function () {
         self.audio.resume();
-        self.chat.send(label === 'help' ? 'help' : "let's talk about " + label);
+        self.chat.send(chip.send);
         input.value = '';
         input.blur();
       });
@@ -4867,24 +5286,37 @@ void main() {
     for (let i = 0; i < this.halos.length; i++) {
       const h = this.halos[i];
       if (h.wire) continue;
-      /* Ride the body so the rings stay centred on it as it drifts. */
+      /* Ride the body so the rings stay centred on it as it drifts. They are
+         the most angelic thing about it, so they are also the first thing to
+         go when it stops being angelic. */
       M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
-        h.phase + this.time * h.spin, h.tilt, 1 - 0.55 * this.morph.amount);
+        h.phase + this.time * h.spin, h.tilt,
+        (1 - 0.55 * this.morph.amount) * this.haloScale);
     }
   };
 
   /* ---- lessons -------------------------------------------------------------- */
 
+  /* A lesson is data: an ordered list of lines, each with what the scene
+     should do while it is spoken. The action fires when its line finishes
+     typing, so the change always follows the sentence that promised it. */
   App.prototype.runLesson = function (id) {
     const lesson = NG.C.LESSONS[id];
     if (!lesson) return;
     const self = this;
     this.chat.script(lesson.steps.map(function (step) {
+      const acts = step.form || step.phase || step.wire !== undefined;
       return {
         text: step.text,
         gap: step.gap,
-        after: (step.form || step.wire !== undefined) ? function () {
-          if (step.form) self.becomeForm(NG.C.FORMS[step.form]);
+        /* Wait for the body rather than for a clock. */
+        hold: step.hold === 'land' ? function () { return !self.landed; } : null,
+        after: acts ? function () {
+          /* Shape first, then state: entering a phase sets how it is lit, and
+             that has to be the last word. */
+          if (step.form === 'self') self.becomeForm(null, true);
+          else if (step.form) self.becomeForm(NG.C.FORMS[step.form], !!step.phase);
+          if (step.phase) self.enterPhase(step.phase);
           if (step.wire) self.showTesseract();
         } : null
       };
@@ -5004,16 +5436,24 @@ void main() {
     /* Slide half way toward the specimen so the pair sits centred. */
     const wantX = this.props.length ? (this.narrow ? 0.35 : 0.55) : 0;
     this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
-    this.target[1] += (this.stageY - this.target[1]) * Math.min(1, dt * 3);
+    this.target[1] += (this.stageY + this.stageBias - this.target[1]) * Math.min(1, dt * 3);
 
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
     this.eye[0] = this.target[0] + c.dist * cp * Math.sin(c.yaw);
     this.eye[1] = this.target[1] + c.dist * sp;
     this.eye[2] = this.target[2] + c.dist * cp * Math.cos(c.yaw);
 
+    /* An impact jolts what the camera is pointed at, not where it is standing:
+       the frame kicks, the framing survives. */
+    const centre = this.shake > 0.0001
+      ? [this.target[0] + Math.sin(this.time * 47) * this.shake * 0.6,
+         this.target[1] + Math.sin(this.time * 61) * this.shake,
+         this.target[2]]
+      : this.target;
+
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
     M.perspective(this.proj, 0.72, aspect, 0.08, 60);
-    M.lookAt(this.view, this.eye, this.target, [0, 1, 0]);
+    M.lookAt(this.view, this.eye, centre, [0, 1, 0]);
     M.multiply(this.viewProj, this.proj, this.view);
     M.invert(this.invViewProj, this.viewProj);
 
@@ -5033,8 +5473,11 @@ void main() {
     M.multiply(this.lightVP, this.lightProj, this.lightView);
   };
 
-  App.prototype.updateModel = function () {
+  App.prototype.updateModel = function (dt) {
     const t = this.time;
+    /* Everything voluntary is scaled by this. At zero it is not floating,
+       not nodding and not leaning — it is an object. */
+    const alive = 1 - this.freeze;
 
     /* Free drift. Layered incommensurate frequencies never repeat visibly, so
        he reads as floating rather than looping. */
@@ -5053,12 +5496,17 @@ void main() {
       pz += this.leanDir[2] * e;
     }
 
+    px *= alive; py *= alive; pz *= alive;
+    py += this.fallY;
+
     M.set3(this.headPos, px, py, pz);
 
     /* A sphere has no visible front, so attention is not shown by turning —
        the shader paints a focal point wherever it is looking. This rotation
-       only drifts the iridescent film so the surface never looks frozen. */
-    M.compose(this.model, px, py, pz, this.time * 0.06, Math.sin(this.time * 0.09) * 0.2,
+       only drifts the iridescent film so the surface never looks frozen, and
+       it stops when the film does. */
+    this.spin += dt * 0.06 * alive;
+    M.compose(this.model, px, py, pz, this.spin, Math.sin(this.spin * 1.5) * 0.2,
       1 + this.voice * 0.012);
     M.invert(this.invModel, this.model);
   };
@@ -5134,7 +5582,8 @@ void main() {
 
     this.updateCamera(dt);
     this.updateAttention(dt);
-    this.updateModel();
+    this.updateMatter(dt);
+    this.updateModel(dt);
     this.updateHalos();
     this.updateLight();
     this.trackGrabVelocity(dt);
@@ -5168,8 +5617,10 @@ void main() {
       voice: this.voice,
       morph: this.morph.amount,
       formColor: this.formColor,
+      gas: this.gas,
+      inert: this.inert,
       poolPos: this.headPos,
-      poolColor: BEING.pool,
+      poolColor: this.poolColor,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),
       bloom: 0.50,
       bloomThreshold: 1.10,

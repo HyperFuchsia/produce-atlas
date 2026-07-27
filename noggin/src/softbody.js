@@ -500,5 +500,28 @@
     }
   };
 
+  /* Landing on something. An impact does two things at once: the face that
+     struck decelerates into the body, and the ring around it is thrown
+     outward. Only the first reads as a dent; both together read as weight. */
+  Softbody.prototype.impact = function (dir, strength) {
+    const pos = this.pos, vel = this.vel;
+    const dx = dir[0], dy = dir[1], dz = dir[2];
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const px = pos[i3], py = pos[i3 + 1], pz = pos[i3 + 2];
+      const l = Math.sqrt(px * px + py * py + pz * pz) || 1;
+      const nx = px / l, ny = py / l, nz = pz / l;
+      const d = nx * dx + ny * dy + nz * dz;
+      if (d <= 0) continue;                    /* the far side is untouched */
+      const w = d * d * strength;
+      vel[i3] -= dx * w; vel[i3 + 1] -= dy * w; vel[i3 + 2] -= dz * w;
+      /* Whatever of the surface direction is perpendicular to the impact is
+         where the displaced volume has to go. */
+      vel[i3] += (nx - dx * d) * w * 0.75;
+      vel[i3 + 1] += (ny - dy * d) * w * 0.75;
+      vel[i3 + 2] += (nz - dz * d) * w * 0.75;
+    }
+  };
+
   NG.Softbody = Softbody;
 })(window.NG = window.NG || {});

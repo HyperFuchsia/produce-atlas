@@ -173,6 +173,64 @@
     osc.start(t); osc.stop(t + 0.09);
   };
 
+  /* Something heavy arriving on the floor. A sine dropping fast under a
+     filtered noise transient — the noise is the contact, the sine is the mass
+     behind it. strength 0..1. */
+  Audio.prototype.thud = function (strength) {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const s = Math.max(0.1, Math.min(1, strength));
+    const dur = 0.30 + s * 0.30;
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110 + s * 60, t);
+    osc.frequency.exponentialRampToValueAtTime(28, t + dur);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.20 + s * 0.24, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + dur + 0.05);
+
+    this._noise(0.09 + s * 0.06, 'lowpass', 260 + s * 340, 0.7, 0.16 + s * 0.14, t);
+  };
+
+  /* Losing structural integrity. A wide band sagging downward, wet rather
+     than percussive. */
+  Audio.prototype.slosh = function () {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const f = this._noise(0.75, 'bandpass', 900, 1.6, 0.13, t);
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(140, t + 0.7);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.exponentialRampToValueAtTime(52, t + 0.6);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.11, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.65);
+    osc.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + 0.7);
+  };
+
+  /* Boiling off. The band climbs and opens out, which is the opposite
+     gesture to the slosh and reads as leaving rather than arriving. */
+  Audio.prototype.hiss = function () {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const f = this._noise(1.1, 'bandpass', 380, 2.4, 0.10, t);
+    f.frequency.setValueAtTime(380, t);
+    f.frequency.exponentialRampToValueAtTime(5200, t + 0.95);
+    f.Q.setValueAtTime(2.4, t);
+    f.Q.linearRampToValueAtTime(0.5, t + 0.95);
+  };
+
   Audio.prototype.click = function () {
     if (!this.ready || !this.enabled) return;
     this._noise(0.05, 'highpass', 2400, 0.8, 0.08, this.ctx.currentTime);

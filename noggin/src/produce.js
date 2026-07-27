@@ -207,6 +207,27 @@
       out[2] = (dz / m) * spec.hz;
       return out;
     }
+    /* A liquid at rest: wide, domed on top, nearly flat underneath, with a
+       rim that is not quite a circle. Latitude drives height and the
+       horizontal part of the direction is kept as-is, so the shell flattens
+       into a disc without any part of it folding through another. */
+    if (spec.kind === 'puddle') {
+      const az = Math.atan2(dz, dx);
+      const lobe = 1 + 0.10 * Math.sin(az * 3 + 0.7) + 0.06 * Math.sin(az * 5 - 1.3);
+      out[0] = dx * spec.radius * lobe;
+      out[1] = dy * (dy > 0 ? spec.dome : spec.base);
+      out[2] = dz * spec.radius * lobe;
+      return out;
+    }
+    /* A gas has no profile worth revolving. Three interfering sines give a
+       lumpy blob the shader can then churn, and keeping it radial means the
+       shape stays star-convex, so picking and the camera fit still work. */
+    if (spec.kind === 'cloud') {
+      const n = Math.sin(dx * 3.1 + 1.7) * Math.sin(dy * 2.6 - 0.9) * Math.sin(dz * 3.4 + 2.2);
+      const r = spec.radius * (1 + spec.wobble * n);
+      out[0] = dx * r; out[1] = dy * r; out[2] = dz * r;
+      return out;
+    }
 
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;

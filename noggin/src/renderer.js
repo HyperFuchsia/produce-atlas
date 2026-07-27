@@ -108,7 +108,10 @@
 
   Renderer.prototype._buildFloor = function () {
     const gl = this.gl;
-    const y = -3.35, e = 30;
+    /* Published, because anything that has to land on the floor needs to know
+       where the floor is. */
+    const y = this.floorY = -3.35;
+    const e = 30;
     const verts = new Float32Array([
       -e, y, -e, e, y, -e, e, y, e,
       -e, y, -e, e, y, e, -e, y, e
@@ -467,8 +470,12 @@
     gl.useProgram(pr.p);
     gl.uniformMatrix4fv(pr.u.uModel, false, state.model);
     gl.uniformMatrix4fv(pr.u.uLightVP, false, state.lightVP);
-    gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
-    gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    /* A cloud casting a hard-edged shadow is the one thing that would give
+       the gas away, so above halfway it stops casting one. */
+    if (!(state.gas > 0.5)) {
+      gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
+      gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    }
     this.drawProps(state.props, pr);
   };
 
@@ -551,8 +558,28 @@
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
     gl.uniform1i(pr.u.uShadow, 0);
+
+    /* Vapour accumulates instead of occluding: additive, no depth write, and
+       with culling off it is drawn through both faces, which is what makes it
+       thicken toward the silhouette on its own. */
+    const gas = state.gas || 0;
+    gl.uniform1f(pr.u.uGas, gas);
+    gl.uniform1f(pr.u.uInert, state.inert || 0);
+    if (gas > 0.01) {
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+      gl.depthMask(false);
+    }
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    if (gas > 0.01) {
+      gl.disable(gl.BLEND);
+      gl.depthMask(true);
+    }
+    /* Props share this program, and the billow in the vertex shader is not
+       material-gated, so it has to be switched off before they are drawn. */
+    gl.uniform1f(pr.u.uGas, 0);
+
     this.drawProps(state.props, pr);
     this.drawProps(state.halos, pr);
 

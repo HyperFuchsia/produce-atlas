@@ -16,6 +16,9 @@
   const LINGER = 20;
   const FADE = 1.2;
   const MAX_VISIBLE = 3;
+  /* Ceiling on a scene hold. A condition that never arrives must not be able
+     to strand the conversation with lines still queued behind it. */
+  const HOLD_MAX = 8;
 
   function Chat(audio, brain, els) {
     this.audio = audio;
@@ -30,6 +33,8 @@
     this.full = '';
     this.shown = 0;
     this.gap = 0;
+    this.hold = null;       /* predicate: true while the scene is still busy */
+    this.holdFor = 0;
     this.lastActivity = -1e9;
     this._blip = 0;
     this.onSpawn = null;
@@ -93,12 +98,19 @@
     }
   };
 
-  /* Run an ordered script: each item may carry its own action and its own
-     pause, which is what lets an explanation pace itself against what the
-     scene is doing. */
+  /* Run an ordered script: each item may carry its own action, its own pause,
+     and its own condition to wait on, which is what lets an explanation pace
+     itself against what the scene is doing. A `hold` beats a `gap` for
+     anything physical — the line after a fall should land when the body does,
+     not after however long the fall was guessed to take. */
   Chat.prototype.script = function (items) {
     for (let i = 0; i < items.length; i++) {
-      this.queue.push({ text: items[i].text, after: items[i].after || null, gap: items[i].gap });
+      this.queue.push({
+        text: items[i].text,
+        after: items[i].after || null,
+        gap: items[i].gap,
+        hold: items[i].hold || null
+      });
     }
   };
 
@@ -106,6 +118,10 @@
     const text = String(raw || '').trim();
     if (!text) return;
     this.lastActivity = 0;
+
+    /* Typing is always allowed to break a wait: whatever the scene was doing,
+       the person in front of it takes priority. */
+    this.hold = null;
 
     /* A second send finishes the current line rather than stacking up. Run its
        pending callback too, or an interrupted line would swallow its spawn. */
@@ -135,12 +151,18 @@
     this._ageLines(dt);
 
     if (!this.typingEl) {
+      if (this.hold) {
+        this.holdFor += dt;
+        if (this.holdFor < HOLD_MAX && this.hold()) return;
+        this.hold = null;
+      }
       if (this.gap > 0) { this.gap -= dt; return; }
       if (!this.queue.length) return;
       const item = this.queue.shift();
       this.full = item.text;
       this._after = item.after;
       this._gap = item.gap !== undefined ? item.gap : LINE_GAP;
+      this._hold = item.hold || null;
       this.shown = 0;
       this.typingEl = this._append('him typing', '');
       return;
@@ -161,6 +183,11 @@
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
       this.gap = this._gap;
+      this.hold = this._hold;
+      this.holdFor = 0;
+      this._hold = null;
+      /* The action runs after the hold is armed, so a hold can wait on
+         whatever the action just set in motion. */
       this._runAfter();
     }
   };

@@ -77,6 +77,8 @@ layout(location = 4) in float aStretch;
 uniform mat4 uModel;
 uniform mat4 uViewProj;
 uniform mat4 uLightVP;
+uniform float uTime;
+uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
 
 out vec3 vWPos;
 out vec3 vNor;
@@ -86,7 +88,18 @@ out float vStretch;
 out vec4 vLPos;
 
 void main() {
-  vec4 wp = uModel * vec4(aPos, 1.0);
+  vec3 p = aPos;
+  /* A gas has no surface to hold still. Three interfering sines push the
+     shell along its own normal so the cloud churns rather than sitting there
+     being a lumpy ball. The solver never sees this, so picking and the camera
+     fit still work against the shape underneath. */
+  if (uGas > 0.001) {
+    float n = sin(p.x * 2.6 + uTime * 1.7)
+            * sin(p.y * 2.2 - uTime * 1.3)
+            * sin(p.z * 2.9 + uTime * 1.9);
+    p += normalize(aNor) * n * 0.34 * uGas;
+  }
+  vec4 wp = uModel * vec4(p, 1.0);
   vec3 wn = mat3(uModel) * aNor;
   vWPos = wp.xyz;
   vNor = wn;
@@ -123,6 +136,8 @@ uniform vec3 uCoreColor;
 uniform float uVoice;        /* 0..1, rises while it is speaking */
 uniform float uMorph;        /* 0 = itself, 1 = fully wearing a form */
 uniform vec3 uFormColor;
+uniform float uGas;          /* 0 = a surface, 1 = a cloud of itself */
+uniform float uInert;        /* 0 = alive and looking at you, 1 = an object */
 
 out vec4 oColor;
 ${COMMON}
@@ -218,12 +233,46 @@ void main() {
       vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
       vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
       form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
-      form += iri * pow(1.0 - ndvAll, 3.0) * 0.55;
-      form += uFocusColor * focus * 0.5;
+      // The film along the rim and the focal point are the two things that
+      // make it look inhabited, so an inert body has to lose both — otherwise
+      // turning to stone just tints a thing that is still obviously awake.
+      form += (iri * pow(1.0 - ndvAll, 3.0) * 0.55 + uFocusColor * focus * 0.5)
+            * (1.0 - uInert);
+      // What replaces them is a plain rim light, so a dark solid still has an
+      // edge against a dark room instead of reading as a hole.
+      form += uRimColor * pow(1.0 - ndvAll, 3.2) * 0.35 * uInert;
       col = mix(col, form, uMorph);
     }
 
-    oColor = vec4(col, 1.0);
+    // Vapour. Nothing here is a surface any more: brightness comes from how
+    // much of it you are looking through, so the silhouette goes soft and the
+    // middle nearly vanishes. Alpha is the accumulation weight — the renderer
+    // draws this additively, front and back faces both, so the cloud is
+    // thickest exactly where there is most of it in the way.
+    float alpha = 1.0;
+    if (uGas > 0.001) {
+      // Two octaves of drifting noise, squared. A single smooth term left the
+      // shell looking like frosted glass; the point of the square is to make
+      // the density patchy rather than evenly hazy.
+      float n1 = sin(vWPos.x * 5.1 + uTime * 1.9)
+               * sin(vWPos.y * 4.3 - uTime * 1.5)
+               * sin(vWPos.z * 4.7 + uTime * 1.7);
+      float n2 = sin(vWPos.x * 11.3 - uTime * 2.7)
+               * sin(vWPos.y * 9.7 + uTime * 2.2)
+               * sin(vWPos.z * 10.9 - uTime * 3.1);
+      float churn = clamp(0.5 + 0.55 * n1 + 0.30 * n2, 0.0, 1.0);
+      // Thin toward the silhouette, not thick: a cloud has no edge, and
+      // brightening the rim is exactly what made it look like an object.
+      float body = ndvAll;
+      vec3 vapour = (uCoreColor * 0.5 + vec3(0.55, 0.62, 0.78)) * (0.35 + 0.90 * churn);
+      vapour += uFocusColor * focus * 0.6;
+      col = mix(col, vapour, uGas);
+      // Squared, so the density falls off hard toward the silhouette and the
+      // closed shell stops having a visible outline at all.
+      alpha = mix(1.0, 0.26 * (0.12 + churn * churn * 1.5) * (0.03 + 0.97 * body * body), uGas);
+    }
+
+    oColor = vec4(col, alpha);
     return;
   }
 

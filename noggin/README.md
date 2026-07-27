@@ -2,9 +2,10 @@
 
 A luminous being you can talk to. Name a food plant and it conjures a real one
 into the room **at its true size**, then tells you far more about it than you
-asked for. Ask it something it cannot hand you — the fourth dimension, say — and
-it becomes the explanation instead. You can also reach in and pull at it; it is
-not as solid as it looks.
+asked for. Ask it something it cannot hand you — the fourth dimension, say, or
+whether it is a solid — and it becomes the answer instead, at length, without
+waiting for you. You can also reach in and pull at it; it is not as solid as it
+looks. Usually.
 
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
@@ -34,6 +35,32 @@ Same vertex count, same adjacency, solver running throughout, which is why the
 change wobbles its way there instead of snapping. It keeps a little
 interference along the rim the whole time, so it never stops being itself.
 
+## Ask what it is made of
+
+```
+you   are you a solid, liquid or gas?
+it    Solid, liquid or gas.
+```
+
+Then it stops floating. Goes dark, goes heavy, and **drops** — a real fall, on
+gravity, landing on the actual floor with a squash and a thud that shakes the
+frame. From down there it asks *"What do you think now?"*, waits exactly long
+enough for you to start answering, and cuts you off: *"No. Do not answer. I was
+not finished."* Then it slumps into a puddle, boils off into a cloud, and
+reassembles.
+
+Each state is a different physical object, not a costume:
+
+| | shape | body | look |
+| --- | --- | --- | --- |
+| **solid** | unchanged | stiff, settles in a beat | dark, no glow, no rings, and the light it was casting on the floor goes out |
+| **liquid** | a wide domed puddle with an uneven rim | slack and heavily coupled, so the wobble travels | wet, still glistening |
+| **gas** | a lumpy cloud, twice its own size | loose | additive, mottled, thinning to nothing at the edge — no silhouette |
+
+The line after the drop is not on a timer. It waits on the body: the script
+holds until the being actually lands, so the joke keeps its timing however long
+the fall takes.
+
 ## Ask it to explain something
 
 Because it can take any shape, it can also *be* the explanation. Ask about the
@@ -52,19 +79,22 @@ and *yw* planes and projected down to three dimensions from the *w* axis. That
 projection is the whole lesson: corners further along *w* land closer to the
 middle, which is exactly why the inner cube looks small when it is not.
 
-A lesson is data — an ordered list of steps, each one a line of narration plus
-what the scene should do while it is spoken:
+Both routines run off the same table. A routine is data — an ordered list of
+steps, each one a line of narration plus what the scene should do while it is
+spoken:
 
 ```js
 { text: 'Drag the square at a right angle to both of those...',
-  form: 'cube',      /* morph the being to this shape       */
-  wire: true,        /* switch the wireframe overlay on/off */
-  gap: 2.2 }         /* pause after the line, in seconds    */
+  form: 'cube',      /* morph the being ('self' returns it)  */
+  phase: 'solid',    /* change what it is made of            */
+  wire: true,        /* switch the wireframe overlay on/off  */
+  hold: 'land',      /* wait for the scene, not for a clock  */
+  gap: 2.2 }         /* pause after the line, in seconds     */
 ```
 
-`src/concepts.js` holds the forms, the phrases that trigger each lesson, and the
-steps. Dimensions is the only one written so far; adding another is adding an
-entry to that table, not writing code.
+`src/concepts.js` holds the forms, the phrases that trigger each routine, and
+the steps. There are two so far; adding a third is adding an entry to that
+table, not writing code.
 
 ## Using it
 
@@ -189,7 +219,7 @@ src/geometry.js   icosphere, adjacency, the being's shell and halo rings
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts
-src/concepts.js   lessons it acts out, and the tesseract's 4-D projection
+src/concepts.js   routines it acts out, and the tesseract's 4-D projection
 src/brain.js      intent matching and answers over the atlas
 src/chat.js       the conversation surface
 src/shaders.js    all GLSL ES 3.00
