@@ -28,7 +28,8 @@ const C = {
   bad:"#ff3b30",       // alarm
   contact:"#ff4fd8",   // anything alien or unresolved
   label:"#35e0e0",     // names of instruments and fields
-  read:"#e8f4ff"       // live values
+  read:"#e8f4ff",      // live values
+  dim:"rgba(100,130,160,0.55)" // inactive/disabled/leader — present but not speaking
 };
 
 const TAU = Math.PI*2, DEG = Math.PI/180;
@@ -101,12 +102,12 @@ const CATALOG=[
  ["KAPTEYN",        77.92, -45.02, 12.76,"SDM1", 0],
  ["LACAILLE 8760", 319.31, -38.87, 12.87,"M0V",  0],
  ["KRUGER 60",     336.71,  57.70, 13.07,"M3V",  0],
- ["ROSS 614",       98.59,  -2.81, 13.35,"M4.5V",0],
+ ["ROSS 614",       97.35,  -2.81, 13.35,"M4.5V",0],
  ["WOLF 1061",     247.58, -12.66, 14.05,"M3.5V",3],
  ["VAN MAANEN",     12.29,   5.39, 14.07,"DZ8",  0],
  ["GLIESE 1",        1.35, -37.36, 14.15,"M1.5V",0],
  ["WOLF 424",      188.02,   9.02, 14.31,"M5.5V",0],
- ["TZ ARIETIS",     31.20,  13.05, 14.58,"M4.5V",1],
+ ["TZ ARIETIS",     30.05,  13.05, 14.58,"M4.5V",1],
  ["GLIESE 687",    264.27,  68.34, 14.84,"M3V",  2],
  ["LHS 292",       162.06, -11.34, 14.90,"M6.5V",0],
  ["GLIESE 674",    262.98, -46.90, 14.85,"M3V",  1],
@@ -242,16 +243,18 @@ function buildHazards(seed){
     const A=STARS[i],B=STARS[j];
     const d=v3.len(v3.sub(A.pos,B.pos));
     if(d>9||d<2) continue;
-    if(r()<0.30){
+    if(r()<0.24){
       const t0=0.25+r()*0.5, hl=(0.5+r()*1.1)/d;
       const p0=v3.add(A.pos,v3.mul(v3.sub(B.pos,A.pos),clamp(t0-hl,0.02,0.98)));
       const p1=v3.add(A.pos,v3.mul(v3.sub(B.pos,A.pos),clamp(t0+hl,0.02,0.98)));
-      list.push({a:p0,b:p1,r:0.12+r()*0.30,den:4+r()*12,kind:"STREAM",
+      list.push({a:p0,b:p1,r:0.12+r()*0.30,den:2.5+r()*7,kind:"STREAM",
                  tag:A.name.slice(0,6)+"/"+B.name.slice(0,6),found:false});
     }
   }
-  // meteor swarms shelled around crowded systems
+  // meteor swarms shelled around crowded systems — but not the terminal:
+  // company space is swept, or the tariff would be unpayable
   for(const s of STARS){
+    if(s.name==="SOL TERMINAL")continue;
     if(s.planets>=3&&r()<0.7){
       const dir=v3.norm([r()-0.5,r()-0.5,r()-0.5]);
       const c0=v3.add(s.pos,v3.mul(dir,0.25+r()*0.35));
@@ -274,6 +277,8 @@ function segDist(p,a,b){
    smallest seeded capsule several times over. */
 function corridorLoad(from,to,hazards,knownOnly){
   const L=v3.len(v3.sub(to,from));
+  // the 4000-sample cap only coarsens runs past 80 ly; the smallest seeded
+  // capsule radius (0.10 ly) still gets ~5 samples at that worst case
   const n=clamp(Math.ceil(L/0.02),8,4000), step=L/n;
   const hits=new Map();
   for(let k=0;k<=n;k++){
@@ -281,15 +286,19 @@ function corridorLoad(from,to,hazards,knownOnly){
     for(let hi=0;hi<hazards.length;hi++){
       const h=hazards[hi];
       if(knownOnly&&!h.found) continue;
-      if(segDist(p,h.a,h.b)<h.r) hits.set(hi,(hits.get(hi)||0)+step);
+      if(segDist(p,h.a,h.b)<h.r){
+        const e=hits.get(hi);
+        if(e)e.chord+=step; else hits.set(hi,{chord:step,t0:k/n});
+      }
     }
   }
   let dmg=0; const detail=[];
-  for(const [hi,chord] of hits){
+  for(const [hi,e] of hits){
     const h=hazards[hi];
-    dmg+=chord*h.den;
-    detail.push({hi,chord,dmg:chord*h.den,kind:h.kind,tag:h.tag});
+    dmg+=e.chord*h.den;
+    detail.push({hi,chord:e.chord,dmg:e.chord*h.den,kind:h.kind,tag:h.tag,t0:e.t0});
   }
+  detail.sort((a,b)=>a.t0-b.t0);
   return {dmg,detail};
 }
 
@@ -312,9 +321,16 @@ const CULTURES=[
   templates:{
     greet0:["WE","SING",".","YOU","DRIFT","FAR","FROM","HOME",".","SMALL","LIGHT","COME"],
     greet:["YOU","RISE","FROM","COLD",".","WE","SING"],
+    // idle traffic must carry every word a courteous reply needs: what they
+    // give is given, and that includes the words to ask with
     idle:[["OLD","WIND","BELOW",".","WE","CARRY","LIGHT"],
           ["DEEP","COLD",".","STAR","DRIFT",".","WE","DRIFT"],
-          ["YOU","ALONE","?","SING","AGAIN"]],
+          ["YOU","ALONE","?","SING","AGAIN"],
+          ["ASK","WIND",".","WIND","GIVE","PATH"],
+          ["GO","QUIET",".","LISTEN","DEEP"],
+          ["GIFT","HEAVY",".","WE","CARRY","GIFT"],
+          ["WE","DRINK","LIGHT",".","RISE","AGAIN"],
+          ["THANK","OLD","WIND",".","SING"]],
     caution:["STONE","RAIN","BELOW","PATH",".","TURN"],
     grant1:["GIFT",".","MEASURE","PATH","FROM","SELF",".","NOT","FROM","HOME"],
     grant2:["GIFT",".","WE","SING","STONE","RAIN","PATH",".","LISTEN"],
@@ -341,9 +357,12 @@ const CULTURES=[
   templates:{
     greet0:["QUERY","IDENT",".","REGISTER","VESSEL",".","COMPLY"],
     greet:["VESSEL","REGISTER",".","PROCEED"],
-    idle:[["MAKERS","GONE",".","WE","COUNT","ORBIT"],
+    idle:[["MAKERS","GONE",".","COUNT","ORBIT"],
           ["OLD","DEBT",".","NULL","CLAIM",".","WAIT"],
-          ["MANY","VESSEL","GONE",".","COUNT","YOURS"]],
+          ["MANY","VESSEL","GONE",".","COUNT","YOURS"],
+          ["TARIFF","PAID",".","PROCEED"],
+          ["QUERY","WELL","GRANT",".","HOLD"],
+          ["PACKET","CHART","OURS",".","QUERY","TARIFF"]],
     caution:["HAZARD","CHART",".","HOLD",".","CORRECT"],
     grant1:["GRANT","PACKET",".","WELL","FLOOR","ESTIMATE","CORRECT",".","INSTALL"],
     grant2:["GRANT","PACKET",".","ORBIT","CHART",".","INSTALL"],
@@ -377,7 +396,12 @@ const CULTURES=[
     greet:["QUIET",".","ASK",".","GO"],
     idle:[["COUNT","STAR",".","WAIT",".","STAY","QUIET"],
           ["OLD","NAME","GONE",".","NONE","ANSWER"],
-          ["DARK","BETWEEN","STAR",".","IT","WAIT","BETWEEN"]],
+          ["DARK","BETWEEN","STAR",".","IT","WAIT","BETWEEN"],
+          ["WE","HEAR","STONE","RAIN",".","WAIT"],
+          ["OUR","WELL",".","DRINK","PERMIT","NONE"],
+          ["GIVE","NONE",".","ASK","NONE"],
+          ["YOUR","DRIFT","FAR",".","CORRECT","SUM"],
+          ["OLD","GRIEF",".","THANK","NONE"]],
     caution:["STONE","RAIN","NEAR",".","PATH","DANGER"],
     grant1:["WE","GIVE","SUM",".","IT","CORRECT","YOUR","DRIFT"],
     grant2:["WE","GIVE","QUIET",".","SPEAK","NONE",".","IT","WAIT","BETWEEN","STAR"],
@@ -410,7 +434,11 @@ const cultureById={}; CULTURES.forEach(c=>cultureById[c.id]=c);
    the next new one. Rare words therefore hold rare glyphs, so decode order
    tracks transmission frequency with no bookkeeping. */
 function assignGlyphs(cu){
-  if(cu.id==="buoy"){cu.words.forEach((w,i)=>w.g=[i]);return;}
+  if(cu.id==="buoy"){
+    cu.words.forEach((w,i)=>w.g=[i]);
+    cu.wordIdx={};cu.words.forEach((w,i)=>cu.wordIdx[w.en]=i);
+    return;
+  }
   const r=rngFor("lex:"+cu.id,WORLD_FIXED_SEED);
   const used=[];
   cu.words.forEach((w)=>{
@@ -499,7 +527,7 @@ STARS.push({i:STARS.length,name:"SOL TERMINAL",ra:0,dec:0,dist:0,spec:"G2V",plan
 starByName["SOL TERMINAL"]=STARS[STARS.length-1];
 
 const SAVE_LANG="atlas.lang.v2",SAVE_RUN="atlas.run.v2",SAVE_LEDGER="atlas.ledger.v2";
-const AIR0=900,FUEL0=100,FUELMAX=120,HULL0=100,FUEL_PER_LY=1.8,H_PER_LY=8,H_FIXED=10;
+const AIR0=960,FUEL0=100,FUELMAX=120,HULL0=100,FUEL_PER_LY=1.8,H_PER_LY=8,H_FIXED=10;
 const INS_RADIUS=25;
 
 let LANG={};   // glyph exposure by culture — corporate codebook, survives the run
@@ -542,8 +570,16 @@ function newRun(){
   LEDGER.runs++;saveLang();
   logE("TOUR "+S.tour+" OPEN — SEED "+seed,C.label);
   logE("STANDING ORDER: SURVEY PACKETS ×6 — SEE MANIFEST",C.read);
+  checkBuoyConstants(); // a codebook earned by a dead operator still installs
+  resetUIState();
   saveRun();
   return S;
+}
+function resetUIState(){ // module-level UI state must not survive the operator
+  FIELD.armed=false;FIELD.depth=0.35;
+  SCR.panel="nav";SCR.instrument="chart";SCR.transit=null;
+  CH.sel=null;PT.capture=null;
+  commsScroll=0;logScroll=0;alarmMem={};
 }
 function sysRun(star){ // per-run stellar weather, cached
   if(!S.sysRunCache[star.name])S.sysRunCache[star.name]=systemRun(star,S.seed);
@@ -572,7 +608,7 @@ function saveRun(){
 function loadRun(){
   try{
     const d=JSON.parse(localStorage.getItem(SAVE_RUN));
-    if(d&&d.alive){d.sysRunCache={};S=d;return true;}
+    if(d&&d.alive){d.sysRunCache={};S=d;checkBuoyConstants();return true;}
   }catch(e){}
   return false;
 }
@@ -588,6 +624,7 @@ function insured(){return v3.len(S.pos)<=INS_RADIUS;}
 /* ---- death: possible, legible in hindsight, final */
 function die(cause,detail){
   if(!S.alive)return;
+  PT.capture=null;
   S.alive=false;
   S.death={cause,detail:detail||"",t:S.t,insured:insured(),pos:S.pos.slice()};
   if(S.death.insured)LEDGER.recovered++;else LEDGER.lost++;
@@ -608,6 +645,19 @@ function advanceHours(h){
     S.contact.aware=Math.max(0,S.contact.aware-h*rate);
     if(S.contact.aware===0)S.contact.etaH=null;
   }
+  // while it holds a track it also creeps on the clock — dwelling somewhere
+  // noisy is not the same as being still
+  if(S.contact.pos&&S.contact.aware>0&&S.contact.etaH===null){
+    const d=v3.sub(S.pos,S.contact.pos),dist=v3.len(d);
+    const step=Math.min(dist,(0.002+0.0012*S.contact.aware)*h);
+    S.contact.pos=v3.add(S.contact.pos,v3.mul(v3.norm(d),step));
+    if(v3.len(v3.sub(S.contact.pos,S.pos))<0.05){
+      S.contact.etaH=5+8*Math.max(0,3-S.contact.aware*0.2);
+      logE("PROXIMITY RETURN — UNIDENTIFIED",C.contact);
+      if(S.docked)logE("TERMINAL TRAFFIC CONTROL DOES NOT ACKNOWLEDGE IT",C.contact);
+    }
+  }
+  if(S.t-(S._lastSave||0)>5){S._lastSave=S.t;saveRun();}
   // a contact in-system closes on the clock, not on your convenience
   if(S.contact.etaH!==null){
     S.contact.etaH-=h;
@@ -684,8 +734,10 @@ function resolveJump(brg,el,rng){
   if(near.dist<cleanR){grade="CLEAN";finalPos=near.star.pos.slice();newLocus={mode:"system",star:near.star.name};}
   else if(near.dist<fx.haloOut){
     grade="HALO TRANSIT";
-    const depth=(fx.haloOut-near.dist)/(fx.haloOut-fx.haloIn);
-    haloDmg=(6+3*near.star.planets)*clamp(depth,0.1,1);
+    // debris density peaks mid-shell: zero at both edges, so the CLEAN
+    // boundary is not a cliff and grazing the outer skirt costs little
+    const f=clamp((fx.haloOut-near.dist)/(fx.haloOut-fx.haloIn),0,1);
+    haloDmg=(6+3*near.star.planets)*4*f*(1-f);
     if(S.reductions.HALO)haloDmg*=0.25;
     finalPos=near.star.pos.slice();newLocus={mode:"system",star:near.star.name};
   }
@@ -693,7 +745,8 @@ function resolveJump(brg,el,rng){
   else {grade="ADRIFT — NO REFERENCE";newLocus={mode:"deep",star:null};}
   return {aim,arrive,load,hours,fuelCost,near,grade,haloDmg,finalPos,newLocus};
 }
-/* commit is irreversible: state is written before the transit is drawn */
+/* irreversible: called at the COMMIT press, saved before any pixel of the
+   transit is drawn */
 function commitJump(res){
   S.fuel-=res.fuelCost;
   S.jumps++;
@@ -737,6 +790,7 @@ function closeFix(){
   if(!S.alive)return;
   S.pos=st.pos.slice();S.locus={mode:"system",star:st.name};S.visited[st.name]=true;
   logE("CLOSE FIX COMPLETE — "+st.name,C.ok);
+  if(st.name==="SOL TERMINAL")dockAtSol(); // a berth reached is a berth, however you got there
   onArriveSystem();
   saveRun();
 }
@@ -751,7 +805,7 @@ function dockAtSol(){
   const patchTo=Math.min(70,HULL0);
   if(S.hull<patchTo){S.hull=patchTo;logE("YARD PATCH TO 70 — PER CONTRACT",C.ok);}
   const want=HULL0-S.hull;
-  const afford=Math.min(want,Math.floor(S.credits/2));
+  const afford=Math.floor(Math.min(want,S.credits/2));
   if(afford>0){S.hull+=afford;S.credits-=afford*2;logE("HULL REFIT +"+afford+" — CR −"+(afford*2),C.ok);}
   if(S.order.every(o=>o.delivered)){
     S.credits+=120;S.tour++;
@@ -819,6 +873,7 @@ function surveyPulse(){
 function mayday(){
   transmit(8);
   advanceHours(1);
+  if(!S.alive)return;
   if(insured()){S.maydayT=S.t+200;logE("MAYDAY LOGGED — RECOVERY DRONE T+200H — CLAUSE 9 APPLIES",C.warn);}
   else logE("MAYDAY LOGGED — NO CARRIER ACKNOWLEDGES — POLICY VOID BEYOND 25.0 LY",C.bad);
   saveRun();
@@ -828,7 +883,10 @@ function mayday(){
    COMMS — receiving is free; answering is a bearing.
    ========================================================================= */
 function tokensFor(cu,tmpl){ // template entries are lexicon words or punctuation
-  return tmpl.map(t=>(t==="."||t==="?")?{p:t}:{w:cu.wordIdx[t]});
+  // a template word missing from the lexicon is an authoring fault; drop the
+  // token rather than poisoning the archive with an unrenderable message
+  return tmpl.map(t=>(t==="."||t==="?")?{p:t}:{w:cu.wordIdx[t]})
+             .filter(t=>t.p!==undefined||t.w!==undefined);
 }
 function queueMsg(cid,kind,extra){
   const cu=cultureById[cid];
@@ -863,6 +921,11 @@ function queueBuoyMsg(starName){
   digits.push({w:cu.wordIdx.SEP});
   const code=hi>=0?String(1000+hi).slice(1):"000";
   push(code);
+  digits.push({w:cu.wordIdx.SEP});
+  // rolling serial: successive frames walk the whole digit wheel, so full
+  // registry comprehension is reachable whatever the local entry numbers are
+  const serial=S.msgs.filter(m=>m.cid==="buoy").length*3;
+  push(String((serial)%10)+String((serial+1)%10)+String((serial+2)%10));
   digits.push({w:cu.wordIdx.MARK});
   const msg={cid:"buoy",kind:"registry",toks:digits,t:S.t,exposed:false,revealed:false,
              hazardRef:hi>=0?hi:null,buoyStar:starName};
@@ -879,9 +942,11 @@ function msgFullyDecoded(msg){return msgWordList(msg).every(w=>wordDecoded(msg.c
 
 /* first display of a message is the exposure event: the codebook logs each
    glyph occurrence once, and comprehension is what the traffic teaches */
+let LANGV=0; // decode-state version: invalidates cached mixed-text layout
 function exposeMsg(msg){
   if(msg.exposed)return;
   msg.exposed=true;
+  LANGV++;
   const before=comprehension(msg.cid);
   for(const w of msgWordList(msg))for(const gi of w.g)LANG[msg.cid][gi]=(LANG[msg.cid][gi]||0)+1;
   const after=comprehension(msg.cid);
@@ -916,18 +981,21 @@ function scheduleComms(){
   const cu=cultureHere();
   const st=currentStar();
   if(S.t<S.nextMsgT)return;
-  S.nextMsgT=S.t+40+rngFor("sched:"+Math.floor(S.t),S.seed)()*50;
+  S.nextMsgT=S.t+30+rngFor("sched:"+Math.floor(S.t),S.seed)()*40;
   if(cu&&!S.withdrawn[cu.id]){
     const r=rngFor("traffic:"+Math.floor(S.t),S.seed);
-    // cautions reference real uncharted capsules near their star
-    let hi=-1,bd=4.5;
+    // cautions reference real capsules near their star — uncharted ones
+    // first (decoding reveals them), already-charted ones as a fallback so
+    // the caution vocabulary keeps flowing even after the sky is mapped
+    let hi=-1,bd=4.5,hiKnown=-1,bdK=4.5;
     for(let i=0;i<S.hazards.length;i++){
       const h=S.hazards[i];
-      if(h.found)continue;
       const d=segDist(starByName[cu.starName].pos,h.a,h.b);
-      if(d<bd){bd=d;hi=i;}
+      if(!h.found){if(d<bd){bd=d;hi=i;}}
+      else if(d<bdK){bdK=d;hiKnown=i;}
     }
-    if(hi>=0&&r()<0.45)queueMsg(cu.id,"caution",{hazardRef:hi});
+    if(hi>=0&&r()<0.5)queueMsg(cu.id,"caution",{hazardRef:hi});
+    else if(hiKnown>=0&&r()<0.3)queueMsg(cu.id,"caution");
     else queueMsg(cu.id,"idle");
     AUDIO.rxPing();
   }
@@ -981,11 +1049,11 @@ function sendReply(cu,rep){
   transmit(2);
   advanceHours(1);
   if(!S.alive)return;
-  S.courtesy[cu.id]+=rep.cost;
   if(rep.fuel)S.fuel-=rep.fuel;
   if(rep.intent==="REGISTER")S.registered=true;
   logE("SENT ["+rep.intent+"] — WEIGHT "+(rep.cost>=0?"+":"")+rep.cost+" — EMISSION LOGGED",rep.cost<0?C.warn:C.read);
-  respond(cu,rep);
+  respond(cu,rep);              // they judge you on the standing you had when you spoke,
+  S.courtesy[cu.id]+=rep.cost;  // not on the cost of the asking itself
   checkWithdraw(cu);
   saveRun();
 }
@@ -1060,7 +1128,8 @@ const AUDIO={
     // shared noise source material
     const len=ctx.sampleRate*2, buf=ctx.createBuffer(1,len,ctx.sampleRate);
     const d=buf.getChannelData(0);
-    for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
+    const nr=mulberry32(hash32("noisebed"));
+    for(let i=0;i<len;i++)d[i]=nr()*2-1;
     this.noiseBuf=buf;
     // bed hum: mains fundamental plus weak harmonics plus filtered air
     const hg=this.humGain=ctx.createGain();hg.gain.value=0.0;hg.connect(master);
@@ -1107,7 +1176,7 @@ const AUDIO={
     o.start(t0);o.stop(t0+dur+0.1);
     return o;
   },
-  uiTick(){if(!this.on)return;this.tone(this.now(),0.03,"square",1150,0.025);},
+  uiTick(){if(!this.on)return;this.tone(this.now(),0.03,"square",1150,0.05);},
   uiDeny(){if(!this.on)return;this.tone(this.now(),0.09,"square",240,0.04);},
   rxPing(){if(!this.on)return;const t=this.now();this.tone(t,0.06,"sine",1567,0.05);this.tone(t+0.08,0.10,"sine",1244,0.04);},
   alarm(level){ // 1 caution warble, 2 alarm
@@ -1141,7 +1210,7 @@ const AUDIO={
       bp.frequency.linearRampToValueAtTime(f*(0.8+r()*0.5),t+dur);bp.Q.value=14;
       const g=ctx.createGain();g.gain.setValueAtTime(0,t);
       for(let x=t;x<t+dur;x+=gate){ // the scrape is the gate rate, not the filter
-        g.gain.setValueAtTime(0.16,x);g.gain.setValueAtTime(0.0,x+gate*0.45);
+        g.gain.setValueAtTime(0.24,x);g.gain.setValueAtTime(0.0,x+gate*0.45);
       }
       src.connect(bp);bp.connect(g);g.connect(this.master);
       src.start(t);src.stop(t+dur+0.05);
@@ -1153,10 +1222,9 @@ const AUDIO={
     const r=mulberry32(seed);
     let t=t0;
     for(let k=0;k<n;k++){
-      for(let v=0;v<3;v++){
+      for(let v=0;v<3;v++){ // pitches snap to a 13-tone grid: stepped, never glided
         const st=Math.floor(r()*13), f=196*Math.pow(2,st/13)*(v===2?2:1);
-        const o=this.tone(t,0.055,"square",f,0.035);
-        o.frequency.setValueAtTime(f,t); // stepped, never glided
+        this.tone(t,0.055,"square",f,0.035);
       }
       t+=0.08;
       if(r()<0.25)t+=0.09;
@@ -1434,8 +1502,8 @@ function endFrame(){
   cctx.fillRect(0,-rollY-4*DPR,cv.width,cv.height+8*DPR);
   cctx.restore();
   // phosphor grain
-  const n=Math.round(24+680*F*F);
-  cctx.fillStyle="rgba(210,235,255,0.06)";
+  const n=Math.round(24+520*F*F);
+  cctx.fillStyle="rgba(232,244,255,0.06)";
   for(let i=0;i<n;i++)cctx.fillRect(Math.random()*cv.width,Math.random()*cv.height,DPR,DPR);
   if(F>0.55&&Math.random()<0.2){ // dropped line at heavy damage
     cctx.fillStyle="rgba(0,0,0,0.5)";
@@ -1451,6 +1519,9 @@ function endFrame(){
 const PT={x:0,y:0,down:false,justUp:false,downX:0,downY:0,capture:null,dragDX:0,dragDY:0,moved:false};
 cv.addEventListener("pointerdown",e=>{
   AUDIO.init();
+  // iOS suspends contexts on route changes and gesture heuristics; any touch
+  // is licence to bring the hum back
+  if(AUDIO.ctx&&AUDIO.ctx.state==="suspended")AUDIO.ctx.resume();
   PT.x=e.clientX;PT.y=e.clientY;PT.down=true;PT.downX=e.clientX;PT.downY=e.clientY;
   PT.capture=null;PT.moved=false;
   cv.setPointerCapture(e.pointerId);
@@ -1484,7 +1555,7 @@ function dotLead(x,y,w,name,val,cName,cVal,px){
   const vw=sctx.measureText(val).width;
   const dotA=x+nw+6,dotB=x+w-vw-6;
   if(dotB>dotA+8){
-    sctx.textAlign="left";sctx.fillStyle="rgba(90,140,180,0.55)";
+    sctx.textAlign="left";sctx.fillStyle=C.dim;
     const n=Math.floor((dotB-dotA)/(px*0.62));
     sctx.fillText(".".repeat(Math.max(0,n)),dotA,y);
   }
@@ -1495,7 +1566,7 @@ function btn(id,x,y,w,h,text,color,opts){
   const r={x,y,w,h};
   const armed=PT.down&&inRect(PT.downX,PT.downY,r)&&inRect(PT.x,PT.y,r)&&!PT.capture;
   const dis=opts.disabled;
-  const col=dis?"rgba(90,120,150,0.5)":(color||C.label);
+  const col=dis?C.dim:(color||C.label);
   box(x,y,w,h,armed?C.read:col,armed?2:1);
   sctx.font=fnt(opts.px||12);sctx.textAlign="center";sctx.textBaseline="middle";
   sctx.fillStyle=col;
@@ -1522,7 +1593,7 @@ function dialStrip(id,x,y,w,h,name,value,fmt,perPx,fine,min,max,wrap){
   sctx.fillText(fmt(value),x+w-aw-8,y+4);
   // ruler: position within range, so the hand knows where the value sits
   const fr=wrap?((value-min)/(max-min))%1:(value-min)/(max-min);
-  sctx.strokeStyle="rgba(90,150,200,0.7)";sctx.lineWidth=1;
+  sctx.strokeStyle=C.dim;sctx.lineWidth=1;
   sctx.beginPath();
   const ry=y+h-7,rx0=x+aw+6,rx1=x+w-aw-6;
   sctx.moveTo(rx0,ry);sctx.lineTo(rx1,ry);
@@ -1554,11 +1625,12 @@ function dialStrip(id,x,y,w,h,name,value,fmt,perPx,fine,min,max,wrap){
    ========================================================================= */
 let layoutDirty=true;
 const PAD=6;
-function computeLayout(commsOpen){
+function computeLayout(commsOpen,planOpen){
   const portrait=VH>=VW*1.15;
   const L={portrait};
   if(portrait){
-    const headH=64,ctlH=132,dataH=commsOpen?290:126;
+    // plan mode steals plate height so the commit row stays thumb-sized
+    const headH=64,ctlH=planOpen?180:132,dataH=commsOpen?290:126;
     L.head={x:PAD,y:PAD,w:VW-2*PAD,h:headH};
     L.ctl={x:PAD,y:VH-ctlH-PAD,w:VW-2*PAD,h:ctlH};
     L.data={x:PAD,y:L.ctl.y-dataH-PAD,w:VW-2*PAD,h:dataH};
@@ -1567,7 +1639,7 @@ function computeLayout(commsOpen){
     const side=Math.min(VH-2*PAD,VW*0.55);
     L.plate={x:PAD,y:PAD,w:side,h:VH-2*PAD};
     const cx=L.plate.x+L.plate.w+PAD,cw=VW-cx-PAD;
-    const headH=56,ctlH=118,dataH=VH-headH-ctlH-4*PAD;
+    const headH=56,ctlH=planOpen?168:118,dataH=VH-headH-ctlH-4*PAD;
     L.head={x:cx,y:PAD,w:cw,h:headH};
     L.data={x:cx,y:PAD+headH+PAD,w:cw,h:dataH};
     L.ctl={x:cx,y:VH-ctlH-PAD,w:cw,h:ctlH};
@@ -1617,10 +1689,12 @@ function drawHeader(L){
   const blink=(performance.now()/400|0)%2===0;
   const cAct=S.contact.fix&&(S.t-S.contact.fix.t)<48||S.contact.etaH!==null;
   const lamps=[
-    ["CNT",cAct?(blink?C.contact:"rgba(255,79,216,0.35)"):"rgba(80,100,120,0.5)"],
-    ["INS",insured()?"rgba(80,100,120,0.5)":(blink?C.warn:"rgba(255,176,0,0.4)")],
-    ["AIR",airL?statusColor(airL):"rgba(80,100,120,0.5)"]
+    ["CNT",cAct?(blink?C.contact:"rgba(255,79,216,0.35)"):C.dim],
+    ["INS",insured()?C.dim:(blink?C.warn:"rgba(255,176,0,0.4)")],
+    ["AIR",airL?statusColor(airL):C.dim]
   ];
+  if(S.contact.etaH!==null)alarmCheck("cnt",S.contact.etaH,6,2,"RETURN AT ZERO — NOT IDENTIFIED");
+  else alarmMem.cnt=0;
   lamps.forEach(([t,col],i)=>{
     const x=lx+i*(lampW+4);
     box(x,y2-2,lampW,14,col);
@@ -1773,6 +1847,19 @@ function drawChart(L){
   }
 }
 
+/* the known-load preview is honest but not free: integrating a 40 ly chord
+   against the whole capsule list costs ~10ms, so the panels reuse the last
+   answer until the endpoints or the chart of found hazards actually change */
+const corrCache={};
+function cachedCorridor(slot,from,to){
+  let found=0;for(const h of S.hazards)if(h.found)found++;
+  const key=from.map(v=>v.toFixed(2)).join()+"|"+to.map(v=>v.toFixed(2)).join()+"|"+found;
+  const c=corrCache[slot],now=performance.now();
+  if(c&&(c.key===key||now-c.at<180))return c.res;
+  const res=corridorLoad(from,to,S.hazards,true);
+  corrCache[slot]={key,res,at:now};
+  return res;
+}
 function navDataPanel(L){
   const r=L.data;
   box(r.x,r.y,r.w,r.h,C.chassis);
@@ -1793,7 +1880,7 @@ function navDataPanel(L){
   dotLead(x,y,colW,"CATALOGUE (REF ORIGIN)","α"+sel.ra.toFixed(1)+" δ"+sel.dec.toFixed(1)+" R"+sel.dist.toFixed(2),C.label,C.read,10);y+=14;
   dotLead(x,y,colW,"TGT XYZ",sel.pos.map(v=>(v<0?"−":"+")+Math.abs(v).toFixed(2)).join(" "),C.label,C.read,10);y+=14;
   dotLead(x,y,colW,"FIX XYZ",S.pos.map(v=>(v<0?"−":"+")+Math.abs(v).toFixed(2)).join(" "),C.label,C.read,10);y+=14;
-  const kload=corridorLoad(S.pos,sel.pos,S.hazards,true);
+  const kload=cachedCorridor("nav",S.pos,sel.pos);
   dotLead(x,y,colW,"KNOWN CORRIDOR LOAD",kload.dmg>0?kload.dmg.toFixed(1):"0.0",C.label,kload.dmg>0?C.warn:C.ok,10);y+=14;
   dotLead(x,y,colW,"UNCHARTED LOAD","UNKNOWN",C.label,C.label,10);y+=14;
   if(v3.len(sel.pos)>INS_RADIUS)
@@ -1823,9 +1910,15 @@ function planPanel(L){
     const res=resolveJump(S.dial.brg,S.dial.el,S.dial.rng);
     if(res.refused){banner(res.refused,C.bad);AUDIO.uiDeny();}
     else{
-      SCR.transit={res,start:performance.now()/1000,dur:3.2+Math.min(4,res.hours/120),applied:false,struck:0};
-      SCR.mode="transit";
-      AUDIO.jumpRumble(SCR.transit.dur,clamp(res.load.dmg/40,0,1));
+      // the jump is applied HERE — the transit screen only replays what has
+      // already happened, so a reload resumes the consequences
+      FIELD.armed=false;
+      commitJump(res);
+      if(S.alive){
+        SCR.transit={res,start:performance.now()/1000,dur:3.2+Math.min(4,res.hours/120)};
+        SCR.mode="transit";
+        AUDIO.jumpRumble(SCR.transit.dur,clamp(res.load.dmg/40,0,1));
+      }
     }
   }
   if(btn("b.abort",r.x+2*(bw+gap),by,bw,r.h-3*(sh+gap),"CLOSE",C.label,{px:11}))SCR.panel="nav";
@@ -1853,30 +1946,28 @@ function planDataPanel(L){
   const near=nearestStar(aim);
   dotLead(x,y,colW,"AIM POINT XYZ",aim.map(v=>(v<0?"−":"+")+Math.abs(v).toFixed(2)).join(" "),C.label,C.read,10);y+=14;
   dotLead(x,y,colW,"NEAREST CATALOGUE AT AIM",near.star.name+" +"+near.dist.toFixed(2),C.label,near.dist<0.35?C.ok:C.warn,10);y+=14;
-  const kload=corridorLoad(S.pos,aim,S.hazards,true);
+  const kload=cachedCorridor("plan",S.pos,aim);
   dotLead(x,y,colW,"KNOWN CORRIDOR LOAD",kload.dmg.toFixed(1),C.label,kload.dmg>0?C.warn:C.ok,10);y+=14;
   if(v3.len(aim)>INS_RADIUS)label(x,y,"AIM BEYOND 25.0 LY — CLAUSE 14(C) VOIDS COVER",C.warn,9);
   else if(S.air<H_FIXED+H_PER_LY*S.dial.rng+50)label(x,y,"AIR MARGIN AFTER TRANSIT UNDER 50H",C.bad,9);
 }
 
-/* ---- transit: the corridor plays out; strikes land as they are crossed */
+/* ---- transit: a replay of the already-committed corridor; strike marks sit
+   where along the chord the capsules actually were */
 function drawTransit(L){
   const tr=SCR.transit,res=tr.res;
   const t=(performance.now()/1000-tr.start)/tr.dur;
   const r=L.plate;
   box(r.x,r.y,r.w,r.h,C.chassis);
-  label(r.x+6,r.y+4,"TRANSIT",C.label,10);
+  label(r.x+6,r.y+4,"TRANSIT — SOLUTION RUNNING",C.label,10);
   const cx=r.x+r.w/2;
-  const y0=r.y+r.h*0.4,x0=r.x+24,x1=r.x+r.w-24;
+  const y0=r.y+Math.min(r.h*0.4,150),x0=r.x+24,x1=r.x+r.w-24;
   sctx.strokeStyle=C.chassis;
   sctx.beginPath();sctx.moveTo(x0,y0);sctx.lineTo(x1,y0);sctx.stroke();
-  // dot leaders count the distance down
-  sctx.font=fnt(10);sctx.fillStyle=C.read;sctx.textAlign="center";
   const p=clamp(t,0,1);
   const px=lerp(x0,x1,p);
   for(const d of res.load.detail){
-    // strike windows drawn only once crossed: charted the hard way
-    const at=lerp(x0,x1,0.2+0.6*(res.load.detail.indexOf(d)/Math.max(1,res.load.detail.length)));
+    const at=lerp(x0,x1,clamp(d.t0,0.02,0.98));
     if(px>at){
       sctx.strokeStyle=C.warn;
       sctx.beginPath();sctx.moveTo(at,y0-8);sctx.lineTo(at,y0+8);sctx.stroke();
@@ -1888,11 +1979,11 @@ function drawTransit(L){
   const eta=Math.max(0,res.hours*(1-p));
   sctx.textAlign="center";sctx.fillStyle=C.read;sctx.font=fnt(12);
   sctx.fillText("ETA T−"+fmtH(eta),cx,y0+30);
-  sctx.fillText("CORRIDOR LOAD ACCRUED "+ (res.load.dmg*p).toFixed(1),cx,y0+48);
+  sctx.fillText("RANGE RUN "+(p*S.dial.rng).toFixed(2)+" / "+S.dial.rng.toFixed(2)+" LY",cx,y0+48);
+  sctx.fillText("CORRIDOR LOAD ACCRUED "+(res.load.dmg*p).toFixed(1),cx,y0+66);
   if(t>=1){
-    commitJump(res);
     SCR.transit=null;
-    if(S.alive){SCR.mode="report";SCR.report=S.lastGrade;}
+    SCR.mode="report";SCR.report=S.lastGrade;
   }
 }
 function drawReport(L){
@@ -1973,7 +2064,9 @@ function drawField(L,dt){
       label(px+5,py-4,pl.name,C.ok,9);
     });
     if(st.planets===0)label(cx,cy-sr-14,"CONFIRMED BODIES: 0",C.label,8,"center");
-    // hulk: passive thermal wants soak time; the bell is audible first
+    // hulk: passive thermal wants soak time; the bell is audible first.
+    // flat dynamic keys on S so the soak clock rides the run snapshot;
+    // the ||(assign) seeds the arrival stamp on first sight of the system
     if(S.hulks[st.name]){
       if(!S["hulkSeen:"+st.name]&&S.t-(S["hulkArr:"+st.name]||(S["hulkArr:"+st.name]=S.t))>20)S["hulkSeen:"+st.name]=true;
       if(S["hulkSeen:"+st.name]){
@@ -1997,7 +2090,6 @@ function drawField(L,dt){
     // approach depth overlay while armed: the one dial
     if(FIELD.armed){
       const est=floorEstimate(st);
-      const a0=Math.PI*0.75,a1=Math.PI*0.25+TAU*0;
       sctx.strokeStyle=C.chassis;
       sctx.beginPath();sctx.arc(cx,cy,R*0.82,Math.PI*0.75,Math.PI*2.25);sctx.stroke();
       // estimated floor band: the console can only estimate; the band is the honesty
@@ -2039,16 +2131,16 @@ function drawField(L,dt){
       sctx.beginPath();sctx.arc(bx,by,5,0,TAU);sctx.stroke();
       sctx.beginPath();sctx.moveTo(bx-9,by);sctx.lineTo(bx+9,by);sctx.stroke();
     }
-    label(cx,r.y+16,"RETURN CLOSING — T−"+Math.max(0,S.contact.etaH).toFixed(0)+"H — NOT IDENTIFIED",C.contact,10,"center");
-    if(S.contact.etaH<6)alarmCheck("cnt",1,2,0,"RETURN AT ZERO — NOT IDENTIFIED");
+    label(cx,r.y+28,"RETURN CLOSING — T−"+Math.max(0,S.contact.etaH).toFixed(0)+"H — NOT IDENTIFIED",C.contact,10,"center");
   }
   sctx.restore();
-  trySweepFixTick(dt);
 }
+/* the passive stack integrates whether or not its plate is on the glass;
+   only the audible tick belongs to the near-field display */
 let sweepFixAcc=0;
-function trySweepFixTick(dt){
+function trySweepFixTick(dt,audible){
   sweepFixAcc+=dt;
-  if(sweepFixAcc>4.2){sweepFixAcc=0;trySweepFix();if(AUDIO.on)AUDIO.sweepTick();}
+  if(sweepFixAcc>4.2){sweepFixAcc=0;trySweepFix();if(audible&&AUDIO.on)AUDIO.sweepTick();}
 }
 
 /* ============================================================================
@@ -2062,7 +2154,7 @@ function drawMixedText(x,y,w,msg,px){
   const lh=px+7;
   for(const t of msg.toks){
     if(t.p){ // punctuation is a beat, drawn dim
-      sctx.font=fnt(px);sctx.fillStyle="rgba(90,140,180,0.8)";sctx.textAlign="left";sctx.textBaseline="top";
+      sctx.font=fnt(px);sctx.fillStyle=C.dim;sctx.textAlign="left";sctx.textBaseline="top";
       sctx.fillText(t.p==="."?"·":"?",dx,dy);dx+=px*0.8;continue;
     }
     const wd=cu.words[t.w];
@@ -2089,7 +2181,8 @@ function drawMixedText(x,y,w,msg,px){
   }
   return dy+lh-y;
 }
-function msgHeight(msg,w,px){ // layout dry-run for scrolling
+function msgHeight(msg,w,px){ // layout dry-run for scrolling, cached per decode state
+  if(msg._h!==undefined&&msg._hv===LANGV&&msg._hw===w)return msg._h;
   const cu=cultureById[msg.cid];
   let dx=0,lines=1;
   for(const t of msg.toks){
@@ -2103,7 +2196,8 @@ function msgHeight(msg,w,px){ // layout dry-run for scrolling
     if(dx+ww>w){dx=0;lines++;}
     dx+=ww;
   }
-  return lines*(px+7);
+  msg._h=lines*(px+7);msg._hv=LANGV;msg._hw=w;
+  return msg._h;
 }
 
 function drawComms(L){
@@ -2121,8 +2215,11 @@ function drawComms(L){
     label(x+wIn,y,"BUOY COMP "+Math.round(comprehension("buoy")*100)+"%",C.label,9,"right");
   }
   y+=15;
-  // reply board first: fixed height, thumb landing zone at the bottom
-  const repH=cu?96:0;
+  // reply board: every intent must be reachable by thumb, so the board sizes
+  // itself to the culture's phrasebook rather than truncating it
+  const cols=wIn>420?3:2,bh=28;
+  const rows=cu?Math.ceil(cu.replies.length/cols):0;
+  const repH=cu?rows*(bh+4)+4:0;
   const listH=r.h-(y-r.y)-repH-6;
   const lr={x,y,w:wIn,h:listH};
   sctx.save();
@@ -2132,10 +2229,11 @@ function drawComms(L){
   const heights=shown.map(m=>{const h=msgHeight(m,wIn-70,10)+16;totalH+=h;return h;});
   commsScroll=clamp(commsScroll,Math.min(0,listH-totalH),0);
   let my=lr.y+listH-totalH+commsScroll;
+  const newly=[];
   shown.forEach((m,i)=>{
     const h=heights[i];
     if(my+h>lr.y&&my<lr.y+lr.h){
-      if(!m.exposed){exposeMsg(m);AUDIO.playMessage(m);} // reading is the exposure event
+      if(!m.exposed){exposeMsg(m);newly.push(m);} // reading is the exposure event
       const who=cultureById[m.cid].designation.split(" — ")[0];
       label(lr.x,my,who+" T+"+fmtH(m.t),m.cid==="buoy"?C.label:C.contact,8);
       if(PT.justUp&&!PT.moved&&!PT.capture&&inRect(PT.downX,PT.downY,{x:lr.x,y:my,w:lr.w,h:h-4})){
@@ -2146,6 +2244,9 @@ function drawComms(L){
     my+=h;
   });
   sctx.restore();
+  // several may expose in one frame; only the newest is voiced, or the
+  // panel would talk over itself
+  if(newly.length)AUDIO.playMessage(newly[newly.length-1]);
   if(PT.down&&!PT.capture&&PT.moved&&inRect(PT.downX,PT.downY,lr))PT.capture="comms";
   if(PT.capture==="comms"){
     if(PT.down){commsScroll+=PT.dragDY;PT.dragDY=0;}
@@ -2154,14 +2255,14 @@ function drawComms(L){
   // replies: the panel marks the costly ones before you send them
   if(cu){
     let ry=r.y+r.h-repH+2;
-    const cols=2,bw=(wIn-6)/cols,bh=28;
+    const bw=(wIn-(cols-1)*6)/cols;
     cu.replies.forEach((rep,i)=>{
       const bx=x+(i%cols)*(bw+6),by=ry+Math.floor(i/cols)*(bh+4);
       if(by+bh>r.y+r.h-2)return;
       const chk=replySendable(cu,rep);
       const wt=(rep.cost>=0?"+":"")+rep.cost;
       const col=rep.cost<=-3?C.bad:(rep.cost<0?C.warn:C.label);
-      if(btn("rep"+i,bx,by,bw,bh,rep.intent+"  W"+wt,col,{px:9,disabled:!chk.ok,note:chk.ok?"XMIT":chk.why,noteColor:chk.ok?C.contact:"rgba(120,140,160,0.8)"}))
+      if(btn("rep"+i,bx,by,bw,bh,rep.intent+"  W"+wt,col,{px:9,disabled:!chk.ok,note:chk.ok?"XMIT":chk.why,noteColor:chk.ok?C.contact:C.dim}))
         sendReply(cu,rep);
     });
   }
@@ -2480,56 +2581,62 @@ function makeBootLines(resume){
 function drawBoot(dt){
   SCR.bootT+=dt*640; // characters per second, beam-writing pace
   const lines=SCR.bootLines;
-  const x=Math.max(PAD+8,(VW-360)/2),y0=Math.max(30,VH*0.10);
+  const lh=VH<500?12:15,fs=VH<500?9:11,bh=40;
+  const cardH=Math.min(lines.length*lh+bh+46,VH-24);
+  const y0=Math.max(12,(VH-cardH)/2.4);
+  const x=Math.max(PAD+8,(VW-360)/2);
   let budget=Math.floor(SCR.bootT),y=y0;
-  box(x-10,y0-14,Math.min(380,VW-2*PAD-4),Math.min(lines.length*15+92,VH-y0-14),C.chassis);
+  box(x-10,y0-10,Math.min(380,VW-2*PAD-4),cardH,C.chassis);
   for(const ln of lines){
     if(budget<=0)break;
+    if(y>y0+cardH-bh-40)break; // short glass: the card scrolls no further than it must
     const show=ln.slice(0,budget);
     budget-=ln.length+1;
-    label(x,y,show,ln.startsWith("  ")?C.read:(ln.includes("CLAUSE")||ln.includes("POLICY")?C.warn:C.label),11);
-    y+=15;
+    label(x,y,show,ln.startsWith("  ")?C.read:(ln.includes("CLAUSE")||ln.includes("POLICY")?C.warn:C.label),fs);
+    y+=lh;
   }
   if(PT.justUp&&!PT.moved)SCR.bootT=Math.max(SCR.bootT,2600);
   if(budget>0){
-    const bw=170,bh=44,bx=x+20,by=y+10;
+    const bw=170,bx=x+20,by=Math.min(y+8,y0+cardH-bh-24);
     if(SCR.canResume){
       if(btn("b.resume",bx,by,bw,bh,["RESUME TOUR","SEED "+S.seed],C.ok,{px:11})){AUDIO.init();SCR.mode="main";}
       if(btn("b.new",bx+bw+10,by,110,bh,["SCRATCH","NEW TOUR"],C.warn,{px:10})){AUDIO.init();newRun();SCR.canResume=false;SCR.mode="main";}
     }else{
       if(btn("b.init",bx,by,bw,bh,"INITIALISE ▸",C.ok,{px:12})){AUDIO.init();if(!S)newRun();SCR.mode="main";}
     }
-    label(x,by+bh+12,"OPERATE WITH ONE THUMB. READ THE LABELS.",C.chassis,9);
+    label(x,by+bh+6,"OPERATE WITH ONE THUMB. READ THE LABELS.",C.chassis,VH<500?8:9);
   }
 }
 function drawDeath(){
   const d=S.death;
-  const w=Math.min(380,VW-2*PAD-4),x=(VW-w)/2,y0=Math.max(24,VH*0.08);
-  box(x,y0,w,Math.min(430,VH-y0-70),C.bad);
-  let y=y0+10;const cw=w-24,cx0=x+12;
-  label(cx0,y,"INCIDENT REPORT — FORM 30-K",C.bad,12);y+=22;
-  dotLead(cx0,y,cw,"CAUSE",d.cause,C.label,C.bad,10);y+=16;
-  if(d.detail){label(cx0,y,d.detail,C.read,9);y+=16;}
+  const short=VH<520;
+  const rh=short?12:15,nlog=short?2:4;
+  const cardH=(short?200:236)+rh*8+nlog*11+66;
+  const w=Math.min(380,VW-2*PAD-4),x=(VW-w)/2,y0=Math.max(10,(VH-cardH)/2.6);
+  box(x,y0,w,Math.min(cardH,VH-y0-8),C.bad);
+  let y=y0+8;const cw=w-24,cx0=x+12;
+  const fit=t=>{sctx.font=fnt(8);return sctx.measureText(t).width<=cw?t:t.slice(0,46)+"…";};
+  label(cx0,y,"INCIDENT REPORT — FORM 30-K",C.bad,12);y+=short?16:22;
+  dotLead(cx0,y,cw,"CAUSE",d.cause.slice(0,34),C.label,C.bad,10);y+=rh+1;
+  if(d.detail&&!short){label(cx0,y,fit(d.detail),C.read,9);y+=rh+1;}
   const fx=xyzToRaDec(d.pos);
-  dotLead(cx0,y,cw,"FINAL FIX","α"+fx.ra.toFixed(1)+" δ"+fx.dec.toFixed(1)+" R"+fx.r.toFixed(2),C.label,C.read,10);y+=15;
-  dotLead(cx0,y,cw,"TIME",fmtH(d.t),C.label,C.read,10);y+=15;
-  dotLead(cx0,y,cw,"POLICY",d.recovered?"CLAUSE 9 RECOVERY":(d.insured?"IN FORCE — HULL CLAIM FILED":"VOID — CLAUSE 14(C) — NO RECOVERY"),C.label,d.insured?C.ok:C.warn,10);y+=15;
-  dotLead(cx0,y,cw,"TOUR / PACKETS",S.tour+" / "+S.order.filter(o=>o.delivered).length+" DELIVERED",C.label,C.read,10);y+=15;
-  dotLead(cx0,y,cw,"JUMPS LOGGED",String(S.jumps),C.label,C.read,10);y+=15;
+  dotLead(cx0,y,cw,"FINAL FIX","α"+fx.ra.toFixed(1)+" δ"+fx.dec.toFixed(1)+" R"+fx.r.toFixed(2),C.label,C.read,10);y+=rh;
+  dotLead(cx0,y,cw,"TIME",fmtH(d.t),C.label,C.read,10);y+=rh;
+  dotLead(cx0,y,cw,"POLICY",d.recovered?"CLAUSE 9 RECOVERY":(d.insured?"IN FORCE — HULL CLAIM FILED":"VOID — CLAUSE 14(C)"),C.label,d.insured?C.ok:C.warn,10);y+=rh;
+  dotLead(cx0,y,cw,"TOUR / PACKETS",S.tour+" / "+S.order.filter(o=>o.delivered).length+" DELIVERED",C.label,C.read,10);y+=rh;
+  dotLead(cx0,y,cw,"JUMPS LOGGED",String(S.jumps),C.label,C.read,10);y+=rh;
   for(const cu of CULTURES){
     if(cu.id==="buoy")continue;
-    dotLead(cx0,y,cw,"COMPREHENSION "+cu.designation.split(" — ")[0],Math.round(comprehension(cu.id)*100)+"%",C.label,C.contact,10);y+=15;
+    dotLead(cx0,y,cw,"COMPREHENSION "+cu.designation.split(" — ")[0],Math.round(comprehension(cu.id)*100)+"%",C.label,C.contact,10);y+=rh;
   }
-  dotLead(cx0,y,cw,"SEED",S.seed,C.label,C.read,10);y+=20;
-  label(cx0,y,"CONTRIBUTING FACTORS (LOG EXTRACT):",C.label,9);y+=13;
-  for(const e of S.log.slice(-4)){label(cx0,y,"T+"+fmtH(e.t)+" "+e.text.slice(0,44),e.color,8);y+=11;}
-  y+=12;
-  label(cx0,y,"LANGUAGE RECORDS SYNCED TO COMPANY CODEBOOK.",C.label,8);y+=11;
-  label(cx0,y,"THE NEXT OPERATOR INHERITS THEM.",C.label,8);y+=16;
-  if(btn("b.restart",x+w/2-80,Math.min(y,VH-70),160,44,"NEXT OF ROSTER ▸",C.label,{px:11})){
+  dotLead(cx0,y,cw,"SEED",S.seed,C.label,C.read,10);y+=rh+3;
+  label(cx0,y,"CONTRIBUTING FACTORS (LOG EXTRACT):",C.label,9);y+=12;
+  for(const e of S.log.slice(-nlog)){label(cx0,y,fit("T+"+fmtH(e.t)+" "+e.text),e.color,8);y+=11;}
+  y+=6;
+  label(cx0,y,"LANGUAGE RECORDS SYNCED. THE NEXT OPERATOR INHERITS THEM.",C.label,8);y+=14;
+  if(btn("b.restart",x+w/2-80,Math.min(y,VH-52),160,short?36:44,"NEXT OF ROSTER ▸",C.label,{px:11})){
     newRun();
     SCR.mode="boot";SCR.bootT=0;SCR.bootLines=makeBootLines(false);SCR.canResume=false;
-    alarmMem={};
   }
 }
 
@@ -2547,7 +2654,7 @@ function frame(ts){
   if(SCR.mode==="boot")drawBoot(dt);
   else if(SCR.mode==="death")drawDeath();
   else{
-    const L=computeLayout(SCR.panel==="comms");
+    const L=computeLayout(SCR.panel==="comms",SCR.panel==="plan");
     if(SCR.mode==="main"){
       advanceHours(dt*0.2); // the idle clock: reading costs air too
       if(S.alive){
@@ -2562,17 +2669,22 @@ function frame(ts){
         else if(SCR.panel==="manual")drawManual(L);
         else navDataPanel(L);
         drawControls(L);
+        trySweepFixTick(dt,SCR.instrument==="field"&&SCR.panel!=="comms");
       }
-    }else if(SCR.mode==="transit"){drawHeader(L);drawTransit(L);}
-    else if(SCR.mode==="report"){drawHeader(L);drawReport(L);}
+    }else if(SCR.mode==="transit"){drawHeader(L);drawTransit(L);drawLog(L);}
+    else if(SCR.mode==="report"){drawHeader(L);drawReport(L);drawLog(L);}
     if(BANNER&&performance.now()/1000<BANNER.until){
-      const bw=Math.min(VW-20,360);
-      box((VW-bw)/2,L.head.y+L.head.h+4,bw,22,BANNER.color);
-      label(VW/2,L.head.y+L.head.h+9,BANNER.text.slice(0,52),BANNER.color,9,"center");
+      const bw=Math.min(L.plate.w-12,360);
+      const bx=L.plate.x+(L.plate.w-bw)/2;
+      box(bx,L.plate.y+18,bw,22,BANNER.color);
+      label(bx+bw/2,L.plate.y+23,BANNER.text.slice(0,52),BANNER.color,9,"center");
     }
   }
   endFrame();
   if(PT.justUp){PT.justUp=false;PT.moved=false;}
+  // capture must not outlive the pointer: a screen change mid-drag would
+  // otherwise leave every later button dead
+  if(!PT.down&&PT.capture)PT.capture=null;
   requestAnimationFrame(frame);
 }
 
@@ -2620,7 +2732,7 @@ if(location.hash.indexOf("test")>=0){
     learn(cid,frac){
       const cu=cultureById[cid];
       for(let gi=0;gi<Math.floor(cu.glyphN*frac);gi++)LANG[cid][gi]=cu.need;
-      saveLang();
+      LANGV++;saveLang();
     },
     give(k){S.reductions[k]=true;},
     court(cid,v){S.courtesy[cid]=v;},
