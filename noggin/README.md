@@ -266,11 +266,19 @@ that is the entire cast.
 
 **At rest it is an exact sphere** — no lobing, no wobble, nothing to soften it.
 Everything that disturbs that shape does so for a reason, which is what makes
-each disturbance mean something. **Speaking is one of them:** a wave travels
-outward in the angle from the focal point, displacing the shell and tilting its
-normals with it, so the ripple crosses the surface as bending iridescence and
-not just as a wobbling outline. It shakes hardest where the voice is coming
-from and dies away round the back.
+each disturbance mean something.
+
+**Speaking swells it.** A steady breath of a couple of percent while a line
+runs, and a bigger one — up to about eight — where the line has weight behind
+it. Emphasis is read straight off the punctuation and the capitals, which is
+enough to land the swell on the words that carry the sentence without any
+analysis of the words themselves. A sphere with no face has this instead of a
+mouth. Underneath it there is a whisper of surface ripple, just enough that a
+growing sphere does not read as a balloon being inflated.
+
+**And it stops completely once it is wearing something.** An apple does not
+breathe, and neither does a rock. The swell is the being's own tell, so
+anything it has become holds still.
 
 It has no face, so **a bright focal point on the shell carries all of the
 looking**. It slides to whatever has its attention: the specimen, your

@@ -3240,6 +3240,16 @@
      to strand the conversation with lines still queued behind it. */
   const HOLD_MAX = 8;
 
+  /* What the body moves to. Speech is not a constant hum — it has stresses,
+     and those are almost entirely carried by punctuation and by the capital
+     that starts a sentence. Weighting those is enough to make the swell land
+     on the words that matter without any analysis of the words. */
+  const EMPHASIS = {
+    '!': 0.90, '?': 0.65, '.': 0.35, '—': 0.32, ':': 0.22, ';': 0.20, ',': 0.16
+  };
+  const PULSE_PER_CHAR = 0.20;
+  const CAPITAL_STRESS = 0.22;
+
   function Chat(audio, brain, els) {
     this.audio = audio;
     this.brain = brain;
@@ -3256,6 +3266,10 @@
     this.hold = null;       /* predicate: true while the scene is still busy */
     this.holdFor = 0;
     this.lastActivity = -1e9;
+    /* Speech shape, read by the body: `pulse` ticks along with the characters,
+       `emphasis` spikes on the ones that carry weight. */
+    this.pulse = 0;
+    this.emphasis = 0;
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
@@ -3389,6 +3403,9 @@
   Chat.prototype.update = function (dt) {
     this.lastActivity += dt;
     this._ageLines(dt);
+    /* Both fall away on their own; only typing puts anything back. */
+    this.pulse -= this.pulse * Math.min(1, dt * 9);
+    this.emphasis -= this.emphasis * Math.min(1, dt * 3.2);
 
     if (!this.typingEl) {
       if (this.hold) {
@@ -3417,6 +3434,12 @@
         const ch = this.full.charAt(i);
         if (ch === ' ' || ch === '\n') continue;
         if (++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
+        this.pulse = Math.min(1, this.pulse + PULSE_PER_CHAR);
+        const w = EMPHASIS[ch];
+        if (w) this.emphasis = Math.min(1, this.emphasis + w);
+        else if (ch >= 'A' && ch <= 'Z') {
+          this.emphasis = Math.min(1, this.emphasis + CAPITAL_STRESS);
+        }
       }
     }
     if (this.shown >= this.full.length) {
@@ -3525,12 +3548,16 @@ uniform float uTime;
 uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
 uniform float uBoil;     /* 0..1, spikes while it is changing state */
 uniform float uVoice;    /* 0..1, rises while it is speaking */
+uniform float uMorph;    /* 0 = itself, 1 = fully wearing a form */
 uniform vec3 uFocusDir;  /* world direction its attention is on */
 
-/* Speech ripple: wavelength in radians of arc, speed, and height. */
+/* Speech ripple. Deliberately faint — the swell carries the speaking, and a
+   violent ripple reads as a struggling membrane rather than as a voice. What
+   is left is enough surface motion that a growing sphere does not look like a
+   balloon being inflated. */
 const float RIPPLE_K = 9.0;
 const float RIPPLE_W = 22.0;
-const float RIPPLE_A = 0.045;
+const float RIPPLE_A = 0.010;
 const float RIPPLE_R = 1.15;   /* nominal radius, for the normal tilt */
 
 out vec3 vWPos;
@@ -3579,7 +3606,10 @@ void main() {
     float c = clamp(dot(wnn, f), -1.0, 1.0);
     float band = acos(c);
     float phase = band * RIPPLE_K - uTime * RIPPLE_W;
-    float amp = RIPPLE_A * uVoice * exp(-band * 0.35) * (1.0 - 0.7 * uGas)
+    /* Off entirely once it is wearing something: whatever it has become
+       should hold still. */
+    float amp = RIPPLE_A * uVoice * (1.0 - uMorph) * exp(-band * 0.35)
+              * (1.0 - 0.7 * uGas)
               * (0.75 + 0.25 * sin(uTime * 5.3 + band * 3.0));
     p += nrm * sin(phase) * amp;
 
@@ -3714,7 +3744,7 @@ void main() {
     if (uVoice > 0.001) {
       float band = acos(clamp(dot(N, normalize(uFocusDir)), -1.0, 1.0));
       float wave = 0.5 + 0.5 * sin(band * 9.0 - uTime * 22.0);
-      col += iri * wave * uVoice * 0.24 * exp(-band * 0.35);
+      col += iri * wave * uVoice * (1.0 - uMorph) * 0.10 * exp(-band * 0.35);
     }
 
     // Pulled hard, the shell stresses and glows along the strain.
@@ -4970,6 +5000,14 @@ void main() {
      of turning to stone rather than as the same event. */
   const HARDEN_BEAT = 0.45;
 
+  /* How much bigger it gets while speaking, as a fraction of its own size.
+     Modest on purpose: this is a being drawing breath, not a balloon. */
+  const SWELL = {
+    breath: 0.018,   /* steady, while a line is running */
+    stress: 0.060,   /* on the marks that carry weight */
+    tick: 0.020      /* the per-character throb underneath */
+  };
+
   /* Nothing occupies the sides any more. The only reserved area is the
      dialogue band along the bottom, so the stage is centred horizontally and
      lifted clear of it. */
@@ -5018,6 +5056,7 @@ void main() {
     this.lean = 0;
     this.leanDir = [0, 0, 0];
     this.voice = 0;
+    this.swell = 0;
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -6002,6 +6041,19 @@ void main() {
     /* Voice envelope: rises while it is speaking, falls when it stops. */
     const want = this.chat.busy() ? 1 : 0;
     this.voice += (want - this.voice) * Math.min(1, dt * (want ? 6 : 2.2));
+
+    /* Speaking swells it. A steady breath while a line runs, a bigger one
+       where the line has weight behind it — which is what a sphere with no
+       face has instead of a mouth.
+
+       It stops completely once it is wearing something. An apple does not
+       breathe, and neither does a rock; the swell is the being's own tell,
+       so anything it has become should be still. */
+    const held = 1 - this.morph.amount;
+    const wantSwell = (this.voice * SWELL.breath
+      + this.chat.emphasis * SWELL.stress
+      + this.chat.pulse * SWELL.tick) * held;
+    this.swell += (wantSwell - this.swell) * Math.min(1, dt * 12);
   };
 
   /* ---- frame --------------------------------------------------------------- */
@@ -6094,7 +6146,7 @@ void main() {
   App.prototype.composeModel = function () {
     M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
     M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
-      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.voice * 0.012);
+      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.swell);
     M.invert(this.invModel, this.model);
   };
 

@@ -20,6 +20,16 @@
      to strand the conversation with lines still queued behind it. */
   const HOLD_MAX = 8;
 
+  /* What the body moves to. Speech is not a constant hum — it has stresses,
+     and those are almost entirely carried by punctuation and by the capital
+     that starts a sentence. Weighting those is enough to make the swell land
+     on the words that matter without any analysis of the words. */
+  const EMPHASIS = {
+    '!': 0.90, '?': 0.65, '.': 0.35, '—': 0.32, ':': 0.22, ';': 0.20, ',': 0.16
+  };
+  const PULSE_PER_CHAR = 0.20;
+  const CAPITAL_STRESS = 0.22;
+
   function Chat(audio, brain, els) {
     this.audio = audio;
     this.brain = brain;
@@ -36,6 +46,10 @@
     this.hold = null;       /* predicate: true while the scene is still busy */
     this.holdFor = 0;
     this.lastActivity = -1e9;
+    /* Speech shape, read by the body: `pulse` ticks along with the characters,
+       `emphasis` spikes on the ones that carry weight. */
+    this.pulse = 0;
+    this.emphasis = 0;
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
@@ -169,6 +183,9 @@
   Chat.prototype.update = function (dt) {
     this.lastActivity += dt;
     this._ageLines(dt);
+    /* Both fall away on their own; only typing puts anything back. */
+    this.pulse -= this.pulse * Math.min(1, dt * 9);
+    this.emphasis -= this.emphasis * Math.min(1, dt * 3.2);
 
     if (!this.typingEl) {
       if (this.hold) {
@@ -197,6 +214,12 @@
         const ch = this.full.charAt(i);
         if (ch === ' ' || ch === '\n') continue;
         if (++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
+        this.pulse = Math.min(1, this.pulse + PULSE_PER_CHAR);
+        const w = EMPHASIS[ch];
+        if (w) this.emphasis = Math.min(1, this.emphasis + w);
+        else if (ch >= 'A' && ch <= 'Z') {
+          this.emphasis = Math.min(1, this.emphasis + CAPITAL_STRESS);
+        }
       }
     }
     if (this.shown >= this.full.length) {

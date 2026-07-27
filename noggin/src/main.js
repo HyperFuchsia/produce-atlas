@@ -90,6 +90,14 @@
      of turning to stone rather than as the same event. */
   const HARDEN_BEAT = 0.45;
 
+  /* How much bigger it gets while speaking, as a fraction of its own size.
+     Modest on purpose: this is a being drawing breath, not a balloon. */
+  const SWELL = {
+    breath: 0.018,   /* steady, while a line is running */
+    stress: 0.060,   /* on the marks that carry weight */
+    tick: 0.020      /* the per-character throb underneath */
+  };
+
   /* Nothing occupies the sides any more. The only reserved area is the
      dialogue band along the bottom, so the stage is centred horizontally and
      lifted clear of it. */
@@ -138,6 +146,7 @@
     this.lean = 0;
     this.leanDir = [0, 0, 0];
     this.voice = 0;
+    this.swell = 0;
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -1122,6 +1131,19 @@
     /* Voice envelope: rises while it is speaking, falls when it stops. */
     const want = this.chat.busy() ? 1 : 0;
     this.voice += (want - this.voice) * Math.min(1, dt * (want ? 6 : 2.2));
+
+    /* Speaking swells it. A steady breath while a line runs, a bigger one
+       where the line has weight behind it — which is what a sphere with no
+       face has instead of a mouth.
+
+       It stops completely once it is wearing something. An apple does not
+       breathe, and neither does a rock; the swell is the being's own tell,
+       so anything it has become should be still. */
+    const held = 1 - this.morph.amount;
+    const wantSwell = (this.voice * SWELL.breath
+      + this.chat.emphasis * SWELL.stress
+      + this.chat.pulse * SWELL.tick) * held;
+    this.swell += (wantSwell - this.swell) * Math.min(1, dt * 12);
   };
 
   /* ---- frame --------------------------------------------------------------- */
@@ -1214,7 +1236,7 @@
   App.prototype.composeModel = function () {
     M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
     M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
-      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.voice * 0.012);
+      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.swell);
     M.invert(this.invModel, this.model);
   };
 

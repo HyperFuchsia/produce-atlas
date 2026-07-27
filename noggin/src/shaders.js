@@ -81,12 +81,16 @@ uniform float uTime;
 uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
 uniform float uBoil;     /* 0..1, spikes while it is changing state */
 uniform float uVoice;    /* 0..1, rises while it is speaking */
+uniform float uMorph;    /* 0 = itself, 1 = fully wearing a form */
 uniform vec3 uFocusDir;  /* world direction its attention is on */
 
-/* Speech ripple: wavelength in radians of arc, speed, and height. */
+/* Speech ripple. Deliberately faint — the swell carries the speaking, and a
+   violent ripple reads as a struggling membrane rather than as a voice. What
+   is left is enough surface motion that a growing sphere does not look like a
+   balloon being inflated. */
 const float RIPPLE_K = 9.0;
 const float RIPPLE_W = 22.0;
-const float RIPPLE_A = 0.045;
+const float RIPPLE_A = 0.010;
 const float RIPPLE_R = 1.15;   /* nominal radius, for the normal tilt */
 
 out vec3 vWPos;
@@ -135,7 +139,10 @@ void main() {
     float c = clamp(dot(wnn, f), -1.0, 1.0);
     float band = acos(c);
     float phase = band * RIPPLE_K - uTime * RIPPLE_W;
-    float amp = RIPPLE_A * uVoice * exp(-band * 0.35) * (1.0 - 0.7 * uGas)
+    /* Off entirely once it is wearing something: whatever it has become
+       should hold still. */
+    float amp = RIPPLE_A * uVoice * (1.0 - uMorph) * exp(-band * 0.35)
+              * (1.0 - 0.7 * uGas)
               * (0.75 + 0.25 * sin(uTime * 5.3 + band * 3.0));
     p += nrm * sin(phase) * amp;
 
@@ -270,7 +277,7 @@ void main() {
     if (uVoice > 0.001) {
       float band = acos(clamp(dot(N, normalize(uFocusDir)), -1.0, 1.0));
       float wave = 0.5 + 0.5 * sin(band * 9.0 - uTime * 22.0);
-      col += iri * wave * uVoice * 0.24 * exp(-band * 0.35);
+      col += iri * wave * uVoice * (1.0 - uMorph) * 0.10 * exp(-band * 0.35);
     }
 
     // Pulled hard, the shell stresses and glows along the strain.

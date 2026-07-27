@@ -179,3 +179,9 @@ detail that decides whether a viewer reads the scene as simulated or as
 animated, and getting it wrong undoes the argument the routine exists to make.
 Now every vertex is constrained against the plane, with friction, so a puddle
 grips a surface it is resting on.
+
+**Speaking is a swell, not a shudder.** — §4.1 self-evidencing. The first
+version rippled hard enough to read as a membrane under stress rather than as a
+voice. Now it breathes, harder on the stressed words, and goes completely still
+the moment it is wearing a form — which quietly makes a second point: the
+motion belongs to the being, not to whatever it is currently pretending to be.
