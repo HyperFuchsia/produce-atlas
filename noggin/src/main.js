@@ -446,6 +446,7 @@
     $('mode-challenge').classList.add('active');
     $('mode-sandbox').classList.remove('active');
     this.flashHint('PULL THE FACE THROUGH THE RINGS');
+    this.chatter.react('start');
   };
 
   App.prototype.enterSandbox = function () {
@@ -454,6 +455,12 @@
     $('scorebar').classList.add('hidden');
     $('mode-sandbox').classList.add('active');
     $('mode-challenge').classList.remove('active');
+  };
+
+  /* Presentation-only randomness; the simulation and the game use seeded
+     generators so runs stay reproducible. */
+  App.prototype.rand01 = function () {
+    return Math.random();
   };
 
   App.prototype.flashHint = function (text) {
@@ -508,15 +515,13 @@
     this.popups.push({ el: el, t: 0 });
   };
 
-  /* He talks when left alone. Being grabbed shuts him up, and so does the
-     timed mode — the screen is busy enough there without a monologue. */
+  /* He talks constantly, timed run included. Only a hand on his face stops
+     him. During a run the bubble goes translucent and is kept below the score
+     bar so he can yap without hiding the rings he is yapping about. */
   App.prototype.updateChatter = function (dt) {
     const playing = this.game.state === 'playing';
-    if (playing) {
-      this.chatter.silence();
-      return;
-    }
     this.chatter.update(dt, this.grabPointer >= 0);
+    this.chatter.bubble.classList.toggle('playing', playing);
 
     if (!this.chatter._visible) return;
 
@@ -531,9 +536,12 @@
 
     const bubble = this.chatter.bubble;
     const halfW = bubble.offsetWidth * 0.5 + 12;
+    /* y is the bubble's bottom edge, so the floor has to clear its own height
+       plus whatever HUD it must stay under. */
     const h = bubble.offsetHeight + 12;
+    const minY = playing ? h + 118 : h;
     const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, halfW, Math.max(halfW, this.cssW - halfW));
-    const y = M.clamp((0.5 - ny * 0.5) * this.cssH, h, Math.max(h, this.cssH - 12));
+    const y = M.clamp((0.5 - ny * 0.5) * this.cssH, minY, Math.max(minY, this.cssH - 12));
     bubble.style.left = x + 'px';
     bubble.style.top = y + 'px';
   };
@@ -677,12 +685,18 @@
         const css = 'rgb(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ')';
         this.spawnPopup(world, '+' + ev.value + (ev.combo > 1 ? '  x' + ev.combo : ''), css);
         if (ev.combo > 1) this.flashHint('COMBO x' + ev.combo);
+        /* He will talk over his own sentence to comment on your play. */
+        if (this.rand01() < (ev.combo > 2 ? 0.8 : 0.45)) {
+          this.chatter.react(ev.combo > 2 ? 'combo' : 'pop');
+        }
       } else if (ev.type === 'miss') {
         this.audio.tick(false);
+        if (this.rand01() < 0.5) this.chatter.react('miss');
       } else if (ev.type === 'tick') {
         this.audio.tick(ev.value <= 3);
       } else if (ev.type === 'over') {
         this.showGameOver(ev.value);
+        this.chatter.react('over');
       } else if (ev.type === 'record') {
         this.audio.fanfare(true);
       }

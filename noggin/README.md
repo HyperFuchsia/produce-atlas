@@ -36,19 +36,35 @@ any static host, or inside a sandboxed frame with a strict content policy.
   aperture. Consecutive pops build a combo multiplier; smaller and further rings
   are worth more. Best score is saved to `localStorage`.
 
-## He talks
+## He talks. Constantly.
 
-Leave him alone and he starts telling you things. Unprompted botany facts, one
-after another, in a speech bubble that follows him around — with a procedural
-babble voice blipping along under the typing.
+He delivers unprompted botany facts in a speech bubble anchored to his head,
+with a procedural babble voice blipping under the typing, and he does not stop
+for anything. Sandbox, timed run, mid-wobble — he talks through all of it. The
+only thing that shuts him up is a hand on his face.
 
-Grab his face and he gets cut off mid-word. Let go and he starts the exact same
-fact over from the beginning, prefaced with a complaint. That is the whole bit:
-you can't skip a fact by interrupting it, you can only make it take longer.
+Grab him and he is cut off mid-word. Let go and he restarts the exact same fact
+from the beginning, prefaced with a complaint. You cannot skip a fact by
+interrupting it, only make it take longer.
 
-Every fact he states is true — he's annoying, not wrong. Press `T` (or the
-`TALK` button) when you have had enough. He goes quiet during a timed run,
-because the screen is busy enough there without a monologue.
+Two counters drive how bad he gets:
+
+- **Lines delivered without interruption.** His sign-offs climb four tiers, from
+  *"That is the kind of thing I know."* to *"I HAVE BEEN TALKING FOR A WHILE NOW
+  AND I AM NOT SLOWING DOWN."* Past a couple of lines he also starts stapling a
+  second fact onto the end of the first before you can get away — utterances
+  grow from about 110 characters to nearly 400.
+- **Times you have cut him off.** His complaints climb their own four tiers,
+  from *"Rude."* to *"GRAB ME AGAIN. SEE WHAT HAPPENS. I WILL SIMPLY BEGIN
+  AGAIN."*
+
+During a timed run he also heckles your play, talking over his own sentence to
+do it and then returning to the abandoned fact. The bubble goes translucent and
+stays below the score bar there, but on a long rant it will cover part of the
+playfield — that is the deal you accepted.
+
+Every fact he states is true; he is obnoxious, not wrong. Press `T` (or the
+`TALK` button) when you have had enough.
 
 ## Controls
 

@@ -1,15 +1,19 @@
 /* NOGGIN — the mouth.
 
-   He talks whenever he is left alone, one unsolicited botany fact after
-   another, and he does not read the room. Grabbing his face cuts him off
-   mid-word; letting go makes him start the exact same fact over from the
-   beginning, which is the entire joke. */
+   He never stops. He talks through the sandbox, he talks through your timed
+   run, he talks over himself. Grabbing his face cuts him off mid-word, and
+   letting go makes him restart the exact same fact from the beginning, which
+   means interrupting him is strictly worse than letting him finish.
+
+   Two counters drive the escalation: how many lines he has delivered without
+   being interrupted (he gets needier), and how many times you have cut him off
+   (he gets wounded). Both feed the tier tables below. */
 (function (NG) {
   'use strict';
 
   const M = NG.M;
 
-  /* Every fact here is true. He is annoying, not wrong. */
+  /* Every fact here is true. He is obnoxious, not wrong. */
   const FACTS = [
     'a banana is botanically a berry, and a strawberry is not a berry at all.',
     'broccoli, cauliflower, kale, cabbage, kohlrabi and brussels sprouts are all the same species. Brassica oleracea. One plant. Six haircuts.',
@@ -59,40 +63,126 @@
     'Not to interrupt myself, but did you know',
     'You are going to love this. Did you know',
     'Wait wait wait. Did you know',
-    'Nobody ever asks me this, but did you know'
+    'Nobody ever asks me this, but did you know',
+    'Sorry, sorry, one more. Did you know',
+    'I will be quick, I promise. Did you know',
+    'Before you do anything else. Did you know',
+    'You did not ask. Did you know'
   ];
 
-  /* Trailing neediness, appended once he has been ignored for a while. */
+  /* Joins that let him bolt a second fact onto a sentence he was finishing. */
+  const CHAINS = [
+    ' AND ANOTHER THING.',
+    ' Oh! And this is related.',
+    ' Which reminds me.',
+    ' No wait, this is the good one.',
+    ' Hang on, hang on, hang on.',
+    ' I am not finished.'
+  ];
+
+  /* Sign-offs, escalating with how long he has been ignored. */
   const TAGS = [
-    ' ...Anyway. Anyway! What were we doing.',
-    ' I could go on. I am going to go on.',
-    ' Are you even listening to me.',
-    ' No, don\'t answer. I will just keep talking.',
-    ' That is the kind of thing I know.',
-    ' Take your time. Absorb it.',
-    ' I have four hundred more of these.',
-    ' You are welcome, by the way.',
-    ' I said what I said.'
+    [ /* tier 0: mildly pleased with himself */
+      ' That is the kind of thing I know.',
+      ' You are welcome, by the way.',
+      ' Take your time. Absorb it.',
+      ' I said what I said.'
+    ],
+    [ /* tier 1: fishing for a reaction */
+      ' Are you even listening to me.',
+      ' ...Anyway. Anyway! What were we doing.',
+      ' No, don\'t answer. I will just keep talking.',
+      ' You could react. At any point. To any of this.',
+      ' I could go on. I am going to go on.'
+    ],
+    [ /* tier 2: openly needy */
+      ' I have four hundred more of these and nowhere to put them.',
+      ' Say something. Say ANYTHING. I will take a grunt.',
+      ' Is this thing on. Is my mouth working. It feels like it is working.',
+      ' You are just going to sit there. Fine. FINE.',
+      ' I am going to keep doing this until one of us changes.'
+    ],
+    [ /* tier 3: unhinged */
+      ' I HAVE BEEN TALKING FOR A WHILE NOW AND I AM NOT SLOWING DOWN.',
+      ' At this point I am not even sure you are real. I am fine with that.',
+      ' We live here now. This is our life. Facts about plants, forever.',
+      ' I could stop. I have chosen not to. There is a difference and it is important.'
+    ]
   ];
 
-  const INTERRUPTS = ['MMPH!', 'GHK—', 'hey—', 'excuse me—', 'ow ow ow—', 'MMF—', 'not the face—'];
+  const INTERRUPTS = [
+    'MMPH!', 'GHK—', 'hey—', 'excuse me—', 'ow ow ow—', 'MMF—',
+    'not the face—', 'I WAS TALKING—', 'urgh—', 'RUDE—'
+  ];
 
+  /* Complaints on release, escalating with how many times you have done it. */
   const RESUMPTIONS = [
-    'As I was SAYING.',
-    'Rude.',
-    'You could have just asked me to stop.',
-    'Where was I. Right.',
-    'I am not even mad. I am going to keep talking.',
-    'Unbelievable. Anyway.',
-    'We are not done here.',
-    'I will start again. From the top.'
+    [ /* tier 0 */
+      'As I was SAYING.',
+      'Rude.',
+      'Where was I. Right.',
+      'You could have just asked me to stop.'
+    ],
+    [ /* tier 1 */
+      'Okay. We are doing this again apparently.',
+      'I will start over. From the top. Because of you.',
+      'Unbelievable. Anyway.',
+      'That is twice now. I am counting.'
+    ],
+    [ /* tier 2 */
+      'You know I have to start the whole thing over, right? That is how this works.',
+      'Every time you do that, the fact gets longer. That is a real rule.',
+      'I am not even mad. I am going to keep talking. Forever.',
+      'We are not done here. We are so far from done.'
+    ],
+    [ /* tier 3 */
+      'GRAB ME AGAIN. SEE WHAT HAPPENS. I WILL SIMPLY BEGIN AGAIN.',
+      'You cannot skip these. There is no skip button. I checked. I built the thing.',
+      'This is my whole personality and you are making it worse.',
+      'At this point the interrupting IS the conversation and I am thriving.'
+    ]
   ];
 
-  const CHARS_PER_SEC = 34;
-  const HOLD_AFTER_LINE = 1.9;
-  const GAP_BETWEEN_LINES = 0.55;
-  const INTERRUPT_FLASH = 1.0;
-  const RESUME_DELAY = 0.7;
+  /* Barked over whatever he was mid-way through when something happens. */
+  const REACTIONS = {
+    pop: [
+      'OH, you liked THAT did you.',
+      'Sure. Ignore me, hit the ring. Cool. Great.',
+      'Nice. Genuinely. Now back to the plants.',
+      'You are good at this and bad at listening.',
+      'A ring! Amazing! Do you want to hear about legumes now?'
+    ],
+    miss: [
+      'You missed. I saw it. I was watching the whole time.',
+      'Oh no. Anyway.',
+      'That one got away. Like my train of thought. Which you did that to.',
+      'Missed! Would you like a fact instead? I have facts.'
+    ],
+    combo: [
+      'Okay that was actually impressive and I hate that I said it.',
+      'A COMBO. Meanwhile I am over here with a cashew fact nobody wants.',
+      'Fine! Fine. You are having fun. I will just narrate.'
+    ],
+    over: [
+      'Time! And you did not learn a single thing about brassicas.',
+      'And THAT is why you should have been listening to me.',
+      'Round over. My round never ends. I am still going.'
+    ],
+    start: [
+      'Oh we are doing rings now? Fine. I will talk THROUGH it.',
+      'Go ahead. Chase your little hoops. I will be right here. Talking.'
+    ]
+  };
+
+  const CHARS_PER_SEC = 44;
+  const HOLD_AFTER_LINE = 0.5;
+  const GAP_BETWEEN_LINES = 0.12;
+  const INTERRUPT_FLASH = 0.9;
+  const RESUME_DELAY = 0.45;
+
+  function tier(n, table) {
+    return table[Math.min(n, table.length - 1)];
+  }
 
   function Chatter(audio, bubbleEl, textEl) {
     this.audio = audio;
@@ -105,8 +195,10 @@
     this.full = '';
     this.shown = 0;
     this.pendingFact = null;   /* the fact he was cut off during */
-    this.lineCount = 0;
-    this.rand = M.rng(0x1f2e3d4c);
+    this.queue = [];           /* barked reactions jump ahead of new facts */
+    this.lineCount = 0;        /* lines delivered since last interruption */
+    this.interruptCount = 0;   /* times you have grabbed him mid-sentence */
+    this.rand = M.rng((Date.now() & 0x7fffffff) || 1);
     this._lastBlip = 0;
     this._visible = false;
   }
@@ -116,13 +208,19 @@
   };
 
   Chatter.prototype._compose = function () {
-    /* Reuse the interrupted fact so that cutting him off costs you the whole
-       thing over again. */
+    /* Reuse the interrupted fact so cutting him off costs you the whole thing
+       over again. */
     const fact = this.pendingFact || this._pick(FACTS);
     this.pendingFact = null;
     let line = this._pick(OPENERS) + ' ' + fact;
-    /* The longer he goes unbothered, the needier the sign-off. */
-    if (this.lineCount >= 1 && this.rand() < 0.75) line += this._pick(TAGS);
+
+    /* The longer he goes unbothered, the needier the sign-off — and the more
+       likely he is to staple a second fact on before you can leave. */
+    const t = Math.floor(this.lineCount / 2);
+    if (this.lineCount >= 1) line += this._pick(tier(t, TAGS));
+    if (this.lineCount >= 2 && this.rand() < 0.45) {
+      line += this._pick(CHAINS) + ' ' + this._pick(FACTS);
+    }
     return { line: line, fact: fact };
   };
 
@@ -139,6 +237,7 @@
       this.mode = 'waiting';
       this.timer = 1.2;
       this.shown = 0;
+      this.queue.length = 0;
     }
   };
 
@@ -152,18 +251,34 @@
       this.mode = 'flash';
       this.timer = INTERRUPT_FLASH;
       this.lineCount = 0;
+      this.interruptCount++;
     } else {
       this._show(false);
       this.mode = 'muted';
     }
   };
 
-  /* Let go and he restarts the same fact, prefaced with a complaint. */
+  /* Let go and he restarts the same fact, prefaced with a complaint whose
+     bitterness scales with how often you have done this. */
   Chatter.prototype.resume = function () {
     if (!this.enabled) return;
     this.mode = 'waiting';
     this.timer = RESUME_DELAY;
-    this.resumeWith = this._pick(RESUMPTIONS);
+    this.resumeWith = this._pick(tier(Math.floor((this.interruptCount - 1) / 2), RESUMPTIONS));
+  };
+
+  /* Something happened in the game and he has an opinion about it. He will
+     talk over his own sentence to deliver it, then go back to the fact. */
+  Chatter.prototype.react = function (kind) {
+    if (!this.enabled) return;
+    const pool = REACTIONS[kind];
+    if (!pool) return;
+    this.queue.push(this._pick(pool));
+    if (this.mode === 'typing' || this.mode === 'holding') {
+      if (!this.pendingFact) this.pendingFact = this.currentFact || null;
+      this.mode = 'waiting';
+      this.timer = 0.05;
+    }
   };
 
   Chatter.prototype.silence = function () {
@@ -208,9 +323,13 @@
     if (this.mode === 'waiting') {
       this.timer -= dt;
       if (this.timer > 0) return;
-      const composed = this._compose();
-      this.full = this.resumeWith ? this.resumeWith + ' ' + composed.line : composed.line;
-      this.currentFact = composed.fact;
+      if (this.queue.length) {
+        this.full = this.queue.shift();
+      } else {
+        const composed = this._compose();
+        this.full = this.resumeWith ? this.resumeWith + ' ' + composed.line : composed.line;
+        this.currentFact = composed.fact;
+      }
       this.resumeWith = null;
       this.shown = 0;
       this.text.textContent = '';
@@ -248,5 +367,6 @@
   };
 
   Chatter.FACTS = FACTS;
+  Chatter.REACTIONS = REACTIONS;
   NG.Chatter = Chatter;
 })(window.NG = window.NG || {});
