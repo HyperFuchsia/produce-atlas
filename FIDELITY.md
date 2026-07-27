@@ -30,6 +30,18 @@ the situation does not.
 - **MUST** be stroke-only. No filled shapes, no gradients, no textures, no
   images. The only permitted fills are single-pixel phosphor specks, sub-pixel
   detail inside an instrument (ommatidia, a scan bar), and the CRT composite.
+- **Occlusion masks are permitted and are how a solid is made.** A body that
+  hides the stars, the orbit rings and the worlds behind it is doing what 1979
+  vector hardware called hidden-line removal, and it is the only way a
+  stroke-only display can render something opaque. It paints nothing: a
+  `destination-out` fill REMOVES what is already there, and what shows through
+  is the tube's own black glass with the scanlines and grille still over it. The
+  visible output is still strokes on true black. Anything drawn INSIDE such a
+  mask **MUST** still be stroke-only — the mask buys solidity, not a licence to
+  fill.
+- Drawing **MUST** be in depth order wherever things can overlap. Painting far
+  objects after near ones is what made the worlds look like transparent
+  stickers, and no amount of colour or line weight fixes it.
 - **MUST NOT** use `border-radius`, `box-shadow` as a drop shadow, or any
   shadow that implies a light source. Glow away from a stroke is phosphor
   bloom and is permitted; a shadow beneath an element is not.

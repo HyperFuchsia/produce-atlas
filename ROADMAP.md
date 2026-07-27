@@ -58,6 +58,11 @@ ticked once you have merged it.
 - [ ] E3 · Power is unmodelled. The tube, the array and the drive all draw from something; give the operator the routing decision. · blocked-by: E1
 - [ ] E4 · The boot self-test reports subsystems that do not exist yet. Once E1 lands, make the self-test tell the truth about them. · blocked-by: E1
 
+### I — measured shortfalls, stated rather than hidden
+
+- [ ] I1 · FIDELITY 2.6 requires 60 fps at all three sizes and one geometry does not meet it: 1280×900 in the conn with a body filling the plate measures **41 fps**. Phone and landscape hold 60 everywhere. Profiled: the punch is free, the surface meshes cost 8 fps, the star field 8, the CRT composite 12, and the long limb and terminator strokes the rest. The star field and the composite are pre-existing fixed costs at that resolution — CHART pays them too and still makes 60 — so the body drawing is the delta. Either find the remaining 19 fps or amend 2.6 with a stated exception; do not leave the charter claiming something the measurement contradicts. · blocked-by:
+- [ ] I2 · An orbit ring that passes in FRONT of a body is still eaten by that body's punch, because rings are drawn once, before the bodies, as whole polylines. Only the gas giants' own ring system is split into near and far halves. Split the orbit rings the same way, or accept it and say so here. · blocked-by:
+
 ### H — found while building the conn, not yet fixed
 
 - [ ] H1 · Hazards live in the light-year frame and so do not exist inside a system. The conn crosses 6 AU of real space with nothing in it but worlds; debris, dust and wrecks belong in there too, at AU scale, and the survey should have to find them. · blocked-by: B2
@@ -94,6 +99,7 @@ ticked once you have merged it.
 - [x] Hostiles: four kinds, on the scope, with their own dialogue and demands
 - [x] The conn: first-person flight in a system, and planets reached by flying
 - [x] A proportional stick, and the whole plate as a drag surface
+- [x] Solid bodies: hidden-line removal, depth order, terminators, lit spheres
 
 ---
 

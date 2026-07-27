@@ -3616,35 +3616,58 @@ function drawLocal(){
 
   /* The primary. Drawn as a real sphere of latitude and longitude, because
      at this scale it is a body rather than a point. */
-  const col=st.col;
-  /* Segment count from apparent size, for the same reason the bodies have it:
-     inside the system the primary is the largest thing on the plate and a
-     twenty-four-gon sun is a twenty-four-gon. */
-  const sq0=project([0,0,0]);
-  const sseg=sq0 ? Math.max(24, Math.min(96, Math.round(sq0.s*0.9))) : 24;
-  for(let i=1;i<6;i++){
-    const v=i/6, y=Math.cos(v*Math.PI)*0.95, rr=Math.sin(v*Math.PI)*0.95;
-    const pts=[];
-    for(let j=0;j<=sseg;j++){
-      const a=j/sseg*6.2832;
-      pts.push(project([Math.cos(a)*rr, y, Math.sin(a)*rr]));
+  /* st.col is an ARRAY of three channel values — the chart formats it into an
+     rgb() string at every use and the near field never did, so this has been
+     handing an array to strokeStyle since the primary was first drawn. An
+     invalid strokeStyle is silently ignored by the canvas, which keeps whatever
+     colour was set last: the sun was being drawn in the colour of whichever body
+     was painted before it, and it read as a dim hole rather than a star. */
+  const col='rgb('+st.col[0]+','+st.col[1]+','+st.col[2]+')';
+  /* The primary, solid. It punches its own disc out of the star field and shows
+     only its near hemisphere: it was drawing all the way round the back, which
+     made the one genuinely enormous object in the system read as a wire ball
+     with stars inside it. No terminator, because a star is not lit by anything. */
+  const SR=0.95;
+  const sc=toCam([0,0,0]), sdd=cam.dist-sc[2];
+  const srs=sdd>0 ? silRadius(SR,sdd) : null;
+  if(srs!==null){
+    const sseg=clamp(Math.round(srs*1.1),24,96);
+    punchPath(()=>{ ctx.arc(project([0,0,0]).x, project([0,0,0]).y, srs, 0, 6.2832); });
+    for(let i=1;i<6;i++)
+      meshCurve([0,0,0],[SR,SR,SR], nsLat(-Math.PI/2+i*Math.PI/6, sseg), col, null, 1.4, 0, null);
+    for(let j=0;j<8;j++)
+      meshCurve([0,0,0],[SR,SR,SR], nsMeridian(j/8*Math.PI, 18), col, null, 1.1, 0, null);
+    const q0=project([0,0,0]);
+    if(q0){
+      /* The limb, tripled and hot. This is the one object on the plate that
+         EMITS rather than reflects, and 2.1 says the console expresses
+         importance as brightness — so the star is the brightest thing in its
+         own system, which it was not: at twenty pixels with a hairline limb it
+         read as smaller and dimmer than a gas giant next to it. */
+      for(const [k,w,g] of [[1.06,1,0],[1,2.4,srs>150?0:9],[0.94,1.2,0]]){
+        const ring=[];
+        for(let i=0;i<=sseg;i++){ const a=i/sseg*6.2832;
+          ring.push({x:q0.x+Math.cos(a)*srs*k, y:q0.y+Math.sin(a)*srs*k}); }
+        strokePolyline(ring,col,w,g,true);
+      }
+      /* Radial spill on the limb: eight short ticks, which is how a vector tube
+         renders something too bright for its own line width. They are the
+         readout for "this is the source of the light everything else is lit by",
+         which is the only thing in the system that is true of. */
+      for(let i=0;i<8;i++){
+        const a=i/8*6.2832 + sim.t*0.05;
+        strokePolyline([{x:q0.x+Math.cos(a)*srs*1.10, y:q0.y+Math.sin(a)*srs*1.10},
+                        {x:q0.x+Math.cos(a)*srs*1.34, y:q0.y+Math.sin(a)*srs*1.34}],
+                       col,1.2,0);
+      }
     }
-    strokePolyline(pts,col,1.4,6,true);
-  }
-  for(let j=0;j<8;j++){
-    const a=j/8*6.2832, pts=[];
-    for(let i=0;i<=16;i++){
-      const v=i/16, y=Math.cos(v*Math.PI)*0.95, rr=Math.sin(v*Math.PI)*0.95;
-      pts.push(project([Math.cos(a)*rr, y, Math.sin(a)*rr]));
-    }
-    strokePolyline(pts,col,1,0);
   }
   const sq=project([0,0,0]);
   if(sq) claimLabel(st.n+'  '+st.sp, sq.x+14, sq.y-14, col, true);
 
   /* The bodies, on their orbits, where they actually are now. */
+  const order=[];
   for(const b of systemAt(si)){
-    const B=BODY[b.k];
     const opts=[];
     for(let i=0;i<=64;i++){
       const a=i/64*6.2832;
@@ -3652,11 +3675,24 @@ function drawLocal(){
     }
     strokePolyline(opts, b.taken?'rgba(61,139,255,0.16)':'rgba(140,230,255,0.24)',1,0,true);
 
+    order.push(b);
+  }
+
+  /* FAR TO NEAR. Occlusion only works in depth order: a body punches out
+     everything already drawn inside its silhouette, so the nearer one has to be
+     drawn last or it gets eaten by the world behind it. Nothing on this plate
+     had a depth order at all before now, which is the other half of why it
+     looked see-through. */
+  order.sort((a,b2)=>toCam(bodyPos(b2))[2]-toCam(bodyPos(a))[2]);
+  for(const b of order){
+    const B=BODY[b.k];
     const p=bodyPos(b), q=project(p);
     if(!q) continue;
-    const rr=Math.max(3, b.rad*q.s);
+    const dd=cam.dist-toCam(p)[2];
+    const rs=silRadius(b.rad,dd);
+    const rr=Math.max(3, rs===null?b.rad*q.s:rs);
     const live = !b.taken;
-    drawWorld(b,q,rr,live);
+    drawSolid(b, p, b.rad, live);
     const sel = approach.open && approach.body===b;
     if(sel) drawCross(q.x,q.y,rr+11,'#EAFBFF');
     claimLabel(b.id+(b.taken?' · WORKED':' · '+B.label), q.x+rr+6, q.y, live?B.col:'#12386E', sel);
@@ -3686,28 +3722,6 @@ function drawLocal(){
   drawShipLocal();
 }
 
-/* --- the worlds, drawn as what they are ---------------------------------
-   A circle with a different colour is not identification, it is a legend you
-   have to remember. So each kind is a different SHAPE, built out of the thing
-   that actually distinguishes it:
-
-     GAS GIANT   oblate, banded, sometimes ringed. Real giants are visibly
-                 flattened — Saturn by a tenth — and the flattening is the one
-                 property you can see from outside at any range.
-     ICE BODY    round, bright-limbed, polar caps. High albedo is why the edge
-                 is the brightest part of it.
-     IRON WORLD  faceted. A hexagon rather than a circle, because dense metal
-                 reads as cut rather than grown, and because a hexagon is
-                 unmistakable at four pixels across.
-     ROCKY WORLD lumpy, cratered. Its outline is not a circle and that is the
-                 whole point: it is too small to have pulled itself round.
-     ANOMALY     does not resolve. No disc at all — a pulsing cross and the
-                 derelict bitmap, which is all the sensor actually returns.
-
-   The segment count scales with apparent size. At twenty segments a giant
-   filling the viewport in the conn was a visible icosagon; a body four pixels
-   across does not need ninety-six. */
-
 /* A stable 0..1 per body per index. Derived from the body's own id rather than
    stored on it, so a rocky world has the same lumps every frame and on every
    visit WITHOUT adding a draw from buildSystem's generator — which would have
@@ -3716,122 +3730,328 @@ function bodyWobble(b,i){
   return (hashName(b.id+':'+i)%1024)/1024;
 }
 
-function drawWorld(b,q,rr,live){
-  const B=BODY[b.k];
-  const col = live ? B.col : 'rgba(61,139,255,0.42)';
-  const wide = live ? 1.6 : 1;
-  const glow = live ? 7 : 0;
-  const seg  = Math.max(20, Math.min(96, Math.round(rr*1.2)));
+/* --- solid bodies ------------------------------------------------------
+   The worlds read as see-through because they WERE see-through, in two
+   separate ways, and neither of them was about colour or line weight.
 
-  /* An anomaly is the absence of a body, so it does not get one. */
+   First, they were flat circles. A circle is a disc, not a sphere; there was
+   nothing in the mark that said the far side existed at all, which is why they
+   looked like stickers on the glass.
+
+   Second, and worse, everything drew over everything. You could see the star
+   field, the orbit rings and the other planets straight through a world, so
+   nothing on the plate ever occluded anything and the whole scene had no depth
+   order. That is what makes vector art look unfinished.
+
+   The fix is the one vector hardware used in 1979: HIDDEN LINE REMOVAL. A solid
+   is not a thing that is painted in — it is a thing that hides what is behind
+   it. So each body punches its own silhouette out of everything already drawn
+   and then draws its near hemisphere on top. The punch paints nothing; it
+   removes, and what shows through is the tube's own black glass with the
+   scanlines and the grille still over it, because those are separate layers
+   above the canvas. The result is stroke-only on true black, which is 2.1, and
+   it is opaque, which is what a place you can land on has to be.
+
+   Then the near hemisphere is drawn as an actual sphere — latitude circles,
+   meridians, a terminator where the primary's light stops, and surface features
+   that sit ON the ground because they are computed on the sphere and projected
+   rather than drawn as flat rings over the top. The dark side is dimmer, so
+   which way the sun is is legible from the body itself.
+   ========================================================================== */
+
+/* Remove whatever has already been drawn inside a path. destination-out with
+   save/restore around it, because leaving that composite mode set would erase
+   the rest of the frame. */
+function punchPath(fn){
+  /* Two properties saved by hand rather than ctx.save()/restore(). Measured at
+     1280x900 with a body filling the plate: 32 fps with save/restore and 41
+     without, because save() snapshots the entire context state including the
+     clip stack and this runs once per body per frame. The composite mode itself
+     is nearly free — swapping destination-out for an opaque black fill only got
+     to 37, so it was never the blend that cost. */
+  const gco=ctx.globalCompositeOperation, fs=ctx.fillStyle;
+  ctx.globalCompositeOperation='destination-out';
+  ctx.fillStyle='#000';
+  ctx.beginPath(); fn(); ctx.fill();
+  ctx.globalCompositeOperation=gco; ctx.fillStyle=fs;
+}
+
+/* The apparent radius of a sphere, done properly. rad*q.s is the small-angle
+   approximation and it is fine on a chart; in the conn you fly to within a
+   tenth of an AU of a body whose radius is half an AU, where the tangent point
+   is nowhere near the centre and the approximation is visibly too small — the
+   punched hole would be inside the drawn limb and leave a ring of stars around
+   the planet. */
+function silRadius(R,dd){
+  const s=dd*dd-R*R;
+  if(s<=1e-9) return null;                       // eye inside the body
+  return F*R/Math.sqrt(s);
+}
+
+/* Draw a curve that lies on a sphere, hiding the half of it that is round the
+   back and dimming the half of it that is in shadow.
+
+   Visibility is exact and it is done in camera space, where the eye sits at
+   (0,0,cam.dist) looking down −z: a point on the surface faces the eye when its
+   outward normal and the vector to the eye agree. */
+function meshCurve(cen, rad, ns, col, dim, w, glow, sun){
+  const c=toCam(cen);
+  const lit=[], dark=[];
+  for(const n of ns){
+    const p=[cen[0]+n[0]*rad[0], cen[1]+n[1]*rad[1], cen[2]+n[2]*rad[2]];
+    const pc=toCam(p);
+    const vis = (pc[0]-c[0])*(-pc[0]) + (pc[1]-c[1])*(-pc[1])
+              + (pc[2]-c[2])*(cam.dist-pc[2]) > 0;
+    const q = vis ? project(p) : null;
+    const isLit = !sun || (n[0]*sun[0]+n[1]*sun[1]+n[2]*sun[2]) > 0;
+    lit.push(isLit?q:null);
+    dark.push(isLit?null:q);
+  }
+  if(dim) strokePolyline(dark, dim, w, 0);
+  strokePolyline(lit, col, w, glow);
+}
+
+/* Unit-sphere normal generators. y is the pole, which is the convention the
+   near-field frame already uses for the ecliptic. */
+function nsLat(phi,n){
+  const o=[], cp=Math.cos(phi), sp=Math.sin(phi);
+  for(let i=0;i<=n;i++){ const t=i/n*6.2832; o.push([cp*Math.cos(t), sp, cp*Math.sin(t)]); }
+  return o;
+}
+function nsMeridian(theta,n){
+  const o=[], ct=Math.cos(theta), st=Math.sin(theta);
+  for(let i=0;i<=n;i++){
+    const phi=-Math.PI/2+i/n*Math.PI, cp=Math.cos(phi);
+    o.push([cp*ct, Math.sin(phi), cp*st]);
+  }
+  return o;
+}
+/* A circle on the sphere at angular radius a about an axis — a crater rim, or
+   a polar cap edge, or the terminator when a is a right angle. */
+function nsRing(axis,a,n){
+  const A=nrm3(axis);
+  const ref = Math.abs(A[1])<0.9 ? [0,1,0] : [1,0,0];
+  const u=nrm3([A[1]*ref[2]-A[2]*ref[1], A[2]*ref[0]-A[0]*ref[2], A[0]*ref[1]-A[1]*ref[0]]);
+  const v=[A[1]*u[2]-A[2]*u[1], A[2]*u[0]-A[0]*u[2], A[0]*u[1]-A[1]*u[0]];
+  const o=[], ca=Math.cos(a), sa=Math.sin(a);
+  for(let i=0;i<=n;i++){
+    const t=i/n*6.2832, ct=Math.cos(t)*sa, st=Math.sin(t)*sa;
+    o.push([A[0]*ca+u[0]*ct+v[0]*st, A[1]*ca+u[1]*ct+v[1]*st, A[2]*ca+u[2]*ct+v[2]*st]);
+  }
+  return o;
+}
+
+/* Dim a phosphor colour without inventing a new one: the shadowed side is the
+   same hue at a fraction of the brightness, which is how a tube shows less
+   light. */
+function shade(hex,k){
+  const r=Math.round(parseInt(hex.slice(1,3),16)*k);
+  const g=Math.round(parseInt(hex.slice(3,5),16)*k);
+  const b=Math.round(parseInt(hex.slice(5,7),16)*k);
+  return 'rgb('+r+','+g+','+b+')';
+}
+
+/* A world, as a solid. `cen` is its position in the near-field frame, R its
+   radius in AU, and the primary sits at the origin, so the direction to the
+   light is simply the direction back to the origin. */
+function drawSolid(b, cen, R, live){
+  const B=BODY[b.k];
+  const c=toCam(cen);
+  const dd=cam.dist-c[2];
+  if(dd<=0) return;
+  const q=project(cen); if(!q) return;
+  const rs=silRadius(R,dd); if(rs===null) return;
+  /* Nothing off the plate. Measured: five of the eight bodies in Sol were on
+     screen in the conn and the other three were being fully meshed, lit,
+     terminated and punched every frame outside the viewport. */
+  if(q.x+rs<-8 || q.x-rs>W+8 || q.y+rs<-8 || q.y-rs>H+8) return;
+
+  /* An anomaly is the absence of a body and stays that way: nothing to occlude
+     and nothing to light. */
   if(b.k==='anom'){
     const k=0.5+0.5*Math.sin(sim.t*4.1);
-    drawCross(q.x,q.y,rr*2.4*(0.8+k*0.4),col);
+    drawCross(q.x,q.y,Math.max(6,rs)*2.4*(0.8+k*0.4), live?B.col:'rgba(61,139,255,0.42)');
     return;
   }
 
-  const ell=(rx,ry,n)=>{
+  const col  = live ? B.col : 'rgba(61,139,255,0.50)';
+  /* Three brightnesses, which is the whole hierarchy of the object: the limb is
+     the edge of the world and the strongest line on it; the terminator is where
+     the light stops; the surface is faintest. Drawn at one weight the graticule
+     was as loud as the limb and the body read as two nested cages rather than
+     one solid. 2.1 asks for importance to be expressed as brightness and this is
+     what that means for a sphere. */
+  const surf = live ? shade(B.col,0.55) : 'rgba(61,139,255,0.22)';
+  const dim  = live ? shade(B.col,0.20) : 'rgba(61,139,255,0.10)';
+  /* Glow falls away as the body grows, and stops entirely once it is big. Bloom
+     is a phosphor effect that reads at the size of a mark, not at the size of a
+     planet; on a 392-pixel limb it is invisible and it cost the frame. Measured
+     at 1280x900 with a body filling the plate: 23 fps, and 38 with shadowBlur
+     switched off everywhere. The composite already runs a global bloom pass, so
+     a per-stroke shadow on something that large was paying twice for nothing. */
+  const glow = !live ? 0 : rs>150 ? 0 : rs>64 ? 4 : 7;
+  /* Detail from apparent size. A body four pixels across gets a limb and
+     nothing else; one filling the plate in the conn gets the whole mesh. Every
+     curve costs a projection per sample, so this is also the frame budget. */
+  /* Detail from apparent size, capped by what the eye can actually resolve
+     rather than by how big the body is. Forty-eight segments on a 390-pixel limb
+     is a 51-pixel chord with a sagitta under a pixel — past that the extra
+     vertices are stroke length nobody can see, and stroke length is what the
+     frame is spent on. */
+  const seg = clamp(Math.round(rs*1.1), 14, rs>240 ? 36 : 48);
+  /* Detail rises with apparent size and then FALLS AGAIN once the body is wider
+     than the plate. Past that you are looking at ground rather than at a globe:
+     the poles are off screen, the meridians converge somewhere you cannot see,
+     and every one of them is a full-height stroke across the viewport. Cutting
+     them back is both cheaper and a better picture — measured 39 fps at
+     1280x900 with a body filling the plate, against a charter that asks for 60
+     at every size, and the cage was the thing you could least afford and least
+     wanted. */
+  const huge = rs>240;
+  const nLat = rs<6 ? 0 : rs<16 ? 2 : rs<44 ? 4 : huge ? 2 : 6;
+  const nMer = rs<6 ? 0 : rs<16 ? 4 : rs<44 ? 6 : huge ? 2 : 8;
+
+  /* Which way the light comes from. The primary is at the origin of this frame,
+     so the direction from the body TO the light is back toward the origin —
+     minus the body's own position vector, normalised. Getting this backwards lit
+     the hemisphere facing away from the star, which is a sphere lit from inside
+     the system's own shadow. */
+  const L=len3(cen);
+  const sun = L>1e-6 ? mul3(cen,-1/L) : null;
+
+  /* Oblateness. A giant is flattened and that is the property you can see from
+     outside at any range; everything else is round enough. */
+  const fy = b.k==='gas' ? 0.90 : 1;
+  /* And the mesh is shrunk to fit inside the two silhouettes that are not the
+     sphere's own limb, which is how the clip gets deleted. A hexagon's inradius
+     is cos 30° = 0.866 and the lumpy outline's smallest factor is 0.86, so a
+     mesh at 0.855 cannot reach either of them from the inside. That is worth
+     doing rather than clipping because ctx.save()/restore() is the single most
+     expensive call in this function — 32 fps against 41 for the punch alone —
+     and a clip is the one canvas feature that cannot be undone without it. The
+     graticule sits a fraction inside the limb, which is where it already sat on
+     a round body: the widest latitude circle is the equator and the limb is the
+     tangent, and those are not the same line. */
+  const meshK = (b.k==='iron'||b.k==='rock') ? 0.855 : 1;
+  const rad=[R*meshK, R*fy*meshK, R*meshK];
+
+  /* The silhouette, as a path. Iron keeps its hexagon and rock its lumps,
+     because those are what tell you at a glance what you are looking at, and
+     the punch has to match the drawn outline exactly or a seam of stars shows
+     around the edge. */
+  const outline=(k)=>{
     const o=[];
-    for(let i=0;i<=n;i++){ const a=i/n*6.2832; o.push({x:q.x+Math.cos(a)*rx, y:q.y+Math.sin(a)*ry}); }
+    if(b.k==='iron'){
+      for(let i=0;i<=6;i++){ const a=i/6*6.2832+Math.PI/6;
+        o.push({x:q.x+Math.cos(a)*rs*k, y:q.y+Math.sin(a)*rs*k}); }
+    }else if(b.k==='rock'){
+      const n=14;
+      for(let i=0;i<=n;i++){ const a=i/n*6.2832;
+        const w=0.86+0.26*bodyWobble(b,i%n);
+        o.push({x:q.x+Math.cos(a)*rs*k*w, y:q.y+Math.sin(a)*rs*k*w}); }
+    }else{
+      for(let i=0;i<=seg;i++){ const a=i/seg*6.2832;
+        o.push({x:q.x+Math.cos(a)*rs*k, y:q.y+Math.sin(a)*rs*k*fy}); }
+    }
     return o;
   };
-  /* The limb, doubled. Two strokes a hair apart read as a thick bright edge on
-     a phosphor tube, where one thick stroke just reads as a thick stroke. This
-     is the "more definitive outline": the body has an edge you can see against
-     a starfield rather than a hairline that disappears into it. */
-  const limb=(rx,ry,n)=>{
-    strokePolyline(ell(rx,ry,n), col, wide, glow, true);
-    if(rr>7) strokePolyline(ell(rx*0.93,ry*0.93,n), col, live?1:0.8, 0, true);
+
+  /* Rings, far half first, so the planet can eat it. */
+  const ringed = b.k==='gas' && b.ring && rs>5;
+  const ringNs = ringed ? nsRing([0,1,0], Math.PI/2, Math.max(30,seg)) : null;
+  const ringR  = R*1.95, ringInner=R*1.45;
+  const ringPts=(rr0)=>ringNs.map(n=>{
+    const p=[cen[0]+n[0]*rr0, cen[1]+n[1]*rr0*(0.10+Math.abs(b.tilt)), cen[2]+n[2]*rr0];
+    return {p, q:project(p), z:toCam(p)[2]};
+  });
+  let ringOuter=null, ringIn=null;
+  if(ringed){
+    ringOuter=ringPts(ringR); ringIn=ringPts(ringInner);
+    /* Behind the planet: draw it now and let the punch remove what it should. */
+    strokePolyline(ringOuter.map(x=>x.q), col, live?1.2:0.8, 0);
+    strokePolyline(ringIn.map(x=>x.q),    col, live?1:0.8, 0);
+  }
+
+  /* THE PUNCH. Everything drawn so far inside this silhouette goes away — the
+     star field, the orbit rings, the far half of the ring system, and any body
+     further off than this one, because bodies are drawn far to near. */
+  const path=(k)=>{
+    const o=outline(k);
+    o.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));
+    ctx.closePath();
   };
+  punchPath(()=>path(1));
 
-  if(b.k==='gas'){
-    /* Oblate. 0.90 is Saturn's flattening rounded off; it is the same for every
-       giant because the console has no figure data for these, only a radius. */
-    const ry=rr*0.90;
-    limb(rr,ry,seg);
-    /* Banding, as straight chords. A chord is what a circle of latitude
-       actually projects to on a sphere seen equator-on, and the console has no
-       axial tilt to draw anything more confident than that. Brighter toward the
-       equator, which is where the bands are. */
-    for(const f of [-0.62,-0.32,0,0.32,0.62]){
-      const w=rr*Math.sqrt(1-f*f);
-      strokePolyline([{x:q.x-w,y:q.y+ry*f},{x:q.x+w,y:q.y+ry*f}],
-                     col, 1, 0);
+  /* The near hemisphere. */
+  if(nLat){
+    for(let i=1;i<=nLat;i++){
+      const phi=-Math.PI/2 + i*Math.PI/(nLat+1);
+      meshCurve(cen, rad, nsLat(phi, seg), surf, dim, 1, 0, sun);
     }
-    /* And a ring on some of them, lying in the orbital plane — which is a first
-       approximation the solar system mostly agrees with, and the only plane
-       this console knows about for a body. b.tilt is that inclination, so the
-       ring's openness is real data rather than a look. */
-    if(b.ring && rr>6){
-      const rx=rr*1.95, ry2=rx*(0.16+Math.abs(b.tilt));
-      strokePolyline(ell(rx,ry2,Math.max(28,seg)), col, live?1.2:0.8, live?4:0, true);
-      strokePolyline(ell(rx*0.74,ry2*0.74,Math.max(28,seg)), col, live?1:0.8, 0, true);
-    }
-    return;
+  }
+  if(nMer){
+    for(let j=0;j<nMer;j++)
+      meshCurve(cen, rad, nsMeridian(j/nMer*Math.PI, Math.max(10,seg>>1)), surf, dim, 1, 0, sun);
   }
 
-  if(b.k==='ice'){
-    limb(rr,rr,seg);
-    /* Polar caps, as ARCS of the limb rather than chords across the disc. They
-       were chords, and a chord across a circle is the same mark a giant's
-       banding uses — so at twenty pixels an ice body and an unringed giant were
-       both "a disc with lines across it" and the shape stopped identifying
-       anything. An arc at the pole cannot be confused with a band, and it is
-       also the truer picture: what a survey array returns off an ice cap is a
-       bright limb at the pole, not a line across the middle. */
-    ctx.strokeStyle=col; ctx.lineWidth=live?2.2:1.2;
-    ctx.shadowColor=col; ctx.shadowBlur=live?7:0;
-    for(const c of [-1,1]){
-      ctx.beginPath();
-      const mid=c<0 ? -Math.PI/2 : Math.PI/2;
-      ctx.arc(q.x,q.y,rr*0.97, mid-0.62, mid+0.62);
-      ctx.stroke();
+  /* The terminator: the great circle where the primary's light stops. It is the
+     single mark that makes a sphere read as lit rather than as a wire ball, and
+     it is real — it moves as the body goes round. */
+  if(sun && rs>7)
+    meshCurve(cen, rad, nsRing(sun, Math.PI/2, Math.max(24,seg)),
+              live?'#EAFBFF':'rgba(234,251,255,0.30)', null, live?1.4:1, 0, null);
+
+  /* Per-kind surface, computed on the sphere so it sits on the ground. */
+  if(b.k==='gas' && rs>5){
+    for(const phi of (huge?[-0.52,0.20]:[-0.95,-0.52,-0.20,0.20,0.52,0.95]))
+      meshCurve(cen, rad, nsLat(phi, seg), surf, dim, 1.2, 0, sun);
+  }
+  if(b.k==='ice' && rs>5){
+    for(const s of [1,-1])
+      meshCurve(cen, rad, nsRing([0,s,0], 0.42, Math.max(20,seg)),
+                live?'#EAFBFF':col, dim, live?1.6:1, 0, null);
+  }
+  if(b.k==='iron' && rs>7){
+    for(const k of [-0.34,0.34])
+      strokePolyline([{x:q.x-rs*0.80,y:q.y+rs*k},{x:q.x+rs*0.80,y:q.y+rs*k}], surf, 1.1, 0);
+  }
+  if(b.k==='rock' && rs>9){
+    /* Craters, on the ground rather than over it: each is a circle of points at
+       a real angular radius about a real axis, projected, with the far side of
+       the world hidden — so a crater near the limb foreshortens into an ellipse
+       the way it should, and one on the far side is not drawn at all. */
+    for(let ci=0;ci<(huge?2:3);ci++){
+      const la=(bodyWobble(b,70+ci)-0.5)*2.2, lo=bodyWobble(b,80+ci)*6.2832;
+      const ax=[Math.cos(la)*Math.cos(lo), Math.sin(la), Math.cos(la)*Math.sin(lo)];
+      meshCurve(cen, rad, nsRing(ax, 0.20+0.22*bodyWobble(b,90+ci), 16), surf, dim, 1, 0, sun);
     }
-    ctx.shadowBlur=0;
-    return;
+    /* And two ridges — great-circle arcs, which is what a scarp on a body too
+       small to have pulled itself round looks like from orbit. */
+    if(rs>18) for(let ri=0;ri<2;ri++){
+      const la=(bodyWobble(b,100+ri)-0.5)*2.6, lo=bodyWobble(b,110+ri)*6.2832;
+      const ax=[Math.cos(la)*Math.cos(lo), Math.sin(la), Math.cos(la)*Math.sin(lo)];
+      meshCurve(cen, rad, nsRing(ax, 1.34+0.2*bodyWobble(b,120+ri), 28), surf, dim, 1, 0, sun);
+    }
   }
 
-  if(b.k==='iron'){
-    /* Six facets. Rotated so a flat sits at the bottom rather than a point,
-       which is what makes it read as cut metal and not as a badly drawn ball. */
-    const hexs=(k)=>{
-      const o=[];
-      for(let i=0;i<=6;i++){ const a=i/6*6.2832+Math.PI/6; o.push({x:q.x+Math.cos(a)*rr*k, y:q.y+Math.sin(a)*rr*k}); }
-      return o;
-    };
-    strokePolyline(hexs(1), col, wide, glow, true);
-    if(rr>7) strokePolyline(hexs(0.86), col, live?1:0.8, 0, true);
-    /* Two cleavage planes across the facets. Dense metal fractures on planes
-       and this is what a wireframe of that looks like. */
-    if(rr>6) for(const k of [-0.34,0.34])
-      strokePolyline([{x:q.x-rr*0.80,y:q.y+rr*k},{x:q.x+rr*0.80,y:q.y+rr*k}], col, 1, 0);
-    return;
-  }
+  /* The limb, last and brightest, doubled. It is the edge of the world and it has
+     to be the strongest line on it. */
+  strokePolyline(outline(1), col, live?1.9:1, glow, true);
+  /* The doubled limb is what makes an edge read as thick on a phosphor tube, and
+     it stops earning that once the body is wider than the plate: both strokes
+     are then mostly off screen, and a path of that circumference is the single
+     most expensive mark in the frame. */
+  if(rs>7 && !huge) strokePolyline(outline(0.955), col, live?1:0.8, 0, true);
 
-  /* Rock. Not round — a body this size never pulled itself round, and the
-     irregular outline is the readout for that. Fourteen vertices so the lumps
-     survive being small, perturbed by a hash of the body's own name so the
-     same world is the same shape forever. */
-  const n=14, o=[];
-  for(let i=0;i<=n;i++){
-    const a=i/n*6.2832;
-    const k=0.86+0.26*bodyWobble(b, i%n);
-    o.push({x:q.x+Math.cos(a)*rr*k, y:q.y+Math.sin(a)*rr*k});
-  }
-  strokePolyline(o, col, wide, glow, true);
-  /* Craters. Two of them, placed and sized off the same hash, because a rocky
-     world that has been hit is the normal case and the impacts are the surface
-     detail an array would return. */
-  if(rr>8){
-    for(let c=0;c<2;c++){
-      const a=bodyWobble(b,40+c)*6.2832;
-      const d=rr*(0.18+0.34*bodyWobble(b,50+c));
-      const cr=rr*(0.14+0.16*bodyWobble(b,60+c));
-      const cx0=q.x+Math.cos(a)*d, cy0=q.y+Math.sin(a)*d;
-      const ring=[];
-      for(let i=0;i<=14;i++){ const t=i/14*6.2832; ring.push({x:cx0+Math.cos(t)*cr, y:cy0+Math.sin(t)*cr}); }
-      strokePolyline(ring, col, 1, 0, true);
-    }
+  /* And the near half of the ring, back over the top, because that half passes
+     in FRONT of the planet. Doing this is the whole reason a ringed giant reads
+     as a solid object with something round it rather than as two overlapping
+     drawings. */
+  if(ringed){
+    const zc=c[2];
+    const near=x=>x.z>zc ? x.q : null;      // nearer the eye than the centre
+    strokePolyline(ringOuter.map(near), col, live?1.2:0.8, 0);
+    strokePolyline(ringIn.map(near),    col, live?1:0.8, 0);
   }
 }
 
