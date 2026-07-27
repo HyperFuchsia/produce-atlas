@@ -116,6 +116,10 @@
     this.simMs = 0;
 
     this.camera = { yaw: 0.0, pitch: 0.10, dist: 5.2, targetDist: 5.2 };
+    /* Hand zoom, as a factor against whatever the subject currently needs. */
+    this.zoom = 1;
+    this.fitDist = 5.2;
+    this.fitReach = 1.2;
     this.grabRadius = 0.62;
 
     this.model = M.m4();
@@ -162,12 +166,14 @@
     this.inert = 0;
     this.poolColor = BEING.pool.slice();
     this.spin = 0;
+    this.tilt = 0;
     this.driftX = 0; this.driftY = 0; this.driftZ = 0;
     this.boil = 0;
     this.boilT = 0;
     this.stageBias = 0;
     this.shake = 0;
     this.groundY = -1e9;
+    this.stageHeight = 0;
 
     /* Playing with it, unprompted, is itself a thing it responds to. */
     this.play = 0;
@@ -452,8 +458,14 @@
     /* Follow it, but not all the way down — losing it out of the bottom of
        the frame would be worse than the floor creeping up the shot. Upward it
        follows harder, because something big enough to stand on the ground is
-       big enough to leave the frame entirely. */
-    const wantBias = this.fallY * (this.fallY < 0 ? 0.62 : 0.85);
+       big enough to leave the frame entirely.
+
+       Taken from where the body actually is rather than from the fall alone.
+       For anything resting on the ground the fall cancels the idle drift
+       exactly, so the body is still while `fallY` is not, and following the
+       latter left the camera permanently rocking. */
+    const at = this.stageHeight === undefined ? 0 : this.stageHeight;
+    const wantBias = at * (at < 0 ? 0.62 : 0.85);
     this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
     if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
   };
@@ -477,7 +489,14 @@
        23 cm being this is far below where it floats and never binds; for a
        4.5 m car it is well above, and the car rests on the ground instead of
        hovering through it. */
-    this.groundY = floorY - this.body.lowestAlong(g, true) - this.driftY;
+    const low = this.body.lowestAlong(g, true);
+    const sits = floorY - low;
+    this.groundY = sits - this.driftY;
+    /* What the camera looks at: the height the body comes to rest at, with
+       the idle drift left out. Following the live height meant following the
+       lag between the drift and the ground correction, which never settles,
+       and left the camera permanently rocking. */
+    this.stageHeight = p.fall ? this.fallY : Math.max(p.rise, sits);
 
     if (p.fall) {
       const need = floorY - this.body.lowestAlong(g, true) - m[13];
@@ -580,8 +599,10 @@
     canvas.addEventListener('pointercancel', function (e) { self.onPointerUp(e); });
     canvas.addEventListener('wheel', function (e) {
       e.preventDefault();
-      self.userZoomed = true;
-      self.camera.targetDist = M.clamp(self.camera.targetDist + e.deltaY * 0.0035, 2.8, 12);
+      /* Multiplicative, so one notch means the same amount of "closer"
+         whether you are looking at a grape or at a car. */
+      self.zoom = M.clamp(self.zoom * Math.exp(e.deltaY * 0.0011), 0.28, 4.0);
+      self.applyZoom();
     }, { passive: false });
 
     $('sound').addEventListener('click', function () {
@@ -708,8 +729,8 @@
       const a = it.next().value, b = it.next().value;
       const d = Math.hypot(a.x - b.x, a.y - b.y);
       if (this.pinchDist > 0) {
-        this.userZoomed = true;
-        this.camera.targetDist = M.clamp(this.camera.targetDist * (this.pinchDist / Math.max(d, 1)), 2.8, 12);
+        this.zoom = M.clamp(this.zoom * (this.pinchDist / Math.max(d, 1)), 0.28, 4.0);
+        this.applyZoom();
       }
       this.pinchDist = d;
       this.camera.yaw -= (e.clientX - prevX) * 0.0035;
@@ -787,18 +808,50 @@
     this.refitCamera();
   };
 
-  /* Pull back far enough for the head and the largest specimen together.
-     The moment the viewer zooms by hand, this stops touching the camera —
-     having the framing jump on you mid-conversation is worse than a specimen
-     that overflows the frame, and they can always pinch back out. */
+  /* How far back the subject needs the camera, whatever the subject is now.
+
+     Zooming by hand does not pin an absolute distance — it sets a factor
+     against this fit. An absolute one was fine while everything was roughly
+     the size of a grapefruit and became unusable the moment it could be a
+     car: the framing would either ignore a twentyfold change in size, or a
+     single notch of the wheel would drop you from forty units to twelve,
+     which is inside the car and with no way back out. A factor survives the
+     subject changing size, which is the one thing that definitely happens
+     here. */
   App.prototype.refitCamera = function () {
-    if (this.userZoomed) return;
     let reach = Math.max(this.beingReach || 0, this.wire ? 1.9 : 0);
     for (let i = 0; i < this.props.length; i++) {
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
     }
-    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 70);
+    /* Deliberately sub-proportional: something big is allowed to fill more of
+       the frame than something small, or a car would be framed from a hundred
+       units away and read as a toy. */
+    this.fitReach = reach;
+    const was = this.fitDist;
+    this.fitDist = (4.9 + reach * 2.2) * this.distBoost;
+
+    /* A zoom set against a grapefruit should not be applied literally to a
+       car. A large change of subject pulls the factor back toward neutral, so
+       the new thing arrives framed and the preference survives as a nudge
+       rather than as an instruction to sit inside it. */
+    if (was > 0) {
+      const change = Math.max(this.fitDist / was, was / this.fitDist);
+      if (change > 1.6) {
+        const k = M.clamp((change - 1.6) / 4, 0, 1);
+        this.zoom = Math.exp(Math.log(this.zoom) * (1 - k * 0.8));
+      }
+    }
+    this.applyZoom();
+  };
+
+  App.prototype.applyZoom = function () {
+    const reach = this.fitReach || 1.2;
+    /* Limits that scale with the subject. Close enough to inspect it, far
+       enough to see all of it, and never inside it. */
+    const lo = Math.max(2.4, reach * 1.15);
+    const hi = Math.max(14, reach * 8);
+    this.camera.targetDist = M.clamp((this.fitDist || 5.2) * this.zoom, lo, hi);
   };
 
   App.prototype._removeProp = function (i) {
@@ -1251,16 +1304,25 @@
 
     /* A sphere has no visible front, so attention is not shown by turning —
        the shader paints a focal point wherever it is looking. This rotation
-       only drifts the iridescent film so the surface never looks frozen, and
-       it stops when the film does. */
-    this.spin += dt * 0.06 * alive;
+       exists only to drift the iridescent film so the surface never looks
+       frozen, and it stops when the film does.
+
+       It also stops once it is wearing a form, for the same reason the swell
+       does. A pineapple turning slowly is odd; a 4.5 m car pitching a fifth
+       of a radian is absurd, and it moves the car's lowest point by metres,
+       so the whole thing rides up and down against the ground and the camera
+       follows it forever. */
+    const held = 1 - this.morph.amount;
+    this.spin += dt * 0.06 * alive * held;
+    const wantTilt = Math.sin(this.spin * 1.5) * 0.2 * held;
+    this.tilt += (wantTilt - this.tilt) * Math.min(1, dt * 2.5);
     this.composeModel();
   };
 
   App.prototype.composeModel = function () {
     M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
     M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
-      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.swell);
+      this.spin, this.tilt, 1 + this.swell);
     M.invert(this.invModel, this.model);
   };
 

@@ -231,6 +231,17 @@ It holds the subject, so you never have to name it twice:
 Drag on it to pull the shell around, drag the background to orbit, wheel or
 pinch to zoom.
 
+**Zooming sets a factor, not a distance.** The subject can change size by a
+factor of twenty in the middle of a sentence, so an absolute zoom either
+ignores that entirely or drops you inside whatever just arrived. The camera
+works out how far back the current subject needs, and your zoom scales that —
+with the limits scaled too, so you can always get close enough to inspect it
+and far enough to see all of it. A large change of subject also relaxes the
+factor back toward neutral, so the new thing arrives framed and your preference
+survives as a nudge rather than as an instruction.
+
+And it settles. Once the subject stops changing, the camera stops moving.
+
 **The scene owns the screen.** There is no panel: the conversation is a
 transient band of text along the bottom that dissolves once read, and the only
 permanent chrome is a single input. Starter prompts appear when the field is

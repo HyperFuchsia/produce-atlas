@@ -196,3 +196,12 @@ not invent a botany for a machine. All three were worth having anyway: the hull
 generalises to anything lofted, anything too big to hover now rests on the
 ground without being told to, and the room grows with its subject. Adding the
 next thing is a table entry.
+
+**The camera holds the subject, whatever size it is.** — §4.2 scale is felt.
+Scale only lands if you can see the thing. An absolute hand zoom was survivable
+while everything was fruit-sized and broke completely at 4.5 m — one notch of
+the wheel put you inside the car with no way out. Zoom is now a factor against
+what the subject needs, with limits that scale, and the idle rotation stops
+once it is wearing a form: a slowly pitching car moved its own lowest point by
+metres, so it rode up and down against the ground and the camera chased it
+forever. Measured to zero drift once the subject settles.
