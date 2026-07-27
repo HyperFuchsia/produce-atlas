@@ -112,9 +112,12 @@
     const reply = this.brain.respond(text);
     if (reply.clear && this.onClear) this.onClear();
     const self = this;
-    this.say(reply.lines, reply.spawn ? function () {
-      if (self.onSpawn) self.onSpawn(reply.spawn);
-    } : null);
+    /* Whatever it promised in the first line happens when that line lands. */
+    let after = null;
+    if (reply.spawn) after = function () { if (self.onSpawn) self.onSpawn(reply.spawn); };
+    else if (reply.morph) after = function () { if (self.onMorph) self.onMorph(reply.morph); };
+    else if (reply.revert) after = function () { if (self.onRevert) self.onRevert(); };
+    this.say(reply.lines, after);
   };
 
   Chat.prototype.update = function (dt) {

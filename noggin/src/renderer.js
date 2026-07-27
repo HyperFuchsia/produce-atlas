@@ -545,6 +545,8 @@
     gl.uniform3fv(pr.u.uFocusColor, state.being.focus);
     gl.uniform3fv(pr.u.uCoreColor, state.being.core);
     gl.uniform1f(pr.u.uVoice, state.voice);
+    gl.uniform1f(pr.u.uMorph, state.morph);
+    gl.uniform3fv(pr.u.uFormColor, state.formColor);
     gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);

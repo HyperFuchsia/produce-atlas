@@ -183,6 +183,50 @@
   const MAT_GLOSS = 2;     /* tight specular — waxy skins */
   const MAT_MATTE = 3;     /* rough — leaves, husks, roots */
 
+  /* Project a direction on the unit sphere onto an entry's form.
+
+     This is the same construction as revolve(), driven by a sphere direction
+     instead of a grid: polar angle picks the profile parameter, azimuth picks
+     the way round. That means any specimen can be expressed on the being's own
+     icosphere topology — same vertex count, same adjacency — so becoming one is
+     a morph of rest positions rather than a mesh swap. */
+  const FALLBACK_PROFILE = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
+
+  P.formOnSphere = function (out, spec, dx, dy, dz) {
+    const scale = P.cm(1);
+    const height = (spec.lengthCm || spec.sizeCm) * scale;
+    const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
+    const profile = spec.profile || FALLBACK_PROFILE;
+
+    const t = 1 - Math.acos(M.clamp(dy, -1, 1)) / Math.PI;
+    let r = sampleProfile(profile, t) * radius;
+    if (r < 0) r = 0;
+    let y = (t - 0.5) * height;
+
+    const phi = Math.atan2(dz, dx);
+    if (spec.ribs) {
+      const fade = Math.sin(Math.PI * t);
+      r *= 1 - (spec.ribDepth || 0) * fade * (0.5 - 0.5 * Math.cos(spec.ribs * phi));
+    }
+
+    let x = Math.cos(phi) * r;
+    let z = Math.sin(phi) * r;
+
+    if (spec.bend) {
+      const k = spec.bend / Math.max(height, 1e-5);
+      const ang = y * k;
+      const rad = 1 / k;
+      const cx = x + rad;
+      x = Math.cos(ang) * cx - rad;
+      y = Math.sin(ang) * cx;
+    }
+
+    if (spec.lie) { const nx = -y; y = x; x = nx; }
+
+    out[0] = x; out[1] = y; out[2] = z;
+    return out;
+  };
+
   /* Build one produce mesh from a knowledge-base entry. */
   P.build = function (spec) {
     const part = new Part();

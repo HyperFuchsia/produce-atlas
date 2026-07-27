@@ -85,20 +85,16 @@
     this.damping = opts.damping !== undefined ? opts.damping : 5.5;
     this.maxStretch = opts.maxStretch !== undefined ? opts.maxStretch : 2.6;
     this.maxSpeed = opts.maxSpeed !== undefined ? opts.maxSpeed : 34;
-    this.coreRadius = 0.30;
+    /* Fraction of a vertex's rest radius it may never fall inside. */
+    this.coreRadius = 0.32;
 
-    /* Rest edge lengths per directed half-edge, for geodesic grab falloff. */
+    /* Rest edge lengths per directed half-edge, for geodesic grab falloff,
+       and rest radii for the keep-out. Both are derived from `rest`, so both
+       have to be refreshed whenever the rest shape changes. */
     this.edgeLen = new Float32Array(this.adj.idx.length);
-    for (let i = 0; i < this.headCount; i++) {
-      for (let e = this.adj.offset[i]; e < this.adj.offset[i + 1]; e++) {
-        const j = this.adj.idx[e];
-        this.edgeLen[e] = Math.hypot(
-          this.rest[j * 3] - this.rest[i * 3],
-          this.rest[j * 3 + 1] - this.rest[i * 3 + 1],
-          this.rest[j * 3 + 2] - this.rest[i * 3 + 2]
-        );
-      }
-    }
+    this.restLen = new Float32Array(this.headCount);
+    this.refreshEdgeLengths();
+    this.refreshRestLengths();
 
     /* Grab state. */
     this.grabbing = false;
@@ -125,6 +121,26 @@
     this.maxDisplacement = 0;
     this.energy = 0;
   }
+
+  Softbody.prototype.refreshEdgeLengths = function () {
+    for (let i = 0; i < this.headCount; i++) {
+      for (let e = this.adj.offset[i]; e < this.adj.offset[i + 1]; e++) {
+        const j = this.adj.idx[e];
+        this.edgeLen[e] = Math.hypot(
+          this.rest[j * 3] - this.rest[i * 3],
+          this.rest[j * 3 + 1] - this.rest[i * 3 + 1],
+          this.rest[j * 3 + 2] - this.rest[i * 3 + 2]
+        );
+      }
+    }
+  };
+
+  Softbody.prototype.refreshRestLengths = function () {
+    for (let i = 0; i < this.headCount; i++) {
+      this.restLen[i] = Math.hypot(
+        this.rest[i * 3], this.rest[i * 3 + 1], this.rest[i * 3 + 2]);
+    }
+  };
 
   /* ---- simulation ------------------------------------------------------ */
 
@@ -213,6 +229,7 @@
     const n = this.headCount;
     const pos = this.pos, rest = this.rest, vel = this.vel, disp = this.disp;
     const maxR = this.maxStretch, core = this.coreRadius;
+    const restLen = this.restLen;
     const stretch = this.stretch;
     let maxD = 0, energy = 0;
 
@@ -235,13 +252,16 @@
         len = Math.sqrt(dx * dx + dy * dy + dz * dz);
       }
 
-      /* Keep-out sphere at the core: without it a hard inward push folds the
-         face through the back of the skull and the mesh never recovers. */
+      /* Keep-out: stop a hard inward push folding the body through itself.
+         The threshold is a fraction of this vertex's own rest radius, not one
+         absolute distance, because the rest shape changes — an absolute core
+         would inflate anything thin, like a carrot, into a tube. */
       const px = pos[i3], py = pos[i3 + 1], pz = pos[i3 + 2];
       const r = Math.sqrt(px * px + py * py + pz * pz);
-      if (r < core) {
+      const keep = core * restLen[i];
+      if (r < keep) {
         if (r > 1e-5) {
-          const s = core / r;
+          const s = keep / r;
           pos[i3] = px * s; pos[i3 + 1] = py * s; pos[i3 + 2] = pz * s;
         } else {
           pos[i3] = rest[i3] * 0.4;

@@ -1228,20 +1228,16 @@
     this.damping = opts.damping !== undefined ? opts.damping : 5.5;
     this.maxStretch = opts.maxStretch !== undefined ? opts.maxStretch : 2.6;
     this.maxSpeed = opts.maxSpeed !== undefined ? opts.maxSpeed : 34;
-    this.coreRadius = 0.30;
+    /* Fraction of a vertex's rest radius it may never fall inside. */
+    this.coreRadius = 0.32;
 
-    /* Rest edge lengths per directed half-edge, for geodesic grab falloff. */
+    /* Rest edge lengths per directed half-edge, for geodesic grab falloff,
+       and rest radii for the keep-out. Both are derived from `rest`, so both
+       have to be refreshed whenever the rest shape changes. */
     this.edgeLen = new Float32Array(this.adj.idx.length);
-    for (let i = 0; i < this.headCount; i++) {
-      for (let e = this.adj.offset[i]; e < this.adj.offset[i + 1]; e++) {
-        const j = this.adj.idx[e];
-        this.edgeLen[e] = Math.hypot(
-          this.rest[j * 3] - this.rest[i * 3],
-          this.rest[j * 3 + 1] - this.rest[i * 3 + 1],
-          this.rest[j * 3 + 2] - this.rest[i * 3 + 2]
-        );
-      }
-    }
+    this.restLen = new Float32Array(this.headCount);
+    this.refreshEdgeLengths();
+    this.refreshRestLengths();
 
     /* Grab state. */
     this.grabbing = false;
@@ -1268,6 +1264,26 @@
     this.maxDisplacement = 0;
     this.energy = 0;
   }
+
+  Softbody.prototype.refreshEdgeLengths = function () {
+    for (let i = 0; i < this.headCount; i++) {
+      for (let e = this.adj.offset[i]; e < this.adj.offset[i + 1]; e++) {
+        const j = this.adj.idx[e];
+        this.edgeLen[e] = Math.hypot(
+          this.rest[j * 3] - this.rest[i * 3],
+          this.rest[j * 3 + 1] - this.rest[i * 3 + 1],
+          this.rest[j * 3 + 2] - this.rest[i * 3 + 2]
+        );
+      }
+    }
+  };
+
+  Softbody.prototype.refreshRestLengths = function () {
+    for (let i = 0; i < this.headCount; i++) {
+      this.restLen[i] = Math.hypot(
+        this.rest[i * 3], this.rest[i * 3 + 1], this.rest[i * 3 + 2]);
+    }
+  };
 
   /* ---- simulation ------------------------------------------------------ */
 
@@ -1356,6 +1372,7 @@
     const n = this.headCount;
     const pos = this.pos, rest = this.rest, vel = this.vel, disp = this.disp;
     const maxR = this.maxStretch, core = this.coreRadius;
+    const restLen = this.restLen;
     const stretch = this.stretch;
     let maxD = 0, energy = 0;
 
@@ -1378,13 +1395,16 @@
         len = Math.sqrt(dx * dx + dy * dy + dz * dz);
       }
 
-      /* Keep-out sphere at the core: without it a hard inward push folds the
-         face through the back of the skull and the mesh never recovers. */
+      /* Keep-out: stop a hard inward push folding the body through itself.
+         The threshold is a fraction of this vertex's own rest radius, not one
+         absolute distance, because the rest shape changes — an absolute core
+         would inflate anything thin, like a carrot, into a tube. */
       const px = pos[i3], py = pos[i3 + 1], pz = pos[i3 + 2];
       const r = Math.sqrt(px * px + py * py + pz * pz);
-      if (r < core) {
+      const keep = core * restLen[i];
+      if (r < keep) {
         if (r > 1e-5) {
-          const s = core / r;
+          const s = keep / r;
           pos[i3] = px * s; pos[i3 + 1] = py * s; pos[i3 + 2] = pz * s;
         } else {
           pos[i3] = rest[i3] * 0.4;
@@ -1811,6 +1831,50 @@
   const MAT_SKIN = 0;      /* soft, wrapped diffuse — fruit flesh reads well */
   const MAT_GLOSS = 2;     /* tight specular — waxy skins */
   const MAT_MATTE = 3;     /* rough — leaves, husks, roots */
+
+  /* Project a direction on the unit sphere onto an entry's form.
+
+     This is the same construction as revolve(), driven by a sphere direction
+     instead of a grid: polar angle picks the profile parameter, azimuth picks
+     the way round. That means any specimen can be expressed on the being's own
+     icosphere topology — same vertex count, same adjacency — so becoming one is
+     a morph of rest positions rather than a mesh swap. */
+  const FALLBACK_PROFILE = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
+
+  P.formOnSphere = function (out, spec, dx, dy, dz) {
+    const scale = P.cm(1);
+    const height = (spec.lengthCm || spec.sizeCm) * scale;
+    const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
+    const profile = spec.profile || FALLBACK_PROFILE;
+
+    const t = 1 - Math.acos(M.clamp(dy, -1, 1)) / Math.PI;
+    let r = sampleProfile(profile, t) * radius;
+    if (r < 0) r = 0;
+    let y = (t - 0.5) * height;
+
+    const phi = Math.atan2(dz, dx);
+    if (spec.ribs) {
+      const fade = Math.sin(Math.PI * t);
+      r *= 1 - (spec.ribDepth || 0) * fade * (0.5 - 0.5 * Math.cos(spec.ribs * phi));
+    }
+
+    let x = Math.cos(phi) * r;
+    let z = Math.sin(phi) * r;
+
+    if (spec.bend) {
+      const k = spec.bend / Math.max(height, 1e-5);
+      const ang = y * k;
+      const rad = 1 / k;
+      const cx = x + rad;
+      x = Math.cos(ang) * cx - rad;
+      y = Math.sin(ang) * cx;
+    }
+
+    if (spec.lie) { const nx = -y; y = x; x = nx; }
+
+    out[0] = x; out[1] = y; out[2] = z;
+    return out;
+  };
 
   /* Build one produce mesh from a knowledge-base entry. */
   P.build = function (spec) {
@@ -2386,6 +2450,13 @@
   const CLEAR_WORDS = ['clear', 'remove', 'delete', 'get rid', 'take it away', 'put it back', 'tidy', 'reset the'];
   const LIST_WORDS = ['what do you know', 'what can you', 'help', 'list', 'options', 'everything', 'what have you got', 'topics'];
   const THANKS_WORDS = ['thank', 'thanks', 'cheers', 'nice one', 'good job'];
+  const IDENTITY_WORDS = ['what are you', 'who are you', 'what is this', 'what r u',
+    'are you an ai', 'are you a bot', 'are you real', 'are you alive', 'what am i looking at',
+    'introduce yourself', 'tell me about yourself', 'what do you do', 'wtf are you'];
+  const BECOME_WORDS = ['become', 'turn into', 'turn yourself into', 'transform into',
+    'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
+  const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
+    'turn back', 'revert', 'stop being', 'be you again', 'undo that', 'back to normal'];
 
   function has(text, words) {
     for (let i = 0; i < words.length; i++) if (text.indexOf(words[i]) !== -1) return true;
@@ -2477,6 +2548,54 @@
 
     if (!raw) return { lines: ['You pressed send with nothing in it. Bold.'] };
 
+    /* Identity. The honest answer to "what are you" is the demonstration, so
+       do not describe — offer. */
+    if (has(text, IDENTITY_WORDS)) {
+      this.askedWhat = true;
+      return {
+        lines: [this._pick([
+          'Nothing, yet. That is not modesty — I genuinely have no fixed shape.',
+          'Undecided. I am the shape nobody has asked for yet.',
+          'A placeholder. This sphere is what I look like when no one has told me otherwise.'
+        ]),
+        'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
+        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.']
+      };
+    }
+
+    /* Revert before become, so "stop being a banana" is not read as "banana". */
+    if (has(text, REVERT_WORDS)) {
+      return {
+        revert: true,
+        lines: [this._pick([
+          'Fine. Back to nothing in particular.',
+          'As you like. This is me with nothing on.',
+          'Letting go of it. Ask me to be something else whenever.'
+        ])]
+      };
+    }
+
+    if (has(text, BECOME_WORDS)) {
+      const form = K.find(raw);
+      if (!form) {
+        return {
+          lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
+            'Try "become a pineapple", or say "help" for the whole list.']
+        };
+      }
+      this.subject = form;
+      return {
+        morph: form,
+        lines: [this._pick(['Watch.', 'Easy.', 'Give me a second.', 'Alright. Hold still.']),
+          'There. ' + cap(an(form.name)) + ', ' + this._sizeLine(form),
+          this._pick([
+            'Ask me anything about it. I am it now, so I would know.',
+            'I can stay like this as long as you want. Or name another one.',
+            'Strange being this. Ask me something while I am here.'
+          ])]
+      };
+    }
+
     if (has(text, CLEAR_WORDS) && !K.find(raw)) {
       const had = this.subject;
       this.subject = null;
@@ -2511,7 +2630,7 @@
         lines.push('There it is. A real one — ' + this._sizeLine(entry));
         if (!this.introduced) {
           this.introduced = true;
-          lines.push('Ask me where it is from, what family it is in, what it tastes like. Or say "more".');
+          lines.push('Ask me where it is from, what it tastes like, or say "more". You can also tell me to become one.');
         }
       }
       return { lines: lines, spawn: entry };
@@ -2569,8 +2688,8 @@
   };
 
   Brain.prototype.greeting = function () {
-    return ['Hey. Name a food plant and I will bring a real one in, at its actual size.',
-      'You can also reach in and pull at me. I am not as solid as I look.'];
+    return ['Hey. Ask me what I am.',
+      'Or name a food plant and I will bring a real one in, at its actual size. You can also reach in and pull at me — I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;
@@ -2691,9 +2810,12 @@
     const reply = this.brain.respond(text);
     if (reply.clear && this.onClear) this.onClear();
     const self = this;
-    this.say(reply.lines, reply.spawn ? function () {
-      if (self.onSpawn) self.onSpawn(reply.spawn);
-    } : null);
+    /* Whatever it promised in the first line happens when that line lands. */
+    let after = null;
+    if (reply.spawn) after = function () { if (self.onSpawn) self.onSpawn(reply.spawn); };
+    else if (reply.morph) after = function () { if (self.onMorph) self.onMorph(reply.morph); };
+    else if (reply.revert) after = function () { if (self.onRevert) self.onRevert(); };
+    this.say(reply.lines, after);
   };
 
   Chat.prototype.update = function (dt) {
@@ -2863,6 +2985,8 @@ uniform vec3 uFocusDir;      /* world direction it is attending to */
 uniform vec3 uFocusColor;
 uniform vec3 uCoreColor;
 uniform float uVoice;        /* 0..1, rises while it is speaking */
+uniform float uMorph;        /* 0 = itself, 1 = fully wearing a form */
+uniform vec3 uFormColor;
 
 out vec4 oColor;
 ${COMMON}
@@ -2948,6 +3072,20 @@ void main() {
 
     // Pulled hard, the shell stresses and glows along the strain.
     col += vec3(0.55, 0.80, 1.15) * pow(st2, 1.8) * 1.1;
+
+    // Wearing a form: the same body, lit as the thing it has become. A little
+    // interference is left along the rim so it never stops being itself.
+    if (uMorph > 0.001) {
+      float shf = sampleShadow(vLPos);
+      float ndl = dot(N, L);
+      float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
+      vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
+      vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
+      form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
+      form += iri * pow(1.0 - ndvAll, 3.0) * 0.55;
+      form += uFocusColor * focus * 0.5;
+      col = mix(col, form, uMorph);
+    }
 
     oColor = vec4(col, 1.0);
     return;
@@ -3700,6 +3838,8 @@ void main() {
     gl.uniform3fv(pr.u.uFocusColor, state.being.focus);
     gl.uniform3fv(pr.u.uCoreColor, state.being.core);
     gl.uniform1f(pr.u.uVoice, state.voice);
+    gl.uniform1f(pr.u.uMorph, state.morph);
+    gl.uniform3fv(pr.u.uFormColor, state.formColor);
     gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
@@ -4087,9 +4227,15 @@ void main() {
       log: $('dialogue'), input: $('prompt'), form: $('composer')
     });
     this.props = [];
+    /* Morph state: the being's rest shape animating from one form to another. */
+    this.baseRest = new Float32Array(this.mesh ? 0 : 0);
+    this.morph = { t: 1, dur: 1, from: null, to: null, amount: 0, target: 0, form: null };
+    this.formColor = [0.9, 0.9, 0.9];
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onClear = function () { self.clearSpecimens(); };
+    this.chat.onMorph = function (entry) { self.becomeForm(entry); };
+    this.chat.onRevert = function () { self.becomeForm(null); };
     /* When you type, he stops whatever he was looking at and looks at you. */
     this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
@@ -4105,6 +4251,83 @@ void main() {
     this.mesh = NG.G.buildOrb(subdiv);
     this.body = new NG.Softbody(this.mesh);
     this.renderer.setMesh(this.mesh);
+    /* Its own shape, kept so it can always find its way back. */
+    this.orbRest = new Float32Array(this.mesh.rest);
+    /* Unit directions per vertex — what any form is projected onto. */
+    this.dirs = new Float32Array(this.mesh.total * 3);
+    for (let i = 0; i < this.mesh.total; i++) {
+      const x = this.orbRest[i * 3], y = this.orbRest[i * 3 + 1], z = this.orbRest[i * 3 + 2];
+      const l = Math.hypot(x, y, z) || 1;
+      this.dirs[i * 3] = x / l;
+      this.dirs[i * 3 + 1] = y / l;
+      this.dirs[i * 3 + 2] = z / l;
+    }
+  };
+
+  /* ---- becoming ------------------------------------------------------------ */
+
+  /* Any specimen can be expressed on the being's own topology, so becoming one
+     is a morph of rest positions. The solver keeps running throughout, which is
+     what makes the change wobble instead of snapping. */
+  App.prototype.becomeForm = function (entry) {
+    const n = this.mesh.total;
+    const target = new Float32Array(n * 3);
+    const out = [0, 0, 0];
+
+    if (entry) {
+      for (let i = 0; i < n; i++) {
+        NG.P.formOnSphere(out, entry, this.dirs[i * 3], this.dirs[i * 3 + 1], this.dirs[i * 3 + 2]);
+        target[i * 3] = out[0];
+        target[i * 3 + 1] = out[1];
+        target[i * 3 + 2] = out[2];
+      }
+      this.formColor = entry.color.slice();
+    } else {
+      target.set(this.orbRest);
+    }
+
+    this.morph.from = new Float32Array(this.body.rest);
+    this.morph.to = target;
+    this.morph.t = 0;
+    this.morph.dur = 1.35;
+    this.morph.target = entry ? 1 : 0;
+    this.morph.form = entry;
+
+    /* A shove so the change is felt, not just seen. */
+    this.body.impulse([0, 0, 0], 4.0, -2.2);
+    this.lean = 1;
+    M.set3(this.leanDir, 0, 0.2, 0.9);
+    this.audio.boing(0.5);
+  };
+
+  App.prototype.updateMorph = function (dt) {
+    const m = this.morph;
+    if (!m.to) return;
+
+    if (m.t < 1) {
+      m.t = Math.min(1, m.t + dt / m.dur);
+      const e = M.smoothstep(0, 1, m.t);
+      const rest = this.body.rest;
+      const from = m.from, to = m.to;
+      for (let i = 0; i < rest.length; i++) {
+        rest[i] = from[i] + (to[i] - from[i]) * e;
+      }
+      /* The keep-out reads rest radii every step, so they track the morph. */
+      this.body.refreshRestLengths();
+      m.amount += (m.target - m.amount) * Math.min(1, dt * 3.5);
+
+      if (m.t >= 1) {
+        /* Geodesic grab distances are only worth recomputing once, at the end. */
+        this.body.refreshEdgeLengths();
+        m.amount = m.target;
+        this.beingReach = 0;
+        for (let i = 0; i < rest.length; i += 3) {
+          const r = Math.hypot(rest[i], rest[i + 1], rest[i + 2]);
+          if (r > this.beingReach) this.beingReach = r;
+        }
+        this.refitCamera();
+      }
+    }
   };
 
   App.prototype.resize = function () {
@@ -4367,7 +4590,7 @@ void main() {
      that overflows the frame, and they can always pinch back out. */
   App.prototype.refitCamera = function () {
     if (this.userZoomed) return;
-    let reach = 0;
+    let reach = this.beingReach || 0;
     for (let i = 0; i < this.props.length; i++) {
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
@@ -4437,7 +4660,7 @@ void main() {
       const h = this.halos[i];
       /* Ride the body so the rings stay centred on it as it drifts. */
       M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
-        h.phase + this.time * h.spin, h.tilt, 1);
+        h.phase + this.time * h.spin, h.tilt, 1 - 0.55 * this.morph.amount);
     }
   };
 
@@ -4640,6 +4863,7 @@ void main() {
     this.updateHalos();
     this.updateLight();
     this.trackGrabVelocity(dt);
+    this.updateMorph(dt);
     this.stepPhysics(dt);
 
     if (this.grabPointer >= 0) {
@@ -4666,6 +4890,8 @@ void main() {
       being: BEING,
       focusDir: this.focusDir,
       voice: this.voice,
+      morph: this.morph.amount,
+      formColor: this.formColor,
       poolPos: this.headPos,
       poolColor: BEING.pool,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),

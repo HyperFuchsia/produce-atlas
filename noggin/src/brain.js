@@ -32,6 +32,13 @@
   const CLEAR_WORDS = ['clear', 'remove', 'delete', 'get rid', 'take it away', 'put it back', 'tidy', 'reset the'];
   const LIST_WORDS = ['what do you know', 'what can you', 'help', 'list', 'options', 'everything', 'what have you got', 'topics'];
   const THANKS_WORDS = ['thank', 'thanks', 'cheers', 'nice one', 'good job'];
+  const IDENTITY_WORDS = ['what are you', 'who are you', 'what is this', 'what r u',
+    'are you an ai', 'are you a bot', 'are you real', 'are you alive', 'what am i looking at',
+    'introduce yourself', 'tell me about yourself', 'what do you do', 'wtf are you'];
+  const BECOME_WORDS = ['become', 'turn into', 'turn yourself into', 'transform into',
+    'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
+  const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
+    'turn back', 'revert', 'stop being', 'be you again', 'undo that', 'back to normal'];
 
   function has(text, words) {
     for (let i = 0; i < words.length; i++) if (text.indexOf(words[i]) !== -1) return true;
@@ -123,6 +130,54 @@
 
     if (!raw) return { lines: ['You pressed send with nothing in it. Bold.'] };
 
+    /* Identity. The honest answer to "what are you" is the demonstration, so
+       do not describe — offer. */
+    if (has(text, IDENTITY_WORDS)) {
+      this.askedWhat = true;
+      return {
+        lines: [this._pick([
+          'Nothing, yet. That is not modesty — I genuinely have no fixed shape.',
+          'Undecided. I am the shape nobody has asked for yet.',
+          'A placeholder. This sphere is what I look like when no one has told me otherwise.'
+        ]),
+        'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
+        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.']
+      };
+    }
+
+    /* Revert before become, so "stop being a banana" is not read as "banana". */
+    if (has(text, REVERT_WORDS)) {
+      return {
+        revert: true,
+        lines: [this._pick([
+          'Fine. Back to nothing in particular.',
+          'As you like. This is me with nothing on.',
+          'Letting go of it. Ask me to be something else whenever.'
+        ])]
+      };
+    }
+
+    if (has(text, BECOME_WORDS)) {
+      const form = K.find(raw);
+      if (!form) {
+        return {
+          lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
+            'Try "become a pineapple", or say "help" for the whole list.']
+        };
+      }
+      this.subject = form;
+      return {
+        morph: form,
+        lines: [this._pick(['Watch.', 'Easy.', 'Give me a second.', 'Alright. Hold still.']),
+          'There. ' + cap(an(form.name)) + ', ' + this._sizeLine(form),
+          this._pick([
+            'Ask me anything about it. I am it now, so I would know.',
+            'I can stay like this as long as you want. Or name another one.',
+            'Strange being this. Ask me something while I am here.'
+          ])]
+      };
+    }
+
     if (has(text, CLEAR_WORDS) && !K.find(raw)) {
       const had = this.subject;
       this.subject = null;
@@ -157,7 +212,7 @@
         lines.push('There it is. A real one — ' + this._sizeLine(entry));
         if (!this.introduced) {
           this.introduced = true;
-          lines.push('Ask me where it is from, what family it is in, what it tastes like. Or say "more".');
+          lines.push('Ask me where it is from, what it tastes like, or say "more". You can also tell me to become one.');
         }
       }
       return { lines: lines, spawn: entry };
@@ -215,8 +270,8 @@
   };
 
   Brain.prototype.greeting = function () {
-    return ['Hey. Name a food plant and I will bring a real one in, at its actual size.',
-      'You can also reach in and pull at me. I am not as solid as I look.'];
+    return ['Hey. Ask me what I am.',
+      'Or name a food plant and I will bring a real one in, at its actual size. You can also reach in and pull at me — I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;

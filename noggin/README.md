@@ -15,6 +15,24 @@ open noggin/index.html    # the same thing, loaded as separate modules
 
 Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
 
+## Ask it what it is
+
+```
+you   what are you?
+it    Undecided. I am the shape nobody has asked for yet.
+it    I can be whatever you want me to be. Say "become a pineapple" and watch
+      what happens.
+```
+
+And then it does. `become a banana`, `turn into a carrot`, `be yourself again`.
+
+This works because every specimen can be projected onto the being's own
+icosphere topology — polar angle picks the profile parameter, azimuth picks the
+way round — so taking a form is a **morph of rest positions**, not a mesh swap.
+Same vertex count, same adjacency, solver running throughout, which is why the
+change wobbles its way there instead of snapping. It keeps a little
+interference along the rim the whole time, so it never stops being itself.
+
 ## Using it
 
 ```

@@ -121,6 +121,8 @@ uniform vec3 uFocusDir;      /* world direction it is attending to */
 uniform vec3 uFocusColor;
 uniform vec3 uCoreColor;
 uniform float uVoice;        /* 0..1, rises while it is speaking */
+uniform float uMorph;        /* 0 = itself, 1 = fully wearing a form */
+uniform vec3 uFormColor;
 
 out vec4 oColor;
 ${COMMON}
@@ -206,6 +208,20 @@ void main() {
 
     // Pulled hard, the shell stresses and glows along the strain.
     col += vec3(0.55, 0.80, 1.15) * pow(st2, 1.8) * 1.1;
+
+    // Wearing a form: the same body, lit as the thing it has become. A little
+    // interference is left along the rim so it never stops being itself.
+    if (uMorph > 0.001) {
+      float shf = sampleShadow(vLPos);
+      float ndl = dot(N, L);
+      float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
+      vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
+      vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
+      form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
+      form += iri * pow(1.0 - ndvAll, 3.0) * 0.55;
+      form += uFocusColor * focus * 0.5;
+      col = mix(col, form, uMorph);
+    }
 
     oColor = vec4(col, 1.0);
     return;

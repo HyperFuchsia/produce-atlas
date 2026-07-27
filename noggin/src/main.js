@@ -117,9 +117,15 @@
       log: $('dialogue'), input: $('prompt'), form: $('composer')
     });
     this.props = [];
+    /* Morph state: the being's rest shape animating from one form to another. */
+    this.baseRest = new Float32Array(this.mesh ? 0 : 0);
+    this.morph = { t: 1, dur: 1, from: null, to: null, amount: 0, target: 0, form: null };
+    this.formColor = [0.9, 0.9, 0.9];
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onClear = function () { self.clearSpecimens(); };
+    this.chat.onMorph = function (entry) { self.becomeForm(entry); };
+    this.chat.onRevert = function () { self.becomeForm(null); };
     /* When you type, he stops whatever he was looking at and looks at you. */
     this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
@@ -135,6 +141,83 @@
     this.mesh = NG.G.buildOrb(subdiv);
     this.body = new NG.Softbody(this.mesh);
     this.renderer.setMesh(this.mesh);
+    /* Its own shape, kept so it can always find its way back. */
+    this.orbRest = new Float32Array(this.mesh.rest);
+    /* Unit directions per vertex — what any form is projected onto. */
+    this.dirs = new Float32Array(this.mesh.total * 3);
+    for (let i = 0; i < this.mesh.total; i++) {
+      const x = this.orbRest[i * 3], y = this.orbRest[i * 3 + 1], z = this.orbRest[i * 3 + 2];
+      const l = Math.hypot(x, y, z) || 1;
+      this.dirs[i * 3] = x / l;
+      this.dirs[i * 3 + 1] = y / l;
+      this.dirs[i * 3 + 2] = z / l;
+    }
+  };
+
+  /* ---- becoming ------------------------------------------------------------ */
+
+  /* Any specimen can be expressed on the being's own topology, so becoming one
+     is a morph of rest positions. The solver keeps running throughout, which is
+     what makes the change wobble instead of snapping. */
+  App.prototype.becomeForm = function (entry) {
+    const n = this.mesh.total;
+    const target = new Float32Array(n * 3);
+    const out = [0, 0, 0];
+
+    if (entry) {
+      for (let i = 0; i < n; i++) {
+        NG.P.formOnSphere(out, entry, this.dirs[i * 3], this.dirs[i * 3 + 1], this.dirs[i * 3 + 2]);
+        target[i * 3] = out[0];
+        target[i * 3 + 1] = out[1];
+        target[i * 3 + 2] = out[2];
+      }
+      this.formColor = entry.color.slice();
+    } else {
+      target.set(this.orbRest);
+    }
+
+    this.morph.from = new Float32Array(this.body.rest);
+    this.morph.to = target;
+    this.morph.t = 0;
+    this.morph.dur = 1.35;
+    this.morph.target = entry ? 1 : 0;
+    this.morph.form = entry;
+
+    /* A shove so the change is felt, not just seen. */
+    this.body.impulse([0, 0, 0], 4.0, -2.2);
+    this.lean = 1;
+    M.set3(this.leanDir, 0, 0.2, 0.9);
+    this.audio.boing(0.5);
+  };
+
+  App.prototype.updateMorph = function (dt) {
+    const m = this.morph;
+    if (!m.to) return;
+
+    if (m.t < 1) {
+      m.t = Math.min(1, m.t + dt / m.dur);
+      const e = M.smoothstep(0, 1, m.t);
+      const rest = this.body.rest;
+      const from = m.from, to = m.to;
+      for (let i = 0; i < rest.length; i++) {
+        rest[i] = from[i] + (to[i] - from[i]) * e;
+      }
+      /* The keep-out reads rest radii every step, so they track the morph. */
+      this.body.refreshRestLengths();
+      m.amount += (m.target - m.amount) * Math.min(1, dt * 3.5);
+
+      if (m.t >= 1) {
+        /* Geodesic grab distances are only worth recomputing once, at the end. */
+        this.body.refreshEdgeLengths();
+        m.amount = m.target;
+        this.beingReach = 0;
+        for (let i = 0; i < rest.length; i += 3) {
+          const r = Math.hypot(rest[i], rest[i + 1], rest[i + 2]);
+          if (r > this.beingReach) this.beingReach = r;
+        }
+        this.refitCamera();
+      }
+    }
   };
 
   App.prototype.resize = function () {
@@ -397,7 +480,7 @@
      that overflows the frame, and they can always pinch back out. */
   App.prototype.refitCamera = function () {
     if (this.userZoomed) return;
-    let reach = 0;
+    let reach = this.beingReach || 0;
     for (let i = 0; i < this.props.length; i++) {
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
@@ -467,7 +550,7 @@
       const h = this.halos[i];
       /* Ride the body so the rings stay centred on it as it drifts. */
       M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
-        h.phase + this.time * h.spin, h.tilt, 1);
+        h.phase + this.time * h.spin, h.tilt, 1 - 0.55 * this.morph.amount);
     }
   };
 
@@ -670,6 +753,7 @@
     this.updateHalos();
     this.updateLight();
     this.trackGrabVelocity(dt);
+    this.updateMorph(dt);
     this.stepPhysics(dt);
 
     if (this.grabPointer >= 0) {
@@ -696,6 +780,8 @@
       being: BEING,
       focusDir: this.focusDir,
       voice: this.voice,
+      morph: this.morph.amount,
+      formColor: this.formColor,
       poolPos: this.headPos,
       poolColor: BEING.pool,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),
