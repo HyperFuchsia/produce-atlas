@@ -21,11 +21,11 @@ Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
 you   let's talk about an apple
 him   Oh, an apple! Yes. Hold on, I will get one.
 him   There it is. A real one — 7.2 cm long and 8 cm across — roughly a third
-      of my head. And that is exactly how big it is in here.
+      of me. And that is exactly how big it is in here.
 him   What would you like to know about apples?
 ```
 
-Then ask follow-ups — he holds the subject, so you don't have to keep naming it:
+Then ask follow-ups — it holds the subject, so you don't have to keep naming it:
 
 | Ask | You get |
 | --- | --- |
@@ -34,8 +34,8 @@ Then ask follow-ups — he holds the subject, so you don't have to keep naming i
 | `what family is it in?` | family and binomial |
 | `is it a fruit?` | what it actually is, botanically |
 | `what does it taste like?` | flavour, and the chemistry behind it |
-| `more` | he will not stop |
-| `help` | every specimen he holds |
+| `more` | it will not stop |
+| `help` | every specimen it holds |
 | `clear` | sends it away |
 
 Drag on it to pull the shell around, drag the background to orbit, wheel or
@@ -44,7 +44,7 @@ pinch to zoom.
 ## Scale
 
 **One world unit is 10 cm**, and the being is about 23 cm across. Everything
-inherits that: a 1.5 cm coffee cherry really is a speck beside him, a 34 cm
+inherits that: a 1.5 cm coffee cherry really is a speck beside it, a 34 cm
 watermelon really is wider than the being itself, and the floor is ruled at one
 line per 10 cm. The camera pulls back on its own to fit whatever arrives, and
 each specimen is captioned with its real dimension.
@@ -69,7 +69,7 @@ it says so rather than inventing an answer.
 optional ribs, a bend, a stem, leaves, a leaf crown, or a scatter into a
 cluster — enough vocabulary to make an apple, a banana, a carrot, a bunch of
 grapes and a pineapple recognisable from one small data table. They render
-through the same shader as the head and cast the same shadows.
+through the same shader as the being and cast the same shadows.
 
 **The being** is a soft body. Each vertex is sprung back to its rest position,
 with a Laplacian coupling term diffusing displacement across the one-ring
@@ -84,9 +84,9 @@ a_i    = -k * d_i + c * lap_i
 That coupling is what drags a smooth rubbery tube of surface along with a pulled
 point instead of moving vertices one at a time. Grabbing floods **geodesic**
 distance from the picked vertex (Dijkstra over rest edge lengths) rather than
-euclidean, so pulling the nose doesn't drag a lip that merely sits close in
-space. A soft displacement ceiling and a keep-out sphere at the core stop the
-face folding through the skull.
+euclidean, so a pull drags the surface that is actually connected to it rather
+than whatever happens to sit nearby in space. A soft displacement ceiling and a
+keep-out sphere stop a hard push folding the shell through itself.
 
 **Its appearance** is a thin-film interference shell over a lit core. Film
 thickness varies with view angle and drifts across the surface, so the hue
