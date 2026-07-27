@@ -269,6 +269,11 @@
     /* Melons and cucumbers sit on their side in real life; standing them on
        end reads as a different object entirely. */
     if (spec.lie) positions = rotateZ(positions, Math.PI * 0.5);
+
+    let topUnits = 0;
+    for (let i = 1; i < positions.length; i += 3) {
+      if (positions[i] > topUnits) topUnits = positions[i];
+    }
     return {
       positions: positions,
       normals: G.computeNormals(positions, indices, positions.length / 3),
@@ -277,6 +282,7 @@
       indices: indices,
       /* Actual extents, for the scale readout and for placement. */
       heightUnits: spec.lie ? radius * 2 : height + (spec.crown ? spec.crown.lengthCm * scale * 0.7 : 0),
+      topUnits: topUnits,
       radiusUnits: spec.lie ? height * 0.5 : radius
     };
   };

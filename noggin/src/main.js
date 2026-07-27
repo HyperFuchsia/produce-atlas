@@ -1,5 +1,8 @@
-/* NOGGIN — application shell: camera, input, frame pacing, adaptive
-   resolution, HUD. */
+/* Produce Atlas — application shell.
+
+   One job: keep a floating head on stage, let you pull its face around, and
+   put whatever specimen you ask for next to it at true scale. Everything is
+   driven from the conversation column; there is no other UI. */
 (function (NG) {
   'use strict';
 
@@ -8,42 +11,43 @@
   const PHYSICS_HZ = 240;
   const PHYSICS_DT = 1 / PHYSICS_HZ;
   const MAX_SUBSTEPS = 8;
-  /* Well inside the explicit integrator's stability limit (~1/22 s for the
-     stiffness and coupling below). */
   const MAX_STEP = 1 / 90;
 
-  const QUALITY = [
-    { name: 'PERFORMANCE', subdiv: 4, shadow: 1024, samples: 0, bloomPasses: 1, minScale: 0.45 },
-    { name: 'BALANCED', subdiv: 5, shadow: 1024, samples: 0, bloomPasses: 2, minScale: 0.60 },
-    { name: 'ULTRA', subdiv: 5, shadow: 2048, samples: 4, bloomPasses: 2, minScale: 0.75 }
-  ];
+  /* Silent frame-budget target. Internal resolution scales to hold it; there
+     is deliberately no readout, because nobody came here for a frame counter. */
+  const TARGET_MS = 1000 / 120;
+  const MIN_SCALE = 0.6;
 
-  const FPS_TARGETS = [60, 120, 144, 165, 240];
-
+  /* A lit specimen table rather than a neon grid. */
   const LIGHT = {
-    dir: M.normalized(0.55, 0.80, 0.48),
-    color: [1.10, 1.00, 0.88],
-    fillDir: M.normalized(-0.65, 0.10, -0.35),
-    fillColor: [0.16, 0.24, 0.42],
-    ambSky: [0.10, 0.13, 0.20],
-    ambGround: [0.045, 0.04, 0.055],
-    rim: [0.30, 0.62, 0.95],
-    sss: [0.85, 0.28, 0.20],
-    stretchTint: [1.0, 0.86, 0.80],
-    stretchGlow: [0.55, 0.16, 0.22]
+    dir: M.normalized(0.48, 0.82, 0.55),
+    color: [1.15, 1.06, 0.92],
+    fillDir: M.normalized(-0.7, 0.15, -0.3),
+    fillColor: [0.14, 0.17, 0.20],
+    ambSky: [0.11, 0.12, 0.11],
+    ambGround: [0.045, 0.042, 0.038],
+    rim: [0.52, 0.46, 0.34],
+    sss: [0.82, 0.30, 0.22],
+    stretchTint: [1.0, 0.88, 0.80],
+    stretchGlow: [0.34, 0.16, 0.10]
   };
 
   const SKY = {
-    top: [0.030, 0.040, 0.075],
-    bottom: [0.006, 0.008, 0.016],
-    glowColor: [0.10, 0.20, 0.38],
+    top: [0.055, 0.065, 0.058],
+    bottom: [0.014, 0.017, 0.015],
+    glowColor: [0.14, 0.15, 0.12],
     glow: 1.0
   };
 
   const FLOOR = {
-    grid: [0.10, 0.42, 0.62],
-    base: [0.010, 0.016, 0.028]
+    grid: [0.055, 0.060, 0.052],
+    base: [0.026, 0.029, 0.025]
   };
+
+  /* The conversation column takes the left edge on wide screens and the
+     bottom on narrow ones, so the stage has to be framed differently for
+     each: shift sideways for a side column, downwards for a bottom sheet. */
+  const NARROW_AT = 760;
 
   function $(id) { return document.getElementById(id); }
 
@@ -51,30 +55,15 @@
     this.canvas = $('gl');
     this.renderer = new NG.Renderer(this.canvas);
     this.audio = new NG.Audio();
-    this.game = new NG.Game();
-    this.chatter = new NG.Chatter(this.audio, $('bubble'), $('bubble-text'));
 
-    this.quality = 1;
-    this.fpsTargetIndex = 1;
-    this.displayMode = 'auto';       /* auto | native | 4k */
-    this.adaptive = true;
     this.renderScale = 1;
-    this.showFloor = true;
-    this.hudVisible = true;
-    this.paused = false;
-
-    this.camera = { yaw: 0.0, pitch: 0.12, dist: 5.4, targetDist: 5.4 };
-    this.grabRadius = 0.62;
-
     this.time = 0;
-    this.frameTimes = new Float32Array(120);
-    this.frameIndex = 0;
-    this.fps = 0;
     this.cpuMs = 0;
     this.simMs = 0;
-    this.lastInteraction = 0;
 
-    /* Matrices reused every frame. */
+    this.camera = { yaw: 0.0, pitch: 0.10, dist: 5.2, targetDist: 5.2 };
+    this.grabRadius = 0.62;
+
     this.model = M.m4();
     this.invModel = M.m4();
     this.view = M.m4();
@@ -86,66 +75,50 @@
     this.lightProj = M.m4();
 
     this.eye = [0, 0, 0];
-    this.target = [0, 0.02, 0];
+    this.narrow = false;
+    this.panelShift = -0.62;
+    this.stageY = 0.02;
+    this.distBoost = 1;
+    this.target = [this.panelShift, this.stageY, 0];
     this.rayF = [0, 0, 0];
     this.rayR = [0, 0, 0];
     this.rayU = [0, 0, 0];
 
-    /* Grab state. */
     this.pointers = new Map();
     this.grabPointer = -1;
     this.orbitPointer = -1;
     this.pinchDist = 0;
     this.grabPlaneN = [0, 0, 0];
     this.grabPlaneP = [0, 0, 0];
-    this.grabPrev = [0, 0, 0];
     this.grabVel = [0, 0, 0];
 
-    this.popupPool = [];
-    this.popups = [];
-
-    /* Atlas: the chat brain and the objects it pulls into the room. */
     this.brain = new NG.Brain();
     this.chat = new NG.Chat(this.audio, this.brain, {
-      log: $('chat-log'), input: $('chat-input'), form: $('chat-form'), panel: $('chat')
+      log: $('transcript'), input: $('prompt'), form: $('composer')
     });
     this.props = [];
     const self = this;
-    this.chat.onSpawn = function (entry) { self.spawnProduce(entry); };
-    this.chat.onClear = function () { self.clearProduce(); };
+    this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
+    this.chat.onClear = function () { self.clearSpecimens(); };
 
-    this.buildMesh(QUALITY[this.quality].subdiv);
-    this.renderer.setShadowSize(QUALITY[this.quality].shadow);
+    this.buildMesh(5);
+    this.renderer.setShadowSize(1024);
     this.resize();
     this.bindEvents();
-    this.bindUI();
-    this.updateHudStatic();
+    this.buildChips();
   }
 
-  /* ---- setup -------------------------------------------------------------- */
-
   App.prototype.buildMesh = function (subdiv) {
-    const t0 = performance.now();
     this.mesh = NG.G.buildCharacter(subdiv);
     this.body = new NG.Softbody(this.mesh);
     this.renderer.setMesh(this.mesh);
-    this.buildMs = performance.now() - t0;
   };
 
   App.prototype.resize = function () {
     const canvas = this.canvas;
     const cssW = Math.max(1, canvas.clientWidth || window.innerWidth);
     const cssH = Math.max(1, canvas.clientHeight || window.innerHeight);
-    const dpr = window.devicePixelRatio || 1;
-
-    let scale;
-    if (this.displayMode === '4k') {
-      scale = Math.min(3840 / cssW, 2160 / cssH);
-    } else if (this.displayMode === 'native') {
-      scale = dpr;
-    } else {
-      scale = Math.min(dpr, 2);
-    }
+    const scale = Math.min(window.devicePixelRatio || 1, 2);
 
     const maxDim = this.renderer.maxTexture;
     let w = Math.round(cssW * scale);
@@ -154,9 +127,17 @@
       const k = Math.min(maxDim / w, maxDim / h);
       w = Math.floor(w * k); h = Math.floor(h * k);
     }
-
     this.cssW = cssW;
     this.cssH = cssH;
+    const narrow = cssW < NARROW_AT;
+    this.narrow = narrow;
+    this._panelW = narrow ? 0 : $('panel').getBoundingClientRect().width;
+    this.panelShift = narrow ? 0 : -0.62;
+    /* Bottom sheet covers the lower half, so drop the look-at point to lift
+       the subject into the strip that is actually visible. */
+    this.stageY = narrow ? -1.05 : 0.02;
+    this.distBoost = narrow ? 1.5 : 1;
+    this.refitCamera();
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -165,12 +146,11 @@
   };
 
   App.prototype.applyRenderScale = function (force) {
-    const q = QUALITY[this.quality];
-    const s = M.clamp(this.renderScale, q.minScale, 1);
+    const s = M.clamp(this.renderScale, MIN_SCALE, 1);
     const w = Math.max(64, Math.round(this.canvas.width * s / 2) * 2);
     const h = Math.max(64, Math.round(this.canvas.height * s / 2) * 2);
     if (force || w !== this.renderer.renderW || h !== this.renderer.renderH) {
-      this.renderer.setRenderSize(w, h, q.samples);
+      this.renderer.setRenderSize(w, h, 0);
     }
   };
 
@@ -186,7 +166,6 @@
     window.addEventListener('resize', function () { self.resize(); });
 
     canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
-
     canvas.addEventListener('pointerdown', function (e) {
       canvas.setPointerCapture(e.pointerId);
       self.onPointerDown(e);
@@ -194,28 +173,37 @@
     canvas.addEventListener('pointermove', function (e) { self.onPointerMove(e); });
     canvas.addEventListener('pointerup', function (e) { self.onPointerUp(e); });
     canvas.addEventListener('pointercancel', function (e) { self.onPointerUp(e); });
-
     canvas.addEventListener('wheel', function (e) {
       e.preventDefault();
-      self.lastInteraction = self.time;
-      if (e.shiftKey) {
-        self.grabRadius = M.clamp(self.grabRadius - e.deltaY * 0.0006, 0.18, 1.5);
-        self.flashHint('GRAB RADIUS ' + self.grabRadius.toFixed(2));
-      } else {
-        self.camera.targetDist = M.clamp(self.camera.targetDist + e.deltaY * 0.0035, 2.6, 12);
-      }
+      self.camera.targetDist = M.clamp(self.camera.targetDist + e.deltaY * 0.0035, 2.8, 12);
     }, { passive: false });
 
-    window.addEventListener('keydown', function (e) { self.onKey(e); });
+    $('sound').addEventListener('click', function () {
+      self.audio.resume();
+      self.audio.setEnabled(!self.audio.enabled);
+      $('sound').textContent = self.audio.enabled ? 'Sound on' : 'Sound off';
+    });
 
     canvas.addEventListener('webglcontextlost', function (e) {
       e.preventDefault();
       self.contextLost = true;
-      $('overlay').classList.remove('hidden');
-      $('overlay-title').textContent = 'GPU CONTEXT LOST';
-      $('overlay-body').textContent = 'The graphics context was released by the browser. Reload to continue.';
-      $('overlay-btn').textContent = 'RELOAD';
-      $('overlay-btn').onclick = function () { window.location.reload(); };
+      self.fail('The graphics context was released by the browser. Reload to continue.');
+    });
+  };
+
+  App.prototype.buildChips = function () {
+    const self = this;
+    const host = $('chips');
+    ['an apple', 'a pineapple', 'cacao', 'wheat', 'help'].forEach(function (label) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'chip';
+      b.textContent = label;
+      b.addEventListener('click', function () {
+        self.audio.resume();
+        self.chat.send(label === 'help' ? 'help' : "let's talk about " + label);
+      });
+      host.appendChild(b);
     });
   };
 
@@ -227,7 +215,6 @@
     ];
   };
 
-  /* Build a ray in the head's local space from a normalised device point. */
   App.prototype.localRay = function (ndc, outOrigin, outDir) {
     const near = [0, 0, 0], far = [0, 0, 0];
     M.transformPoint(near, this.invViewProj, [ndc[0], ndc[1], -1]);
@@ -239,11 +226,9 @@
 
   App.prototype.onPointerDown = function (e) {
     this.audio.resume();
-    this.lastInteraction = this.time;
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, ndc: this.pointerNDC(e) });
 
     if (this.pointers.size === 2) {
-      /* Second finger: drop any grab and switch to pinch/orbit. */
       if (this.grabPointer >= 0) this.releaseGrab();
       const it = this.pointers.values();
       const a = it.next().value, b = it.next().value;
@@ -264,19 +249,13 @@
   App.prototype.tryGrab = function (ndc) {
     const ro = [0, 0, 0], rd = [0, 0, 0], hit = [0, 0, 0];
     this.localRay(ndc, ro, rd);
-    const t = this.body.raycast(ro, rd, hit);
-    if (t < 0) return false;
-
+    if (this.body.raycast(ro, rd, hit) < 0) return false;
     if (!this.body.beginGrab(this.body.lastHitVertex, this.grabRadius, hit)) return false;
 
-    /* Drag happens on the plane through the hit point facing the camera, so
-       the surface tracks the cursor exactly at grab depth. */
     M.scale3(this.grabPlaneN, rd, -1);
     M.copy3(this.grabPlaneP, hit);
-    M.copy3(this.grabPrev, hit);
     M.set3(this.grabVel, 0, 0, 0);
     this.audio.setStretch(0, true);
-    this.chatter.interrupt();
     return true;
   };
 
@@ -286,14 +265,13 @@
     const prevX = p.x, prevY = p.y;
     p.x = e.clientX; p.y = e.clientY;
     p.ndc = this.pointerNDC(e);
-    this.lastInteraction = this.time;
 
     if (this.pointers.size >= 2) {
       const it = this.pointers.values();
       const a = it.next().value, b = it.next().value;
       const d = Math.hypot(a.x - b.x, a.y - b.y);
       if (this.pinchDist > 0) {
-        this.camera.targetDist = M.clamp(this.camera.targetDist * (this.pinchDist / Math.max(d, 1)), 2.6, 12);
+        this.camera.targetDist = M.clamp(this.camera.targetDist * (this.pinchDist / Math.max(d, 1)), 2.8, 12);
       }
       this.pinchDist = d;
       this.camera.yaw -= (e.clientX - prevX) * 0.0035;
@@ -308,9 +286,7 @@
       if (Math.abs(denom) < 1e-5) return;
       const t = M.dot3(M.sub3([0, 0, 0], this.grabPlaneP, ro), this.grabPlaneN) / denom;
       if (t <= 0) return;
-      const point = M.addScaled3([0, 0, 0], ro, rd, t);
-      this.body.setGrabTarget(point);
-      M.copy3(this.grabPrev, point);
+      this.body.setGrabTarget(M.addScaled3([0, 0, 0], ro, rd, t));
     } else if (e.pointerId === this.orbitPointer) {
       this.camera.yaw -= (e.clientX - prevX) * 0.006;
       this.camera.pitch = M.clamp(this.camera.pitch + (e.clientY - prevY) * 0.006, -1.25, 1.25);
@@ -321,10 +297,7 @@
     const amount = this.body.endGrab(this.grabVel, 0.45);
     this.grabPointer = -1;
     this.audio.setStretch(0, false);
-    this.chatter.resume();
-    if (amount > 0.05) {
-      this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
-    }
+    if (amount > 0.05) this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
   };
 
   App.prototype.onPointerUp = function (e) {
@@ -334,169 +307,45 @@
     if (this.pointers.size < 2) this.pinchDist = 0;
   };
 
-  App.prototype.onKey = function (e) {
-    if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
-    const k = e.key.toLowerCase();
-    this.lastInteraction = this.time;
-    switch (k) {
-      case ' ':
-      case 'r':
-        e.preventDefault();
-        this.body.reset(false);
-        this.audio.boing(0.7);
-        break;
-      case 'f': this.toggleFullscreen(); break;
-      case 'h': this.setHud(!this.hudVisible); break;
-      case 'k': this.cycleDisplayMode(); break;
-      case 'g': this.showFloor = !this.showFloor; break;
-      case 'p': this.paused = !this.paused; break;
-      case 'm': this.toggleSound(); break;
-      case 't': this.toggleTalk(); break;
-      case '1': this.setQuality(0); break;
-      case '2': this.setQuality(1); break;
-      case '3': this.setQuality(2); break;
-      case '[': this.grabRadius = M.clamp(this.grabRadius - 0.06, 0.18, 1.5); this.flashHint('GRAB RADIUS ' + this.grabRadius.toFixed(2)); break;
-      case ']': this.grabRadius = M.clamp(this.grabRadius + 0.06, 0.18, 1.5); this.flashHint('GRAB RADIUS ' + this.grabRadius.toFixed(2)); break;
-      case 'enter': this.startChallenge(); break;
-      case 'escape': this.enterSandbox(); break;
-      default: break;
-    }
-  };
+  /* ---- specimens ----------------------------------------------------------- */
 
-  /* ---- UI ------------------------------------------------------------------ */
-
-  App.prototype.bindUI = function () {
-    const self = this;
-    const on = function (id, fn) {
-      const el = $(id);
-      if (el) el.addEventListener('click', function (e) { e.preventDefault(); self.audio.resume(); self.audio.click(); fn(); });
-    };
-    on('btn-reset', function () { self.body.reset(false); self.audio.boing(0.7); });
-    on('btn-fullscreen', function () { self.toggleFullscreen(); });
-    on('btn-4k', function () { self.cycleDisplayMode(); });
-    on('btn-quality', function () { self.setQuality((self.quality + 1) % QUALITY.length); });
-    on('btn-fps', function () {
-      self.fpsTargetIndex = (self.fpsTargetIndex + 1) % FPS_TARGETS.length;
-      self.updateHudStatic();
-    });
-    on('btn-adaptive', function () { self.adaptive = !self.adaptive; self.updateHudStatic(); });
-    on('btn-sound', function () { self.toggleSound(); });
-    on('btn-talk', function () { self.toggleTalk(); });
-    on('btn-keys', function () { $('controls').classList.toggle('hidden'); });
-    on('btn-hud', function () { self.setHud(false); });
-    on('mode-sandbox', function () { self.enterSandbox(); });
-    on('mode-challenge', function () { self.startChallenge(); });
-    on('overlay-btn', function () { self.startChallenge(); });
-    on('hud-show', function () { self.setHud(true); });
-  };
-
-  App.prototype.setHud = function (on) {
-    this.hudVisible = on;
-    $('hud').classList.toggle('hidden', !on);
-    $('hud-show').classList.toggle('hidden', on);
-  };
-
-  App.prototype.toggleSound = function () {
-    this.audio.resume();
-    this.audio.setEnabled(!this.audio.enabled);
-    $('btn-sound').textContent = this.audio.enabled ? 'SOUND ON' : 'SOUND OFF';
-  };
-
-  App.prototype.toggleTalk = function () {
-    this.chatter.setEnabled(!this.chatter.enabled);
-    $('btn-talk').textContent = this.chatter.enabled ? 'TALK: ON' : 'TALK: OFF';
-    this.flashHint(this.chatter.enabled ? 'HE IS BACK' : 'PEACE AND QUIET');
-  };
-
-  App.prototype.toggleFullscreen = function () {
-    /* Embedded in an iframe without an allow-fullscreen grant, the request
-       rejects; swallow it and tell the player rather than throwing. */
-    const self = this;
-    try {
-      if (!document.fullscreenElement) {
-        const el = document.documentElement;
-        const req = el.requestFullscreen || el.webkitRequestFullscreen;
-        if (!req) { this.flashHint('FULLSCREEN UNAVAILABLE'); return; }
-        const r = req.call(el);
-        if (r && r.catch) r.catch(function () { self.flashHint('FULLSCREEN BLOCKED HERE'); });
-      } else {
-        const r = document.exitFullscreen();
-        if (r && r.catch) r.catch(function () { /* already exited */ });
-      }
-    } catch (e) {
-      this.flashHint('FULLSCREEN BLOCKED HERE');
-    }
-  };
-
-  App.prototype.cycleDisplayMode = function () {
-    this.displayMode = this.displayMode === 'auto' ? '4k' : (this.displayMode === '4k' ? 'native' : 'auto');
-    this.resize();
-    this.updateHudStatic();
-    this.flashHint('OUTPUT: ' + this.displayMode.toUpperCase());
-  };
-
-  App.prototype.setQuality = function (q) {
-    if (q === this.quality) return;
-    const prevSubdiv = QUALITY[this.quality].subdiv;
-    this.quality = q;
-    const preset = QUALITY[q];
-    if (preset.subdiv !== prevSubdiv) this.buildMesh(preset.subdiv);
-    this.renderer.setShadowSize(preset.shadow);
-    this.renderScale = 1;
-    this.applyRenderScale(true);
-    this.updateHudStatic();
-    this.flashHint('QUALITY: ' + preset.name);
-  };
-
-  App.prototype.startChallenge = function () {
-    this.audio.resume();
-    this.game.startChallenge((Date.now() & 0x7fffffff) || 1);
-    this.body.reset(true);
-    $('overlay').classList.add('hidden');
-    $('scorebar').classList.remove('hidden');
-    $('mode-challenge').classList.add('active');
-    $('mode-sandbox').classList.remove('active');
-    this.flashHint('PULL THE FACE THROUGH THE RINGS');
-    this.chatter.react('start');
-  };
-
-  App.prototype.enterSandbox = function () {
-    this.game.enterSandbox();
-    $('overlay').classList.add('hidden');
-    $('scorebar').classList.add('hidden');
-    $('mode-sandbox').classList.add('active');
-    $('mode-challenge').classList.remove('active');
-  };
-
-  /* ---- summoned objects ---------------------------------------------------- */
-
-  /* Meshes are built at true scale (1 unit = 10 cm), so placement only decides
-     where the object sits, never how big it looks. A coffee cherry really is a
-     speck next to his head, and that is the honest answer. */
-  App.prototype.spawnProduce = function (entry) {
+  App.prototype.spawnSpecimen = function (entry) {
     const mesh = NG.P.build(entry);
     const handle = this.renderer.createProp(mesh);
-
     for (let i = 0; i < this.props.length; i++) this.props[i].fading = true;
 
     const el = document.createElement('div');
-    el.className = 'obj-tag';
-    el.innerHTML = entry.name.toUpperCase() + ' &middot; <b>' +
-      (entry.lengthCm || entry.sizeCm) + ' cm</b>';
+    el.className = 'caption';
+    const name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = entry.name;
+    const size = document.createElement('span');
+    size.className = 'size';
+    size.textContent = (entry.lengthCm || entry.sizeCm) + ' cm';
+    el.appendChild(name);
+    el.appendChild(size);
     $('tags').appendChild(el);
 
     this.props.push({
       handle: handle, entry: entry, el: el,
       matrix: M.m4(), t: 0, fade: 1, fading: false, spin: 0.6,
       x: 1.35 + handle.radiusUnits,
-      y: -0.30,
-      z: 0.10
+      y: -0.25,
+      z: 0.1
     });
     while (this.props.length > 3) this._removeProp(0);
 
-    /* Pull the camera back so the head and the object both fit. A watermelon
-       is genuinely bigger than he is, and the framing has to admit that. */
-    this.camera.targetDist = M.clamp(5.0 + handle.radiusUnits * 2.2, 5.0, 12);
+    this.refitCamera();
+  };
+
+  /* Pull back far enough for the head and the largest specimen together. */
+  App.prototype.refitCamera = function () {
+    let reach = 0;
+    for (let i = 0; i < this.props.length; i++) {
+      const h = this.props[i].handle;
+      reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
+    }
+    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 14);
   };
 
   App.prototype._removeProp = function (i) {
@@ -506,7 +355,7 @@
     this.props.splice(i, 1);
   };
 
-  App.prototype.clearProduce = function () {
+  App.prototype.clearSpecimens = function () {
     while (this.props.length) this._removeProp(0);
   };
 
@@ -514,20 +363,18 @@
     for (let i = this.props.length - 1; i >= 0; i--) {
       const p = this.props[i];
       p.t += dt;
-      p.spin += dt * 0.45;
+      p.spin += dt * 0.4;
       if (p.fading) {
         p.fade -= dt * 1.6;
         if (p.fade <= 0) { this._removeProp(i); continue; }
         p.x += dt * 1.4;
       }
-      /* Pop in with a little overshoot, then hold. */
       const grow = p.t < 0.45 ? M.smoothstep(0, 0.45, p.t) * (1 + 0.12 * (1 - p.t / 0.45)) : 1;
       const scale = Math.min(grow, 1.12) * (p.fading ? p.fade : 1);
-      const bob = Math.sin(this.time * 1.3 + i) * 0.05;
+      const bob = Math.sin(this.time * 1.2 + i) * 0.045;
       M.compose(p.matrix, p.x, p.y + bob, p.z, p.spin, 0, scale);
 
-      /* Park the size tag just above the object. */
-      const top = [p.x, p.y + bob + p.handle.heightUnits * 0.5 * scale + 0.22, p.z];
+      const top = [p.x, p.y + bob + p.handle.topUnits * scale + 0.30, p.z];
       const vp = this.viewProj;
       const w = vp[3] * top[0] + vp[7] * top[1] + vp[11] * top[2] + vp[15];
       if (w <= 0.001) { p.el.style.display = 'none'; continue; }
@@ -535,139 +382,28 @@
       const ny = (vp[1] * top[0] + vp[5] * top[1] + vp[9] * top[2] + vp[13]) / w;
       p.el.style.display = '';
       p.el.style.opacity = String(p.fading ? p.fade : Math.min(1, p.t * 3));
-      p.el.style.left = ((nx * 0.5 + 0.5) * this.cssW) + 'px';
-      p.el.style.top = ((0.5 - ny * 0.5) * this.cssH) + 'px';
+      const leftEdge = (this._panelW || 0) + 70;
+      const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, leftEdge, this.cssW - 24);
+      const y = M.clamp((0.5 - ny * 0.5) * this.cssH, 34, this.cssH - 24);
+      p.el.style.left = x + 'px';
+      p.el.style.top = y + 'px';
     }
   };
 
-  /* Presentation-only randomness; the simulation and the game use seeded
-     generators so runs stay reproducible. */
-  App.prototype.rand01 = function () {
-    return Math.random();
-  };
-
-  App.prototype.flashHint = function (text) {
-    const el = $('hint');
-    el.textContent = text;
-    el.classList.remove('show');
-    /* Force a reflow so the animation restarts on repeated hints. */
-    void el.offsetWidth;
-    el.classList.add('show');
-  };
-
-  App.prototype.updateHudStatic = function () {
-    const r = this.renderer;
-    $('gpu-name').textContent = (r.gpuName || 'unknown GPU').slice(0, 42);
-    $('stat-quality').textContent = QUALITY[this.quality].name;
-    $('stat-output').textContent = this.displayMode.toUpperCase();
-    $('stat-target').textContent = FPS_TARGETS[this.fpsTargetIndex] + ' FPS';
-    $('stat-adaptive').textContent = this.adaptive ? 'ADAPTIVE' : 'LOCKED';
-    $('btn-fps').textContent = 'TARGET ' + FPS_TARGETS[this.fpsTargetIndex];
-    $('btn-adaptive').textContent = this.adaptive ? 'RES: AUTO' : 'RES: LOCK';
-    $('btn-quality').textContent = 'Q: ' + QUALITY[this.quality].name;
-    $('btn-4k').textContent = 'OUT: ' + this.displayMode.toUpperCase();
-    $('stat-verts').textContent = this.mesh.total.toLocaleString();
-    $('stat-tris').textContent = (this.mesh.indices.length / 3).toLocaleString();
-    $('stat-msaa').textContent = r.samples > 0 ? r.samples + 'x MSAA' : 'no MSAA';
-    $('stat-hdr').textContent = r.hdr ? 'RGBA16F' : 'RGBA8';
-  };
-
-  /* ---- score popups --------------------------------------------------------- */
-
-  App.prototype.spawnPopup = function (worldPos, text, color) {
-    const x = worldPos[0], y = worldPos[1], z = worldPos[2];
-    const vp = this.viewProj;
-    const cw = vp[3] * x + vp[7] * y + vp[11] * z + vp[15];
-    if (cw <= 0.001) return;
-    const cx = (vp[0] * x + vp[4] * y + vp[8] * z + vp[12]) / cw;
-    const cy = (vp[1] * x + vp[5] * y + vp[9] * z + vp[13]) / cw;
-
-    let el = this.popupPool.pop();
-    if (!el) {
-      el = document.createElement('div');
-      el.className = 'popup';
-      $('popups').appendChild(el);
-    }
-    el.textContent = text;
-    el.style.color = color;
-    el.style.left = ((cx * 0.5 + 0.5) * this.cssW) + 'px';
-    el.style.top = ((0.5 - cy * 0.5) * this.cssH) + 'px';
-    el.classList.remove('run');
-    void el.offsetWidth;
-    el.classList.add('run');
-    this.popups.push({ el: el, t: 0 });
-  };
-
-  /* He talks constantly, timed run included. Only a hand on his face stops
-     him. During a run the bubble goes translucent and is kept below the score
-     bar so he can yap without hiding the rings he is yapping about. */
-  App.prototype.updateChatter = function (dt) {
-    const playing = this.game.state === 'playing';
-    this.chat.update(dt);
-
-    /* One voice at a time: while the conversation is live his idle rambling
-       stays out of it, or you end up reading him in two places at once. */
-    if (this.chat.busy() || this.chat.lastActivity < 14) {
-      this.chatter.silence();
-      return;
-    }
-
-    this.chatter.update(dt, this.grabPointer >= 0);
-    this.chatter.bubble.classList.toggle('playing', playing);
-
-    if (!this.chatter._visible) return;
-
-    /* Anchor the bubble up and to his right, in his own local space, so it
-       rides along with the bob and stays put when the camera orbits. */
-    const world = M.transformPoint([0, 0, 0], this.model, [1.05, 1.05, 0.25]);
-    const vp = this.viewProj;
-    const w = vp[3] * world[0] + vp[7] * world[1] + vp[11] * world[2] + vp[15];
-    if (w <= 0.001) { this.chatter._show(false); return; }
-    const nx = (vp[0] * world[0] + vp[4] * world[1] + vp[8] * world[2] + vp[12]) / w;
-    const ny = (vp[1] * world[0] + vp[5] * world[1] + vp[9] * world[2] + vp[13]) / w;
-
-    const bubble = this.chatter.bubble;
-    const halfW = bubble.offsetWidth * 0.5 + 12;
-    /* y is the bubble's bottom edge, so the floor has to clear its own height
-       plus whatever HUD it must stay under. */
-    const h = bubble.offsetHeight + 12;
-    const minY = playing ? h + 118 : h;
-    const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, halfW, Math.max(halfW, this.cssW - halfW));
-    const y = M.clamp((0.5 - ny * 0.5) * this.cssH, minY, Math.max(minY, this.cssH - 12));
-    bubble.style.left = x + 'px';
-    bubble.style.top = y + 'px';
-  };
-
-  App.prototype.updatePopups = function (dt) {
-    for (let i = this.popups.length - 1; i >= 0; i--) {
-      const p = this.popups[i];
-      p.t += dt;
-      if (p.t > 1.0) {
-        p.el.classList.remove('run');
-        this.popupPool.push(p.el);
-        this.popups.splice(i, 1);
-      }
-    }
-  };
-
-  /* ---- frame ---------------------------------------------------------------- */
+  /* ---- frame --------------------------------------------------------------- */
 
   App.prototype.updateCamera = function (dt) {
     const c = this.camera;
     c.dist += (c.targetDist - c.dist) * Math.min(1, dt * 9);
-    /* Slide the look-at point between him and whatever he has summoned. */
-    const wantX = this.props.length ? 0.75 : 0;
+    /* Keep the head clear of the column, and slide between head and specimen. */
+    const spread = this.props.length ? (this.narrow ? 0.5 : 0.85) : 0;
+    const wantX = this.panelShift + spread;
     this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
-
-    const g = this.game;
-    const trauma = g.trauma * g.trauma;
-    const t = this.time;
-    const shakeX = trauma * 0.14 * Math.sin(t * 47.3);
-    const shakeY = trauma * 0.14 * Math.cos(t * 39.7);
+    this.target[1] += (this.stageY - this.target[1]) * Math.min(1, dt * 3);
 
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
-    this.eye[0] = this.target[0] + c.dist * cp * Math.sin(c.yaw) + shakeX;
-    this.eye[1] = this.target[1] + c.dist * sp + shakeY;
+    this.eye[0] = this.target[0] + c.dist * cp * Math.sin(c.yaw);
+    this.eye[1] = this.target[1] + c.dist * sp;
     this.eye[2] = this.target[2] + c.dist * cp * Math.cos(c.yaw);
 
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
@@ -676,7 +412,6 @@
     M.multiply(this.viewProj, this.proj, this.view);
     M.invert(this.invViewProj, this.viewProj);
 
-    /* Ray basis for the background shader. */
     const fwd = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.target, this.eye));
     const right = M.norm3([0, 0, 0], M.cross3([0, 0, 0], fwd, [0, 1, 0]));
     const up = M.cross3([0, 0, 0], right, fwd);
@@ -688,25 +423,18 @@
 
   App.prototype.updateLight = function () {
     const d = LIGHT.dir;
-    const eye = [d[0] * 11, d[1] * 11, d[2] * 11];
-    M.lookAt(this.lightView, eye, [0, -0.6, 0], [0, 1, 0]);
+    M.lookAt(this.lightView, [d[0] * 11, d[1] * 11, d[2] * 11], [0, -0.6, 0], [0, 1, 0]);
     M.ortho(this.lightProj, -5.6, 5.6, -5.6, 5.6, 1.0, 22.0);
     M.multiply(this.lightVP, this.lightProj, this.lightView);
   };
 
   App.prototype.updateModel = function () {
     const t = this.time;
-    const bob = Math.sin(t * 1.15) * 0.055;
-    const yaw = Math.sin(t * 0.37) * 0.10;
-    const pitch = Math.cos(t * 0.29) * 0.045;
-    M.compose(this.model, 0, bob, 0, yaw, pitch, 1);
+    M.compose(this.model, 0, Math.sin(t * 1.1) * 0.05, 0,
+      Math.sin(t * 0.35) * 0.09, Math.cos(t * 0.27) * 0.04, 1);
     M.invert(this.invModel, this.model);
   };
 
-  /* Fixed-rate solver with an adaptive step. At 120 Hz this lands exactly on
-     two 240 Hz substeps; on a machine that cannot hold the target it widens
-     the step rather than dropping simulated time, so the rubber keeps
-     behaving in real time instead of going slow-motion. */
   App.prototype.stepPhysics = function (dt) {
     const t0 = performance.now();
     this.accum = (this.accum || 0) + dt;
@@ -714,8 +442,6 @@
     const h = Math.min(this.accum / steps, MAX_STEP);
     for (let i = 0; i < steps; i++) this.body.step(h);
     this.accum = Math.max(0, this.accum - h * steps);
-    this.substeps = steps;
-    this.substepHz = 1 / h;
 
     this.body.updateParts();
     this.body.computeNormals();
@@ -723,10 +449,7 @@
   };
 
   App.prototype.trackGrabVelocity = function (dt) {
-    if (this.grabPointer < 0 || dt <= 0) {
-      M.set3(this.grabVel, 0, 0, 0);
-      return;
-    }
+    if (this.grabPointer < 0 || dt <= 0) { M.set3(this.grabVel, 0, 0, 0); return; }
     const b = this.body;
     const target = [
       b.grabAnchor[0] + b.grabDelta[0],
@@ -744,9 +467,8 @@
     M.copy3(this._lastTarget, target);
   };
 
+  /* Hold the frame budget by trading internal resolution, quietly. */
   App.prototype.adaptResolution = function () {
-    if (!this.adaptive) return;
-    const targetMs = 1000 / FPS_TARGETS[this.fpsTargetIndex];
     const measured = this.renderer.gpuTimeMs > 0.01
       ? this.renderer.gpuTimeMs
       : Math.max(0, this.cpuMs - this.simMs);
@@ -756,10 +478,10 @@
     if (this._adaptCounter < 20) return;
 
     let next = this.renderScale;
-    if (measured > targetMs * 0.92) next -= 0.05;
-    else if (measured < targetMs * 0.62) next += 0.05;
+    if (measured > TARGET_MS * 0.92) next -= 0.05;
+    else if (measured < TARGET_MS * 0.62) next += 0.05;
+    next = M.clamp(next, MIN_SCALE, 1);
 
-    next = M.clamp(next, QUALITY[this.quality].minScale, 1);
     if (Math.abs(next - this.renderScale) > 0.001) {
       this.renderScale = next;
       this.applyRenderScale(false);
@@ -767,104 +489,6 @@
     } else {
       this._adaptCounter = 10;
     }
-  };
-
-  App.prototype.handleEvents = function () {
-    const events = this.game.drain();
-    for (let i = 0; i < events.length; i++) {
-      const ev = events[i];
-      if (ev.type === 'pop') {
-        this.audio.pop(ev.combo - 1);
-        const world = M.transformPoint([0, 0, 0], this.model, ev.center);
-        const c = ev.color;
-        const css = 'rgb(' + Math.round(c[0] * 255) + ',' + Math.round(c[1] * 255) + ',' + Math.round(c[2] * 255) + ')';
-        this.spawnPopup(world, '+' + ev.value + (ev.combo > 1 ? '  x' + ev.combo : ''), css);
-        if (ev.combo > 1) this.flashHint('COMBO x' + ev.combo);
-        /* He will talk over his own sentence to comment on your play. */
-        if (this.rand01() < (ev.combo > 2 ? 0.8 : 0.45)) {
-          this.chatter.react(ev.combo > 2 ? 'combo' : 'pop');
-        }
-      } else if (ev.type === 'miss') {
-        this.audio.tick(false);
-        if (this.rand01() < 0.5) this.chatter.react('miss');
-      } else if (ev.type === 'tick') {
-        this.audio.tick(ev.value <= 3);
-      } else if (ev.type === 'over') {
-        this.showGameOver(ev.value);
-        this.chatter.react('over');
-      } else if (ev.type === 'record') {
-        this.audio.fanfare(true);
-      }
-    }
-  };
-
-  App.prototype.showGameOver = function (score) {
-    const g = this.game;
-    $('overlay').classList.remove('hidden');
-    $('overlay-title').textContent = 'TIME';
-    $('overlay-body').innerHTML =
-      '<div class="big">' + score.toLocaleString() + '</div>' +
-      '<div class="sub">' + g.popped + ' rings &middot; longest pull ' +
-      g.longestStretch.toFixed(2) + ' units &middot; best ' + g.best.toLocaleString() + '</div>';
-    $('overlay-btn').textContent = 'RUN IT AGAIN';
-    if (score < g.best) this.audio.fanfare(false);
-  };
-
-  App.prototype.updateHud = function () {
-    const g = this.game;
-    const r = this.renderer;
-    $('stat-fps').textContent = this.fps.toFixed(0);
-    $('stat-frame').textContent = this.cpuMs.toFixed(2) + ' ms';
-    $('stat-gpu').textContent = r.gpuTimeMs > 0.01 ? r.gpuTimeMs.toFixed(2) + ' ms' : 'n/a';
-    $('stat-sim').textContent = this.simMs.toFixed(2) + ' ms';
-    $('stat-backing').textContent = this.canvas.width + ' x ' + this.canvas.height;
-    $('stat-render').textContent = r.renderW + ' x ' + r.renderH;
-    $('stat-scale').textContent = (this.renderScale * 100).toFixed(0) + '%';
-    $('stat-mpx').textContent = (r.renderW * r.renderH / 1e6).toFixed(2) + ' Mpx';
-    const headroom = r.gpuTimeMs > 0.01 ? (1000 / r.gpuTimeMs) : 0;
-    $('stat-headroom').textContent = headroom > 0 ? headroom.toFixed(0) + ' fps' : 'n/a';
-    $('stat-stretch').textContent = this.body.maxDisplacement.toFixed(2);
-    $('stat-substeps').textContent = (this.substeps || 0) + ' x ' + Math.round(this.substepHz || PHYSICS_HZ) + 'Hz';
-
-    const is4k = this.canvas.width * this.canvas.height >= 3840 * 2160 * 0.98;
-    $('badge-4k').classList.toggle('on', is4k);
-    $('badge-120').classList.toggle('on', this.fps >= FPS_TARGETS[this.fpsTargetIndex] * 0.95);
-
-    if (g.mode === 'challenge') {
-      $('score-value').textContent = g.score.toLocaleString();
-      $('best-value').textContent = g.best.toLocaleString();
-      $('combo-value').textContent = g.combo > 1 ? 'x' + g.combo : '';
-      $('timer-value').textContent = g.timeLeft.toFixed(1);
-      $('timer-fill').style.width = (g.timeLeft / NG.Game.ROUND_SECONDS * 100) + '%';
-      $('timer-fill').classList.toggle('low', g.timeLeft < 10);
-    }
-  };
-
-  App.prototype.drawGraph = function () {
-    const c = this.graphCtx || (this.graphCtx = $('graph').getContext('2d'));
-    const w = $('graph').width, h = $('graph').height;
-    const budget = 1000 / FPS_TARGETS[this.fpsTargetIndex];
-    c.clearRect(0, 0, w, h);
-    c.fillStyle = 'rgba(10,18,28,0.55)';
-    c.fillRect(0, 0, w, h);
-
-    c.strokeStyle = 'rgba(120,220,255,0.28)';
-    c.beginPath();
-    const budgetY = h - (budget / (budget * 2.2)) * h;
-    c.moveTo(0, budgetY); c.lineTo(w, budgetY);
-    c.stroke();
-
-    c.beginPath();
-    const n = this.frameTimes.length;
-    for (let i = 0; i < n; i++) {
-      const v = this.frameTimes[(this.frameIndex + i) % n];
-      const y = h - Math.min(1, v / (budget * 2.2)) * h;
-      const x = (i / (n - 1)) * w;
-      if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
-    }
-    c.strokeStyle = this.cpuMs <= budget ? '#5ef2c0' : '#ff8a5e';
-    c.lineWidth = 1.5;
-    c.stroke();
   };
 
   App.prototype.frame = function (now) {
@@ -878,55 +502,22 @@
     if (dt > 0.1) dt = 0.1;
     if (dt <= 0) dt = 1 / 240;
     const frameStart = performance.now();
-
     this.time += dt;
-    this.frameTimes[this.frameIndex] = this.lastFrameMs || 0;
-    this.frameIndex = (this.frameIndex + 1) % this.frameTimes.length;
-
-    /* Smoothed fps over the sample window. */
-    this._fpsAccum = (this._fpsAccum || 0) + dt;
-    this._fpsFrames = (this._fpsFrames || 0) + 1;
-    if (this._fpsAccum >= 0.25) {
-      this.fps = this._fpsFrames / this._fpsAccum;
-      this._fpsAccum = 0;
-      this._fpsFrames = 0;
-    }
 
     this.updateModel();
     this.updateCamera(dt);
     this.updateLight();
-
-    if (!this.paused) {
-      this.trackGrabVelocity(dt);
-      this.stepPhysics(dt);
-    }
+    this.trackGrabVelocity(dt);
+    this.stepPhysics(dt);
 
     if (this.grabPointer >= 0) {
       this.audio.setStretch(this.body.maxDisplacement / this.body.maxStretch, true);
     }
 
-    /* Idle attract: give the specimen a little life when left alone. */
-    if (this.time - this.lastInteraction > 12 && this.game.state !== 'playing') {
-      this._idleTimer = (this._idleTimer || 0) + dt;
-      if (this._idleTimer > 3.4) {
-        this._idleTimer = 0;
-        const a = this.time * 1.7;
-        this.body.impulse([Math.sin(a) * 0.9, Math.sin(a * 1.7) * 0.7, Math.cos(a) * 0.9], 1.1, 2.4);
-      }
-    }
-
-    const camDirLocal = M.norm3([0, 0, 0],
-      M.transformDir([0, 0, 0], this.invModel, M.sub3([0, 0, 0], this.eye, this.target)));
-    this.game.update(dt, this.body, this.model, camDirLocal);
-    this.handleEvents();
+    this.chat.update(dt);
     this.updateProps(dt);
-    this.updateChatter(dt);
-    this.updatePopups(dt);
-
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);
-    const particleCount = this.game.packParticles(this.renderer.particleData);
 
-    const q = QUALITY[this.quality];
     this.renderer.render({
       time: this.time,
       model: this.model,
@@ -937,76 +528,50 @@
       light: LIGHT,
       sky: SKY,
       floor: FLOOR,
-      showFloor: this.showFloor,
-      rings: this.game.rings,
+      showFloor: true,
       props: this.props,
-      particleCount: particleCount,
-      highlight: Math.min(1, this.body.maxDisplacement * 0.5),
-      bloom: 0.60,
-      bloomThreshold: 1.10,
-      bloomPasses: q.bloomPasses,
-      exposure: 1.05,
-      vignette: 0.55,
-      aberration: this.game.trauma * this.game.trauma * 0.004
+      highlight: Math.min(1, this.body.maxDisplacement * 0.4),
+      bloom: 0.34,
+      bloomThreshold: 1.25,
+      bloomPasses: 2,
+      exposure: 1.02,
+      vignette: 0.62,
+      aberration: 0
     });
 
-    this.lastFrameMs = performance.now() - frameStart;
-    this.cpuMs = this.cpuMs * 0.9 + this.lastFrameMs * 0.1;
+    this.cpuMs = this.cpuMs * 0.9 + (performance.now() - frameStart) * 0.1;
     this.adaptResolution();
+  };
 
-    this._hudTimer = (this._hudTimer || 0) + dt;
-    if (this.hudVisible && this._hudTimer > 0.1) {
-      this._hudTimer = 0;
-      this.updateHud();
-      this.drawGraph();
-    }
+  App.prototype.fail = function (message) {
+    const boot = $('boot');
+    boot.classList.remove('gone');
+    boot.innerHTML = '<div id="fail">' + message + '</div>';
   };
 
   App.prototype.start = function () {
     const self = this;
-    this.enterSandbox();
-    $('loading').classList.add('hidden');
-    $('overlay').classList.remove('hidden');
-    $('overlay-title').textContent = 'NOGGIN';
-    $('overlay-body').innerHTML =
-      '<div class="sub">Grab the face and pull. Everything is rubber.</div>' +
-      '<div class="sub dim">Drag on the head to stretch &middot; drag the void to orbit &middot; wheel to zoom</div>';
-    $('overlay-btn').textContent = 'START CHALLENGE';
+    $('boot').classList.add('gone');
+    setTimeout(function () { $('boot').style.display = 'none'; }, 600);
     this.chat.say(this.brain.greeting());
-    $('overlay-skip').classList.remove('hidden');
-    $('overlay-skip').onclick = function (e) {
-      e.preventDefault();
-      self.audio.resume();
-      self.enterSandbox();
-    };
     requestAnimationFrame(function (t) { self.frame(t); });
   };
 
   function boot() {
     try {
       const app = new App();
-      window.NOGGIN = app;
+      window.ATLAS = app;
       app.start();
     } catch (err) {
       console.error(err);
-      $('loading').classList.add('hidden');
-      $('overlay').classList.remove('hidden');
-      $('overlay-title').textContent = 'CANNOT START';
-      $('overlay-body').innerHTML = '<div class="sub">' + String(err.message || err) + '</div>';
-      $('overlay-btn').style.display = 'none';
+      const b = $('boot');
+      b.innerHTML = '<div id="fail">' + String(err.message || err) + '</div>';
     }
   }
 
-  /* Building the mesh and its binding takes a beat; yield twice so the
-     loading state actually paints before the main thread is tied up.
-     When bundled into a single file the script can execute after `load` has
-     already fired, so check readyState instead of waiting unconditionally. */
   function scheduleBoot() {
     requestAnimationFrame(function () { requestAnimationFrame(boot); });
   }
-  if (document.readyState === 'complete') {
-    scheduleBoot();
-  } else {
-    window.addEventListener('load', scheduleBoot);
-  }
+  if (document.readyState === 'complete') scheduleBoot();
+  else window.addEventListener('load', scheduleBoot);
 })(window.NG = window.NG || {});

@@ -17,7 +17,6 @@
     this.log = els.log;
     this.input = els.input;
     this.form = els.form;
-    this.panel = els.panel;
 
     this.queue = [];
     this.typingEl = null;
@@ -66,6 +65,7 @@
     /* A second send finishes the current line rather than stacking up. */
     if (this.typingEl) {
       this.typingEl.textContent = this.full;
+      this.typingEl.classList.remove('typing');
       this.typingEl = null;
     }
 
@@ -84,7 +84,7 @@
       if (!this.queue.length) return;
       this.full = this.queue.shift();
       this.shown = 0;
-      this.typingEl = this._append('him', '');
+      this.typingEl = this._append('him typing', '');
       return;
     }
 
@@ -101,6 +101,7 @@
       }
     }
     if (this.shown >= this.full.length) {
+      this.typingEl.classList.remove('typing');
       this.typingEl = null;
       this.gap = LINE_GAP;
     }

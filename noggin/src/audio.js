@@ -1,5 +1,5 @@
 /* NOGGIN — fully procedural audio. No assets: every sound is synthesised from
-   oscillators and a shared noise buffer, so the whole game stays a handful of
+   oscillators and a shared noise buffer, so the whole thing stays a handful of
    text files. */
 (function (NG) {
   'use strict';
@@ -145,28 +145,6 @@
     lfo.start(t); lfo.stop(t + dur + 0.05);
   };
 
-  /* Ring pop. `step` raises the pitch with the combo counter. */
-  Audio.prototype.pop = function (step) {
-    if (!this.ready || !this.enabled) return;
-    const ctx = this.ctx;
-    const t = ctx.currentTime;
-    const semis = Math.min(step || 0, 14);
-    const base = 523.25 * Math.pow(2, semis / 12);
-
-    const osc = ctx.createOscillator();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(base, t);
-    osc.frequency.exponentialRampToValueAtTime(base * 2, t + 0.09);
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.24, t + 0.008);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.30);
-    osc.connect(g); g.connect(this.master);
-    osc.start(t); osc.stop(t + 0.34);
-
-    const f = this._noise(0.16, 'bandpass', 1800, 1.4, 0.22, t);
-    f.frequency.exponentialRampToValueAtTime(5200, t + 0.16);
-  };
 
   /* Speech blip. Pitch is derived from the character being typed so the
      babble has the contour of words without being actual words. */
@@ -200,37 +178,7 @@
     this._noise(0.05, 'highpass', 2400, 0.8, 0.08, this.ctx.currentTime);
   };
 
-  Audio.prototype.tick = function (high) {
-    if (!this.ready || !this.enabled) return;
-    const ctx = this.ctx, t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    osc.type = 'square';
-    osc.frequency.value = high ? 1320 : 880;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.06, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    osc.connect(g); g.connect(this.master);
-    osc.start(t); osc.stop(t + 0.15);
-  };
 
-  Audio.prototype.fanfare = function (win) {
-    if (!this.ready || !this.enabled) return;
-    const ctx = this.ctx, t0 = ctx.currentTime;
-    const notes = win ? [0, 4, 7, 12, 16] : [0, -3, -7];
-    for (let i = 0; i < notes.length; i++) {
-      const t = t0 + i * 0.11;
-      const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.value = 392 * Math.pow(2, notes[i] / 12);
-      const g = ctx.createGain();
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.11, t + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
-      osc.connect(g); g.connect(this.master);
-      osc.start(t); osc.stop(t + 0.4);
-    }
-  };
 
   NG.Audio = Audio;
 })(window.NG = window.NG || {});

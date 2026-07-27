@@ -80,8 +80,6 @@
       depth: program(gl, S.depthVS, S.depthFS, 'depth'),
       bg: program(gl, S.fullscreenVS, S.bgFS, 'bg'),
       floor: program(gl, S.floorVS, S.floorFS, 'floor'),
-      ring: program(gl, S.ringVS, S.ringFS, 'ring'),
-      particle: program(gl, S.particleVS, S.particleFS, 'particle'),
       bright: program(gl, S.fullscreenVS, S.brightFS, 'bright'),
       blur: program(gl, S.fullscreenVS, S.blurFS, 'blur'),
       composite: program(gl, S.fullscreenVS, S.compositeFS, 'composite')
@@ -99,8 +97,6 @@
     this.rb = { sceneDepth: null, msColor: null, msDepth: null };
 
     this._buildFloor();
-    this._buildRing();
-    this._buildParticles(1024);
 
     this.timerQueries = [];
     this.timerIndex = 0;
@@ -127,52 +123,7 @@
     gl.bindVertexArray(null);
   };
 
-  Renderer.prototype._buildRing = function () {
-    const gl = this.gl;
-    const t = NG.G.torus(1.0, 0.085, 48, 14);
-    this.ringVAO = gl.createVertexArray();
-    gl.bindVertexArray(this.ringVAO);
 
-    const pb = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, pb);
-    gl.bufferData(gl.ARRAY_BUFFER, t.positions, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-
-    const nb = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, nb);
-    gl.bufferData(gl.ARRAY_BUFFER, t.normals, gl.STATIC_DRAW);
-    gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-
-    const ib = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, t.indices, gl.STATIC_DRAW);
-
-    this.ringCount = t.indices.length;
-    gl.bindVertexArray(null);
-  };
-
-  Renderer.prototype._buildParticles = function (capacity) {
-    const gl = this.gl;
-    this.particleCapacity = capacity;
-    this.particleData = new Float32Array(capacity * 8);
-    this.particleVAO = gl.createVertexArray();
-    gl.bindVertexArray(this.particleVAO);
-    this.particleBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.particleData.byteLength, gl.DYNAMIC_DRAW);
-    const stride = 8 * 4;
-    gl.enableVertexAttribArray(0);
-    gl.vertexAttribPointer(0, 3, gl.FLOAT, false, stride, 0);
-    gl.enableVertexAttribArray(1);
-    gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 12);
-    gl.enableVertexAttribArray(2);
-    gl.vertexAttribPointer(2, 1, gl.FLOAT, false, stride, 24);
-    gl.enableVertexAttribArray(3);
-    gl.vertexAttribPointer(3, 1, gl.FLOAT, false, stride, 28);
-    gl.bindVertexArray(null);
-  };
 
   /* ---- props (summoned objects) ------------------------------------------ */
 
@@ -226,7 +177,7 @@
 
     return {
       vao: vao, count: mesh.indices.length, buffers: [vb, cb, ib],
-      heightUnits: mesh.heightUnits, radiusUnits: mesh.radiusUnits
+      heightUnits: mesh.heightUnits, radiusUnits: mesh.radiusUnits, topUnits: mesh.topUnits
     };
   };
 
@@ -595,40 +546,6 @@
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     this.drawProps(state.props, pr);
-
-    /* ring targets */
-    if (state.rings && state.rings.length) {
-      pr = this.prog.ring;
-      gl.useProgram(pr.p);
-      gl.uniformMatrix4fv(pr.u.uViewProj, false, state.viewProj);
-      gl.uniform3fv(pr.u.uEye, state.eye);
-      gl.bindVertexArray(this.ringVAO);
-      for (let i = 0; i < state.rings.length; i++) {
-        const r = state.rings[i];
-        gl.uniformMatrix4fv(pr.u.uModel, false, r.matrix);
-        gl.uniform3fv(pr.u.uColor, r.color);
-        gl.uniform1f(pr.u.uPulse, r.pulse);
-        gl.uniform1f(pr.u.uIntensity, r.intensity);
-        gl.drawElements(gl.TRIANGLES, this.ringCount, gl.UNSIGNED_INT, 0);
-      }
-    }
-
-    /* particles */
-    if (state.particleCount > 0) {
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.particleBuffer);
-      gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.particleData, 0, state.particleCount * 8);
-      pr = this.prog.particle;
-      gl.useProgram(pr.p);
-      gl.uniformMatrix4fv(pr.u.uViewProj, false, state.viewProj);
-      gl.uniform1f(pr.u.uPixelScale, this.renderH * 0.5);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-      gl.depthMask(false);
-      gl.bindVertexArray(this.particleVAO);
-      gl.drawArrays(gl.POINTS, 0, state.particleCount);
-      gl.depthMask(true);
-      gl.disable(gl.BLEND);
-    }
 
     if (this.samples > 0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fb.ms);

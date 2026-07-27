@@ -50,32 +50,17 @@ uniform float uGlow;
 out vec4 oColor;
 ${COMMON}
 
-float starField(vec3 d, float scale, float density, float t) {
-  vec3 g = d * scale;
-  vec3 id = floor(g);
-  vec3 f = fract(g) - 0.5;
-  float h = hash13(id);
-  if (h < density) return 0.0;
-  vec3 jitter = vec3(hash13(id + 7.1), hash13(id + 13.7), hash13(id + 23.3)) - 0.5;
-  float r = length(f - jitter * 0.6);
-  float twinkle = 0.55 + 0.45 * sin(t * 2.1 + h * 62.8);
-  return smoothstep(0.30, 0.0, r) * twinkle * (0.35 + h * 0.65);
-}
-
 void main() {
   vec2 ndc = vUV * 2.0 - 1.0;
   vec3 dir = normalize(uRayF + uRayR * ndc.x + uRayU * ndc.y);
 
+  // Seamless sweep: a lit backdrop, not a sky.
   float h = dir.y * 0.5 + 0.5;
-  vec3 col = mix(uBotColor, uTopColor, pow(h, 0.85));
+  vec3 col = mix(uBotColor, uTopColor, pow(h, 0.9));
 
-  // Soft studio glow behind the subject.
-  float d = length(ndc * vec2(1.0, 1.1));
-  col += uGlowColor * uGlow * pow(max(0.0, 1.0 - d * 0.62), 3.0);
-
-  float s = starField(dir, 90.0, 0.988, uTime) * 1.0
-          + starField(dir, 190.0, 0.995, uTime * 0.7) * 0.6;
-  col += vec3(0.85, 0.92, 1.0) * s;
+  // Soft pool of light behind the subject.
+  float d = length(ndc * vec2(0.85, 1.0));
+  col += uGlowColor * uGlow * pow(max(0.0, 1.0 - d * 0.55), 3.5);
 
   oColor = vec4(col, 1.0);
 }`;
@@ -261,16 +246,13 @@ ${COMMON}
 float gridMask(vec2 p, float step) {
   vec2 q = p / step;
   vec2 g = abs(fract(q - 0.5) - 0.5) / max(fwidth(q), 1e-5);
-  float l = min(g.x, g.y);
-  return 1.0 - min(l, 1.0);
+  return 1.0 - min(min(g.x, g.y), 1.0);
 }
 
 void main() {
   float d = length(vWPos.xz);
-  float fade = smoothstep(26.0, 6.0, d);
+  float fade = smoothstep(26.0, 4.0, d);
   if (fade <= 0.001) discard;
-
-  float g = gridMask(vWPos.xz, 1.0) * 0.55 + gridMask(vWPos.xz, 5.0) * 0.85;
 
   vec3 p = vLPos.xyz / vLPos.w * 0.5 + 0.5;
   float sh = 1.0;
@@ -278,89 +260,18 @@ void main() {
     float s = 0.0;
     for (int y = -2; y <= 2; y++) {
       for (int x = -2; x <= 2; x++) {
-        s += texture(uShadow, vec3(p.xy + vec2(float(x), float(y)) * uShadowTexel * 1.5, p.z - 0.004));
+        s += texture(uShadow, vec3(p.xy + vec2(float(x), float(y)) * uShadowTexel * 1.6, p.z - 0.004));
       }
     }
     sh = s / 25.0;
   }
 
-  // Pulse travelling outward keeps the void from feeling static.
-  float ring = 0.5 + 0.5 * sin(d * 1.4 - uTime * 1.6);
-  vec3 col = uFloorColor + uGridColor * g * (0.6 + 0.4 * ring);
-  col *= mix(0.22, 1.0, sh);
+  float g = gridMask(vWPos.xz, 1.0);
+  vec3 col = uFloorColor + uGridColor * g;
+  col *= mix(0.18, 1.0, sh);
   col *= fade;
 
   oColor = vec4(col, 1.0);
-}`;
-
-  /* ---- ring targets ----------------------------------------------------- */
-
-  S.ringVS = `#version 300 es
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aNor;
-uniform mat4 uModel;
-uniform mat4 uViewProj;
-out vec3 vWPos;
-out vec3 vNor;
-void main() {
-  vec4 wp = uModel * vec4(aPos, 1.0);
-  vWPos = wp.xyz;
-  vNor = mat3(uModel) * aNor;
-  gl_Position = uViewProj * wp;
-}`;
-
-  S.ringFS = `#version 300 es
-precision highp float;
-in vec3 vWPos;
-in vec3 vNor;
-uniform vec3 uEye;
-uniform vec3 uColor;
-uniform float uPulse;
-uniform float uIntensity;
-out vec4 oColor;
-${COMMON}
-
-void main() {
-  vec3 N = normalize(vNor);
-  vec3 V = normalize(uEye - vWPos);
-  float fres = pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 2.0);
-  vec3 col = uColor * (0.6 + 1.9 * fres) * uIntensity;
-  col += uColor * uPulse * 0.9;
-  oColor = vec4(col, 1.0);
-}`;
-
-  /* ---- particles --------------------------------------------------------- */
-
-  S.particleVS = `#version 300 es
-layout(location = 0) in vec3 aPos;
-layout(location = 1) in vec3 aColor;
-layout(location = 2) in float aLife;
-layout(location = 3) in float aSize;
-uniform mat4 uViewProj;
-uniform float uPixelScale;
-out vec3 vColor;
-out float vLife;
-void main() {
-  vec4 clip = uViewProj * vec4(aPos, 1.0);
-  gl_Position = clip;
-  // Hard ceiling: a spark drifting close to the camera would otherwise cover
-  // the frame and, being additive, blow the whole image out through bloom.
-  gl_PointSize = clamp(aSize * uPixelScale / max(clip.w, 0.1), 1.0, 72.0);
-  vColor = aColor;
-  vLife = aLife;
-}`;
-
-  S.particleFS = `#version 300 es
-precision highp float;
-in vec3 vColor;
-in float vLife;
-out vec4 oColor;
-void main() {
-  vec2 d = gl_PointCoord * 2.0 - 1.0;
-  float r2 = dot(d, d);
-  if (r2 > 1.0) discard;
-  float a = pow(1.0 - r2, 2.0) * vLife;
-  oColor = vec4(vColor * a * 1.25, a);
 }`;
 
   /* ---- post: bloom prefilter, blur, composite ---------------------------- */

@@ -213,9 +213,9 @@
   };
 
   Brain.prototype.greeting = function () {
-    return ['Hey! How is it going?',
-      'I am a floating head and this is my atlas. Name any food plant — "let\'s talk about an apple" — and I will pull a real one into the room at its actual size, then tell you far more about it than you asked for.',
-      'You can also just grab my face and stretch it. Most people do that first. I have made peace with it.'];
+    return ['Hey. How is it going?',
+      'Name any food plant and I will bring a real one in at its actual size. Try "let\'s talk about an apple", or say "help" and I will list everything I have.',
+      'You can also grab my face and pull it around. Most people do that first. I have made peace with it.'];
   };
 
   NG.Brain = Brain;
