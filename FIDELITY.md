@@ -91,6 +91,25 @@ said so.
   scope that gets closer.
 - Death **MUST** be possible, legible in hindsight, and final for that run.
 
+### 2.5a Flight is commanded, never flown by reflex
+The conn exists — the operator can fly the vessel in first person, in a system,
+and reach a planet by travelling to it. 2.5 forbids twitch input, and that is a
+line a flight mode can cross without noticing, so here is where it sits:
+
+- Turning **MUST** be rate-commanded through at least two integrations, so no
+  single frame of input produces a visible jump. Measured: one frame of held
+  input turns under a third of a degree.
+- Speed **MUST** be a small set of named notches, set and left. No continuous
+  throttle, no held accelerate.
+- Velocity **MUST** lag attitude, and the lag **MUST** be shown, so the mass of
+  the vessel is an instrument rather than a feel.
+- There **MUST** be a commanded approach that arrives safely without the
+  operator managing it, and it **MUST** say when it is overriding them.
+- Flying it by hand **MAY** destroy the vessel. Asking to be taken somewhere
+  **MUST NOT**.
+- No reaction test, no timing window, no input the operator must be quick at.
+  If a control rewards reflex, it is the wrong control.
+
 ### 2.6 It is played one-handed on a phone
 - Every action **MUST** be reachable by thumb in portrait at 390×844.
 - **MUST NOT** require a keyboard, a hover state, a right-click, or precision

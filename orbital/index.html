@@ -845,6 +845,29 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    It expands in place so the primary keys never move under a thumb. */
 #ctl-more{display:contents}
 #ctl-more[hidden]{display:none}
+
+/* THE CONN DECK ------------------------------------------------------------
+   Same grid, different job. The chart keys are HIDDEN rather than relabelled:
+   four rules in this file have already been lost to a later rule and one key
+   was once wired to two listeners, so every selector here is scoped through
+   #ctl's id and names its target explicitly. `hidden` has to win over
+   `display:contents`, which it does on specificity — same shape as #ctl-more
+   directly above, deliberately. */
+#ctl-conn{display:contents}
+#ctl-conn[hidden]{display:none}
+#ctl[data-mode="conn"] #k-go,
+#ctl[data-mode="conn"] #k-near,
+#ctl[data-mode="conn"] #k-scoop,
+#ctl[data-mode="conn"] #k-more,
+#ctl[data-mode="conn"] #ctl-more,
+#ctl[data-mode="conn"] #k-xeno{display:none}
+/* Held, not tapped: the turn keys latch a rate while the thumb is down, so
+   they need to look held. */
+#ctl-conn .key[data-held="1"]{
+  color:var(--void); background:var(--label); border-color:var(--label);
+  box-shadow:0 0 12px rgba(140,230,255,.6);
+}
+#ctl-conn .key[data-held="1"] .sub{color:rgba(0,0,0,.65)}
 #k-more[aria-expanded="true"]{border-color:var(--white); color:var(--white)}
 
 /* CONTROL PAD --------------------------------------------------------- */
@@ -1324,6 +1347,20 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
       <button class="key" id="k-auto">AUTO<span class="sub" id="auto-lbl">ROUTE</span></button>
       <button class="key" id="k-home">SOL<span class="sub">RE-CENTRE</span></button>
       <button class="key key--hot" id="k-reset">RESET<span class="sub">NEW SURVEY</span></button>
+    </div>
+    <!-- The conn deck. It exists only while the conn does, so it costs the
+         resting view nothing. Eight keys in two rows of the same four-column
+         grid: turn on the outside where a thumb falls, the two decisions
+         (thrust and align) in the middle, and the way out top right. -->
+    <div id="ctl-conn" hidden>
+      <button class="key" id="c-yl">&#9664; YAW</button>
+      <button class="key" id="c-thr">THRUST<span class="sub" id="c-thr-lbl">STOP</span></button>
+      <button class="key" id="c-yr">YAW &#9654;</button>
+      <button class="key" id="c-out">CHART<span class="sub">LEAVE CONN</span></button>
+      <button class="key" id="c-pd">&#9660; PITCH</button>
+      <button class="key key--go" id="c-align">ALIGN<span class="sub" id="c-align-lbl">NO TARGET</span></button>
+      <button class="key" id="c-pu">&#9650; PITCH</button>
+      <button class="key" id="c-slow">SLOW<span class="sub" id="c-slow-lbl">EASE OFF</span></button>
     </div>
     <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
@@ -2397,6 +2434,10 @@ function plotArrive(j){
      false the moment you arrive or the router can be sent back where it came
      from. */
   if(sim.at>=0) systemAt(sim.at);
+  /* A new system, so the vessel is back on station and the conn's target
+     belongs to a system that is no longer under it. */
+  conn.flown=false; conn.tgt=null; conn.align=false;
+  conn.v=[0,0,0]; conn.thr=0;
   stalkerAdvance();
   raidersAdvance(j.d);
   raiderRoll();
@@ -2473,7 +2514,18 @@ function makeBody(st,r,kind,idx,slot){
   const rich=0.55+r()*0.9;
   return {
     k:kind, id:st.n.replace(/[^A-Z0-9]/g,'').slice(0,4)+'-'+(slot+1),
-    orbit, phase:r()*6.2832, rate:(0.06+r()*0.10)/Math.sqrt(orbit),
+    orbit, phase:r()*6.2832,
+    /* These rates used to be chosen to make the plate look alive when the plate
+       was a map you looked AT. They are now the frame you fly IN, and measured
+       against the conn they were nonsense: at 12 AU a body was sweeping at 0.21
+       to 0.57 AU/s while the vessel's top speed is 0.150, so intercepting an
+       outer world was arithmetically impossible and every contact registered as
+       a collision at the planet's speed rather than yours. Ten times slower puts
+       the fastest body at about a quarter of cruise — still visibly drifting,
+       still rearranged if you come back later, and now something you can
+       actually catch. It is also closer to real orbital mechanics, which the
+       charter asks for and the old numbers were nowhere near. */
+    rate:(0.0045+r()*0.0075)/Math.sqrt(orbit),
     rad:kind==='gas'?0.62+r()*0.30:kind==='anom'?0.24:0.28+r()*0.20,
     tilt:(r()-0.5)*0.5,
     rich,
@@ -2763,6 +2815,7 @@ function objective(){
   if(sim.over)    return {t:'VESSEL LOST — RESET FOR A NEW ONE', u:'1'};
   if(sim.jumping) return {t:'JUMP RUNNING', u:''};
   if(comms.open)  return {t:'TRANSMISSION OPEN — CHOOSE A REPLY', u:''};
+  if(conn.on)     return connObjective();
 
   if(sim.air<18)  return {t:'AIR CRITICAL — WORK AN ICE BODY', u:'1'};
   if(sim.hull<25) return {t:'HULL CRITICAL — WORK A ROCK OR IRON WORLD', u:'1'};
@@ -3581,7 +3634,12 @@ function drawLocal(){
    where you would actually hold station: above the ecliptic, out of the way
    of everything that is moving. */
 function drawShipLocal(){
-  const p=[Math.cos(sim.t*0.11)*4.4, 1.35, Math.sin(sim.t*0.11)*4.4];
+  /* You are not outside it. */
+  if(conn.on) return;
+  /* Where the conn left it, if the conn has been flown; the holding station
+     otherwise. The two views therefore agree about where the vessel is, which
+     they did not when this position was a decoration computed from the clock. */
+  const p=connFlown() ? conn.p.slice() : connPark();
   const q=project(p);
   if(!q) return;
   drawSprite(SPRITES.vessel, q.x, q.y, Math.max(2,q.s*0.055), '#FFD23D', 7);
@@ -3612,6 +3670,676 @@ function drawShipLocal(){
     }
   }
   return q;
+}
+
+/* ==========================================================================
+   THE CONN — FLYING IT YOURSELF
+   --------------------------------------------------------------------------
+   Everything above this point looks AT the vehicle. This looks OUT of it.
+
+   The scale question decides the whole design. A jump is six light years and
+   is plotted, not flown; nobody hand-flies a light year and a console that
+   pretended otherwise would be lying. But a SYSTEM is two to ten astronomical
+   units across, the bodies are already at real orbital positions that move
+   with sim.t, and crossing five of them at a lighter's cruise is about half a
+   minute. That is exactly the scale at which flying is meaningful, so the conn
+   is the in-system view: you arrive by jump, and then you fly to the planet.
+
+   It is not a flight sim and it MUST NOT become one — the charter forbids
+   twitch input outright (2.5). So nothing here is flown by reflex:
+
+     · turning is RATE-commanded and the rate itself has to build, so a press
+       is a decision that takes effect over a second rather than a flick;
+     · thrust is a NOTCH, set and left, the way a telegraph is set;
+     · velocity lags the nose by a couple of seconds, so the velocity vector
+       visibly swings round behind you after a turn — which is real flight
+       instrumentation, and is the thing that makes it read as a vessel with
+       mass rather than a cursor;
+     · and ALIGN exists, because an operator who cannot find a planet is not
+       being frightened, they are being annoyed.
+
+   The one thing it borrows from the arcade is the consequence: arrive at a
+   body too fast and the body wins.
+
+   The camera trick is the whole implementation. Set cam.at to where the vessel
+   actually is and cam.dist to zero, and project() puts the eye inside the
+   vehicle with no other change — so drawLocal() paints the same marks it
+   always painted, from the inside. The near field and the conn are therefore
+   guaranteed to agree about where everything is, because they are the same
+   code reading the same numbers.
+   ========================================================================== */
+
+/* Commanded speed per notch, in AU per second. Five notches because a
+   telegraph has a small number of positions and a continuous throttle is a
+   twitch control. STOP is a real setting, not the absence of one.
+
+   The numbers come from the distances that exist: bodies sit between about 0.4
+   and 10 AU of their primary, so CRUISE crossing 5 AU in ~33 s is the journey
+   the mode is for, and STATION at 0.008 AU/s is the 12 seconds of fine work it
+   takes to close the last tenth of an AU without hitting anything. */
+const CONN_NOTCH=[0, 0.008, 0.024, 0.065, 0.150];
+const CONN_NOTCH_LBL=['STOP','STATION','MANOEUVRE','TRANSIT','CRUISE'];
+
+/* Turning. 0.62 rad/s is a full circle in ten seconds at full deflection —
+   brisk enough to feel like control, slow enough that no press is a reflex.
+   TURN_TAU is the important number: the RATE eases in over a third of a
+   second, so the view never snaps, which is what keeps this the other side of
+   the line the charter draws at twitch input. */
+const CONN_TURN=0.62, CONN_TURN_TAU=0.34;
+/* Pitch stops short of vertical. Past that the horizon convention inverts and
+   an attitude readout that inverts is an instrument that lies. */
+const CONN_PITCH_MAX=1.34;
+
+/* How long the velocity takes to come round to the nose. This is the vessel's
+   mass, expressed as the only number that matters about it. Two and a bit
+   seconds is enough to see the velocity marker trail the reticle through a
+   turn and understand what it is telling you. */
+const CONN_VEL_TAU=2.2;
+/* And how fast it comes OFF the speed when the governor is stopping it. Sharper
+   than the cruise lag on purpose: opening up should feel heavy, and stopping
+   should feel like the machine is doing something about it. */
+const CONN_BRAKE_TAU=0.7;
+
+/* Seconds of run-out the governor insists on. A notch is only allowed while the
+   distance left is at least its speed times this, so CRUISE holds to 0.51 AU,
+   TRANSIT to 0.22, MANOEUVRE to 0.082, and STATION does the docking.
+
+   It is a plain linear rule with a deliberately fat margin rather than an
+   inversion of the braking curve, because the inversion was measured and it does
+   not work: exponential decay only ASYMPTOTES to the target speed, and the
+   target is the next notch down rather than zero, so every step arrived late.
+   The governor engaged at 0.126 AU still doing 0.135 AU/s with 0.13 AU of
+   braking left to do, and hit at 0.103 AU/s for 48% of the hull. Braking from
+   cruise covers about 0.13 AU; 3.4 seconds of run-out gives it 0.29 to do it
+   in, and costs about fifteen seconds on a six-AU crossing. */
+const CONN_STOP=3.4;
+
+/* Contact. DOCK is how close counts as arrived, SAFE is the closure rate the
+   docking clamps will take, and WRECK is the one that ends the run. Measured
+   against the notches: you can arrive from STATION and from MANOEUVRE, TRANSIT
+   costs you hull, and CRUISE into a planet is the end of it. */
+const CONN_DOCK=0.10, CONN_SAFE=0.030, CONN_WRECK=0.115;
+
+const conn={
+  on:false, p:[0,0,0], v:[0,0,0],
+  yaw:0, pitch:0,
+  yr:0, pr:0,            // current turn rates
+  cy:0, cp:0,            // commanded turn, -1 / 0 / +1
+  thr:0,                 // notch index
+  tgt:null,              // the body we are flying to, or null
+  align:false,           // the autopilot is holding the nose on the target
+  aligned:false,         // and has settled onto it (so it is only said once)
+  rng:0, clo:0,          // range and closure to the target, for the readouts
+  warned:false,          // the collision alarm has already sounded
+  flown:false,           // the vessel has been under way in this system
+  gov:null,              // the notch the approach governor is holding it to
+  camYaw:0, camPitch:0, camDist:0, camMode:0    // what to put back on the way out
+};
+
+/* Where the nose is pointing, in the world.
+
+   Derived, not guessed: toCam() rotates the world by yaw about +y and then by
+   pitch, and views down -z. Inverting that for the camera-space vector
+   (0,0,-1) gives this, and it has to be exactly right or the reticle and the
+   direction of travel disagree, which would make every other readout on the
+   plate a lie. */
+function connNose(){
+  const cp=Math.cos(conn.pitch), sp=Math.sin(conn.pitch);
+  return [cp*Math.sin(conn.yaw), -sp, -cp*Math.cos(conn.yaw)];
+}
+
+/* A body's own velocity, so closure is closure against a moving planet rather
+   than against where it used to be. Analytic, from the same expression
+   bodyPos() integrates. */
+function bodyVel(b){
+  const a=b.phase+sim.t*b.rate;
+  return [-Math.sin(a)*b.orbit*b.rate,
+           Math.cos(a)*b.orbit*b.tilt*b.rate,
+           Math.cos(a)*b.orbit*b.rate];
+}
+
+/* Where the vehicle is holding station when nobody is flying it. Above the
+   ecliptic and out of the way of everything that moves, which is where the
+   near-field view has always drawn it — this is that same position, promoted
+   from a decoration to the vessel's actual coordinates. */
+/* Which body the FLY TO key offers. Richness ALONE picked the richest thing in
+   the system, and measured against a real Sol-like system that was SOL-9 at
+   14.76 AU — a hundred seconds of flight as somebody's first ever trip. What an
+   operator actually decides is what is worth the journey, so that is what this
+   returns: yield per unit of distance, which puts a good body close in ahead of
+   a slightly better one three quarters of an hour away. The far one is still
+   there and still tappable; it is just not what the console volunteers. */
+function pickWorth(list){
+  const h=connFlown()?conn.p:connPark();
+  let best=null;
+  for(const b of list){
+    const d=Math.max(0.6, len3(sub3(bodyPos(b), h)));
+    const w=b.rich/Math.pow(d,0.62);
+    if(!best||w>best.w) best={b,w,d};
+  }
+  return best.b;
+}
+
+function connPark(){
+  return [Math.cos(sim.t*0.11)*4.4, 1.35, Math.sin(sim.t*0.11)*4.4];
+}
+
+/* Has the vessel actually been flown in this system? Until it has, its
+   position is the station position and the near field should keep drawing that;
+   once it has, conn.p is the truth and both views must use it. Reset by
+   arriving somewhere new. */
+function connFlown(){ return !!conn.flown; }
+
+/* --- entering and leaving ------------------------------------------------ */
+
+function connEnter(tgt){
+  if(sim.over||sim.jumping) return;
+  if(!conn.on){
+    conn.camYaw=cam.yaw; conn.camPitch=cam.pitch;
+    conn.camDist=cam.dist; conn.camMode=cam.mode;
+    /* Take up the station position the near field has been drawing, so the two
+       views cannot disagree about where the vessel is. */
+    conn.p=connPark();
+    conn.v=[0,0,0]; conn.thr=0; conn.yr=conn.pr=0; conn.cy=conn.cp=0;
+    conn.warned=false; conn.flown=true;
+    conn.on=true;
+    /* Point at the primary to begin with. Starting the operator facing empty
+       space would be honest and useless. */
+    const to=sub3([0,0,0],conn.p);
+    conn.yaw=Math.atan2(to[0],-to[2]);
+    conn.pitch=Math.atan2(-to[1],Math.hypot(to[0],to[2]));
+  }
+  if(tgt){ conn.tgt=tgt; conn.align=true; conn.aligned=false; }
+  if(plot.open) plotStow();
+  sim.view='CONN';
+  /* Put the eye where the vessel is NOW. Waiting for the first connStep() would
+     render one frame from the old orbiting chart camera, and one wrong frame on
+     a phosphor tube is a visible jolt. */
+  cam.at=conn.p.slice(); cam.tgt=conn.p.slice();
+  cam.dist=0; cam.yaw=conn.yaw; cam.pitch=conn.pitch;
+  connRanges();
+  connChrome();
+  logLine('CONN — MANUAL FLIGHT'+(tgt?' TO '+tgt.id:''));
+  sndRelay(); refresh();
+}
+
+function connExit(to){
+  conn.on=false;
+  conn.cy=conn.cp=0; conn.yr=conn.pr=0;
+  cam.yaw=conn.camYaw; cam.pitch=conn.camPitch;
+  cam.dist=conn.camDist; cam.mode=conn.camMode;
+  connChrome();
+  setView(to||'LOCAL');
+}
+
+/* The deck changes because the job changed. The chart keys are hidden rather
+   than relabelled: a key that says ENGAGE and does something else is the worst
+   thing a console can do. Nothing is ADDED to the resting view — the conn keys
+   only exist while the conn does, so the 28-element ceiling in FIDELITY 2.2a
+   is untouched by this feature. */
+function connChrome(){
+  $('ctl').dataset.mode = conn.on ? 'conn' : '';
+  $('ctl-conn').hidden = !conn.on;
+}
+
+/* --- the flight model --------------------------------------------------- */
+
+function connStep(dt){
+  if(!conn.on||sim.over) return;
+  if(sim.jumping||comms.open||contest.open||approach.open){
+    /* Something has taken the screen. The vessel keeps its velocity — it is in
+       space — but nobody is at the controls, so manual command is dropped and
+       every held key is released. Without the release a thumb that was on YAW
+       when a raider hailed would never see its pointerup, because the panel is
+       now over the key: the rate would stay latched and the vessel would fly
+       itself into something while the operator read a demand for their fuel.
+       The autopilot below is a machine and keeps holding its heading, which is
+       the difference between a control and an instruction. */
+    if(conn.cy||conn.cp) connRelease();
+  }
+
+  /* Turning onto the target, if that was asked for. The vessel does this at
+     the same rate a hand would; ALIGN is not a teleport, it is the autopilot
+     holding the stick for you. */
+  if(conn.align && conn.tgt){
+    const to=sub3(bodyPos(conn.tgt), conn.p);
+    const wy=Math.atan2(to[0],-to[2]);
+    const wp=Math.atan2(-to[1],Math.hypot(to[0],to[2]));
+    let dy=wy-conn.yaw;
+    while(dy> Math.PI) dy-=2*Math.PI;
+    while(dy<-Math.PI) dy+=2*Math.PI;
+    const dp=wp-conn.pitch;
+    conn.cy=clamp(dy*2.2,-1,1);
+    conn.cp=clamp(dp*2.2,-1,1);
+    if(Math.abs(dy)<0.012 && Math.abs(dp)<0.012){
+      conn.yaw=wy; conn.pitch=wp; conn.cy=conn.cp=0;
+      conn.yr=conn.pr=0;
+      /* ALIGN HOLDS. It used to release itself the moment it settled, which
+         meant the nose then sat still while the body went on orbiting and the
+         vessel slowly flew past what it had been aimed at. The autopilot keeps
+         holding the stick until the operator takes it back or the vessel
+         arrives — that is what asking for it meant. */
+      if(!conn.aligned){ conn.aligned=true; logLine('ALIGNED ON '+conn.tgt.id); }
+    }else conn.aligned=false;
+  }
+
+  /* Rate follows command, attitude follows rate. Two integrations, which is
+     why nothing here can snap. */
+  const k=Math.min(1, dt/CONN_TURN_TAU);
+  conn.yr += (conn.cy*CONN_TURN - conn.yr)*k;
+  conn.pr += (conn.cp*CONN_TURN - conn.pr)*k;
+  conn.yaw += conn.yr*dt;
+  conn.pitch = clamp(conn.pitch + conn.pr*dt, -CONN_PITCH_MAX, CONN_PITCH_MAX);
+  if(conn.pitch<=-CONN_PITCH_MAX||conn.pitch>=CONN_PITCH_MAX) conn.pr=0;
+
+  /* The approach governor. While ALIGN is holding — that is, while the operator
+     has asked the vessel to take them somewhere rather than flown it there
+     themselves — it will not let the vessel arrive faster than the clamps will
+     take. It is the difference between a control and an instruction, and it is
+     what makes the easy path actually easy.
+
+     Three measurements built this, in order:
+
+       · with no governor, a naive run went hull 100 → 67 → 44 → 0 across three
+         arrivals and died on the third;
+       · with a governor that watched only the target, six governed approaches
+         all docked and still arrived at 63-69% hull — because crossing a system
+         at cruise means threading between worlds and the line to the target
+         clipped one of them at 0.14 AU/s;
+       · with it watching everything but still coasting down on the two-second
+         cruise lag, they arrived at 74-80%. Choosing a lower notch is not the
+         same as being slower: the velocity needed 0.26 AU to decay and had
+         about 0.10 to do it in.
+
+     So a governed reduction BRAKES. CONN_BRAKE_TAU is three times sharper than
+     the cruise lag, which is honest — retro-thrust is a thing a vessel has, and
+     a governor that could not use it would be an ornament. The mass is still
+     there for turning and for opening up, which is where it is felt.
+
+     What it does NOT do is slow for proximity. A world half an AU off the beam
+     is not a problem, and an instrument that treated it as one would make every
+     crossing crawl. The test is predictive: project the relative motion, find
+     the closest approach, and govern only against bodies the vessel would
+     actually touch. */
+  conn.gov=null;
+  if(conn.align && sim.at>=0){
+    let vmax=Infinity;
+    for(const b of systemAt(sim.at)){
+      const r=sub3(bodyPos(b), conn.p);
+      const w=sub3(conn.v, bodyVel(b));
+      const w2=w[0]*w[0]+w[1]*w[1]+w[2]*w[2];
+      if(w2<1e-9) continue;
+      const rd=r[0]*w[0]+r[1]*w[1]+r[2]*w[2];
+      if(rd<=0) continue;                       // opening, not closing
+      const env=b.rad+CONN_DOCK;
+      const miss=len3(sub3(r, mul3(w, rd/w2)));
+      if(miss>env && b!==conn.tgt) continue;    // not on a contact course
+      const d=Math.max(0, len3(r)-env);
+      vmax=Math.min(vmax, d/CONN_STOP);
+    }
+    if(vmax<Infinity){
+      let cap=CONN_NOTCH.length-1;
+      while(cap>1 && CONN_NOTCH[cap]>vmax) cap--;
+      if(conn.thr>cap){
+        if(conn.gov!==cap) logLine('GOVERNOR — '+CONN_NOTCH_LBL[cap]);
+        conn.thr=cap; conn.gov=cap;
+      }else if(len3(conn.v)>vmax){
+        /* Already going faster than the distance allows — the operator handed
+           over late, or a body moved into the path. Nothing to reduce the notch
+           to, so brake on the notch we have. */
+        conn.gov=conn.thr;
+      }
+    }
+  }
+
+  /* Velocity eases toward the commanded speed along the nose. The lag IS the
+     mass, and it is the reason a turn at speed costs you time rather than
+     being free. */
+  const want=mul3(connNose(), CONN_NOTCH[conn.thr]);
+  const braking = conn.gov!=null && CONN_NOTCH[conn.thr] < len3(conn.v);
+  const kv=Math.min(1, dt/(braking?CONN_BRAKE_TAU:CONN_VEL_TAU));
+  for(let i=0;i<3;i++) conn.v[i]+=(want[i]-conn.v[i])*kv;
+  conn.p=add3(conn.p, mul3(conn.v,dt));
+
+  /* The drive draws on the same plant as the tube and the scrubbers, so flying
+     costs air at a rate set by the notch. Holding station is free; cruising is
+     three times idle. This is the whole cost of flight and it is the honest
+     one — the resource that was already spending itself. */
+  if(conn.thr>0) spendAir(dt*airRate()*(0.5+conn.thr*0.62));
+
+  /* The camera IS the vessel. Nothing else in the render pipeline has to know
+     this mode exists. */
+  cam.at=conn.p.slice(); cam.tgt=conn.p.slice();
+  cam.dist=0; cam.yaw=conn.yaw; cam.pitch=conn.pitch;
+
+  connRanges();
+  connContact();
+}
+
+/* Range and closure to whatever is being flown to. Both are real numbers off
+   real positions; closure is against the body's own motion, so a planet
+   running away from you reads as one. */
+function connRanges(){
+  const b=conn.tgt;
+  if(!b){ conn.rng=0; conn.clo=0; return; }
+  conn.rng=len3(sub3(bodyPos(b), conn.p));
+  conn.clo=closureTo(b);
+}
+
+/* Arriving somewhere. The conn does not duplicate the approach — it hands the
+   body to the panel that already knows how to work it, which is the whole
+   point of flying there. Arriving badly is a different matter. */
+/* Closing speed on a body: positive means the range is shrinking. This is the
+   ONE number contact is judged on, and it is deliberately the same number the
+   readout prints and the alarm fires on. Using the full relative velocity
+   instead would mean a planet sweeping sideways past a stationary vessel
+   destroyed it — a consequence the operator has no instrument for and no
+   control over, which is exactly the kind of lie clause 2.2 forbids. */
+function closureTo(b){
+  const to=sub3(bodyPos(b), conn.p);
+  const r=len3(to);
+  if(r<1e-6) return len3(conn.v);
+  const u=mul3(to,1/r);
+  const rel=sub3(conn.v, bodyVel(b));
+  return rel[0]*u[0]+rel[1]*u[1]+rel[2]*u[2];
+}
+
+function connContact(){
+  if(sim.at<0||sim.over) return;
+  for(const b of systemAt(sim.at)){
+    const d=len3(sub3(bodyPos(b), conn.p));
+    if(d > b.rad+CONN_DOCK) continue;
+
+    /* How fast we were closing on the thing we have just reached. */
+    const rel=Math.max(0, closureTo(b));
+
+    if(rel>CONN_WRECK){
+      die('COLLISION', b.id+' AT '+(rel*3600).toFixed(0)+' AU/H');
+      return;
+    }
+    if(rel>CONN_SAFE){
+      /* Hard contact. It scales off the excess over what the clamps will take,
+         so a small overspeed is a scrape and a large one nearly ends you. */
+      const over=(rel-CONN_SAFE)/(CONN_WRECK-CONN_SAFE);
+      conn.thr=0; conn.v=mul3(conn.v,-0.18);
+      logLine('HARD CONTACT '+b.id+' — '+(rel*3600).toFixed(0)+' AU/H');
+      damage(8+over*46, 'CONTACT WITH '+b.id);
+      connChrome(); refresh();
+      return;
+    }
+
+    /* Alongside, and slow. Hold here and hand over. */
+    conn.thr=0; conn.v=[0,0,0];
+    conn.align=false; conn.aligned=false;
+    if(!approach.open){
+      logLine('ALONGSIDE '+b.id+' — '+(rel*3600).toFixed(0)+' AU/H');
+      sndStatus();
+      approachOpen(b);
+    }
+    return;
+  }
+}
+
+/* --- the controls ------------------------------------------------------- */
+
+function connThr(n){
+  if(!conn.on) return;
+  const was=conn.thr;
+  conn.thr=clamp(conn.thr+n, 0, CONN_NOTCH.length-1);
+  if(conn.thr!==was){
+    sndRelay();
+    logLine('THRUST '+CONN_NOTCH_LBL[conn.thr]);
+  }else sndKey();
+  refresh();
+}
+
+/* Drop every manual command and un-light every key that was being held. */
+function connRelease(){
+  conn.cy=0; conn.cp=0;
+  for(const id of ['c-yl','c-yr','c-pu','c-pd']){
+    const b=$(id); if(b) b.dataset.held='';
+  }
+}
+
+/* A manual input cancels the autopilot, because two things flying the vessel
+   at once is how an instrument starts lying. */
+function connSteer(axis,dir){
+  if(!conn.on) return;
+  if(conn.align && dir!==0){ conn.align=false; conn.aligned=false; logLine('ALIGN RELEASED'); }
+  if(axis==='y') conn.cy=dir;
+  else           conn.cp=dir;
+}
+
+function connAlign(){
+  if(!conn.on) return;
+  if(!conn.tgt){
+    /* Nothing picked. Take the richest thing still worth working, which is the
+       same choice the APPROACH key has always made. */
+    const live=sim.at>=0?systemAt(sim.at).filter(b=>!b.taken):[];
+    if(!live.length){ sndAlarm(); logLine('NOTHING TO ALIGN ON'); return; }
+    live.sort((a,b)=>b.rich-a.rich);
+    conn.tgt=live[0];
+  }
+  conn.align=true; conn.aligned=false;
+  sndRelay();
+  logLine('ALIGNING ON '+conn.tgt.id);
+  refresh();
+}
+
+/* Tapping something out of the window flies you to it. This is the primary
+   way the mode is meant to be used and it is why there is no joystick: the
+   operator points at the thing, not at a direction. */
+function connPick(mx,my){
+  if(sim.at<0) return false;
+  let best=null;
+  for(const b of systemAt(sim.at)){
+    const q=project(bodyPos(b));
+    if(!q) continue;
+    const d=Math.hypot(q.x-mx,q.y-my);
+    if(d<Math.max(38, b.rad*q.s+24) && (!best||d<best.d)) best={b,d};
+  }
+  if(!best) return false;
+  conn.tgt=best.b; conn.align=true; conn.aligned=false;
+  if(conn.thr===0) conn.thr=2;
+  sndRelay();
+  logLine('FLYING TO '+best.b.id+' — '+BODY[best.b.k].label);
+  refresh();
+  return true;
+}
+
+/* --- the forward view -------------------------------------------------- */
+
+/* The instrument overlay. drawLocal() has already painted the system from
+   inside; this is the part that only makes sense from in here.
+
+   Every mark answers a question an operator flying a vessel actually asks:
+   where is the nose, where am I actually going, how far, how fast, how long,
+   and is anything about to be a problem. */
+function drawConnHud(){
+  const m=Math.min(W,H);
+  const R=clamp(m*0.055,16,34);
+
+  /* Boresight. Where the array is pointed and therefore where thrust will
+     take you. Open at the cardinals so it never hides what it is over. */
+  /* Deliberately larger and dimmer than the velocity mark, and on the diagonals
+     rather than the cardinals. The two coincide whenever the vessel is going
+     where it is pointed, so they have to be legible as two things when they sit
+     on top of each other — that coincidence is the readout. */
+  ctx.strokeStyle='rgba(140,230,255,0.42)'; ctx.lineWidth=1.1;
+  ctx.beginPath();
+  for(let i=0;i<4;i++){
+    const a=i*Math.PI/2+Math.PI/4;
+    ctx.moveTo(CX+Math.cos(a)*R*0.72, CY+Math.sin(a)*R*0.72);
+    ctx.lineTo(CX+Math.cos(a)*R*1.5,  CY+Math.sin(a)*R*1.5);
+  }
+  ctx.stroke();
+
+  /* The attitude ladder. Rungs at fixed elevations ABOVE AND BELOW THE
+     ECLIPTIC — the plane every orbit in the system lies in and the only
+     reference in here that means anything.
+
+     They have to be world elevations, not nose-relative ones. Drawn relative to
+     the nose the zero rung sat exactly on the boresight at every attitude, so
+     the mark labelled ECLIPTIC reported the vessel's own heading back to it and
+     told the operator nothing — an instrument that always reads the same is not
+     an instrument. Now the rung for elevation -pitch is the one at the centre,
+     so the ladder slides through the boresight as the vessel pitches and the
+     green rung is where the plane of the system actually is. */
+  for(let deg=-60;deg<=60;deg+=15){
+    const e=deg*RA_D;
+    const ce=Math.cos(e), se=Math.sin(e);
+    const d=[ce*Math.sin(conn.yaw), se, -ce*Math.cos(conn.yaw)];
+    const q=projectSky(d);
+    if(!q||q.y<20||q.y>H-20) continue;
+    const zero=deg===0;
+    const w=zero?m*0.16:m*0.055;
+    ctx.strokeStyle=zero?'rgba(34,255,136,0.42)':'rgba(61,139,255,0.30)';
+    ctx.lineWidth=zero?1.3:1;
+    ctx.beginPath();
+    ctx.moveTo(CX-w,q.y); ctx.lineTo(CX-w*0.28,q.y);
+    ctx.moveTo(CX+w*0.28,q.y); ctx.lineTo(CX+w,q.y);
+    ctx.stroke();
+    if(zero) claimLabel('ECLIPTIC', CX+w+6, q.y, 'rgba(34,255,136,0.6)', false);
+    else if(Math.abs(deg)===30||Math.abs(deg)===60)
+      claimLabel((deg>0?'+':'')+deg, CX+w+5, q.y, 'rgba(61,139,255,0.5)', false);
+  }
+
+  /* Velocity vector. Where the vessel is ACTUALLY going, as distinct from
+     where it is pointed — the single most useful mark in here, and the one
+     that makes the mass legible: after a turn it trails the boresight and
+     walks back to it over about two seconds. Drawn as a circle with a cross
+     inside, which is the flight-director convention, and it only exists when
+     there is a velocity for it to report. */
+  const sp3=len3(conn.v);
+  if(sp3>1e-4){
+    const q=projectSky(mul3(conn.v,1/sp3));
+    if(q){
+      const rr=R*0.34;
+      ctx.strokeStyle='#FFD23D'; ctx.lineWidth=1.3;
+      ctx.shadowColor='#FFD23D'; ctx.shadowBlur=6;
+      ctx.beginPath(); ctx.arc(q.x,q.y,rr,0,6.2832); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(q.x-rr*1.9,q.y); ctx.lineTo(q.x-rr,q.y);
+      ctx.moveTo(q.x+rr,q.y);     ctx.lineTo(q.x+rr*1.9,q.y);
+      ctx.moveTo(q.x,q.y-rr*1.7); ctx.lineTo(q.x,q.y-rr);
+      ctx.stroke(); ctx.shadowBlur=0;
+    }else{
+      /* Going backwards relative to the nose. That is a real state and it gets
+         said rather than drawn nowhere. */
+      claimLabel('VELOCITY ASTERN', CX+R+8, CY+R+8, '#FF9A1F', true);
+    }
+  }
+
+  /* The target. A bracket rather than a ring — the plate spends rings on
+     bodies already — plus the three numbers that decide whether the approach
+     works: range, closure, and time to go at the current closure. */
+  const b=conn.tgt;
+  if(b){
+    const tp=bodyPos(b), q=project(tp);
+    const col=BODY[b.k].col;
+    if(q){
+      /* The bracket is capped. Close in, a gas giant's own radius projects to
+         more than the viewport, and an uncapped bracket became four stubs in the
+         corners of the frame with its label pushed off the plate entirely — so
+         the one body being flown to was the one that lost its name. Capped, it
+         stays a bracket, and the corner ticks shorten rather than leave. */
+      const nat=Math.max(10, b.rad*q.s+12);
+      const lim=Math.min(W,H)*0.36;
+      const rr=Math.min(nat, lim);
+      const tick=Math.min(rr*0.5, Math.min(W,H)*0.06);
+      ctx.strokeStyle=col; ctx.lineWidth=1.4;
+      ctx.shadowColor=col; ctx.shadowBlur=6;
+      ctx.beginPath();
+      for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+        ctx.moveTo(q.x+sx*rr, q.y+sy*rr-sy*tick);
+        ctx.lineTo(q.x+sx*rr, q.y+sy*rr);
+        ctx.lineTo(q.x+sx*rr-sx*tick, q.y+sy*rr);
+      }
+      ctx.stroke(); ctx.shadowBlur=0;
+      /* And the label goes beside the bracket while there is room beside it, and
+         under the boresight when the body has swallowed the frame. */
+      const lx=q.x+rr+6;
+      if(nat<=lim && lx<W-90) claimLabel(b.id+'  '+conn.rng.toFixed(2)+' AU', lx, q.y, col, true);
+      else claimLabel(b.id+'  '+conn.rng.toFixed(2)+' AU  ·  ALONGSIDE',
+                      CX-Math.min(W,H)*0.17, CY+Math.min(W,H)*0.10, col, true);
+    }else{
+      /* Behind us. Which way to turn is the useful thing to say. */
+      const to=sub3(tp,conn.p);
+      const c=toCam(to);
+      claimLabel(b.id+' ASTERN — '+conn.rng.toFixed(2)+' AU  TURN '+(c[0]>0?'STARBOARD':'PORT'),
+                 CX-m*0.16, H*0.5-R-14, col, true);
+    }
+  }
+
+  /* The collision warning. It is the closure rate that matters, not the range,
+     so it fires on the number that would actually kill you and it says which
+     body and how fast. */
+  if(b && conn.clo>CONN_SAFE){
+    const tGo=(conn.rng-b.rad-CONN_DOCK)/conn.clo;
+    if(tGo>0 && tGo<14){
+      const hot=conn.clo>CONN_WRECK;
+      claimLabel((hot?'WRECK IN ':'HARD CONTACT IN ')+tGo.toFixed(1)+' S — SLOW',
+                 CX-m*0.17, CY-R-20, hot?'#FF3A2C':'#FF9A1F', true);
+      if(!conn.warned){ conn.warned=true; sndAlarm(); }
+    }else conn.warned=false;
+  }else conn.warned=false;
+
+  /* Anything hostile that has reached this system, at its real bearing. A
+     raider's position is kept in light years because that is the frame it
+     closes in; the direction from the vessel to it is the same direction in
+     either frame, so the bearing is honest and the range is quoted in the
+     units it is held in. */
+  for(const r of sim.raiders){
+    if(!r.seen) continue;
+    const d=nrm3(sub3(r.p, here().p));
+    const q=projectSky(d);
+    if(!q) continue;
+    const C=RAIDERS[r.k], close=r.dist<1.6;
+    const s=8+(close?4:0);
+    ctx.strokeStyle=C.col; ctx.lineWidth=close?1.6:1.2;
+    ctx.shadowColor=C.col; ctx.shadowBlur=close?8:4;
+    ctx.beginPath();
+    for(const [sx,sy] of [[-1,-1],[1,-1],[-1,1],[1,1]]){
+      ctx.moveTo(q.x+sx*s, q.y+sy*s-sy*s*0.45);
+      ctx.lineTo(q.x+sx*s, q.y+sy*s);
+      ctx.lineTo(q.x+sx*s-sx*s*0.45, q.y+sy*s);
+    }
+    ctx.stroke(); ctx.shadowBlur=0;
+    claimLabel(r.id+'  '+r.dist.toFixed(2)+' LY', q.x+s+6, q.y, C.col, close);
+  }
+
+  /* The state of the machine you are flying, bottom left, where the near field
+     puts its scale. Notch, speed, and the drift angle between where you point
+     and where you are going — which is the number the velocity marker draws. */
+  const nose=connNose();
+  const drift = sp3>1e-4
+    ? Math.acos(clamp((nose[0]*conn.v[0]+nose[1]*conn.v[1]+nose[2]*conn.v[2])/sp3,-1,1))*DEG
+    : 0;
+  const gut=clamp(m*0.07,20,54)+clamp(m*0.055,14,30)+10;
+  label('CONN · '+CONN_NOTCH_LBL[conn.thr]+' · '+(sp3*3600).toFixed(0)+' AU/H'
+        +(conn.gov!=null?'  ·  GOVERNED':'')
+        +(drift>6?'  ·  DRIFT '+drift.toFixed(0)+'°':''),
+        gut, H-28, drift>25?'#FF9A1F':'#8CE6FF', false);
+}
+
+/* What the standing-order line says while flying. */
+function connObjective(){
+  if(approach.open) return {t:'ALONGSIDE — SET A HOLD AND DESCEND', u:''};
+  const b=conn.tgt;
+  if(!b) return {t:'TAP A BODY TO FLY TO IT', u:'2'};
+  if(conn.clo>CONN_SAFE && conn.rng<b.rad+0.6) return {t:'TOO FAST — SLOW NOW', u:'1'};
+  if(conn.thr===0) return {t:'THRUST TO GET UNDER WAY', u:'2'};
+  if(conn.rng>0){
+    const tGo=conn.clo>1e-4?(conn.rng-b.rad)/conn.clo:0;
+    /* Time to go, in the unit it happens to be in. A dash where a number
+       belongs is the console declining to answer a question it can answer. */
+    const eta = tGo<=0 ? 'NOT CLOSING'
+              : tGo<90 ? tGo.toFixed(0)+' S'
+              : tGo<5400 ? (tGo/60).toFixed(1)+' MIN'
+              : 'NOT IN THIS WATCH';
+    return {t:b.id+' — '+conn.rng.toFixed(2)+' AU  ·  '+eta, u:tGo<=0?'2':''};
+  }
+  return {t:'FLYING', u:''};
 }
 
 /* Tapping a body in the near field selects it for approach. */
@@ -4290,7 +5018,7 @@ function drawFrame(){
   const cs=clamp(m*0.055,14,30);
   const inset=clamp(m*0.07,20,54);
   const h=here();
-  const local=sim.view==='LOCAL';
+  const local=sim.view==='LOCAL'||conn.on;
   /* Registration marks, and what each one registers. A cross in a corner with
      nothing written against it is a sticker; a cross with the camera's own
      attitude against it is a fiducial, which is what these are shaped like.
@@ -4310,7 +5038,8 @@ function drawFrame(){
   const wide=W>520;
   const att='AZ '+brg.toFixed(0).padStart(3,'0')+' EL '+(cam.pitch*DEG).toFixed(0).padStart(3,'0');
   const detail = $('shell').dataset.more==='1';
-  label(local ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')
+  label(conn.on ? 'CONN · '+(sim.at>=0?h.n:'DEEP SPACE')+' · MANUAL'
+              : local ? 'NEAR FIELD · '+(sim.at>=0?h.n:'NO PRIMARY')
               : wide ? 'CHART · EQUATORIAL · EPOCH J2000' : 'CHART · EQUATORIAL',
         gut, 14, '#8CE6FF', true);
   if(wide && detail) label(att, W-gut, 14, '#8CE6FF', true, 'right');
@@ -4352,6 +5081,11 @@ function render(){
   drawStars();
   if(sim.jumping){
     drawJump();
+  }else if(conn.on){
+    /* The same near-field draw, from inside the vessel. Nothing is duplicated:
+       the camera moved, so the marks that were a map are now a window. */
+    drawLocal();
+    drawConnHud();
   }else if(sim.view==='LOCAL'){
     /* The near field has no use for the sweep, the corridor or the chart —
        everything it draws is inside one system. */
@@ -7316,6 +8050,21 @@ function refresh(){
   /* Until the sweep has actually found it there is nothing to report, and the
      plate does not hint. A readout that warns you about something it cannot
      see is a readout that is lying to make you feel better. */
+  /* The conn deck says what it is set to. A key labelled THRUST with nothing
+     under it does not tell you which notch you are in, and the notch is the
+     only thing you have set. */
+  if(conn.on){
+    $('c-thr-lbl').textContent = conn.gov!=null
+      ? 'GOVERNED '+CONN_NOTCH_LBL[conn.thr] : CONN_NOTCH_LBL[conn.thr];
+    $('c-thr').dataset.on = conn.thr>0 ? '1' : '';
+    $('c-slow-lbl').textContent = conn.thr>0 ? CONN_NOTCH_LBL[conn.thr-1] : 'STOPPED';
+    $('c-slow').disabled = conn.thr===0;
+    const b=conn.tgt;
+    $('c-align-lbl').textContent = !b ? 'NO TARGET'
+      : conn.align ? 'TURNING' : b.id+' '+conn.rng.toFixed(2)+' AU';
+    $('c-align').dataset.arm = !b ? 'bad' : conn.align ? '1' : '';
+  }
+
   const th=threatText();
   el.heat.innerHTML = th.t;
   el.miss.innerHTML = pad(Object.keys(sim.logged).length,1)+' / '+pad(ALIENS.length,1);
@@ -7412,11 +8161,15 @@ function refresh(){
   if(tb){ tb.textContent=ob.t; tb.dataset.urgent=ob.u; }
   const bodies = sim.at>=0 ? systemAt(sim.at) : [];
   const live = bodies.filter(b=>!b.taken).length;
-  $('scoop-lbl').textContent = sim.at<0 ? 'NO PRIMARY'
-                             : !bodies.length ? 'BARREN'
-                             : live ? live+' BODIES' : 'WORKED OUT';
+  $('scoop-lbl').textContent = conn.on ? CONN_NOTCH_LBL[conn.thr]
+      : sim.at<0 ? 'NO PRIMARY'
+      : (()=>{ const l=systemAt(sim.at).filter(b=>!b.taken);
+               if(!l.length) return 'WORKED OUT';
+               const b=pickWorth(l);
+               const d=len3(sub3(bodyPos(b), connFlown()?conn.p:connPark()));
+               return b.id+' · '+d.toFixed(1)+' AU'; })();
   $('k-scoop').dataset.on = live ? '1' : '';
-  $('k-scoop').firstChild.textContent = 'APPROACH';
+  $('k-scoop').firstChild.textContent = 'FLY TO';
   $('near-lbl').textContent = reachable().length+' IN RANGE';
 
   const rows=$('sensorrows');
@@ -7482,6 +8235,7 @@ cv.addEventListener('click',e=>{
   const mx=e.clientX-r.left, my=e.clientY-r.top;
   /* In the near field a tap picks a body to approach; on the chart it picks a
      star to plot to. Same gesture, two instruments. */
+  if(conn.on){ if(connPick(mx,my)) refresh(); return; }
   if(sim.view==='LOCAL'){ if(localPick(mx,my)) refresh(); return; }
   let best=null;
   STARS.forEach((st,i)=>{
@@ -7548,13 +8302,19 @@ $('k-near').addEventListener('click',()=>{
 
 /* Fuel is not a button any more: it is somewhere, and you have to go to it.
    SCOOP raises the near field and selects the best body still unworked. */
+/* This key used to open the descent panel on the richest body in the system,
+   which meant the journey there did not exist. It now flies you: same key, same
+   intent, with the part in between put back. Arriving hands the body to the
+   same panel, so nothing that worked before stopped working — it just has to be
+   earned now. */
 $('k-scoop').addEventListener('click',()=>{
   if(sim.at<0){ sndAlarm(); logLine('NO PRIMARY — NOTHING TO WORK'); refresh(); return; }
-  if(sim.view!=='LOCAL') setView('LOCAL');
   const live=systemAt(sim.at).filter(b=>!b.taken);
   if(!live.length){ sndAlarm(); logLine('SYSTEM WORKED OUT'); refresh(); return; }
-  live.sort((a,b)=>b.rich-a.rich);
-  approachOpen(live[0]);
+  connEnter(pickWorth(live));
+  /* Under way immediately. A key called FLY TO that leaves the vessel stopped
+     would need a second press to mean anything. */
+  if(conn.thr===0) conn.thr=2;
   refresh();
 });
 
@@ -7572,6 +8332,11 @@ $('k-jump').addEventListener('click',()=>{
    instruments pointed at two different scales, and the console will only show
    you one at a time because that is all a console of this vintage could do. */
 function setView(v){
+  /* CONN is a mode, not just a camera, so it has its own door. Routing through
+     here rather than around it means every existing caller of setView keeps
+     working and cannot leave the conn half-entered. */
+  if(v==='CONN'){ connEnter(null); return; }
+  if(conn.on && v!=='CONN'){ connExit(v); return; }
   sim.view=v;
   const b=$('btn-view');
   b.textContent = v==='LOCAL' ? 'NEAR' : 'CHART';
@@ -7581,7 +8346,33 @@ function setView(v){
   logLine(v==='LOCAL'?'NEAR FIELD SCAN ACTIVE':'CHART ACTIVE');
   sndRelay(); refresh();
 }
-$('btn-view').addEventListener('click',()=>setView(sim.view==='LOCAL'?'CHART':'LOCAL'));
+/* Three views, one switch, in the order you use them: the chart to choose a
+   system, the near field to see what is in it, the conn to go there. */
+$('btn-view').addEventListener('click',()=>{
+  setView(sim.view==='CHART' ? 'LOCAL' : sim.view==='LOCAL' ? 'CONN' : 'CHART');
+});
+
+/* --- the conn deck ------------------------------------------------------ */
+/* A turn key latches its rate while held and releases on the way up, on every
+   path out — pointerup, cancel and leave — because a rate that stuck on
+   because a thumb slid off the key would fly the vessel into a planet. */
+[['c-yl','y',-1],['c-yr','y',1],['c-pu','p',1],['c-pd','p',-1]].forEach(([id,ax,dir])=>{
+  const b=$(id);
+  const down=e=>{
+    e.preventDefault();
+    try{ b.setPointerCapture(e.pointerId); }catch(_){}
+    b.dataset.held='1'; connSteer(ax,dir); sndKey();
+  };
+  const up=()=>{ b.dataset.held=''; connSteer(ax,0); };
+  b.addEventListener('pointerdown',down);
+  b.addEventListener('pointerup',up);
+  b.addEventListener('pointercancel',up);
+  b.addEventListener('pointerleave',up);
+});
+$('c-thr').addEventListener('click',()=>connThr(1));
+$('c-slow').addEventListener('click',()=>connThr(-1));
+$('c-align').addEventListener('click',connAlign);
+$('c-out').addEventListener('click',()=>connExit('CHART'));
 
 $('ap-x').addEventListener('click',approachStow);
 $('ap-go').addEventListener('click',approachRun);
@@ -7883,6 +8674,7 @@ function frame(now){
   if(!sim.landed) stepNav(wall);
   updateScan(wall);
   raiderDrift(wall);
+  connStep(wall);
   commsTick(wall);
   audioFrame();
   updatePhase();
@@ -7890,7 +8682,10 @@ function frame(now){
 
   /* The camera eases to whatever we are looking at: the vehicle normally,
      the target while a jump is being considered, and it rides the jump. */
-  if(sim.view==='LOCAL' && !sim.jumping){
+  if(conn.on && !sim.jumping){
+    /* connStep() has already put the camera where the vessel is. Nothing below
+       may ease it anywhere else. */
+  }else if(sim.view==='LOCAL' && !sim.jumping){
     /* Its own frame entirely: origin at the primary, and a field measured in
        orbits rather than light years. */
     cam.tgt=[0,0,0];
@@ -7903,9 +8698,13 @@ function frame(now){
     : cam.mode===2 ? target().p
     : here().p;
   if(sim.view!=='LOCAL'||sim.jumping) cam.tgt=focus;
-  for(let i=0;i<3;i++) cam.at[i]+=(cam.tgt[i]-cam.at[i])*Math.min(1,wall*3.2);
+  if(!(conn.on&&!sim.jumping))
+    for(let i=0;i<3;i++) cam.at[i]+=(cam.tgt[i]-cam.at[i])*Math.min(1,wall*3.2);
 
-  if(cam.mode===0 && !sim.jumping) cam.yaw+=wall*0.045;
+  /* The idle spin is a chart affordance. In the conn the operator's own heading
+     is the camera, and a console that crept the heading round on its own would
+     be an instrument lying about where the vessel points. */
+  if(cam.mode===0 && !sim.jumping && !conn.on) cam.yaw+=wall*0.045;
 
   F=Math.min(W,H)/(2*Math.tan(cam.fov/2));
   render();

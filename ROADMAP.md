@@ -58,6 +58,13 @@ ticked once you have merged it.
 - [ ] E3 · Power is unmodelled. The tube, the array and the drive all draw from something; give the operator the routing decision. · blocked-by: E1
 - [ ] E4 · The boot self-test reports subsystems that do not exist yet. Once E1 lands, make the self-test tell the truth about them. · blocked-by: E1
 
+### H — found while building the conn, not yet fixed
+
+- [ ] H1 · Hazards live in the light-year frame and so do not exist inside a system. The conn crosses 6 AU of real space with nothing in it but worlds; debris, dust and wrecks belong in there too, at AU scale, and the survey should have to find them. · blocked-by: B2
+- [ ] H2 · A raider is drawn in the conn at its true bearing but its range is quoted in light years, because that is the frame it closes in. Inside a system that reads as a unit mismatch. Decide whether hostiles get in-system positions or whether the readout should say so plainly. · blocked-by:
+- [ ] H3 · There is no reason to fly manually. The governed approach is strictly better than hand-flying, so the manual controls are a trap with no upside. Give hand-flying something it can do that ALIGN cannot — a hazard to thread, a body ALIGN will not take you to, a reason to point somewhere other than at the target. · blocked-by: H1
+- [ ] H4 · Air is the only cost of flight. A drive that never breaks and never runs out of anything makes a fifty-second crossing free in every way that matters except the clock. · blocked-by: E3
+
 ### G — found while building the hostiles, not yet fixed
 
 - [ ] G1 · An open contest panel suppresses both the ENGAGE hail and any hostile hail, so a contest the operator walks away from silently changes what the primary control does. Measured: ENGAGE routed away from a culture it should have hailed, and a raider sat at 0.0 ly unable to open a channel. · blocked-by:
@@ -84,6 +91,7 @@ ticked once you have merged it.
 - [x] ENGAGE: one-key travel and a computer that always gets you there
 - [x] Cultural contests — tally, hold, precedence, continuation
 - [x] Hostiles: four kinds, on the scope, with their own dialogue and demands
+- [x] The conn: first-person flight in a system, and planets reached by flying
 
 ---
 
