@@ -167,6 +167,7 @@
     this.boilT = 0;
     this.stageBias = 0;
     this.shake = 0;
+    this.groundY = -1e9;
 
     /* Playing with it, unprompted, is itself a thing it responds to. */
     this.play = 0;
@@ -438,19 +439,21 @@
          rate ramps in rather than the whole thing easing off the floor the
          instant it is called a gas. */
       const rate = 0.25 + 2.4 * M.smoothstep(0.25, 1.5, this.boilT);
-      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * rate);
+      this.fallY += (this._restingY(p) - this.fallY) * Math.min(1, dt * rate);
       this.fallV = 0;
       this.landed = false;
     } else {
       /* Nothing holding it down: it drifts back to where it lives. */
-      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * 1.6);
+      this.fallY += (this._restingY(p) - this.fallY) * Math.min(1, dt * 1.6);
       this.fallV = 0;
       this.landed = false;
     }
 
-    /* Follow it down, but not all the way — losing it out of the bottom of
-       the frame would be worse than the floor creeping up the shot. */
-    const wantBias = Math.min(0, this.fallY) * 0.62;
+    /* Follow it, but not all the way down — losing it out of the bottom of
+       the frame would be worse than the floor creeping up the shot. Upward it
+       follows harder, because something big enough to stand on the ground is
+       big enough to leave the frame entirely. */
+    const wantBias = this.fallY * (this.fallY < 0 ? 0.62 : 0.85);
     this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
     if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
   };
@@ -469,6 +472,12 @@
     /* The row of the model that produces world Y. Its length is the scale. */
     const g = [m[1], m[5], m[9]];
     const floorY = this.renderer.floorY;
+
+    /* Where it would have to sit for its nominal shape to just touch. For a
+       23 cm being this is far below where it floats and never binds; for a
+       4.5 m car it is well above, and the car rests on the ground instead of
+       hovering through it. */
+    this.groundY = floorY - this.body.lowestAlong(g, true) - this.driftY;
 
     if (p.fall) {
       const need = floorY - this.body.lowestAlong(g, true) - m[13];
@@ -496,6 +505,12 @@
   /* The squash is what carries the weight. A body this stiff barely deforms
      from the impulse alone, so the impulse is sized for the read: about a
      fifth of its own radius at terminal speed, gone again inside a second. */
+  /* Where it settles when nothing is pulling it down: its usual height,
+     unless it has become something too big to hover. */
+  App.prototype._restingY = function (p) {
+    return Math.max(p.rise, this.groundY === undefined ? p.rise : this.groundY);
+  };
+
   App.prototype.onLand = function (speed) {
     const s = M.clamp(speed / 6, 0.2, 1);
     this.body.impact([0, -1, 0], 6.5 * s);
@@ -783,7 +798,7 @@
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
     }
-    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 14);
+    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 70);
   };
 
   App.prototype._removeProp = function (i) {
@@ -1171,7 +1186,11 @@
       : this.target;
 
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
-    M.perspective(this.proj, 0.72, aspect, 0.08, 60);
+    /* The clip planes track the shot. A 4.5 m car needs to be looked at from
+       forty units away, and a near plane sized for a 23 cm sphere throws away
+       most of the depth buffer at that distance. */
+    const near = Math.max(0.08, c.dist * 0.012);
+    M.perspective(this.proj, 0.72, aspect, near, near + c.dist * 6 + 120);
     M.lookAt(this.view, this.eye, centre, [0, 1, 0]);
     M.multiply(this.viewProj, this.proj, this.view);
     M.invert(this.invViewProj, this.viewProj);
@@ -1191,8 +1210,13 @@
 
   App.prototype.updateLight = function () {
     const d = LIGHT.dir;
-    M.lookAt(this.lightView, [d[0] * 11, d[1] * 11, d[2] * 11], [0, -0.6, 0], [0, 1, 0]);
-    M.ortho(this.lightProj, -5.6, 5.6, -5.6, 5.6, 1.0, 22.0);
+    /* The shadow map covers the subject, whatever size the subject is now. */
+    const s = Math.max(5.6, (this.beingReach || 1.2) * 1.7);
+    const far = s * 4;
+    const at = [0, Math.min(0, this.fallY) * 0.5, 0];
+    M.lookAt(this.lightView,
+      [at[0] + d[0] * s * 2, at[1] + d[1] * s * 2, at[2] + d[2] * s * 2], at, [0, 1, 0]);
+    M.ortho(this.lightProj, -s, s, -s, s, 1.0, far);
     M.multiply(this.lightVP, this.lightProj, this.lightView);
   };
 
@@ -1362,6 +1386,7 @@
       gas: this.gas,
       boil: this.boil,
       inert: this.inert,
+      floorFade: Math.max(26, this.camera.dist * 1.9),
       poolPos: this.headPos,
       poolColor: this.poolColor,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),

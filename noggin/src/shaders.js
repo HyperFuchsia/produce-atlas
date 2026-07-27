@@ -295,7 +295,15 @@ void main() {
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
-      form += (iri * pow(1.0 - ndvAll, 3.0) * 0.55 + uFocusColor * focus * 0.5)
+      /* A rim of its own interference, so it never stops being itself.
+         Deliberately not the shell's own interference: that one drifts with world
+         position, which is invisible across a 23 cm sphere and bands a 4.5 m
+         car like an oil slick. This one depends on view angle alone, so it
+         behaves the same whatever size the thing has become, and it is tight
+         enough to stay an edge rather than a wash. */
+      vec3 sheen = 0.5 + 0.5 * cos(6.28318 * (f * 1.6 + uTime * 0.05
+                 + vec3(0.0, 0.33, 0.67)));
+      form += (sheen * pow(1.0 - ndvAll, 5.0) * 0.22 + uFocusColor * focus * 0.5)
             * (1.0 - uInert);
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
@@ -421,6 +429,7 @@ uniform vec3 uPoolPos, uPoolColor;
 uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
+uniform float uFade;      /* how far the floor reaches before it goes */
 out vec4 oColor;
 ${COMMON}
 
@@ -432,7 +441,9 @@ float gridMask(vec2 p, float step) {
 
 void main() {
   float d = length(vWPos.xz);
-  float fade = smoothstep(26.0, 4.0, d);
+  /* The room grows with the subject: a 4.5 m car standing on a floor that
+     runs out at 2.6 m looks like it is parked on a rug. */
+  float fade = smoothstep(uFade, uFade * 0.15, d);
   if (fade <= 0.001) discard;
 
   vec3 p = vLPos.xyz / vLPos.w * 0.5 + 0.5;
@@ -447,7 +458,10 @@ void main() {
     sh = s / 25.0;
   }
 
-  float g = gridMask(vWPos.xz, 1.0);
+  /* One line per 10 cm up close; coarser once the shot is wide enough that
+     the fine grid would alias into a haze. */
+  float step0 = uFade > 60.0 ? 10.0 : (uFade > 26.0 ? 5.0 : 1.0);
+  float g = gridMask(vWPos.xz, step0);
   vec3 col = uFloorColor + uGridColor * g;
   /* A luminous body should light the table under it, and a hard black
      shadow under something emissive reads as a contradiction. */

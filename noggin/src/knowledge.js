@@ -400,11 +400,24 @@
   ];
 
   /* Lookup index, longest alias first so "sweetcorn" wins over "corn". */
-  const INDEX = [];
-  K.ENTRIES.forEach(function (e) {
-    e.match.forEach(function (m) { INDEX.push({ token: m, entry: e }); });
-  });
-  INDEX.sort(function (a, b) { return b.token.length - a.token.length; });
+  let INDEX = [];
+  function reindex() {
+    INDEX = [];
+    K.ENTRIES.forEach(function (e) {
+      e.match.forEach(function (m) { INDEX.push({ token: m, entry: e }); });
+    });
+    INDEX.sort(function (a, b) { return b.token.length - a.token.length; });
+  }
+  reindex();
+
+  /* Anything else it can be. The atlas proper is food plants — checked, cited,
+     and the reason its answers are trustworthy — but "I can be anything" is a
+     claim that has to survive being asked for something that is not a plant.
+     Registered separately so the two never get confused for one another. */
+  K.register = function (entries) {
+    for (let i = 0; i < entries.length; i++) K.ENTRIES.push(entries[i]);
+    reindex();
+  };
 
   /* Find the first entry mentioned anywhere in a phrase. */
   K.find = function (text) {

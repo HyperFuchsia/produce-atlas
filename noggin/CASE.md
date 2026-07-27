@@ -96,8 +96,9 @@ A case that hides these is worth nothing.
   one: the available runtime capabilities are downloads and MCP, there is no
   completion capability, and the content policy blocks every external host. The
   brain is 26 curated entries and an intent matcher.
-- **So the vocabulary is 26 things and 3 routines.** It answers well inside that
-  and admits ignorance outside it rather than inventing.
+- **So the vocabulary is small** — 26 food plants, a growing set of made
+  things, and 3 routines. It answers well inside that and admits ignorance
+  outside it rather than inventing.
 - **The morph only expresses what fits one closed sphere.** Stems, leaves and
   crowns are attached separately; anything with genuinely different topology
   (a bunch of grapes, say) becomes an approximation.
@@ -185,3 +186,13 @@ version rippled hard enough to read as a membrane under stress rather than as a
 voice. Now it breathes, harder on the stressed words, and goes completely still
 the moment it is wearing a form — which quietly makes a second point: the
 motion belongs to the being, not to whatever it is currently pretending to be.
+
+**It is not only plants.** — §3 consistency, and the first real test of it.
+"I can be anything" does not survive the first person typing "car", and the
+first thing anyone types once they notice it changes shape is not in a botany
+textbook. A car needed a shape that is not a solid of revolution, a scale
+twenty times the being's own, and an honest answer to "what is it" that does
+not invent a botany for a machine. All three were worth having anyway: the hull
+generalises to anything lofted, anything too big to hover now rests on the
+ground without being told to, and the room grows with its subject. Adding the
+next thing is a table entry.

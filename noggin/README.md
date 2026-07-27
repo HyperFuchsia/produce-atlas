@@ -69,6 +69,32 @@ If you want the old behaviour — the specimen standing *beside* it, so the two
 can be compared at true scale — say so: `show me a watermelon next to you`.
 And `be yourself again` puts it back.
 
+### It is not only plants
+
+```
+you   car
+it    Easy. Watch this.
+it    There. A car — 450 cm long and 180 cm across — wider than I usually am.
+      Which is a lot to be.
+```
+
+At **true scale**, which is the point: 4.5 metres of car against a being that is
+23 cm across. It stands on the ground rather than hovering, the camera pulls
+back to forty-odd units to hold it, the shadow map and the floor grow with it,
+and the floor coarsens from one line per 10 cm to one per metre so the room
+still reads at that distance. Nothing about that is special-cased for cars —
+anything too big to hover rests on the ground on its own.
+
+A car is not a solid of revolution, so it is a **hull**: lofted along its own
+length with separate roofline and floorpan curves and a superellipse
+cross-section, which is a rounded rectangle when you want one. Wheels ride
+along as attached parts, the same mechanism that carries a pineapple's crown.
+
+And it does not pretend to have a botany. Ask what it is and it says it is a
+machine — no ancestor, no wild relative, somebody drew it. The plant answers are
+only worth trusting because the atlas does not make things up, and that has to
+survive the atlas growing.
+
 This works because every specimen can be projected onto the being's own
 icosphere topology — polar angle picks the profile parameter, azimuth picks the
 way round — so taking a form is a **morph of rest positions**, not a mesh swap.
@@ -320,6 +346,7 @@ src/geometry.js   icosphere, adjacency, the being's shell, the cursor hand
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts
+src/things.js     everything else it can be, registered separately
 src/concepts.js   routines it acts out, and the tesseract's 4-D projection
 src/brain.js      intent matching and answers over the atlas
 src/chat.js       the conversation surface

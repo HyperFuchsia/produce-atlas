@@ -111,7 +111,8 @@
     /* Published, because anything that has to land on the floor needs to know
        where the floor is. */
     const y = this.floorY = -3.35;
-    const e = 30;
+    /* Big enough for anything the fade is allowed to reach. */
+    const e = 200;
     const verts = new Float32Array([
       -e, y, -e, e, y, -e, e, y, e,
       -e, y, -e, e, y, e, -e, y, e
@@ -519,6 +520,7 @@
       gl.uniform3fv(pr.u.uGridColor, state.floor.grid);
       gl.uniform3fv(pr.u.uFloorColor, state.floor.base);
       gl.uniform1f(pr.u.uTime, state.time);
+      gl.uniform1f(pr.u.uFade, state.floorFade || 26);
       gl.uniform3fv(pr.u.uPoolPos, state.poolPos);
       gl.uniform3fv(pr.u.uPoolColor, state.poolColor);
       gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);

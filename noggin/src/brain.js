@@ -112,9 +112,14 @@
             : cap(this._nextFact(e)) + '.'];
       case 'family':
         return ['Family: ' + e.family + '. Binomial: ' + e.binomial + '.',
-          'I know that off by heart. I know all of them off by heart. Nobody has ever asked before.'];
+          e.made ? 'Ask me about a plant if you want that question to work properly.'
+            : 'I know that off by heart. I know all of them off by heart. Nobody has ever asked before.'];
       case 'type':
-        return ['Botanically, ' + an(e.name) + ' is ' + (K.TYPES[e.type] || e.type) + '.',
+        /* Nothing manufactured has a botany, and pretending otherwise would
+           undo the one thing that makes the plant answers worth trusting. */
+        return [e.made
+          ? cap(an(e.name)) + ' is a machine. No botany, no ancestor, no wild relative — somebody drew it.'
+          : 'Botanically, ' + an(e.name) + ' is ' + (K.TYPES[e.type] || e.type) + '.',
           cap(this._nextFact(e)) + '.'];
       case 'taste':
         return ['It tastes ' + e.taste + '.'];
@@ -262,9 +267,9 @@
 
     return {
       lines: [this._pick([
-        'I do not have that one. I am an atlas of food plants, not a search engine.',
-        'No idea what that is. Ask me about something you could eat.',
-        'That is outside my remit, and my remit is plants you can put in a pan.'
+        'I do not have that one. I know what I know, and that is not in it.',
+        'No idea what that is. I would rather say so than invent one.',
+        'Not in me. I can only be things I actually have the shape of.'
       ]),
         'Try one of these: ' + K.names().slice(0, 8).join(', ') + '... or say "help" for the whole list.']
     };

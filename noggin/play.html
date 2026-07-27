@@ -2082,6 +2082,14 @@
     });
   }
 
+  function rotateX(src, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return transform(src, function (v) {
+      const y = v[1] * c - v[2] * s, z = v[1] * s + v[2] * c;
+      v[1] = y; v[2] = z;
+    });
+  }
+
   function rotateY(src, ang) {
     const c = Math.cos(ang), s = Math.sin(ang);
     return transform(src, function (v) {
@@ -2140,6 +2148,40 @@
       return out;
     }
 
+    /* A hull is lofted along its own length rather than revolved about an
+       axis, because most made things are not solids of revolution. Polar
+       angle about X picks the station down the body; the angle round X picks
+       the way round; and the cross-section there is a superellipse, which is
+       a rounded rectangle when you want one and an ellipse when you do not.
+
+       Separate top and bottom profiles are what make it a car rather than a
+       loaf: the roofline and the floorpan are unrelated curves. */
+    if (spec.kind === 'hull') {
+      const sc = P.cm(1);
+      const len = spec.lengthCm * sc;
+      const halfW = spec.widthCm * 0.5 * sc;
+      const tall = spec.heightCm * sc;
+
+      const t = 1 - Math.acos(M.clamp(dx, -1, 1)) / Math.PI;
+      const top = sampleProfile(spec.top, t);
+      const bot = sampleProfile(spec.bottom, t);
+      const wide = sampleProfile(spec.wide, t);
+
+      const hy = Math.max((top - bot) * 0.5 * tall, 1e-3);
+      const cy = (top + bot) * 0.5 * tall - tall * 0.5;   /* origin at mid-height */
+      const hz = Math.max(wide * halfW, 1e-3);
+
+      const ay = Math.cos(Math.atan2(dy, dz)), az = Math.sin(Math.atan2(dy, dz));
+      const n = spec.corner || 4;
+      const r = 1 / Math.pow(
+        Math.pow(Math.abs(ay / hy), n) + Math.pow(Math.abs(az / hz), n), 1 / n);
+
+      out[0] = (t - 0.5) * len;
+      out[1] = ay * r + cy;
+      out[2] = az * r;
+      return out;
+    }
+
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
@@ -2191,6 +2233,19 @@
 
     if (trimOnly) {
       /* body skipped */
+    } else if (spec.kind === 'hull') {
+      /* Built by pushing a sphere through the same mapping the being uses, so
+         there is one definition of the shape and the standalone specimen and
+         the worn form cannot drift apart. */
+      const unit = G.icosphere(4);
+      const n = unit.positions.length / 3;
+      const pos = new Float32Array(n * 3);
+      const o = [0, 0, 0];
+      for (let i = 0; i < n; i++) {
+        P.formOnSphere(o, spec, unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
+        pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
+      }
+      part.add(pos, unit.indices, spec.color, mat);
     } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
@@ -2261,6 +2316,26 @@
         g = rotateY(g, t * Math.PI * 2 * 2.3);
         part.add(translate(g, 0, height * 0.45, 0), l.indices,
           spec.crown.color || [0.26, 0.46, 0.20], MAT_MATTE);
+      }
+    }
+
+    /* Wheels. Four of them, and they are the single strongest cue that a
+       lumpy box is a car, so they are worth their own case. Revolved about Y
+       like everything else here, then laid on their side. */
+    if (spec.wheels) {
+      const w = spec.wheels;
+      const disc = revolve({
+        rings: 10, segments: 22,
+        height: w.widthCm * scale, radius: w.diameterCm * 0.5 * scale,
+        profile: [0, 0.88, 1, 1, 1, 1, 1, 0.88, 0]
+      });
+      const laid = rotateX(disc.positions, Math.PI * 0.5);
+      const corners = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+      for (let i = 0; i < corners.length; i++) {
+        part.add(
+          translate(laid, corners[i][0] * w.atXCm * scale, w.atYCm * scale,
+            corners[i][1] * w.atZCm * scale),
+          disc.indices, w.color || [0.09, 0.09, 0.10], MAT_MATTE);
       }
     }
 
@@ -2695,11 +2770,24 @@
   ];
 
   /* Lookup index, longest alias first so "sweetcorn" wins over "corn". */
-  const INDEX = [];
-  K.ENTRIES.forEach(function (e) {
-    e.match.forEach(function (m) { INDEX.push({ token: m, entry: e }); });
-  });
-  INDEX.sort(function (a, b) { return b.token.length - a.token.length; });
+  let INDEX = [];
+  function reindex() {
+    INDEX = [];
+    K.ENTRIES.forEach(function (e) {
+      e.match.forEach(function (m) { INDEX.push({ token: m, entry: e }); });
+    });
+    INDEX.sort(function (a, b) { return b.token.length - a.token.length; });
+  }
+  reindex();
+
+  /* Anything else it can be. The atlas proper is food plants — checked, cited,
+     and the reason its answers are trustworthy — but "I can be anything" is a
+     claim that has to survive being asked for something that is not a plant.
+     Registered separately so the two never get confused for one another. */
+  K.register = function (entries) {
+    for (let i = 0; i < entries.length; i++) K.ENTRIES.push(entries[i]);
+    reindex();
+  };
 
   /* Find the first entry mentioned anywhere in a phrase. */
   K.find = function (text) {
@@ -2722,6 +2810,61 @@
   };
 
   NG.K = K;
+})(window.NG = window.NG || {});
+
+/* ===== src/things.js ===== */
+/* Produce Atlas — things that are not plants.
+
+   The atlas proper is food plants: checked, sourced, and the reason its
+   answers can be trusted. This is the other half of the promise. "I can be
+   anything" does not survive first contact with someone typing "car", and the
+   first thing anyone types once they realise it changes shape is something
+   that was never in a botany textbook.
+
+   Registered separately so the two never get mistaken for one another, and so
+   adding a thing is adding a table entry. */
+(function (NG) {
+  'use strict';
+
+  const K = NG.K;
+
+  K.register([
+    {
+      id: 'car', name: 'car',
+      match: ['car', 'automobile', 'motor car', 'hatchback', 'saloon', 'sedan', 'vehicle'],
+      made: true,
+
+      /* A lofted hull rather than a solid of revolution. The roofline and the
+         floorpan are separate curves, front to back, which is the whole
+         difference between a car and a loaf of bread. */
+      kind: 'hull',
+      lengthCm: 450, widthCm: 180, heightCm: 145,
+      /* rear bumper ....................................... front bumper */
+      top: [0.44, 0.58, 0.63, 0.76, 0.88, 0.88, 0.74, 0.56, 0.50, 0.42],
+      bottom: [0.32, 0.19, 0.15, 0.14, 0.14, 0.14, 0.14, 0.15, 0.20, 0.32],
+      wide: [0.58, 0.86, 0.96, 1.00, 1.00, 1.00, 0.98, 0.90, 0.76, 0.54],
+      corner: 5.0,
+      color: [0.17, 0.028, 0.026],
+      wheels: {
+        diameterCm: 64, widthCm: 22, atXCm: 144, atYCm: -40.5, atZCm: 78,
+        color: [0.08, 0.08, 0.09]
+      },
+
+      family: 'road vehicles, which is not a clade and I want that on the record',
+      binomial: 'there is not one, and it bothers me more than it should',
+      type: 'machine',
+      origin: 'Mannheim, 1886',
+      ancestor: null,
+      facts: [
+        'a modern car is around thirty thousand parts, and roughly a third of them move',
+        'the average car spends about ninety-five per cent of its life parked. You built all this to leave it standing still',
+        'crumple zones work by being deliberately weak. The car is designed to destroy itself so that you stop over half a metre instead of over two centimetres',
+        'the bottom of a rolling wheel is not moving. Every point on the rim traces a cycloid, and the patch touching the road is momentarily at rest — which is why it grips instead of sliding',
+        'Karl Benz built the first one with three wheels and about two thirds of one horsepower. His wife Bertha took it on a 106 km trip without telling him, to prove it worked, and had to clean a blocked fuel line with a hatpin'
+      ],
+      taste: 'like a serious mistake. I would not.'
+    }
+  ]);
 })(window.NG = window.NG || {});
 
 /* ===== src/concepts.js ===== */
@@ -3044,9 +3187,14 @@
             : cap(this._nextFact(e)) + '.'];
       case 'family':
         return ['Family: ' + e.family + '. Binomial: ' + e.binomial + '.',
-          'I know that off by heart. I know all of them off by heart. Nobody has ever asked before.'];
+          e.made ? 'Ask me about a plant if you want that question to work properly.'
+            : 'I know that off by heart. I know all of them off by heart. Nobody has ever asked before.'];
       case 'type':
-        return ['Botanically, ' + an(e.name) + ' is ' + (K.TYPES[e.type] || e.type) + '.',
+        /* Nothing manufactured has a botany, and pretending otherwise would
+           undo the one thing that makes the plant answers worth trusting. */
+        return [e.made
+          ? cap(an(e.name)) + ' is a machine. No botany, no ancestor, no wild relative — somebody drew it.'
+          : 'Botanically, ' + an(e.name) + ' is ' + (K.TYPES[e.type] || e.type) + '.',
           cap(this._nextFact(e)) + '.'];
       case 'taste':
         return ['It tastes ' + e.taste + '.'];
@@ -3194,9 +3342,9 @@
 
     return {
       lines: [this._pick([
-        'I do not have that one. I am an atlas of food plants, not a search engine.',
-        'No idea what that is. Ask me about something you could eat.',
-        'That is outside my remit, and my remit is plants you can put in a pan.'
+        'I do not have that one. I know what I know, and that is not in it.',
+        'No idea what that is. I would rather say so than invent one.',
+        'Not in me. I can only be things I actually have the shape of.'
       ]),
         'Try one of these: ' + K.names().slice(0, 8).join(', ') + '... or say "help" for the whole list.']
     };
@@ -3762,7 +3910,15 @@ void main() {
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
-      form += (iri * pow(1.0 - ndvAll, 3.0) * 0.55 + uFocusColor * focus * 0.5)
+      /* A rim of its own interference, so it never stops being itself.
+         Deliberately not the shell's own interference: that one drifts with world
+         position, which is invisible across a 23 cm sphere and bands a 4.5 m
+         car like an oil slick. This one depends on view angle alone, so it
+         behaves the same whatever size the thing has become, and it is tight
+         enough to stay an edge rather than a wash. */
+      vec3 sheen = 0.5 + 0.5 * cos(6.28318 * (f * 1.6 + uTime * 0.05
+                 + vec3(0.0, 0.33, 0.67)));
+      form += (sheen * pow(1.0 - ndvAll, 5.0) * 0.22 + uFocusColor * focus * 0.5)
             * (1.0 - uInert);
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
@@ -3888,6 +4044,7 @@ uniform vec3 uPoolPos, uPoolColor;
 uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
+uniform float uFade;      /* how far the floor reaches before it goes */
 out vec4 oColor;
 ${COMMON}
 
@@ -3899,7 +4056,9 @@ float gridMask(vec2 p, float step) {
 
 void main() {
   float d = length(vWPos.xz);
-  float fade = smoothstep(26.0, 4.0, d);
+  /* The room grows with the subject: a 4.5 m car standing on a floor that
+     runs out at 2.6 m looks like it is parked on a rug. */
+  float fade = smoothstep(uFade, uFade * 0.15, d);
   if (fade <= 0.001) discard;
 
   vec3 p = vLPos.xyz / vLPos.w * 0.5 + 0.5;
@@ -3914,7 +4073,10 @@ void main() {
     sh = s / 25.0;
   }
 
-  float g = gridMask(vWPos.xz, 1.0);
+  /* One line per 10 cm up close; coarser once the shot is wide enough that
+     the fine grid would alias into a haze. */
+  float step0 = uFade > 60.0 ? 10.0 : (uFade > 26.0 ? 5.0 : 1.0);
+  float g = gridMask(vWPos.xz, step0);
   vec3 col = uFloorColor + uGridColor * g;
   /* A luminous body should light the table under it, and a hard black
      shadow under something emissive reads as a contradiction. */
@@ -4115,7 +4277,8 @@ void main() {
     /* Published, because anything that has to land on the floor needs to know
        where the floor is. */
     const y = this.floorY = -3.35;
-    const e = 30;
+    /* Big enough for anything the fade is allowed to reach. */
+    const e = 200;
     const verts = new Float32Array([
       -e, y, -e, e, y, -e, e, y, e,
       -e, y, -e, e, y, e, -e, y, e
@@ -4523,6 +4686,7 @@ void main() {
       gl.uniform3fv(pr.u.uGridColor, state.floor.grid);
       gl.uniform3fv(pr.u.uFloorColor, state.floor.base);
       gl.uniform1f(pr.u.uTime, state.time);
+      gl.uniform1f(pr.u.uFade, state.floorFade || 26);
       gl.uniform3fv(pr.u.uPoolPos, state.poolPos);
       gl.uniform3fv(pr.u.uPoolColor, state.poolColor);
       gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
@@ -5077,6 +5241,7 @@ void main() {
     this.boilT = 0;
     this.stageBias = 0;
     this.shake = 0;
+    this.groundY = -1e9;
 
     /* Playing with it, unprompted, is itself a thing it responds to. */
     this.play = 0;
@@ -5348,19 +5513,21 @@ void main() {
          rate ramps in rather than the whole thing easing off the floor the
          instant it is called a gas. */
       const rate = 0.25 + 2.4 * M.smoothstep(0.25, 1.5, this.boilT);
-      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * rate);
+      this.fallY += (this._restingY(p) - this.fallY) * Math.min(1, dt * rate);
       this.fallV = 0;
       this.landed = false;
     } else {
       /* Nothing holding it down: it drifts back to where it lives. */
-      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * 1.6);
+      this.fallY += (this._restingY(p) - this.fallY) * Math.min(1, dt * 1.6);
       this.fallV = 0;
       this.landed = false;
     }
 
-    /* Follow it down, but not all the way — losing it out of the bottom of
-       the frame would be worse than the floor creeping up the shot. */
-    const wantBias = Math.min(0, this.fallY) * 0.62;
+    /* Follow it, but not all the way down — losing it out of the bottom of
+       the frame would be worse than the floor creeping up the shot. Upward it
+       follows harder, because something big enough to stand on the ground is
+       big enough to leave the frame entirely. */
+    const wantBias = this.fallY * (this.fallY < 0 ? 0.62 : 0.85);
     this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
     if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
   };
@@ -5379,6 +5546,12 @@ void main() {
     /* The row of the model that produces world Y. Its length is the scale. */
     const g = [m[1], m[5], m[9]];
     const floorY = this.renderer.floorY;
+
+    /* Where it would have to sit for its nominal shape to just touch. For a
+       23 cm being this is far below where it floats and never binds; for a
+       4.5 m car it is well above, and the car rests on the ground instead of
+       hovering through it. */
+    this.groundY = floorY - this.body.lowestAlong(g, true) - this.driftY;
 
     if (p.fall) {
       const need = floorY - this.body.lowestAlong(g, true) - m[13];
@@ -5406,6 +5579,12 @@ void main() {
   /* The squash is what carries the weight. A body this stiff barely deforms
      from the impulse alone, so the impulse is sized for the read: about a
      fifth of its own radius at terminal speed, gone again inside a second. */
+  /* Where it settles when nothing is pulling it down: its usual height,
+     unless it has become something too big to hover. */
+  App.prototype._restingY = function (p) {
+    return Math.max(p.rise, this.groundY === undefined ? p.rise : this.groundY);
+  };
+
   App.prototype.onLand = function (speed) {
     const s = M.clamp(speed / 6, 0.2, 1);
     this.body.impact([0, -1, 0], 6.5 * s);
@@ -5693,7 +5872,7 @@ void main() {
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
     }
-    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 14);
+    this.camera.targetDist = M.clamp((4.9 + reach * 2.2) * this.distBoost, 4.4, 70);
   };
 
   App.prototype._removeProp = function (i) {
@@ -6081,7 +6260,11 @@ void main() {
       : this.target;
 
     const aspect = this.canvas.width / Math.max(1, this.canvas.height);
-    M.perspective(this.proj, 0.72, aspect, 0.08, 60);
+    /* The clip planes track the shot. A 4.5 m car needs to be looked at from
+       forty units away, and a near plane sized for a 23 cm sphere throws away
+       most of the depth buffer at that distance. */
+    const near = Math.max(0.08, c.dist * 0.012);
+    M.perspective(this.proj, 0.72, aspect, near, near + c.dist * 6 + 120);
     M.lookAt(this.view, this.eye, centre, [0, 1, 0]);
     M.multiply(this.viewProj, this.proj, this.view);
     M.invert(this.invViewProj, this.viewProj);
@@ -6101,8 +6284,13 @@ void main() {
 
   App.prototype.updateLight = function () {
     const d = LIGHT.dir;
-    M.lookAt(this.lightView, [d[0] * 11, d[1] * 11, d[2] * 11], [0, -0.6, 0], [0, 1, 0]);
-    M.ortho(this.lightProj, -5.6, 5.6, -5.6, 5.6, 1.0, 22.0);
+    /* The shadow map covers the subject, whatever size the subject is now. */
+    const s = Math.max(5.6, (this.beingReach || 1.2) * 1.7);
+    const far = s * 4;
+    const at = [0, Math.min(0, this.fallY) * 0.5, 0];
+    M.lookAt(this.lightView,
+      [at[0] + d[0] * s * 2, at[1] + d[1] * s * 2, at[2] + d[2] * s * 2], at, [0, 1, 0]);
+    M.ortho(this.lightProj, -s, s, -s, s, 1.0, far);
     M.multiply(this.lightVP, this.lightProj, this.lightView);
   };
 
@@ -6272,6 +6460,7 @@ void main() {
       gas: this.gas,
       boil: this.boil,
       inert: this.inert,
+      floorFade: Math.max(26, this.camera.dist * 1.9),
       poolPos: this.headPos,
       poolColor: this.poolColor,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),

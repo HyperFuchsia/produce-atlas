@@ -171,6 +171,14 @@
     });
   }
 
+  function rotateX(src, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return transform(src, function (v) {
+      const y = v[1] * c - v[2] * s, z = v[1] * s + v[2] * c;
+      v[1] = y; v[2] = z;
+    });
+  }
+
   function rotateY(src, ang) {
     const c = Math.cos(ang), s = Math.sin(ang);
     return transform(src, function (v) {
@@ -229,6 +237,40 @@
       return out;
     }
 
+    /* A hull is lofted along its own length rather than revolved about an
+       axis, because most made things are not solids of revolution. Polar
+       angle about X picks the station down the body; the angle round X picks
+       the way round; and the cross-section there is a superellipse, which is
+       a rounded rectangle when you want one and an ellipse when you do not.
+
+       Separate top and bottom profiles are what make it a car rather than a
+       loaf: the roofline and the floorpan are unrelated curves. */
+    if (spec.kind === 'hull') {
+      const sc = P.cm(1);
+      const len = spec.lengthCm * sc;
+      const halfW = spec.widthCm * 0.5 * sc;
+      const tall = spec.heightCm * sc;
+
+      const t = 1 - Math.acos(M.clamp(dx, -1, 1)) / Math.PI;
+      const top = sampleProfile(spec.top, t);
+      const bot = sampleProfile(spec.bottom, t);
+      const wide = sampleProfile(spec.wide, t);
+
+      const hy = Math.max((top - bot) * 0.5 * tall, 1e-3);
+      const cy = (top + bot) * 0.5 * tall - tall * 0.5;   /* origin at mid-height */
+      const hz = Math.max(wide * halfW, 1e-3);
+
+      const ay = Math.cos(Math.atan2(dy, dz)), az = Math.sin(Math.atan2(dy, dz));
+      const n = spec.corner || 4;
+      const r = 1 / Math.pow(
+        Math.pow(Math.abs(ay / hy), n) + Math.pow(Math.abs(az / hz), n), 1 / n);
+
+      out[0] = (t - 0.5) * len;
+      out[1] = ay * r + cy;
+      out[2] = az * r;
+      return out;
+    }
+
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
@@ -280,6 +322,19 @@
 
     if (trimOnly) {
       /* body skipped */
+    } else if (spec.kind === 'hull') {
+      /* Built by pushing a sphere through the same mapping the being uses, so
+         there is one definition of the shape and the standalone specimen and
+         the worn form cannot drift apart. */
+      const unit = G.icosphere(4);
+      const n = unit.positions.length / 3;
+      const pos = new Float32Array(n * 3);
+      const o = [0, 0, 0];
+      for (let i = 0; i < n; i++) {
+        P.formOnSphere(o, spec, unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
+        pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
+      }
+      part.add(pos, unit.indices, spec.color, mat);
     } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
@@ -350,6 +405,26 @@
         g = rotateY(g, t * Math.PI * 2 * 2.3);
         part.add(translate(g, 0, height * 0.45, 0), l.indices,
           spec.crown.color || [0.26, 0.46, 0.20], MAT_MATTE);
+      }
+    }
+
+    /* Wheels. Four of them, and they are the single strongest cue that a
+       lumpy box is a car, so they are worth their own case. Revolved about Y
+       like everything else here, then laid on their side. */
+    if (spec.wheels) {
+      const w = spec.wheels;
+      const disc = revolve({
+        rings: 10, segments: 22,
+        height: w.widthCm * scale, radius: w.diameterCm * 0.5 * scale,
+        profile: [0, 0.88, 1, 1, 1, 1, 1, 0.88, 0]
+      });
+      const laid = rotateX(disc.positions, Math.PI * 0.5);
+      const corners = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+      for (let i = 0; i < corners.length; i++) {
+        part.add(
+          translate(laid, corners[i][0] * w.atXCm * scale, w.atYCm * scale,
+            corners[i][1] * w.atZCm * scale),
+          disc.indices, w.color || [0.09, 0.09, 0.10], MAT_MATTE);
       }
     }
 
