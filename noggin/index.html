@@ -6,23 +6,25 @@
 <meta name="color-scheme" content="dark">
 <title>Produce Atlas</title>
 <style>
-  /* A lit display case in a dark room. Committed single theme on purpose:
-     the stage is a rendered 3-D scene, and a light mode would fight it. */
+  /* The scene is the page. Everything here is a thin overlay on top of it and
+     is expected to get out of the way — nothing owns a permanent block of the
+     screen except one input. Committed dark theme: the stage is a rendered 3-D
+     scene and a light mode would fight it. */
   :root {
     --ink:      #0C0F0D;
-    --ink-2:    #141917;
-    --line:     rgba(233, 229, 218, 0.13);
-    --line-2:   rgba(233, 229, 218, 0.07);
-    --paper:    #E9E5DA;
-    --muted:    #939990;
+    --line:     rgba(233, 229, 218, 0.16);
+    --paper:    #F2EFE7;
+    --muted:    #9AA097;
     --accent:   #D6A93C;
-    --accent-2: #F0C55E;
+    --accent-2: #F4CC69;
 
     --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-    --panel-w: min(400px, 34vw);
+    /* Text sits directly on the render, so it carries its own legibility. */
+    --lift: 0 1px 2px rgba(0,0,0,0.9), 0 2px 18px rgba(0,0,0,0.75);
+    --rail: min(660px, calc(100vw - 40px));
   }
 
   * { box-sizing: border-box; }
@@ -50,64 +52,109 @@
   }
   #gl:active { cursor: grabbing; }
 
-  /* ---- the conversation column ---------------------------------------- */
+  /* ---- wordmark -------------------------------------------------------- */
 
-  /* Docked rather than floating: one surface the stage runs behind, so the
-     eye reads stage-then-notes instead of hunting across scattered cards. */
-  #panel {
+  #mark {
     position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: var(--panel-w);
+    top: 20px;
+    left: 24px;
+    z-index: 10;
+    font-family: var(--serif);
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    text-shadow: var(--lift);
+    pointer-events: none;
+    user-select: none;
+  }
+  #mark em { font-style: italic; color: var(--accent); }
+
+  /* ---- conversation ----------------------------------------------------- */
+
+  /* Bottom-anchored and transient. Lines stack upward, dissolve at the top
+     edge, and remove themselves once read — so the conversation never becomes
+     a wall standing in front of the scene. */
+  #hud {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
     display: flex;
     flex-direction: column;
-    background: linear-gradient(to right, rgba(9, 12, 10, 0.94) 60%, rgba(9, 12, 10, 0.74));
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border-right: 1px solid var(--line);
-    z-index: 10;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 20px max(20px, env(safe-area-inset-bottom));
+    pointer-events: none;
   }
 
-  header {
-    padding: 26px 26px 18px;
-    border-bottom: 1px solid var(--line-2);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--serif);
-    font-size: 25px;
-    font-weight: 400;
-    letter-spacing: 0.01em;
-    color: var(--paper);
-  }
-  h1 em {
-    font-style: italic;
-    color: var(--accent);
-  }
-  .sub {
-    margin-top: 7px;
-    font-size: 11.5px;
-    line-height: 1.5;
-    color: var(--muted);
+  #dialogue {
+    width: var(--rail);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 9px;
+    max-height: 32vh;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 15%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 15%);
   }
 
-  /* Starter prompts: the atlas holds 26 specimens, so naming a few beats
-     making people guess at a blank box. */
+  .msg {
+    font-size: 14.5px;
+    line-height: 1.55;
+    text-shadow: var(--lift);
+    text-wrap: pretty;
+    opacity: 1;
+    transition: opacity 1.1s ease, transform 1.1s ease;
+  }
+  .msg.gone { opacity: 0; transform: translateY(-8px); }
+
+  .msg.him { color: var(--paper); }
+  .msg.him.typing::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 15px;
+    margin-left: 3px;
+    vertical-align: -2px;
+    background: var(--accent);
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  .msg.you {
+    align-self: flex-end;
+    max-width: 85%;
+    text-align: right;
+    color: var(--accent-2);
+    font-size: 13px;
+  }
+
+  /* ---- starter prompts --------------------------------------------------- */
+
+  /* Only while the field is focused and empty. Discoverability when you want
+     it, nothing on screen when you don't. */
   #chips {
+    width: var(--rail);
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 14px 26px 0;
+    margin-top: 12px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
   }
+  body.hint #chips { opacity: 1; transform: none; pointer-events: auto; }
   .chip {
     font-family: var(--sans);
-    font-size: 11px;
-    color: var(--muted);
-    background: transparent;
+    font-size: 12px;
+    color: var(--paper);
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--line);
     border-radius: 100px;
-    padding: 5px 11px;
+    padding: 6px 13px;
     cursor: pointer;
     transition: color 0.15s ease, border-color 0.15s ease;
   }
@@ -117,98 +164,57 @@
     outline: none;
   }
 
-  #transcript {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 20px 26px 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    scrollbar-width: thin;
-    scrollbar-color: var(--line) transparent;
-  }
-  #transcript::-webkit-scrollbar { width: 7px; }
-  #transcript::-webkit-scrollbar-thumb {
-    background: var(--line);
-    border-radius: 4px;
-  }
-
-  .msg {
-    font-size: 13.5px;
-    line-height: 1.62;
-    text-wrap: pretty;
-  }
-  .msg.him { color: var(--paper); }
-  .msg.him.typing::after {
-    content: "";
-    display: inline-block;
-    width: 7px;
-    height: 14px;
-    margin-left: 2px;
-    vertical-align: -2px;
-    background: var(--accent);
-    animation: blink 1s steps(2) infinite;
-  }
-  @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
-
-  .msg.you {
-    align-self: flex-end;
-    max-width: 88%;
-    color: var(--accent-2);
-    font-size: 12.5px;
-    text-align: right;
-  }
-  .msg.you::before {
-    content: "you  ";
-    color: var(--muted);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
+  /* ---- composer ---------------------------------------------------------- */
 
   #composer {
+    width: var(--rail);
     display: flex;
     gap: 8px;
-    padding: 16px 26px 22px;
-    border-top: 1px solid var(--line-2);
+    margin-top: 14px;
+    pointer-events: auto;
   }
   #prompt {
     flex: 1;
     min-width: 0;
-    background: var(--ink-2);
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     border: 1px solid var(--line);
-    border-radius: 7px;
+    border-radius: 100px;
     color: var(--paper);
     font-family: var(--sans);
     /* 16px minimum: anything smaller makes iOS zoom the page on focus. */
     font-size: 16px;
-    padding: 10px 13px;
+    padding: 12px 20px;
     outline: none;
     transition: border-color 0.15s ease;
   }
-  #prompt:focus { border-color: var(--accent); }
-  #prompt::placeholder { color: rgba(147, 153, 144, 0.7); }
+  #prompt:focus { border-color: rgba(214, 169, 60, 0.7); }
+  #prompt::placeholder { color: rgba(154, 160, 151, 0.8); }
   #send {
-    border: 1px solid var(--accent);
-    background: transparent;
+    flex: none;
+    border: 1px solid var(--line);
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     color: var(--accent);
-    border-radius: 7px;
-    padding: 0 16px;
+    border-radius: 100px;
+    padding: 0 20px;
     font-family: var(--sans);
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     cursor: pointer;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
   }
   #send:hover, #send:focus-visible {
     background: var(--accent);
+    border-color: var(--accent);
     color: var(--ink);
     outline: none;
   }
 
-  /* ---- specimen caption ------------------------------------------------ */
+  /* ---- specimen caption --------------------------------------------------- */
 
   #tags {
     position: fixed;
@@ -228,7 +234,7 @@
     font-style: italic;
     font-size: 15px;
     color: var(--paper);
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    text-shadow: var(--lift);
   }
   .caption .size {
     display: block;
@@ -238,9 +244,8 @@
     letter-spacing: 0.1em;
     color: var(--accent);
     font-variant-numeric: tabular-nums;
-    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9);
+    text-shadow: var(--lift);
   }
-  /* A hairline dropping from the caption to the specimen. */
   .caption::after {
     content: "";
     position: absolute;
@@ -251,12 +256,12 @@
     background: linear-gradient(to bottom, var(--accent), transparent);
   }
 
-  /* ---- sound ------------------------------------------------------------ */
+  /* ---- sound --------------------------------------------------------------- */
 
   #sound {
     position: fixed;
-    right: 20px;
-    bottom: 18px;
+    right: 24px;
+    top: 20px;
     z-index: 10;
     border: none;
     background: transparent;
@@ -266,12 +271,13 @@
     letter-spacing: 0.16em;
     text-transform: uppercase;
     cursor: pointer;
-    padding: 6px 2px;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
     transition: color 0.15s ease;
   }
   #sound:hover, #sound:focus-visible { color: var(--paper); outline: none; }
 
-  /* ---- boot ------------------------------------------------------------- */
+  /* ---- boot ---------------------------------------------------------------- */
 
   #boot {
     position: fixed;
@@ -300,26 +306,16 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .msg { transition: opacity 0.2s ease; }
     .msg.him.typing::after { animation: none; }
-    #boot { transition: none; }
+    #boot, #chips { transition: none; }
   }
 
-  /* Narrow: the column becomes a sheet along the bottom, stage above it. */
-  @media (max-width: 760px) {
-    :root { --panel-w: 100%; }
-    #panel {
-      top: auto;
-      height: 52vh;
-      border-right: none;
-      border-top: 1px solid var(--line);
-      background: linear-gradient(to top, rgba(9, 12, 10, 0.96) 70%, rgba(9, 12, 10, 0.8));
-    }
-    header { padding: 16px 20px 12px; }
-    h1 { font-size: 20px; }
-    #chips { padding: 10px 20px 0; }
-    #transcript { padding: 14px 20px 6px; }
-    #composer { padding: 12px 20px 16px; }
-    #sound { bottom: auto; top: 14px; right: 16px; }
+  @media (max-width: 640px) {
+    #mark { font-size: 13px; top: 16px; left: 16px; }
+    #sound { top: 16px; right: 16px; }
+    .msg { font-size: 13.5px; }
+    #dialogue { max-height: 24vh; }
   }
 </style>
 </head>
@@ -329,25 +325,19 @@
 
 <div id="tags"></div>
 
-<div id="panel">
-  <header>
-    <h1>Produce <em>Atlas</em></h1>
-    <p class="sub">Name a food plant. He brings one into the room at its real size and tells you far more about it than you asked for.</p>
-  </header>
+<div id="mark">Produce <em>Atlas</em></div>
+<button id="sound" type="button">Sound on</button>
 
+<div id="hud">
+  <div id="dialogue"></div>
   <div id="chips"></div>
-
-  <div id="transcript"></div>
-
   <form id="composer" autocomplete="off">
-    <input id="prompt" type="text" placeholder="let's talk about an apple" maxlength="200" aria-label="Ask about a food plant">
+    <input id="prompt" type="text" placeholder="name a food plant…" maxlength="200" aria-label="Ask about a food plant">
     <button id="send" type="submit">Send</button>
   </form>
 </div>
 
-<button id="sound" type="button">Sound on</button>
-
-<div id="boot"><span>preparing the specimen…</span></div>
+<div id="boot"><span>waking the atlas…</span></div>
 
 <script src="src/math.js"></script>
 <script src="src/geometry.js"></script>

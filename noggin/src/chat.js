@@ -10,6 +10,12 @@
 
   const CHARS_PER_SEC = 90;
   const LINE_GAP = 0.18;
+  /* How long a finished line stays before it dissolves. Long enough to read a
+     three-sentence answer without hurrying, short enough that the scene is
+     never standing behind a wall of old text. */
+  const LINGER = 20;
+  const FADE = 1.2;
+  const MAX_VISIBLE = 3;
 
   function Chat(audio, brain, els) {
     this.audio = audio;
@@ -19,6 +25,7 @@
     this.form = els.form;
 
     this.queue = [];
+    this.live = [];      /* on-screen lines with their remaining lifetime */
     this.typingEl = null;
     this.full = '';
     this.shown = 0;
@@ -47,10 +54,34 @@
     row.className = 'msg ' + cls;
     row.textContent = text || '';
     this.log.appendChild(row);
-    /* Keep the transcript from growing without bound over a long session. */
-    while (this.log.childNodes.length > 60) this.log.removeChild(this.log.firstChild);
-    this.log.scrollTop = this.log.scrollHeight;
+
+    const entry = { el: row, life: LINGER, held: true };
+    this.live.push(entry);
+    /* Older lines leave early rather than stacking into a block. */
+    while (this.live.length > MAX_VISIBLE) {
+      const old = this.live[0];
+      if (old.life > FADE) old.life = FADE;
+      if (this.live.length > MAX_VISIBLE + 2) this._drop(0);
+      else break;
+    }
     return row;
+  };
+
+  Chat.prototype._drop = function (i) {
+    const e = this.live[i];
+    if (e.el.parentNode) e.el.parentNode.removeChild(e.el);
+    this.live.splice(i, 1);
+  };
+
+  /* Age the visible lines. A line still being typed does not age. */
+  Chat.prototype._ageLines = function (dt) {
+    for (let i = this.live.length - 1; i >= 0; i--) {
+      const e = this.live[i];
+      if (e.el === this.typingEl) continue;
+      e.life -= dt;
+      if (e.life <= FADE && !e.el.classList.contains('gone')) e.el.classList.add('gone');
+      if (e.life <= 0) this._drop(i);
+    }
   };
 
   /* Queue entries carry an optional callback that fires the moment that line
@@ -88,6 +119,7 @@
 
   Chat.prototype.update = function (dt) {
     this.lastActivity += dt;
+    this._ageLines(dt);
 
     if (!this.typingEl) {
       if (this.gap > 0) { this.gap -= dt; return; }
@@ -105,7 +137,6 @@
     const now = Math.floor(this.shown);
     if (now !== before) {
       this.typingEl.textContent = this.full.slice(0, now);
-      this.log.scrollTop = this.log.scrollHeight;
       for (let i = before; i < now; i++) {
         const ch = this.full.charAt(i);
         if (ch === ' ' || ch === '\n') continue;

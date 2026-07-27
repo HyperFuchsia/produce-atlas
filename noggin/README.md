@@ -21,8 +21,7 @@ Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
 you   let's talk about an apple
 him   Oh, an apple! Yes. Hold on, I will get one.
 him   There it is. A real one — 7.2 cm long and 8 cm across — roughly a third
-      of me. And that is exactly how big it is in here.
-him   What would you like to know about apples?
+      of me.
 ```
 
 Then ask follow-ups — it holds the subject, so you don't have to keep naming it:
@@ -40,6 +39,12 @@ Then ask follow-ups — it holds the subject, so you don't have to keep naming i
 
 Drag on it to pull the shell around, drag the background to orbit, wheel or
 pinch to zoom.
+
+**The scene owns the screen.** There is no panel: the conversation is a
+transient band of text along the bottom that dissolves once read, and the only
+permanent chrome is a single input. Starter prompts appear when the field is
+focused and empty, and nothing else. Together the fixed interface covers under
+3% of the viewport.
 
 ## Scale
 

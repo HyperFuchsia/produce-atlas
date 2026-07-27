@@ -1,8 +1,8 @@
 /* Produce Atlas — application shell.
 
    One job: keep the being on stage, let you pull at it, and put whatever
-   specimen you ask for next to it at true scale. Everything is driven from
-   the conversation column; there is no other UI. */
+   specimen you ask for next to it at true scale. The scene owns the screen;
+   the only persistent chrome is a single input. */
 (function (NG) {
   'use strict';
 
@@ -52,10 +52,10 @@
     base: [0.026, 0.029, 0.025]
   };
 
-  /* The conversation column takes the left edge on wide screens and the
-     bottom on narrow ones, so the stage has to be framed differently for
-     each: shift sideways for a side column, downwards for a bottom sheet. */
-  const NARROW_AT = 760;
+  /* Nothing occupies the sides any more. The only reserved area is the
+     dialogue band along the bottom, so the stage is centred horizontally and
+     lifted clear of it. */
+  const NARROW_AT = 640;
 
   function $(id) { return document.getElementById(id); }
 
@@ -84,10 +84,9 @@
 
     this.eye = [0, 0, 0];
     this.narrow = false;
-    this.panelShift = -0.62;
-    this.stageY = 0.02;
+    this.stageY = -0.34;
     this.distBoost = 1;
-    this.target = [this.panelShift, this.stageY, 0];
+    this.target = [0, this.stageY, 0];
     this.rayF = [0, 0, 0];
     this.rayR = [0, 0, 0];
     this.rayU = [0, 0, 0];
@@ -115,7 +114,7 @@
 
     this.brain = new NG.Brain();
     this.chat = new NG.Chat(this.audio, this.brain, {
-      log: $('transcript'), input: $('prompt'), form: $('composer')
+      log: $('dialogue'), input: $('prompt'), form: $('composer')
     });
     this.props = [];
     const self = this;
@@ -156,12 +155,9 @@
     const wasNarrow = this.narrow;
     const narrow = cssW < NARROW_AT;
     this.narrow = narrow;
-    this._panelW = narrow ? 0 : $('panel').getBoundingClientRect().width;
-    this.panelShift = narrow ? 0 : -0.62;
-    /* Bottom sheet covers the lower half, so drop the look-at point to lift
-       the subject into the strip that is actually visible. */
-    this.stageY = narrow ? -1.05 : 0.02;
-    this.distBoost = narrow ? 1.5 : 1;
+    /* Lift the subject above the dialogue band by looking slightly below it. */
+    this.stageY = narrow ? -0.85 : -0.34;
+    this.distBoost = narrow ? 1.45 : 1;
     /* Only refit when the layout actually flips. Resize fires whenever a
        mobile keyboard opens, and refitting there yanked the camera back to
        its default distance mid-sentence. */
@@ -223,16 +219,33 @@
   App.prototype.buildChips = function () {
     const self = this;
     const host = $('chips');
-    ['an apple', 'a pineapple', 'cacao', 'wheat', 'help'].forEach(function (label) {
+    const input = $('prompt');
+
+    ['an apple', 'a pineapple', 'cacao', 'a watermelon', 'help'].forEach(function (label) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'chip';
       b.textContent = label;
+      /* mousedown, not click: the field blurs before click would land. */
+      b.addEventListener('mousedown', function (e) { e.preventDefault(); });
       b.addEventListener('click', function () {
         self.audio.resume();
         self.chat.send(label === 'help' ? 'help' : "let's talk about " + label);
+        input.value = '';
+        input.blur();
       });
       host.appendChild(b);
+    });
+
+    const sync = function () {
+      const show = document.activeElement === input && input.value.trim() === '';
+      document.body.classList.toggle('hint', show);
+    };
+    input.addEventListener('focus', sync);
+    input.addEventListener('input', sync);
+    input.addEventListener('blur', function () {
+      /* Let a chip press land before the row disappears. */
+      setTimeout(sync, 120);
     });
   };
 
@@ -426,8 +439,7 @@
       const ny = (vp[1] * top[0] + vp[5] * top[1] + vp[9] * top[2] + vp[13]) / w;
       p.el.style.display = '';
       p.el.style.opacity = String(p.fading ? p.fade : Math.min(1, p.t * 3));
-      const leftEdge = (this._panelW || 0) + 70;
-      const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, leftEdge, this.cssW - 24);
+      const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, 80, this.cssW - 80);
       const y = M.clamp((0.5 - ny * 0.5) * this.cssH, 34, this.cssH - 24);
       p.el.style.left = x + 'px';
       p.el.style.top = y + 'px';
@@ -521,8 +533,8 @@
     const c = this.camera;
     c.dist += (c.targetDist - c.dist) * Math.min(1, dt * 9);
     /* Keep the head clear of the column, and slide between head and specimen. */
-    const spread = this.props.length ? (this.narrow ? 0.5 : 0.85) : 0;
-    const wantX = this.panelShift + spread;
+    /* Slide half way toward the specimen so the pair sits centred. */
+    const wantX = this.props.length ? (this.narrow ? 0.35 : 0.55) : 0;
     this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
     this.target[1] += (this.stageY - this.target[1]) * Math.min(1, dt * 3);
 

@@ -56,6 +56,7 @@
   function Brain() {
     this.subject = null;
     this.factCursor = {};
+    this.introduced = false;   /* the menu of options is worth saying once */
     this.rand = M.rng((Date.now() & 0x7fffffff) || 3);
     this.turns = 0;
   }
@@ -77,8 +78,7 @@
     else if (ratio < 1.1) cmp = 'as wide across as I am, which is upsetting';
     else cmp = 'wider than I am. Look at it. LOOK at it';
     const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
-    return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp +
-      '. And that is exactly how big it is in here. I do not do decorative sizes.';
+    return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp + '.';
   };
 
   Brain.prototype._nextFact = function (e) {
@@ -155,8 +155,10 @@
         lines.push.apply(lines, this._answer(entry, aspect));
       } else {
         lines.push('There it is. A real one — ' + this._sizeLine(entry));
-        lines.push('What would you like to know about ' + plural(entry.name) +
-          '? Size, where it is from, what family it is in, what it tastes like. Or say "more" and I will simply keep talking, which is my preference.');
+        if (!this.introduced) {
+          this.introduced = true;
+          lines.push('Ask me where it is from, what family it is in, what it tastes like. Or say "more".');
+        }
       }
       return { lines: lines, spawn: entry };
     }
@@ -213,9 +215,8 @@
   };
 
   Brain.prototype.greeting = function () {
-    return ['Hey. How is it going?',
-      'Name any food plant and I will bring a real one in at its actual size. Try "let\'s talk about an apple", or say "help" and I will list everything I have.',
-      'You can also reach in and pull at me. I am not as solid as I look. Most people try that first. I have made peace with it.'];
+    return ['Hey. Name a food plant and I will bring a real one in, at its actual size.',
+      'You can also reach in and pull at me. I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;
