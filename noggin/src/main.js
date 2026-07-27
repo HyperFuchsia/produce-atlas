@@ -194,6 +194,13 @@
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
     this.chat.onLesson = function (id) { self.runLesson(id); };
+    /* Abandoning a routine has to put the scene back, or you are left as a
+       puddle on the floor because you changed the subject. */
+    this.chat.onAbort = function () {
+      self.hideTesseract();
+      self.enterPhase('free');
+      self.becomeForm(null, true);
+    };
     /* When you type, he stops whatever he was looking at and looks at you —
        and stops messing about, if he was. */
     this.chat.onSend = function () {

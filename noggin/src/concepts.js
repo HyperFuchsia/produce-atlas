@@ -28,8 +28,37 @@
   };
 
   C.LESSONS = {
-    /* Asked what it is made of, it does not answer — it demonstrates, at
-       length, at its own pace, and does not wait for you to catch up. */
+    /* Asked what it is, it does not describe itself. Describing yourself is
+       what a chat box does, and the answer is always the same paragraph. It
+       runs through all three states of matter instead and lets the claim at
+       the end rest on something you have just watched happen. */
+    identity: {
+      match: ['what are you', 'who are you', 'what is this', 'what r u',
+        'are you an ai', 'are you a bot', 'are you real', 'are you alive',
+        'what am i looking at', 'introduce yourself', 'tell me about yourself',
+        'what do you do', 'what are you here for', 'what are you for',
+        'what is your purpose', 'wtf are you', 'what can you do'],
+      steps: [
+        { text: 'What am I. Easier to show you.', phase: 'poised', gap: 0.8 },
+
+        /* One word per state, so the word lands and then the room does the
+           talking. The hold means the silence after "Solid." is exactly as
+           long as the fall, however long the fall turns out to be. */
+        { text: 'Solid.', phase: 'solid', hold: 'land', gap: 1.7 },
+
+        { text: 'Liquid.', form: 'puddle', phase: 'liquid', gap: 2.4 },
+
+        { text: 'Gas.', form: 'cloud', phase: 'gas', gap: 2.6 },
+
+        { text: 'So: I can be anything.', form: 'self', phase: 'free', gap: 0.9 },
+
+        { text: 'And I am here for anything. Name something — anything I know — and watch what happens.' }
+      ]
+    },
+
+    /* Asked specifically what it is made of, it does not answer either — it
+       demonstrates, at length, at its own pace, and does not wait for you to
+       catch up. */
     matter: {
       match: ['solid liquid or gas', 'solid liquid and gas', 'solid or liquid',
         'liquid or gas', 'liquid or a gas', 'are you solid', 'are you a solid',
@@ -101,17 +130,24 @@
     }
   };
 
-  /* Which lesson, if any, a phrase is asking for. */
+  /* Which routine, if any, a phrase is asking for.
+
+     Longest match wins, not first. "What are you made of" contains "what are
+     you", and the more specific reading is always the right one — relying on
+     the order of the table instead would make adding a routine able to
+     silently steal phrases from another. */
   C.find = function (text) {
     const t = ' ' + String(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ') + ' ';
     const ids = Object.keys(C.LESSONS);
+    let best = null, bestLen = 0;
     for (let i = 0; i < ids.length; i++) {
       const l = C.LESSONS[ids[i]];
       for (let j = 0; j < l.match.length; j++) {
-        if (t.indexOf(l.match[j]) !== -1) return ids[i];
+        const m = l.match[j];
+        if (m.length > bestLen && t.indexOf(m) !== -1) { best = ids[i]; bestLen = m.length; }
       }
     }
-    return null;
+    return best;
   };
 
   /* ---- tesseract ---------------------------------------------------------- */

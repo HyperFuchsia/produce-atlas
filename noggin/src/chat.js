@@ -37,8 +37,10 @@
     this.holdFor = 0;
     this.lastActivity = -1e9;
     this._blip = 0;
+    this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
     this.onClear = null;
+    this.onAbort = null;
 
     const self = this;
     this.form.addEventListener('submit', function (e) {
@@ -104,6 +106,7 @@
      anything physical — the line after a fall should land when the body does,
      not after however long the fall was guessed to take. */
   Chat.prototype.script = function (items) {
+    this.scripted = true;
     for (let i = 0; i < items.length; i++) {
       this.queue.push({
         text: items[i].text,
@@ -123,9 +126,26 @@
        the person in front of it takes priority. */
     this.hold = null;
 
-    /* A second send finishes the current line rather than stacking up. Run its
-       pending callback too, or an interrupted line would swallow its spawn. */
-    if (this.typingEl) {
+    if (this.scripted) {
+      /* A routine can run for half a minute. Typing during one means you want
+         something else now, so the rest of it is dropped rather than queued
+         in front of your answer — and the pending action is dropped with it,
+         or the scene would keep changing after the routine was abandoned. */
+      this.queue.length = 0;
+      this._after = null;
+      this._hold = null;
+      this.gap = 0;
+      this.scripted = false;
+      if (this.typingEl) {
+        this.typingEl.textContent = this.full;
+        this.typingEl.classList.remove('typing');
+        this.typingEl = null;
+      }
+      if (this.onAbort) this.onAbort();
+    } else if (this.typingEl) {
+      /* A second send finishes the current line rather than stacking up. Run
+         its pending callback too, or an interrupted line would swallow its
+         spawn. */
       this.typingEl.textContent = this.full;
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
@@ -157,7 +177,7 @@
         this.hold = null;
       }
       if (this.gap > 0) { this.gap -= dt; return; }
-      if (!this.queue.length) return;
+      if (!this.queue.length) { this.scripted = false; return; }
       const item = this.queue.shift();
       this.full = item.text;
       this._after = item.after;

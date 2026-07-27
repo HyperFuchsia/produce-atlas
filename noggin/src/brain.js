@@ -33,9 +33,10 @@
   const CLEAR_WORDS = ['clear', 'remove', 'delete', 'get rid', 'take it away', 'put it back', 'tidy', 'reset the'];
   const LIST_WORDS = ['what do you know', 'what can you', 'help', 'list', 'options', 'everything', 'what have you got', 'topics'];
   const THANKS_WORDS = ['thank', 'thanks', 'cheers', 'nice one', 'good job'];
-  const IDENTITY_WORDS = ['what are you', 'who are you', 'what is this', 'what r u',
-    'are you an ai', 'are you a bot', 'are you real', 'are you alive', 'what am i looking at',
-    'introduce yourself', 'tell me about yourself', 'what do you do', 'wtf are you'];
+  /* "What are you" is not answered here. Describing yourself in a paragraph is
+     the one thing this is built not to do, so identity is a routine in
+     concepts.js: it runs through all three states of matter and lets the claim
+     rest on what you just watched. C.find catches it before anything below. */
   const BECOME_WORDS = ['become', 'turn into', 'turn yourself into', 'transform into',
     'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
   const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
@@ -141,22 +142,6 @@
        look like" mentions no specimen and is not a question about one. */
     const lesson = C.find(raw);
     if (lesson) return { lesson: lesson, lines: [] };
-
-    /* Identity. The honest answer to "what are you" is the demonstration, so
-       do not describe — offer. */
-    if (has(text, IDENTITY_WORDS)) {
-      this.askedWhat = true;
-      return {
-        lines: [this._pick([
-          'Nothing, yet. That is not modesty — I genuinely have no fixed shape.',
-          'Undecided. I am the shape nobody has asked for yet.',
-          'A placeholder. This sphere is what I look like when no one has told me otherwise.'
-        ]),
-        'I can be whatever you want me to be. Say "pineapple". Just the word. Watch what happens.',
-        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.',
-        'Or ask me something I cannot hand you. What the fourth dimension looks like. Whether I am a solid, a liquid or a gas.']
-      };
-    }
 
     /* Revert before become, so "stop being a banana" is not read as "banana". */
     if (has(text, REVERT_WORDS)) {

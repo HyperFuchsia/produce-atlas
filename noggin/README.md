@@ -35,6 +35,10 @@ on the floor.
 None of that is a feature bolted onto a chat box. It is what happens when the
 answer is allowed to have a shape.
 
+The full argument — what it is for, what it is measured against, what would
+disprove it, and a running log of what has shipped and why — lives in
+[CASE.md](CASE.md).
+
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
 
@@ -91,6 +95,23 @@ fun doing this on your own, so I wanted to join."*
 It is a real second grab on the solver, not an animation played over the top —
 which is why the two pulls fight over the same shell the way two hands would.
 Type anything and it lets go, slightly embarrassed.
+
+## Ask what it is
+
+```
+you   what are you?
+it    What am I. Easier to show you.
+it    Solid.
+```
+
+It stops floating, goes dark and heavy, and drops on the floor. Then `Liquid.`
+and it slumps into a puddle. Then `Gas.` and it boils off into a cloud. Then it
+reassembles and says the only line it has earned: *"So: I can be anything. And
+I am here for anything."*
+
+The claim rests on something you just watched, not on an adjective. Answering
+that question with a paragraph about being a helpful AI assistant is exactly
+the failure this whole thing is arguing against.
 
 ## Ask what it is made of
 
