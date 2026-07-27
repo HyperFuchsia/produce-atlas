@@ -104,6 +104,16 @@
     this.popupPool = [];
     this.popups = [];
 
+    /* Atlas: the chat brain and the objects it pulls into the room. */
+    this.brain = new NG.Brain();
+    this.chat = new NG.Chat(this.audio, this.brain, {
+      log: $('chat-log'), input: $('chat-input'), form: $('chat-form'), panel: $('chat')
+    });
+    this.props = [];
+    const self = this;
+    this.chat.onSpawn = function (entry) { self.spawnProduce(entry); };
+    this.chat.onClear = function () { self.clearProduce(); };
+
     this.buildMesh(QUALITY[this.quality].subdiv);
     this.renderer.setShadowSize(QUALITY[this.quality].shadow);
     this.resize();
@@ -372,6 +382,7 @@
     on('btn-adaptive', function () { self.adaptive = !self.adaptive; self.updateHudStatic(); });
     on('btn-sound', function () { self.toggleSound(); });
     on('btn-talk', function () { self.toggleTalk(); });
+    on('btn-keys', function () { $('controls').classList.toggle('hidden'); });
     on('btn-hud', function () { self.setHud(false); });
     on('mode-sandbox', function () { self.enterSandbox(); });
     on('mode-challenge', function () { self.startChallenge(); });
@@ -457,6 +468,78 @@
     $('mode-challenge').classList.remove('active');
   };
 
+  /* ---- summoned objects ---------------------------------------------------- */
+
+  /* Meshes are built at true scale (1 unit = 10 cm), so placement only decides
+     where the object sits, never how big it looks. A coffee cherry really is a
+     speck next to his head, and that is the honest answer. */
+  App.prototype.spawnProduce = function (entry) {
+    const mesh = NG.P.build(entry);
+    const handle = this.renderer.createProp(mesh);
+
+    for (let i = 0; i < this.props.length; i++) this.props[i].fading = true;
+
+    const el = document.createElement('div');
+    el.className = 'obj-tag';
+    el.innerHTML = entry.name.toUpperCase() + ' &middot; <b>' +
+      (entry.lengthCm || entry.sizeCm) + ' cm</b>';
+    $('tags').appendChild(el);
+
+    this.props.push({
+      handle: handle, entry: entry, el: el,
+      matrix: M.m4(), t: 0, fade: 1, fading: false, spin: 0.6,
+      x: 1.35 + handle.radiusUnits,
+      y: -0.30,
+      z: 0.10
+    });
+    while (this.props.length > 3) this._removeProp(0);
+
+    /* Pull the camera back so the head and the object both fit. A watermelon
+       is genuinely bigger than he is, and the framing has to admit that. */
+    this.camera.targetDist = M.clamp(5.0 + handle.radiusUnits * 2.2, 5.0, 12);
+  };
+
+  App.prototype._removeProp = function (i) {
+    const p = this.props[i];
+    this.renderer.destroyProp(p.handle);
+    if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
+    this.props.splice(i, 1);
+  };
+
+  App.prototype.clearProduce = function () {
+    while (this.props.length) this._removeProp(0);
+  };
+
+  App.prototype.updateProps = function (dt) {
+    for (let i = this.props.length - 1; i >= 0; i--) {
+      const p = this.props[i];
+      p.t += dt;
+      p.spin += dt * 0.45;
+      if (p.fading) {
+        p.fade -= dt * 1.6;
+        if (p.fade <= 0) { this._removeProp(i); continue; }
+        p.x += dt * 1.4;
+      }
+      /* Pop in with a little overshoot, then hold. */
+      const grow = p.t < 0.45 ? M.smoothstep(0, 0.45, p.t) * (1 + 0.12 * (1 - p.t / 0.45)) : 1;
+      const scale = Math.min(grow, 1.12) * (p.fading ? p.fade : 1);
+      const bob = Math.sin(this.time * 1.3 + i) * 0.05;
+      M.compose(p.matrix, p.x, p.y + bob, p.z, p.spin, 0, scale);
+
+      /* Park the size tag just above the object. */
+      const top = [p.x, p.y + bob + p.handle.heightUnits * 0.5 * scale + 0.22, p.z];
+      const vp = this.viewProj;
+      const w = vp[3] * top[0] + vp[7] * top[1] + vp[11] * top[2] + vp[15];
+      if (w <= 0.001) { p.el.style.display = 'none'; continue; }
+      const nx = (vp[0] * top[0] + vp[4] * top[1] + vp[8] * top[2] + vp[12]) / w;
+      const ny = (vp[1] * top[0] + vp[5] * top[1] + vp[9] * top[2] + vp[13]) / w;
+      p.el.style.display = '';
+      p.el.style.opacity = String(p.fading ? p.fade : Math.min(1, p.t * 3));
+      p.el.style.left = ((nx * 0.5 + 0.5) * this.cssW) + 'px';
+      p.el.style.top = ((0.5 - ny * 0.5) * this.cssH) + 'px';
+    }
+  };
+
   /* Presentation-only randomness; the simulation and the game use seeded
      generators so runs stay reproducible. */
   App.prototype.rand01 = function () {
@@ -520,6 +603,15 @@
      bar so he can yap without hiding the rings he is yapping about. */
   App.prototype.updateChatter = function (dt) {
     const playing = this.game.state === 'playing';
+    this.chat.update(dt);
+
+    /* One voice at a time: while the conversation is live his idle rambling
+       stays out of it, or you end up reading him in two places at once. */
+    if (this.chat.busy() || this.chat.lastActivity < 14) {
+      this.chatter.silence();
+      return;
+    }
+
     this.chatter.update(dt, this.grabPointer >= 0);
     this.chatter.bubble.classList.toggle('playing', playing);
 
@@ -563,6 +655,9 @@
   App.prototype.updateCamera = function (dt) {
     const c = this.camera;
     c.dist += (c.targetDist - c.dist) * Math.min(1, dt * 9);
+    /* Slide the look-at point between him and whatever he has summoned. */
+    const wantX = this.props.length ? 0.75 : 0;
+    this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
 
     const g = this.game;
     const trauma = g.trauma * g.trauma;
@@ -824,6 +919,7 @@
       M.transformDir([0, 0, 0], this.invModel, M.sub3([0, 0, 0], this.eye, this.target)));
     this.game.update(dt, this.body, this.model, camDirLocal);
     this.handleEvents();
+    this.updateProps(dt);
     this.updateChatter(dt);
     this.updatePopups(dt);
 
@@ -843,6 +939,7 @@
       floor: FLOOR,
       showFloor: this.showFloor,
       rings: this.game.rings,
+      props: this.props,
       particleCount: particleCount,
       highlight: Math.min(1, this.body.maxDisplacement * 0.5),
       bloom: 0.60,
@@ -875,6 +972,7 @@
       '<div class="sub">Grab the face and pull. Everything is rubber.</div>' +
       '<div class="sub dim">Drag on the head to stretch &middot; drag the void to orbit &middot; wheel to zoom</div>';
     $('overlay-btn').textContent = 'START CHALLENGE';
+    this.chat.say(this.brain.greeting());
     $('overlay-skip').classList.remove('hidden');
     $('overlay-skip').onclick = function (e) {
       e.preventDefault();

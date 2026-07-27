@@ -174,6 +174,81 @@
     gl.bindVertexArray(null);
   };
 
+  /* ---- props (summoned objects) ------------------------------------------ */
+
+  /* Props share the character's vertex layout so they go through the same
+     surface shader, lighting and shadow pass. They never deform, so their
+     buffers are static and `stretch` is a constant zero. */
+  Renderer.prototype.createProp = function (mesh) {
+    const gl = this.gl;
+    const n = mesh.positions.length / 3;
+    const dyn = new Float32Array(n * 7);
+    const sta = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) {
+      dyn[i * 7] = mesh.positions[i * 3];
+      dyn[i * 7 + 1] = mesh.positions[i * 3 + 1];
+      dyn[i * 7 + 2] = mesh.positions[i * 3 + 2];
+      dyn[i * 7 + 3] = mesh.normals[i * 3];
+      dyn[i * 7 + 4] = mesh.normals[i * 3 + 1];
+      dyn[i * 7 + 5] = mesh.normals[i * 3 + 2];
+      dyn[i * 7 + 6] = 0;
+      sta[i * 4] = mesh.colors[i * 3];
+      sta[i * 4 + 1] = mesh.colors[i * 3 + 1];
+      sta[i * 4 + 2] = mesh.colors[i * 3 + 2];
+      sta[i * 4 + 3] = mesh.mats[i];
+    }
+
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, dyn, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(S.LOC.POS);
+    gl.vertexAttribPointer(S.LOC.POS, 3, gl.FLOAT, false, 28, 0);
+    gl.enableVertexAttribArray(S.LOC.NOR);
+    gl.vertexAttribPointer(S.LOC.NOR, 3, gl.FLOAT, false, 28, 12);
+    gl.enableVertexAttribArray(S.LOC.STRETCH);
+    gl.vertexAttribPointer(S.LOC.STRETCH, 1, gl.FLOAT, false, 28, 24);
+
+    const cb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cb);
+    gl.bufferData(gl.ARRAY_BUFFER, sta, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(S.LOC.COL);
+    gl.vertexAttribPointer(S.LOC.COL, 3, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(S.LOC.MAT);
+    gl.vertexAttribPointer(S.LOC.MAT, 1, gl.FLOAT, false, 16, 12);
+
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+
+    return {
+      vao: vao, count: mesh.indices.length, buffers: [vb, cb, ib],
+      heightUnits: mesh.heightUnits, radiusUnits: mesh.radiusUnits
+    };
+  };
+
+  Renderer.prototype.destroyProp = function (prop) {
+    const gl = this.gl;
+    if (!prop) return;
+    gl.deleteVertexArray(prop.vao);
+    prop.buffers.forEach(function (b) { gl.deleteBuffer(b); });
+  };
+
+  Renderer.prototype.drawProps = function (props, useProgram) {
+    const gl = this.gl;
+    if (!props || !props.length) return;
+    for (let i = 0; i < props.length; i++) {
+      const p = props[i];
+      if (!p.handle) continue;
+      gl.uniformMatrix4fv(useProgram.u.uModel, false, p.matrix);
+      gl.bindVertexArray(p.handle.vao);
+      gl.drawElements(gl.TRIANGLES, p.handle.count, gl.UNSIGNED_INT, 0);
+    }
+  };
+
   /* ---- character mesh --------------------------------------------------- */
 
   Renderer.prototype.setMesh = function (mesh) {
@@ -443,6 +518,7 @@
     gl.uniformMatrix4fv(pr.u.uLightVP, false, state.lightVP);
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    this.drawProps(state.props, pr);
   };
 
   Renderer.prototype.renderScene = function (state) {
@@ -518,6 +594,7 @@
     gl.uniform1i(pr.u.uShadow, 0);
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    this.drawProps(state.props, pr);
 
     /* ring targets */
     if (state.rings && state.rings.length) {

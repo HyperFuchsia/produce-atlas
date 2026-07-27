@@ -1,7 +1,9 @@
 # NOGGIN — Zero-G Stretch Lab
 
-A 3-D floating head you can grab and pull like the *Super Mario 64* title screen,
-built as a real game: pull the face through floating rings against the clock.
+A 3-D floating head you can grab and pull like the *Super Mario 64* title screen.
+Ask him for a food plant and he pulls a real one into the room at its true size,
+then tells you far more about it than you asked for. There is a timed ring game
+in here too, and he talks through all of it.
 
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
@@ -35,6 +37,49 @@ any static host, or inside a sandboxed frame with a strict content policy.
   only way to reach one is to grab the face and stretch a piece of it through the
   aperture. Consecutive pops build a combo multiplier; smaller and further rings
   are worth more. Best score is saved to `localStorage`.
+
+## The atlas
+
+Type into the chat box and he pulls real food plants into the room **at their
+actual size**, then talks about them.
+
+```
+you   let's talk about an apple
+him   Oh, an apple! Yes. Hold on, I will get one.
+him   There it is. A real one — 7.2 cm long and 8 cm across — roughly a third
+      of my head. And that is exactly how big it is in here. I do not do
+      decorative sizes.
+him   What would you like to know about apples?
+you   how big is it?          →  size, in cm, compared against his head
+you   where is it from?       →  origin and wild ancestor
+you   what family is it in?   →  family and binomial
+you   is it a fruit?          →  what it actually is, botanically
+you   more                    →  he will not stop
+```
+
+**One world unit is 10 cm**, and his head is about 24 cm across. Everything
+inherits that: a 1.5 cm coffee cherry really is a speck next to him, and a
+34 cm watermelon really is bigger than his whole head. The camera pulls back on
+its own to fit whatever arrives. Sizes are typical specimens — a supermarket
+apple, not a prize one.
+
+26 entries, each with a real profile, real dimensions, family, binomial,
+origin, and several facts. Say `help` for the full list, or `clear` to send it
+away.
+
+**It is not a language model.** The available runtime capabilities for a
+published page are `downloads` and `mcp` — there is no completion capability,
+and the artifact content policy blocks every external host, so a page like this
+one physically cannot call a model. The brain matches an entry, works out which
+aspect you asked about, and answers from curated data. For an evidence-led
+atlas that is arguably the right trade anyway: a small set of verified answers
+beats a large set of confident guesses. Ask it something outside the atlas and
+it says so rather than inventing an answer.
+
+Shapes are procedural: every object is a revolved radius profile plus optional
+ribs, a bend, a stem, leaves, or a leaf crown — enough vocabulary to make an
+apple, a banana, a carrot, a bunch of grapes and a pineapple recognisable from
+one small data table.
 
 ## He talks. Constantly.
 
@@ -174,6 +219,10 @@ src/math.js       vec3 / mat4 / PRNG
 src/geometry.js   icosphere, adjacency, head sculpt, character build, skin binding
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/chatter.js    the monologue: fact pool, typing, interruption
+src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts
+src/produce.js    procedural produce meshes, built at true scale
+src/brain.js      intent matching and answers over the atlas
+src/chat.js       the chat surface
 src/shaders.js    all GLSL ES 3.00
 src/renderer.js   WebGL2 pipeline, render targets, GPU timing
 src/audio.js      procedural SFX (no audio assets)

@@ -346,6 +346,115 @@
     #bubble-text::after { animation: none; }
   }
 
+  /* ---- chat ---- */
+
+  #chat {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: min(400px, calc(100vw - 32px));
+    max-height: 46vh;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    padding: 0;
+    overflow: hidden;
+  }
+  #chat h2 {
+    margin: 0;
+    padding: 11px 14px 8px;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom: 1px solid rgba(110, 139, 160, 0.18);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #chat h2 .scale {
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    font-weight: 400;
+  }
+  #chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(70, 224, 255, 0.3) transparent;
+  }
+  #chat-log::-webkit-scrollbar { width: 6px; }
+  #chat-log::-webkit-scrollbar-thumb { background: rgba(70, 224, 255, 0.3); border-radius: 3px; }
+  .msg {
+    font-size: 11.5px;
+    line-height: 1.55;
+    max-width: 92%;
+    text-wrap: pretty;
+  }
+  .msg.him { color: #dff0fa; }
+  .msg.you {
+    align-self: flex-end;
+    color: var(--accent);
+    background: rgba(70, 224, 255, 0.10);
+    border: 1px solid rgba(70, 224, 255, 0.24);
+    border-radius: 8px 8px 2px 8px;
+    padding: 5px 9px;
+  }
+  #chat-form {
+    display: flex;
+    gap: 6px;
+    padding: 9px 10px;
+    border-top: 1px solid rgba(110, 139, 160, 0.18);
+  }
+  #chat-input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(110, 139, 160, 0.35);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  #chat-input:focus { border-color: var(--accent); }
+  #chat-input::placeholder { color: rgba(110, 139, 160, 0.75); }
+  #chat-send {
+    border: 1px solid var(--accent);
+    background: rgba(70, 224, 255, 0.12);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+  #chat-send:hover { background: rgba(70, 224, 255, 0.26); }
+
+  /* Floating label pinned to a summoned object, showing its real size.
+     Named distinctly so it cannot collide with #brand .tag. */
+  .obj-tag {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #eaf6ff;
+    background: rgba(8, 16, 26, 0.78);
+    border: 1px solid rgba(70, 224, 255, 0.3);
+    border-radius: 5px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .obj-tag b { color: var(--accent); font-weight: 600; }
+
   /* ---- popups ---- */
 
   .popup {
@@ -522,7 +631,16 @@
     <div id="timer-track"><div id="timer-fill"></div></div>
   </div>
 
-  <div class="panel" id="controls">
+  <div class="panel" id="chat">
+    <h2>ATLAS <span class="scale">1 unit = 10 cm</span></h2>
+    <div id="chat-log"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" placeholder="let's talk about an apple" maxlength="200">
+      <button id="chat-send" type="submit">SEND</button>
+    </form>
+  </div>
+
+  <div class="panel hidden" id="controls">
     <h2>CONTROLS</h2>
     <div class="row"><span class="k">stretch the face</span><span class="v">drag on head</span></div>
     <div class="row"><span class="k">orbit</span><span class="v">drag the void / right-drag</span></div>
@@ -543,6 +661,7 @@
     <button class="btn" id="btn-adaptive">RES: AUTO</button>
     <button class="btn" id="btn-sound">SOUND ON</button>
     <button class="btn" id="btn-talk">TALK: ON</button>
+    <button class="btn" id="btn-keys">KEYS</button>
     <button class="btn" id="btn-fullscreen">FULLSCREEN</button>
     <button class="btn" id="btn-hud">HIDE HUD</button>
   </div>
@@ -554,6 +673,7 @@
 <button class="btn hidden" id="hud-show">SHOW HUD</button>
 
 <div class="layer" id="popups"></div>
+<div class="layer" id="tags"></div>
 
 <div id="overlay" class="hidden">
   <h1 id="overlay-title">NOGGIN</h1>
@@ -571,6 +691,10 @@
 <script src="src/geometry.js"></script>
 <script src="src/softbody.js"></script>
 <script src="src/chatter.js"></script>
+<script src="src/produce.js"></script>
+<script src="src/knowledge.js"></script>
+<script src="src/brain.js"></script>
+<script src="src/chat.js"></script>
 <script src="src/shaders.js"></script>
 <script src="src/renderer.js"></script>
 <script src="src/audio.js"></script>

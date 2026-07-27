@@ -347,6 +347,115 @@
     #bubble-text::after { animation: none; }
   }
 
+  /* ---- chat ---- */
+
+  #chat {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    width: min(400px, calc(100vw - 32px));
+    max-height: 46vh;
+    display: flex;
+    flex-direction: column;
+    pointer-events: auto;
+    padding: 0;
+    overflow: hidden;
+  }
+  #chat h2 {
+    margin: 0;
+    padding: 11px 14px 8px;
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    color: var(--accent);
+    font-weight: 600;
+    border-bottom: 1px solid rgba(110, 139, 160, 0.18);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #chat h2 .scale {
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    font-weight: 400;
+  }
+  #chat-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(70, 224, 255, 0.3) transparent;
+  }
+  #chat-log::-webkit-scrollbar { width: 6px; }
+  #chat-log::-webkit-scrollbar-thumb { background: rgba(70, 224, 255, 0.3); border-radius: 3px; }
+  .msg {
+    font-size: 11.5px;
+    line-height: 1.55;
+    max-width: 92%;
+    text-wrap: pretty;
+  }
+  .msg.him { color: #dff0fa; }
+  .msg.you {
+    align-self: flex-end;
+    color: var(--accent);
+    background: rgba(70, 224, 255, 0.10);
+    border: 1px solid rgba(70, 224, 255, 0.24);
+    border-radius: 8px 8px 2px 8px;
+    padding: 5px 9px;
+  }
+  #chat-form {
+    display: flex;
+    gap: 6px;
+    padding: 9px 10px;
+    border-top: 1px solid rgba(110, 139, 160, 0.18);
+  }
+  #chat-input {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(110, 139, 160, 0.35);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  #chat-input:focus { border-color: var(--accent); }
+  #chat-input::placeholder { color: rgba(110, 139, 160, 0.75); }
+  #chat-send {
+    border: 1px solid var(--accent);
+    background: rgba(70, 224, 255, 0.12);
+    color: #fff;
+    border-radius: 6px;
+    padding: 0 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    cursor: pointer;
+  }
+  #chat-send:hover { background: rgba(70, 224, 255, 0.26); }
+
+  /* Floating label pinned to a summoned object, showing its real size.
+     Named distinctly so it cannot collide with #brand .tag. */
+  .obj-tag {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    padding: 3px 8px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: #eaf6ff;
+    background: rgba(8, 16, 26, 0.78);
+    border: 1px solid rgba(70, 224, 255, 0.3);
+    border-radius: 5px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .obj-tag b { color: var(--accent); font-weight: 600; }
+
   /* ---- popups ---- */
 
   .popup {
@@ -522,7 +631,16 @@
     <div id="timer-track"><div id="timer-fill"></div></div>
   </div>
 
-  <div class="panel" id="controls">
+  <div class="panel" id="chat">
+    <h2>ATLAS <span class="scale">1 unit = 10 cm</span></h2>
+    <div id="chat-log"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" placeholder="let's talk about an apple" maxlength="200">
+      <button id="chat-send" type="submit">SEND</button>
+    </form>
+  </div>
+
+  <div class="panel hidden" id="controls">
     <h2>CONTROLS</h2>
     <div class="row"><span class="k">stretch the face</span><span class="v">drag on head</span></div>
     <div class="row"><span class="k">orbit</span><span class="v">drag the void / right-drag</span></div>
@@ -543,6 +661,7 @@
     <button class="btn" id="btn-adaptive">RES: AUTO</button>
     <button class="btn" id="btn-sound">SOUND ON</button>
     <button class="btn" id="btn-talk">TALK: ON</button>
+    <button class="btn" id="btn-keys">KEYS</button>
     <button class="btn" id="btn-fullscreen">FULLSCREEN</button>
     <button class="btn" id="btn-hud">HIDE HUD</button>
   </div>
@@ -554,6 +673,7 @@
 <button class="btn hidden" id="hud-show">SHOW HUD</button>
 
 <div class="layer" id="popups"></div>
+<div class="layer" id="tags"></div>
 
 <div id="overlay" class="hidden">
   <h1 id="overlay-title">NOGGIN</h1>
@@ -2162,6 +2282,1061 @@
   NG.Chatter = Chatter;
 })(window.NG = window.NG || {});
 
+/* ===== src/produce.js ===== */
+/* NOGGIN — procedural produce meshes.
+
+   Everything is built by revolving a radius profile around the Y axis, then
+   applying optional modifiers: ribs, a bend, a stem, leaves, a leaf crown, or
+   scattering the whole thing into a cluster. That is enough vocabulary to make
+   an apple, a banana, a carrot, a bunch of grapes and a pineapple recognisable
+   from one small data table.
+
+   Sizes are real. One world unit is WORLD_CM centimetres, so an 8 cm apple
+   really is 8 cm next to a head that really is about 24 cm across. */
+(function (NG) {
+  'use strict';
+
+  const M = NG.M;
+  const G = NG.G;
+  const P = {};
+
+  /* One world unit = 10 cm. The head is ~2.4 units, i.e. ~24 cm across. */
+  P.WORLD_CM = 10;
+  P.cm = function (v) { return v / P.WORLD_CM; };
+
+  /* Sample a profile array (radii from base to tip) with smooth interpolation. */
+  function sampleProfile(profile, t) {
+    const n = profile.length - 1;
+    const x = M.clamp(t, 0, 1) * n;
+    const i = Math.min(n - 1, Math.floor(x));
+    const f = x - i;
+    const p0 = profile[Math.max(0, i - 1)];
+    const p1 = profile[i];
+    const p2 = profile[i + 1];
+    const p3 = profile[Math.min(n, i + 2)];
+    /* Catmull-Rom keeps shoulders round instead of faceted. */
+    const f2 = f * f, f3 = f2 * f;
+    return 0.5 * ((2 * p1) + (-p0 + p2) * f +
+      (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 +
+      (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
+  }
+
+  function Part() {
+    this.pos = [];
+    this.col = [];
+    this.mat = [];
+    this.idx = [];
+  }
+
+  Part.prototype.add = function (positions, indices, color, matId) {
+    const base = this.pos.length / 3;
+    for (let i = 0; i < positions.length; i++) this.pos.push(positions[i]);
+    for (let i = 0; i < positions.length / 3; i++) {
+      this.col.push(color[0], color[1], color[2]);
+      this.mat.push(matId);
+    }
+    for (let i = 0; i < indices.length; i++) this.idx.push(indices[i] + base);
+  };
+
+  /* Revolve a profile into a closed solid. */
+  function revolve(opts) {
+    const rings = opts.rings || 26;
+    const seg = opts.segments || 30;
+    const height = opts.height;
+    const radius = opts.radius;
+    const profile = opts.profile;
+    const ribs = opts.ribs || 0;
+    const ribDepth = opts.ribDepth || 0;
+    const bend = opts.bend || 0;
+    const twist = opts.twist || 0;
+
+    const positions = new Float32Array(rings * seg * 3);
+    const indices = [];
+    let p = 0;
+
+    for (let i = 0; i < rings; i++) {
+      const t = i / (rings - 1);
+      let r = sampleProfile(profile, t) * radius;
+      if (r < 0) r = 0;
+      let y = (t - 0.5) * height;
+
+      /* Fade ribs out towards the poles, where all the segments converge and
+         a constant-depth groove turns into a starburst. */
+      const ribFade = ribs > 0 ? Math.sin(Math.PI * t) : 0;
+
+      for (let j = 0; j < seg; j++) {
+        const a = (j / seg) * Math.PI * 2 + t * twist;
+        let rr = r;
+        if (ribs > 0) rr *= 1 - ribDepth * ribFade * (0.5 - 0.5 * Math.cos(ribs * a));
+        let x = Math.cos(a) * rr;
+        let z = Math.sin(a) * rr;
+
+        if (bend !== 0) {
+          /* Wrap the straight axis onto an arc of `bend` radians. */
+          const k = bend / Math.max(height, 1e-5);
+          const ang = y * k;
+          const rad = 1 / k;
+          const cx = x + rad;
+          const nx = Math.cos(ang) * cx - rad;
+          const ny = Math.sin(ang) * cx;
+          x = nx;
+          y = ny;
+        }
+
+        positions[p] = x;
+        positions[p + 1] = y;
+        positions[p + 2] = z;
+        p += 3;
+      }
+    }
+
+    for (let i = 0; i < rings - 1; i++) {
+      for (let j = 0; j < seg; j++) {
+        const a = i * seg + j;
+        const b = i * seg + (j + 1) % seg;
+        const c = (i + 1) * seg + (j + 1) % seg;
+        const d = (i + 1) * seg + j;
+        indices.push(a, d, c, a, c, b);
+      }
+    }
+    return { positions: positions, indices: new Uint32Array(indices) };
+  }
+
+  /* A flat-ish leaf: a lens shape bent along its length. */
+  function leaf(len, wid, curl) {
+    const rings = 12, seg = 9;
+    const positions = new Float32Array(rings * seg * 3);
+    const indices = [];
+    let p = 0;
+    for (let i = 0; i < rings; i++) {
+      const t = i / (rings - 1);
+      const w = Math.sin(Math.PI * Math.pow(t, 0.8)) * wid;
+      for (let j = 0; j < seg; j++) {
+        const s = (j / (seg - 1)) * 2 - 1;
+        positions[p] = s * w;
+        positions[p + 1] = t * len;
+        positions[p + 2] = (1 - s * s) * wid * 0.28 + Math.sin(t * Math.PI) * curl;
+        p += 3;
+      }
+    }
+    for (let i = 0; i < rings - 1; i++) {
+      for (let j = 0; j < seg - 1; j++) {
+        const a = i * seg + j, b = a + 1, c = (i + 1) * seg + j + 1, d = (i + 1) * seg + j;
+        /* Single-sided only. Emitting both windings makes the two opposing
+           face normals cancel at every shared vertex, which collapses the
+           leaf's normals and leaves it lit as a flat white sheet. Back faces
+           are covered anyway: culling is off and the shader flips the normal
+           on !gl_FrontFacing. */
+        indices.push(a, d, c, a, c, b);
+      }
+    }
+    return { positions: positions, indices: new Uint32Array(indices) };
+  }
+
+  function transform(src, fn) {
+    const out = new Float32Array(src.length);
+    const v = [0, 0, 0];
+    for (let i = 0; i < src.length; i += 3) {
+      v[0] = src[i]; v[1] = src[i + 1]; v[2] = src[i + 2];
+      fn(v);
+      out[i] = v[0]; out[i + 1] = v[1]; out[i + 2] = v[2];
+    }
+    return out;
+  }
+
+  function translate(src, x, y, z) {
+    return transform(src, function (v) { v[0] += x; v[1] += y; v[2] += z; });
+  }
+
+  function rotateZ(src, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return transform(src, function (v) {
+      const x = v[0] * c - v[1] * s, y = v[0] * s + v[1] * c;
+      v[0] = x; v[1] = y;
+    });
+  }
+
+  function rotateY(src, ang) {
+    const c = Math.cos(ang), s = Math.sin(ang);
+    return transform(src, function (v) {
+      const x = v[0] * c + v[2] * s, z = -v[0] * s + v[2] * c;
+      v[0] = x; v[2] = z;
+    });
+  }
+
+  const MAT_SKIN = 0;      /* soft, wrapped diffuse — fruit flesh reads well */
+  const MAT_GLOSS = 2;     /* tight specular — waxy skins */
+  const MAT_MATTE = 3;     /* rough — leaves, husks, roots */
+
+  /* Build one produce mesh from a knowledge-base entry. */
+  P.build = function (spec) {
+    const part = new Part();
+    const scale = P.cm(1);
+    const height = (spec.lengthCm || spec.sizeCm) * scale;
+    const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
+    const mat = spec.gloss === false ? MAT_SKIN : MAT_GLOSS;
+
+    if (spec.cluster) {
+      /* Grapes and the like: scatter small spheres down a tapering bunch. */
+      const rnd = M.rng(spec.seed || 7);
+      const n = spec.cluster.count;
+      const berry = (spec.cluster.berryCm || 2) * 0.5 * scale;
+      for (let i = 0; i < n; i++) {
+        const t = i / (n - 1);
+        const ring = revolve({
+          rings: 12, segments: 14, height: berry * 2, radius: berry,
+          profile: [0, 0.6, 0.92, 1, 0.92, 0.6, 0]
+        });
+        const spread = (1 - t) * radius * 0.95;
+        const ang = i * 2.399;    /* golden angle keeps the bunch from stacking */
+        const px = Math.cos(ang) * spread * (0.35 + rnd() * 0.65);
+        const pz = Math.sin(ang) * spread * (0.35 + rnd() * 0.65);
+        const py = (0.5 - t) * height * 0.92;
+        part.add(translate(ring.positions, px, py, pz), ring.indices, spec.color, mat);
+      }
+    } else {
+      const body = revolve({
+        rings: spec.rings || 28,
+        segments: spec.segments || 32,
+        height: height,
+        radius: radius,
+        profile: spec.profile,
+        ribs: spec.ribs || 0,
+        ribDepth: spec.ribDepth || 0,
+        bend: spec.bend || 0,
+        twist: spec.twist || 0
+      });
+      part.add(body.positions, body.indices, spec.color, mat);
+    }
+
+    /* Stem */
+    if (spec.stem) {
+      const sh = spec.stem.lengthCm * scale;
+      const sr = (spec.stem.widthCm || 0.5) * 0.5 * scale;
+      const stem = revolve({
+        rings: 8, segments: 10, height: sh, radius: sr,
+        profile: [0.9, 1, 1, 0.9, 0.7]
+      });
+      const y = height * (spec.stem.at !== undefined ? spec.stem.at : 0.5) + sh * 0.5;
+      part.add(translate(stem.positions, 0, y, 0), stem.indices,
+        spec.stem.color || [0.34, 0.26, 0.14], MAT_MATTE);
+    }
+
+    /* One or two leaves off the stem */
+    if (spec.leaves) {
+      const n = spec.leaves.count || 1;
+      for (let i = 0; i < n; i++) {
+        const l = leaf(spec.leaves.lengthCm * scale, spec.leaves.widthCm * 0.5 * scale, 0.02);
+        let g = rotateZ(l.positions, spec.leaves.tilt !== undefined ? spec.leaves.tilt : 0.7);
+        g = rotateY(g, (i / n) * Math.PI * 2 + 0.4);
+        const y = height * (spec.leaves.at !== undefined ? spec.leaves.at : 0.5);
+        part.add(translate(g, 0, y, 0), l.indices,
+          spec.leaves.color || [0.22, 0.45, 0.16], MAT_MATTE);
+      }
+    }
+
+    /* Crown of stiff leaves, for pineapples and the like */
+    if (spec.crown) {
+      const n = spec.crown.count || 9;
+      for (let i = 0; i < n; i++) {
+        const t = i / n;
+        const len = spec.crown.lengthCm * scale * (0.6 + 0.4 * ((i * 7) % n) / n);
+        const l = leaf(len, spec.crown.widthCm * 0.5 * scale, 0.01);
+        let g = rotateZ(l.positions, 0.25 + (i % 3) * 0.22);
+        g = rotateY(g, t * Math.PI * 2 * 2.3);
+        part.add(translate(g, 0, height * 0.45, 0), l.indices,
+          spec.crown.color || [0.26, 0.46, 0.20], MAT_MATTE);
+      }
+    }
+
+    let positions = new Float32Array(part.pos);
+    const indices = new Uint32Array(part.idx);
+    /* Melons and cucumbers sit on their side in real life; standing them on
+       end reads as a different object entirely. */
+    if (spec.lie) positions = rotateZ(positions, Math.PI * 0.5);
+    return {
+      positions: positions,
+      normals: G.computeNormals(positions, indices, positions.length / 3),
+      colors: new Float32Array(part.col),
+      mats: new Float32Array(part.mat),
+      indices: indices,
+      /* Actual extents, for the scale readout and for placement. */
+      heightUnits: spec.lie ? radius * 2 : height + (spec.crown ? spec.crown.lengthCm * scale * 0.7 : 0),
+      radiusUnits: spec.lie ? height * 0.5 : radius
+    };
+  };
+
+  NG.P = P;
+})(window.NG = window.NG || {});
+
+/* ===== src/knowledge.js ===== */
+/* NOGGIN — the atlas.
+
+   One entry per food plant: how it is shaped, how big it actually is, what it
+   is botanically, where it came from, and what he can tell you about it.
+
+   `sizeCm` figures are typical specimens, not records — a supermarket apple,
+   not a prize one. Shape fields feed src/produce.js; everything else feeds
+   src/brain.js. */
+(function (NG) {
+  'use strict';
+
+  const K = {};
+
+  /* Reusable profiles, base (t=0) to tip (t=1). */
+  const SPHERE = [0, 0.58, 0.9, 1.0, 1.0, 0.9, 0.58, 0];
+  const APPLE = [0, 0.70, 0.93, 1.0, 1.0, 0.96, 0.85, 0.60, 0.26, 0];
+  const PEAR = [0, 0.52, 0.88, 1.0, 0.97, 0.82, 0.6, 0.44, 0.34, 0.18, 0];
+  const OVOID = [0, 0.58, 0.86, 0.98, 1.0, 0.98, 0.90, 0.74, 0.45, 0];
+  const ELLIPSOID = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
+  const ROD = [0, 0.5, 0.85, 0.97, 1.0, 1.0, 0.97, 0.85, 0.5, 0];
+  const CONE = [0, 0.16, 0.32, 0.48, 0.63, 0.76, 0.87, 0.95, 1.0, 0.96];
+  const BARREL = [0, 0.62, 0.92, 1.0, 1.0, 1.0, 0.96, 0.82, 0];
+  const BULB = [0, 0.55, 0.9, 1.0, 0.95, 0.76, 0.46, 0.13, 0];
+  const BERRY_POINT = [0, 0.3, 0.55, 0.75, 0.9, 0.99, 1.0, 0.9, 0.0];
+
+  /* type -> plain-language gloss, so he can explain the botany he quotes. */
+  K.TYPES = {
+    berry: 'a berry — botanically that means a fruit with its seeds inside a fleshy wall, grown from a single ovary',
+    pome: 'a pome — the fleshy part is swollen stem tissue, and the real fruit is the core',
+    drupe: 'a drupe — one seed sealed inside a hard stone, wrapped in flesh',
+    aggregate: 'an aggregate accessory fruit — dozens of tiny fruits stuck to a swollen receptacle',
+    multiple: 'a multiple fruit — dozens of separate flowers fused into one body',
+    tuber: 'a tuber — a swollen underground stem the plant uses as a battery',
+    taproot: 'a taproot — one fat storage root going straight down',
+    bulb: 'a bulb — tightly packed leaf bases wrapped around a tiny stem',
+    grain: 'a caryopsis, a grain — a one-seeded dry fruit where the seed coat is fused to the fruit wall',
+    flower: 'an unopened flower head — you are eating it before it blooms',
+    leaf: 'leaves — no fruit involved at all',
+    pod: 'a pod — a dry fruit that splits to release seeds',
+    legume: 'a legume — a pod fruit from the pea family'
+  };
+
+  K.ENTRIES = [
+    {
+      id: 'apple', name: 'apple', match: ['apple', 'apples', 'malus'],
+      sizeCm: 8, lengthCm: 7.2, widthCm: 8, profile: APPLE,
+      color: [0.78, 0.13, 0.12], seed: 3,
+      stem: { lengthCm: 2.2, widthCm: 0.35, at: 0.42 },
+      leaves: { count: 1, lengthCm: 4, widthCm: 2, at: 0.5, tilt: 0.9 },
+      family: 'Rosaceae, the rose family', binomial: 'Malus domestica', type: 'pome',
+      origin: 'the Tian Shan mountains of Central Asia, around modern Kazakhstan',
+      ancestor: 'Malus sieversii, which still grows wild there',
+      facts: [
+        'apples do not grow true from seed. Plant a pip from your favourite apple and you get a stranger — every named variety is a cutting of one original tree, kept alive by grafting',
+        'that means every Granny Smith on Earth is a clone of a single seedling found in Australia in the 1860s',
+        'the flesh is swollen stem tissue. The actual fruit is the papery core you throw away'
+      ],
+      taste: 'sweet-tart, and the balance is mostly malic acid, which is literally named after the apple'
+    },
+    {
+      id: 'banana', name: 'banana', match: ['banana', 'bananas', 'musa', 'plantain'],
+      sizeCm: 18, lengthCm: 18, widthCm: 3.8, profile: ROD, bend: 0.95, lie: true,
+      color: [0.92, 0.78, 0.19], segments: 22, rings: 30,
+      family: 'Musaceae', binomial: 'Musa acuminata and its hybrids', type: 'berry',
+      origin: 'New Guinea and Island Southeast Asia',
+      ancestor: 'wild bananas that are full of hard black seeds',
+      facts: [
+        'a banana is botanically a berry, and the plant is a giant herb, not a tree — that trunk is a tube of rolled leaf bases',
+        'the Cavendish you buy is a sterile clone. It has no viable seeds, so every plant is propagated from cuttings and the whole global crop is effectively one individual',
+        'that monoculture already lost one war: the previous export variety, the Gros Michel, was wrecked by Panama disease in the mid-20th century'
+      ],
+      taste: 'sweet and faintly solvent-like, from isoamyl acetate — the same compound used in artificial banana flavouring'
+    },
+    {
+      id: 'carrot', name: 'carrot', match: ['carrot', 'carrots', 'daucus'],
+      sizeCm: 18, lengthCm: 18, widthCm: 3.4, profile: CONE,
+      color: [0.90, 0.42, 0.08], gloss: false,
+      leaves: { count: 4, lengthCm: 9, widthCm: 3, at: 0.5, tilt: 0.35, color: [0.24, 0.48, 0.16] },
+      family: 'Apiaceae, alongside parsley, celery and hemlock', binomial: 'Daucus carota',
+      type: 'taproot',
+      origin: 'Central Asia, around Persia and Afghanistan',
+      facts: [
+        'orange is a recent fashion. For most of their history carrots were purple, white and yellow, and orange ones only became dominant in Europe a few centuries ago',
+        'the orange comes from carotene, which your body converts to vitamin A — the pigment is named after the carrot, not the other way round',
+        'it is in the same family as hemlock, which is why foraging wild carrot is a genuinely bad idea for beginners'
+      ],
+      taste: 'sweet and earthy; the earthiness is terpenes and the sweetness is stored sugar the root was saving for next year'
+    },
+    {
+      id: 'tomato', name: 'tomato', match: ['tomato', 'tomatoes', 'solanum lycopersicum'],
+      sizeCm: 7, lengthCm: 5.6, widthCm: 7, profile: SPHERE, ribs: 8, ribDepth: 0.05,
+      color: [0.83, 0.13, 0.09],
+      stem: { lengthCm: 1.4, widthCm: 0.4, at: 0.46, color: [0.25, 0.42, 0.15] },
+      family: 'Solanaceae, the nightshades', binomial: 'Solanum lycopersicum', type: 'berry',
+      origin: 'western South America, domesticated in Mesoamerica',
+      facts: [
+        'a tomato is a berry. It sits in the savoury aisle for entirely cultural reasons',
+        'it is a nightshade, so it is a close relative of the potato, the aubergine, the chilli and tobacco',
+        'Europeans grew it as an ornamental curiosity for a long time before they trusted it as food'
+      ],
+      taste: 'sweet, sour and savoury at once — it is unusually high in glutamate, which is why it reads as meaty'
+    },
+    {
+      id: 'potato', name: 'potato', match: ['potato', 'potatoes', 'spud', 'tuber'],
+      sizeCm: 9, lengthCm: 6, widthCm: 9, profile: ELLIPSOID, ribs: 5, ribDepth: 0.06, lie: true,
+      color: [0.72, 0.56, 0.34], gloss: false,
+      family: 'Solanaceae, the nightshades', binomial: 'Solanum tuberosum', type: 'tuber',
+      origin: 'the Andes, in the region of modern Peru and Bolivia',
+      facts: [
+        'the Andes still hold thousands of potato varieties in colours you would not accept in a shop — blue, purple, red, marbled',
+        'a potato is a swollen stem, not a root. The eyes are buds, which is why a forgotten one in the cupboard tries to become a plant',
+        'green patches mean solanine, a nightshade alkaloid the tuber makes when exposed to light. That part is genuinely mildly toxic'
+      ],
+      taste: 'bland on purpose — it is almost pure starch, which is exactly why it took over the world as a staple'
+    },
+    {
+      id: 'strawberry', name: 'strawberry', match: ['strawberry', 'strawberries', 'fragaria'],
+      sizeCm: 3.5, lengthCm: 4, widthCm: 3.2, profile: BERRY_POINT,
+      color: [0.85, 0.11, 0.18],
+      leaves: { count: 5, lengthCm: 2.2, widthCm: 1.1, at: 0.44, tilt: 1.1 },
+      family: 'Rosaceae, the rose family', binomial: 'Fragaria × ananassa', type: 'aggregate',
+      origin: 'a garden hybrid, crossed in 18th-century France from a North American and a Chilean species',
+      facts: [
+        'a strawberry is not a berry. The red part is a swollen receptacle, and the real fruits are the little pips on the outside, called achenes',
+        'so it wears its fruit on the skin, while a banana — an actual berry — hides its seeds inside',
+        'the modern strawberry exists because two species from opposite ends of the Americas met in a French garden'
+      ],
+      taste: 'sweet and floral; the smell is a blend of over three hundred volatile compounds, which is why fake strawberry never quite lands'
+    },
+    {
+      id: 'pineapple', name: 'pineapple', match: ['pineapple', 'pineapples', 'ananas'],
+      sizeCm: 18, lengthCm: 18, widthCm: 12, profile: BARREL, ribs: 16, ribDepth: 0.07,
+      color: [0.76, 0.55, 0.13], gloss: false,
+      crown: { count: 11, lengthCm: 16, widthCm: 3, color: [0.24, 0.44, 0.18] },
+      family: 'Bromeliaceae, the bromeliads', binomial: 'Ananas comosus', type: 'multiple',
+      origin: 'South America, between the Paraná and Paraguay rivers',
+      facts: [
+        'a pineapple plant takes around two years to make one single pineapple. One. In two years',
+        'it is a multiple fruit: every one of those diamond-shaped segments was a separate flower, and they fused into one body',
+        'it contains bromelain, an enzyme that digests protein — when you eat pineapple, the pineapple is also eating you, which is why your tongue starts to sting'
+      ],
+      taste: 'sharply sweet and acidic, and it gets less acidic the longer it stays on the plant — it does not ripen further once cut'
+    },
+    {
+      id: 'avocado', name: 'avocado', match: ['avocado', 'avocados', 'persea'],
+      sizeCm: 10, lengthCm: 11, widthCm: 7.5, profile: PEAR,
+      color: [0.22, 0.26, 0.13], gloss: false,
+      family: 'Lauraceae, alongside cinnamon and bay', binomial: 'Persea americana', type: 'berry',
+      origin: 'south-central Mexico',
+      facts: [
+        'an avocado is a berry. One enormous seed, one berry',
+        'it is a close relative of cinnamon and the bay leaf, which is not obvious from eating one',
+        'it will not ripen on the tree. The tree is the storage — a fruit can hang there for months and only starts ripening once picked'
+      ],
+      taste: 'barely sweet and very fatty, which is rare for a fruit — most fruit bribes animals with sugar, this one uses oil'
+    },
+    {
+      id: 'lemon', name: 'lemon', match: ['lemon', 'lemons', 'citrus limon'],
+      sizeCm: 7, lengthCm: 9, widthCm: 6, profile: OVOID,
+      color: [0.94, 0.82, 0.12],
+      family: 'Rutaceae, the citrus family', binomial: 'Citrus limon', type: 'berry',
+      origin: 'a hybrid, probably of the citron and the sour orange, from South or Southeast Asia',
+      facts: [
+        'a lemon is a berry — citrus fruits are a special kind called a hesperidium, with a leathery oily rind',
+        'almost every citrus you eat is a hybrid of just a few wild ancestors: the citron, the pomelo, the mandarin and the papeda',
+        'the smell in the peel is limonene, stored in tiny pressurised oil glands — that is the spray you see when you bend a strip of zest'
+      ],
+      taste: 'aggressively sour from citric acid, which can be around five percent of the juice'
+    },
+    {
+      id: 'grape', name: 'grapes', match: ['grape', 'grapes', 'vitis'],
+      sizeCm: 16, lengthCm: 16, widthCm: 9,
+      cluster: { count: 34, berryCm: 2.0 }, seed: 12,
+      color: [0.36, 0.14, 0.38],
+      family: 'Vitaceae', binomial: 'Vitis vinifera', type: 'berry',
+      origin: 'the Near East and the South Caucasus',
+      facts: [
+        'grapes are berries, and the wine grape was one of the earliest fruits ever domesticated — there is winemaking evidence going back thousands of years in the Caucasus',
+        'wine varieties are clones too. A Pinot Noir vine is a cutting, not a seedling',
+        'the dusty bloom on the skin is real wax made by the grape, and it carries wild yeast — which is how wine got invented before anyone knew what yeast was'
+      ],
+      taste: 'sweet with an acid backbone; in wine grapes the sugar and acid are tracked obsessively because they decide everything downstream'
+    },
+    {
+      id: 'watermelon', name: 'watermelon', match: ['watermelon', 'watermelons', 'citrullus'],
+      sizeCm: 30, lengthCm: 34, widthCm: 25, profile: ELLIPSOID, lie: true,
+      color: [0.16, 0.36, 0.14], ribs: 12, ribDepth: 0.03,
+      family: 'Cucurbitaceae, the gourds', binomial: 'Citrullus lanatus', type: 'berry',
+      origin: 'north-eastern Africa',
+      facts: [
+        'watermelon is about ninety two percent water, which really should have been obvious from the name',
+        'botanically it is a berry — a specialised kind called a pepo, with a hard rind',
+        'its wild African relatives are small, hard and bitter. Sweet red flesh is entirely our doing'
+      ],
+      taste: 'clean and sweet; the flavour is mostly sugar and water, which is why it is so hard to fake convincingly'
+    },
+    {
+      id: 'pumpkin', name: 'pumpkin', match: ['pumpkin', 'pumpkins', 'squash', 'cucurbita'],
+      sizeCm: 25, lengthCm: 20, widthCm: 27, profile: SPHERE, ribs: 10, ribDepth: 0.15,
+      color: [0.87, 0.42, 0.07], gloss: false,
+      stem: { lengthCm: 5, widthCm: 1.8, at: 0.44, color: [0.42, 0.36, 0.18] },
+      family: 'Cucurbitaceae, the gourds', binomial: 'Cucurbita pepo', type: 'berry',
+      origin: 'the Americas — among the oldest domesticated plants in the New World',
+      facts: [
+        'a pumpkin is a berry too. Same pepo structure as the watermelon and the cucumber',
+        'squashes were domesticated in the Americas before maize or beans, going back many thousands of years',
+        'Cucurbita pepo also covers courgettes, acorn squash and most decorative gourds — same species, wildly different results'
+      ],
+      taste: 'mildly sweet and vegetal; the flesh is largely water and starch, which is why it takes on whatever you cook it with'
+    },
+    {
+      id: 'cucumber', name: 'cucumber', match: ['cucumber', 'cucumbers', 'cucumis'],
+      sizeCm: 20, lengthCm: 20, widthCm: 5, profile: ROD, ribs: 10, ribDepth: 0.05, lie: true,
+      color: [0.20, 0.42, 0.16],
+      family: 'Cucurbitaceae, the gourds', binomial: 'Cucumis sativus', type: 'berry',
+      origin: 'India',
+      facts: [
+        'cucumbers, pumpkins, courgettes, melons and watermelons are all one family. A big damp family',
+        'a cucumber is a berry as well, which makes the salad situation confusing',
+        'the bitterness in a bad one is cucurbitacin, a defence compound — breeders have spent a long time removing it'
+      ],
+      taste: 'faintly green and mostly water, around ninety five percent of it'
+    },
+    {
+      id: 'onion', name: 'onion', match: ['onion', 'onions', 'allium cepa'],
+      sizeCm: 8, lengthCm: 8, widthCm: 8.5, profile: BULB,
+      color: [0.80, 0.60, 0.30], gloss: false,
+      family: 'Amaryllidaceae, the allium family', binomial: 'Allium cepa', type: 'bulb',
+      origin: 'Central Asia',
+      facts: [
+        'onions make you cry using a gas they build on purpose the moment you cut them. It is a chemical alarm, and you triggered it',
+        'the layers are leaf bases, wrapped around a tiny compressed stem at the base — the flat bit the roots come out of',
+        'garlic, leeks, chives and shallots are all the same genus. The whole pungent gang'
+      ],
+      taste: 'sharp raw, sweet cooked — heat destroys the sulphur compounds and leaves the sugars behind'
+    },
+    {
+      id: 'garlic', name: 'garlic', match: ['garlic', 'allium sativum', 'clove'],
+      sizeCm: 5, lengthCm: 5, widthCm: 5.5, profile: BULB, ribs: 9, ribDepth: 0.13,
+      color: [0.90, 0.87, 0.80], gloss: false,
+      family: 'Amaryllidaceae, the allium family', binomial: 'Allium sativum', type: 'bulb',
+      origin: 'Central Asia',
+      facts: [
+        'garlic has almost no smell until you damage it. Crushing mixes an enzyme with a stored compound and allicin is created on the spot, in seconds',
+        'cultivated garlic rarely sets viable seed, so it is propagated by cloves — clones again',
+        'each clove is a complete bud that can grow into a whole new plant'
+      ],
+      taste: 'pungent and hot raw, mellow and sweet roasted, because the aggressive sulphur compounds break down with heat'
+    },
+    {
+      id: 'broccoli', name: 'broccoli', match: ['broccoli', 'brassica', 'cauliflower', 'cabbage', 'kale'],
+      sizeCm: 15, lengthCm: 16, widthCm: 13,
+      profile: [0.22, 0.24, 0.26, 0.34, 0.62, 0.92, 1.0, 0.92, 0.5, 0],
+      color: [0.20, 0.42, 0.18], gloss: false, ribs: 12, ribDepth: 0.10,
+      family: 'Brassicaceae, the cabbage family', binomial: 'Brassica oleracea var. italica',
+      type: 'flower',
+      origin: 'the Mediterranean, bred from wild cabbage; broccoli itself was developed in Italy',
+      facts: [
+        'broccoli, cauliflower, kale, cabbage, kohlrabi and brussels sprouts are all the same species. Brassica oleracea. One plant, six haircuts',
+        'each one is a different organ pushed to an extreme: broccoli is the flower buds, kale the leaves, kohlrabi the stem, sprouts the side buds',
+        'you are eating it before it blooms. Leave it alone and the whole head opens into small yellow flowers'
+      ],
+      taste: 'green and slightly sulphurous — the cabbage family signature, from glucosinolates'
+    },
+    {
+      id: 'maize', name: 'maize', match: ['corn', 'maize', 'sweetcorn', 'zea'],
+      sizeCm: 18, lengthCm: 18, widthCm: 5.2, profile: ROD, ribs: 18, ribDepth: 0.09,
+      color: [0.93, 0.78, 0.22],
+      leaves: { count: 3, lengthCm: 16, widthCm: 4, at: 0.3, tilt: 0.22, color: [0.42, 0.52, 0.20] },
+      family: 'Poaceae, the grasses', binomial: 'Zea mays', type: 'grain',
+      origin: 'southern Mexico',
+      ancestor: 'teosinte, a scrawny grass with about a dozen hard kernels',
+      facts: [
+        'maize was domesticated from teosinte, a grass whose seed head is so small and hard you would not recognise it as an ancestor',
+        'each kernel is a separate fruit, and each silk thread is one pollen tube leading to one of them — a missing kernel is a silk that never got pollinated',
+        'it cannot survive without us. The cob does not shatter to scatter seed, so a dropped ear just sprouts a doomed tangle of seedlings'
+      ],
+      taste: 'sweet when fresh and starchy within hours — sweetcorn converts sugar to starch fast after picking'
+    },
+    {
+      id: 'chilli', name: 'chilli pepper', match: ['chilli', 'chili', 'chile', 'pepper', 'capsicum', 'jalapeno'],
+      sizeCm: 8, lengthCm: 9, widthCm: 2.6, profile: [0.05, 0.6, 0.9, 1.0, 0.96, 0.86, 0.7, 0.5, 0.28, 0],
+      color: [0.80, 0.10, 0.08], bend: 0.35,
+      stem: { lengthCm: 2.4, widthCm: 0.5, at: 0.46, color: [0.28, 0.44, 0.16] },
+      family: 'Solanaceae, the nightshades', binomial: 'Capsicum annuum', type: 'berry',
+      origin: 'the Americas — Capsicum annuum was domesticated in Mexico',
+      facts: [
+        'the burn is capsaicin, and birds cannot taste it at all. The plant is spicy specifically at mammals, because birds swallow seeds whole and fly them somewhere useful while mammals chew them up',
+        'most of the heat is in the pale pith the seeds attach to, not the seeds themselves',
+        'black pepper and chilli peppers are completely unrelated. Columbus was looking for one and named the other after it, and the name stuck for five centuries'
+      ],
+      taste: 'not a taste at all — capsaicin binds a heat receptor, so your mouth reports temperature that is not there'
+    },
+    {
+      id: 'cacao', name: 'cacao pod', match: ['cacao', 'cocoa', 'chocolate', 'theobroma'],
+      sizeCm: 20, lengthCm: 20, widthCm: 9, profile: OVOID, ribs: 10, ribDepth: 0.11,
+      color: [0.72, 0.30, 0.09], gloss: false,
+      family: 'Malvaceae, alongside okra and cotton', binomial: 'Theobroma cacao', type: 'berry',
+      origin: 'the upper Amazon basin; used in Mesoamerica for thousands of years',
+      facts: [
+        'the pods grow straight out of the trunk, not the branches. It is called cauliflory and it looks deeply wrong the first time you see it',
+        'the raw seeds taste nothing like chocolate. The flavour is manufactured by fermenting the pulp-covered beans for days, then roasting them',
+        'it is pollinated mainly by tiny midges, which is part of why cacao is such a difficult crop'
+      ],
+      taste: 'the white pulp around the beans is sweet and citrusy — most people never taste it, and it is the nicest part of the fruit'
+    },
+    {
+      id: 'coffee', name: 'coffee cherry', match: ['coffee', 'coffea', 'bean', 'espresso'],
+      sizeCm: 1.5, lengthCm: 1.7, widthCm: 1.4, profile: SPHERE,
+      color: [0.72, 0.08, 0.10],
+      family: 'Rubiaceae', binomial: 'Coffea arabica', type: 'drupe',
+      origin: 'the forests of Ethiopia',
+      facts: [
+        'a coffee bean is a seed, and the fruit around it is a small red drupe — a cherry, structurally like a tiny plum',
+        'most cherries hold two seeds pressed flat against each other, which is why a coffee bean has one flat face',
+        'Arabica is a natural hybrid and self-pollinating, so the global crop has famously little genetic diversity'
+      ],
+      taste: 'the fruit is mildly sweet; everything you associate with coffee is created later, by roasting'
+    },
+    {
+      id: 'mango', name: 'mango', match: ['mango', 'mangoes', 'mangifera'],
+      sizeCm: 12, lengthCm: 13, widthCm: 8.5, profile: ELLIPSOID, lie: true,
+      color: [0.86, 0.45, 0.10],
+      family: 'Anacardiaceae', binomial: 'Mangifera indica', type: 'drupe',
+      origin: 'South Asia',
+      facts: [
+        'a mango is a drupe — same structure as a peach or an olive: one seed in a stone, wrapped in flesh',
+        'it is in the same family as the cashew, and also as poison ivy. The skin contains related compounds, and some people react to it',
+        'it has been cultivated in South Asia for thousands of years, with named varieties long predating European contact'
+      ],
+      taste: 'sweet and resinous — that pine-like edge is a genuine terpene note, and it is the family resemblance to the cashew showing through'
+    },
+    {
+      id: 'peach', name: 'peach', match: ['peach', 'peaches', 'nectarine', 'prunus persica'],
+      sizeCm: 7.5, lengthCm: 7, widthCm: 7.5, profile: SPHERE,
+      color: [0.92, 0.48, 0.32],
+      leaves: { count: 1, lengthCm: 5, widthCm: 1.4, at: 0.48, tilt: 0.8 },
+      family: 'Rosaceae, the rose family', binomial: 'Prunus persica', type: 'drupe',
+      origin: 'China',
+      facts: [
+        'the species name persica means Persian, because Europeans met it on the trade route rather than at its source. It is Chinese',
+        'a nectarine is not a different fruit. It is a peach with a recessive mutation that switches off the fuzz',
+        'almonds are the seed of a very close relative — you are eating the stone instead of the flesh'
+      ],
+      taste: 'sweet and floral, and the aroma leans on lactones, which is why peach and coconut smell faintly related'
+    },
+    {
+      id: 'coconut', name: 'coconut', match: ['coconut', 'coconuts', 'cocos'],
+      sizeCm: 15, lengthCm: 16, widthCm: 14, profile: ELLIPSOID,
+      color: [0.42, 0.28, 0.16], gloss: false,
+      family: 'Arecaceae, the palms', binomial: 'Cocos nucifera', type: 'drupe',
+      origin: 'the Indo-Pacific; it spread across the tropics partly by floating',
+      facts: [
+        'a coconut is not a nut. It is a drupe, like a peach — the husk is the flesh and the shell is the stone',
+        'it is built to travel. The fibrous husk floats and the seed inside can survive months at sea and still germinate on a beach',
+        'coconut water is liquid endosperm — the seed\'s own packed lunch, which later solidifies into the white flesh'
+      ],
+      taste: 'the water is faintly sweet and salty; the flesh is rich because it is largely saturated fat'
+    },
+    {
+      id: 'aubergine', name: 'aubergine', match: ['aubergine', 'eggplant', 'brinjal', 'melongena'],
+      sizeCm: 18, lengthCm: 20, widthCm: 9, profile: PEAR,
+      color: [0.24, 0.10, 0.28],
+      stem: { lengthCm: 3.5, widthCm: 1.2, at: 0.44, color: [0.26, 0.40, 0.16] },
+      family: 'Solanaceae, the nightshades', binomial: 'Solanum melongena', type: 'berry',
+      origin: 'South and East Asia',
+      facts: [
+        'an aubergine is a berry, and a nightshade — so it is a close cousin of the tomato and the potato',
+        'the English name eggplant comes from early European varieties that were small, white and genuinely egg-shaped',
+        'the spongy texture is air. The flesh is full of tiny cavities, which is why it drinks oil so alarmingly'
+      ],
+      taste: 'bitter raw, savoury cooked — heat collapses the structure and the bitterness goes with it'
+    },
+    {
+      id: 'lettuce', name: 'lettuce', match: ['lettuce', 'salad', 'lactuca'],
+      sizeCm: 15, lengthCm: 14, widthCm: 16, profile: SPHERE, ribs: 14, ribDepth: 0.12,
+      color: [0.52, 0.72, 0.28], gloss: false,
+      family: 'Asteraceae, the daisy family', binomial: 'Lactuca sativa', type: 'leaf',
+      origin: 'the eastern Mediterranean; the Egyptians grew it first for its oil seed',
+      facts: [
+        'lettuce is in the daisy family. You are eating a sunflower relative in your sandwich',
+        'it was originally grown for seed oil, not leaves — the salad came later',
+        'when it bolts it goes bitter fast and leaks a milky latex. That latex is where the name Lactuca comes from'
+      ],
+      taste: 'mild and watery by design — centuries of breeding aimed at removing the bitterness'
+    },
+    {
+      id: 'wheat', name: 'wheat', match: ['wheat', 'triticum', 'grain', 'bread'],
+      sizeCm: 9, lengthCm: 9, widthCm: 1.8, profile: ROD, ribs: 8, ribDepth: 0.22,
+      color: [0.82, 0.68, 0.30], gloss: false,
+      family: 'Poaceae, the grasses', binomial: 'Triticum aestivum', type: 'grain',
+      origin: 'the Fertile Crescent',
+      facts: [
+        'bread wheat is not a simple species. It carries three complete genomes from three different grasses that hybridised twice',
+        'the key domestication change was the rachis: wild grasses shatter to scatter seed, and we selected the mutants that held on to it so it could be harvested',
+        'oats, rice, maize, barley and sugarcane are all grasses too. Most of what humanity eats is grass'
+      ],
+      taste: 'faintly sweet and nutty raw; almost everything you taste in bread is created by fermentation and heat'
+    }
+  ];
+
+  /* Lookup index, longest alias first so "sweetcorn" wins over "corn". */
+  const INDEX = [];
+  K.ENTRIES.forEach(function (e) {
+    e.match.forEach(function (m) { INDEX.push({ token: m, entry: e }); });
+  });
+  INDEX.sort(function (a, b) { return b.token.length - a.token.length; });
+
+  /* Find the first entry mentioned anywhere in a phrase. */
+  K.find = function (text) {
+    const t = ' ' + String(text).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ') + ' ';
+    let best = null, bestAt = Infinity;
+    for (let i = 0; i < INDEX.length; i++) {
+      const at = t.indexOf(' ' + INDEX[i].token + ' ');
+      if (at !== -1 && at < bestAt) { bestAt = at; best = INDEX[i].entry; }
+    }
+    return best;
+  };
+
+  K.byId = function (id) {
+    for (let i = 0; i < K.ENTRIES.length; i++) if (K.ENTRIES[i].id === id) return K.ENTRIES[i];
+    return null;
+  };
+
+  K.names = function () {
+    return K.ENTRIES.map(function (e) { return e.name; });
+  };
+
+  NG.K = K;
+})(window.NG = window.NG || {});
+
+/* ===== src/brain.js ===== */
+/* NOGGIN — what he says back.
+
+   Not a language model. This runs entirely offline: it matches an entry in the
+   atlas, works out which aspect you asked about, and answers from curated data.
+   That is a deliberate trade — for an evidence-led atlas, a small set of
+   verified answers beats a large set of confident guesses.
+
+   It keeps a subject in context, so "how big is it?" works after "let's talk
+   about an apple". */
+(function (NG) {
+  'use strict';
+
+  const K = NG.K;
+  const P = NG.P;
+  const M = NG.M;
+
+  /* His head is about this wide, which is the yardstick for every comparison. */
+  const HEAD_CM = 24;
+
+  const ASPECTS = [
+    { id: 'size', words: ['how big', 'how large', 'how small', 'how tall', 'how wide', 'size', 'scale', 'dimensions', 'measure', 'cm', 'centimet', 'inches'] },
+    { id: 'origin', words: ['where', 'from', 'origin', 'native', 'come from', 'grown', 'grow', 'country', 'region'] },
+    { id: 'family', words: ['family', 'related', 'relative', 'cousin', 'genus', 'species', 'binomial', 'latin', 'scientific name', 'botanical name', 'called'] },
+    { id: 'type', words: ['what is it', 'what is a', 'what are', 'fruit or veg', 'is it a fruit', 'is it a vegetable', 'is it a berry', 'berry', 'classif', 'botanically', 'technically'] },
+    { id: 'taste', words: ['taste', 'flavour', 'flavor', 'sweet', 'sour', 'bitter', 'eat', 'edible', 'nice'] },
+    { id: 'history', words: ['history', 'domestic', 'ancient', 'wild', 'ancestor', 'bred', 'first', 'old'] },
+    { id: 'seeds', words: ['seed', 'seeds', 'pip', 'pips', 'stone', 'pit', 'core'] },
+    { id: 'more', words: ['more', 'else', 'another', 'fact', 'interesting', 'tell me', 'go on', 'anything'] }
+  ];
+
+  const GREETING_WORDS = ['hello', 'hi ', 'hey', 'yo ', 'howdy', 'how are you', 'how is it going', 'hows it going', 'good morning', 'good evening', 'sup'];
+  const CLEAR_WORDS = ['clear', 'remove', 'delete', 'get rid', 'take it away', 'put it back', 'tidy', 'reset the'];
+  const LIST_WORDS = ['what do you know', 'what can you', 'help', 'list', 'options', 'everything', 'what have you got', 'topics'];
+  const THANKS_WORDS = ['thank', 'thanks', 'cheers', 'nice one', 'good job'];
+
+  function has(text, words) {
+    for (let i = 0; i < words.length; i++) if (text.indexOf(words[i]) !== -1) return true;
+    return false;
+  }
+
+  /* "a apple" reads as a bug even when the botany is right. */
+  function article(word) {
+    return /^[aeiou]/i.test(word) ? 'an' : 'a';
+  }
+  function an(word) { return article(word) + ' ' + word; }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  /* Plural for "what would you like to know about X?" */
+  function plural(name) {
+    if (/s$/.test(name)) return name;
+    if (/(ch|sh|x|z)$/.test(name)) return name + 'es';
+    if (/o$/.test(name)) return name + 'es';
+    if (/[^aeiou]y$/.test(name)) return name.slice(0, -1) + 'ies';
+    return name + 's';
+  }
+
+  function Brain() {
+    this.subject = null;
+    this.factCursor = {};
+    this.rand = M.rng((Date.now() & 0x7fffffff) || 3);
+    this.turns = 0;
+  }
+
+  Brain.prototype._pick = function (list) {
+    return list[Math.floor(this.rand() * list.length) % list.length];
+  };
+
+  /* "8 cm across — about a third the width of my head" */
+  Brain.prototype._sizeLine = function (e) {
+    const long = e.lengthCm || e.sizeCm;
+    const wide = e.widthCm || e.sizeCm;
+    const ratio = wide / HEAD_CM;
+    let cmp;
+    if (ratio < 0.12) cmp = 'you could lose it in my eyebrow';
+    else if (ratio < 0.3) cmp = 'about a quarter the width of my head';
+    else if (ratio < 0.45) cmp = 'roughly a third of my head';
+    else if (ratio < 0.7) cmp = 'over half the width of my head';
+    else if (ratio < 1.1) cmp = 'about as wide as my whole head, which is upsetting';
+    else cmp = 'wider than my entire head. Look at it. LOOK at it';
+    const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
+    return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp +
+      '. And that is exactly how big it is in here. I do not do decorative sizes.';
+  };
+
+  Brain.prototype._nextFact = function (e) {
+    const i = this.factCursor[e.id] || 0;
+    this.factCursor[e.id] = (i + 1) % e.facts.length;
+    return e.facts[i];
+  };
+
+  Brain.prototype._answer = function (e, aspect) {
+    switch (aspect) {
+      case 'size':
+        return [cap(an(e.name)) + ' is ' + this._sizeLine(e)];
+      case 'origin':
+        return ['It comes from ' + e.origin + '.',
+          e.ancestor ? 'Its wild ancestor is ' + e.ancestor + '. Which nobody would eat on purpose.'
+            : cap(this._nextFact(e)) + '.'];
+      case 'family':
+        return ['Family: ' + e.family + '. Binomial: ' + e.binomial + '.',
+          'I know that off by heart. I know all of them off by heart. Nobody has ever asked before.'];
+      case 'type':
+        return ['Botanically, ' + an(e.name) + ' is ' + (K.TYPES[e.type] || e.type) + '.',
+          cap(this._nextFact(e)) + '.'];
+      case 'taste':
+        return ['It tastes ' + e.taste + '.'];
+      case 'history':
+        return [cap(plural(e.name)) + ' come from ' + e.origin + '.',
+          cap(this._nextFact(e)) + '.'];
+      case 'seeds':
+        return [cap(this._nextFact(e)) + '.',
+          'Ask me something harder. Please. I am begging you.'];
+      case 'more':
+      default:
+        return [cap(this._nextFact(e)) + '.'];
+    }
+  };
+
+  /* The main entry point. Returns { lines, spawn, clear }. */
+  Brain.prototype.respond = function (input) {
+    const raw = String(input || '').trim();
+    const text = ' ' + raw.toLowerCase() + ' ';
+    this.turns++;
+
+    if (!raw) return { lines: ['You pressed send with nothing in it. Bold.'] };
+
+    if (has(text, CLEAR_WORDS) && !K.find(raw)) {
+      const had = this.subject;
+      this.subject = null;
+      return {
+        clear: true,
+        lines: had
+          ? ['Fine. The ' + had.name + ' is gone. I hope you are happy.',
+             'I can bring back literally any of ' + K.ENTRIES.length + ' things. Just say the word. Say a word. Any word.']
+          : ['There is nothing to clear. You cleared nothing. Congratulations.']
+      };
+    }
+
+    if (has(text, LIST_WORDS)) {
+      const names = K.names();
+      return {
+        lines: ['I have ' + names.length + ' things I can pull into the room, at their real size.',
+          names.join(', ') + '.',
+          'Name one and it appears. Then ask me how big it is, where it is from, what family it is in, what it tastes like, or just say "more" and I will keep going until you stop me.']
+      };
+    }
+
+    const entry = K.find(raw);
+
+    /* A new subject: bring it into the room. */
+    if (entry && entry !== this.subject) {
+      this.subject = entry;
+      const aspect = this._detectAspect(text);
+      const lines = ['Oh, ' + an(entry.name) + '! Yes. Hold on, I will get one.'];
+      if (aspect && aspect !== 'more') {
+        lines.push.apply(lines, this._answer(entry, aspect));
+      } else {
+        lines.push('There it is. A real one — ' + this._sizeLine(entry));
+        lines.push('What would you like to know about ' + plural(entry.name) +
+          '? Size, where it is from, what family it is in, what it tastes like. Or say "more" and I will simply keep talking, which is my preference.');
+      }
+      return { lines: lines, spawn: entry };
+    }
+
+    if (has(text, GREETING_WORDS)) {
+      return {
+        lines: [this._pick([
+          'Hey! Hi. Hello. You typed at me!',
+          'Oh good, you are here. I have been talking to nobody.',
+          'Hello! I was starting to think you were furniture.'
+        ]),
+          'Name any food plant and I will pull a real one into the room, correctly sized, and then talk about it until you physically stop me. Try "let\'s talk about an apple".']
+      };
+    }
+
+    if (has(text, THANKS_WORDS)) {
+      return { lines: [this._pick([
+        'You are welcome. Do not go. Ask another one.',
+        'Finally, some recognition. Ask me about pineapples.',
+        'See, this is what I am here for. Well. This and being stretched.'
+      ])] };
+    }
+
+    /* Follow-up about whatever is already floating there. */
+    if (this.subject) {
+      const aspect = this._detectAspect(text);
+      if (aspect) return { lines: this._answer(this.subject, aspect) };
+      /* No known aspect and no known plant: admit it, then carry on anyway. */
+      const lines = [this._pick([
+        'I have no idea what you just asked me.',
+        'That went straight past me.',
+        'No clue. Not in the atlas, not in my head.'
+      ])];
+      lines.push('Here is another thing about ' + plural(this.subject.name) + ' instead, because I am like this.');
+      lines.push(cap(this._nextFact(this.subject)) + '.');
+      return { lines: lines };
+    }
+
+    return {
+      lines: [this._pick([
+        'I do not have that one. I am an atlas of food plants, not a search engine.',
+        'No idea what that is. Ask me about something you could eat.',
+        'That is outside my remit, and my remit is plants you can put in a pan.'
+      ]),
+        'Try one of these: ' + K.names().slice(0, 8).join(', ') + '... or say "help" for the whole list.']
+    };
+  };
+
+  Brain.prototype._detectAspect = function (text) {
+    for (let i = 0; i < ASPECTS.length; i++) {
+      if (has(text, ASPECTS[i].words)) return ASPECTS[i].id;
+    }
+    return null;
+  };
+
+  Brain.prototype.greeting = function () {
+    return ['Hey! How is it going?',
+      'I am a floating head and this is my atlas. Name any food plant — "let\'s talk about an apple" — and I will pull a real one into the room at its actual size, then tell you far more about it than you asked for.',
+      'You can also just grab my face and stretch it. Most people do that first. I have made peace with it.'];
+  };
+
+  NG.Brain = Brain;
+})(window.NG = window.NG || {});
+
+/* ===== src/chat.js ===== */
+/* NOGGIN — the chat surface.
+
+   His replies type out one character at a time with the same blip voice as his
+   idle rambling, so the panel reads as him speaking rather than as a log
+   printing. Queued lines drain in order, and pressing send while he is still
+   going makes him finish the current line instantly — he will not be told to
+   hurry up twice. */
+(function (NG) {
+  'use strict';
+
+  const CHARS_PER_SEC = 90;
+  const LINE_GAP = 0.18;
+
+  function Chat(audio, brain, els) {
+    this.audio = audio;
+    this.brain = brain;
+    this.log = els.log;
+    this.input = els.input;
+    this.form = els.form;
+    this.panel = els.panel;
+
+    this.queue = [];
+    this.typingEl = null;
+    this.full = '';
+    this.shown = 0;
+    this.gap = 0;
+    this.lastActivity = -1e9;
+    this._blip = 0;
+    this.onSpawn = null;
+    this.onClear = null;
+
+    const self = this;
+    this.form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      self.send(self.input.value);
+      self.input.value = '';
+    });
+    /* Typing in the box must not trigger the game's single-key shortcuts. */
+    this.input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+  }
+
+  Chat.prototype.busy = function () {
+    return !!this.typingEl || this.queue.length > 0;
+  };
+
+  Chat.prototype._append = function (cls, text) {
+    const row = document.createElement('div');
+    row.className = 'msg ' + cls;
+    row.textContent = text || '';
+    this.log.appendChild(row);
+    /* Keep the transcript from growing without bound over a long session. */
+    while (this.log.childNodes.length > 60) this.log.removeChild(this.log.firstChild);
+    this.log.scrollTop = this.log.scrollHeight;
+    return row;
+  };
+
+  Chat.prototype.say = function (lines) {
+    for (let i = 0; i < lines.length; i++) this.queue.push(lines[i]);
+  };
+
+  Chat.prototype.send = function (raw) {
+    const text = String(raw || '').trim();
+    if (!text) return;
+    this.lastActivity = 0;
+
+    /* A second send finishes the current line rather than stacking up. */
+    if (this.typingEl) {
+      this.typingEl.textContent = this.full;
+      this.typingEl = null;
+    }
+
+    this._append('you', text);
+    const reply = this.brain.respond(text);
+    if (reply.clear && this.onClear) this.onClear();
+    if (reply.spawn && this.onSpawn) this.onSpawn(reply.spawn);
+    this.say(reply.lines);
+  };
+
+  Chat.prototype.update = function (dt) {
+    this.lastActivity += dt;
+
+    if (!this.typingEl) {
+      if (this.gap > 0) { this.gap -= dt; return; }
+      if (!this.queue.length) return;
+      this.full = this.queue.shift();
+      this.shown = 0;
+      this.typingEl = this._append('him', '');
+      return;
+    }
+
+    const before = Math.floor(this.shown);
+    this.shown = Math.min(this.full.length, this.shown + CHARS_PER_SEC * dt);
+    const now = Math.floor(this.shown);
+    if (now !== before) {
+      this.typingEl.textContent = this.full.slice(0, now);
+      this.log.scrollTop = this.log.scrollHeight;
+      for (let i = before; i < now; i++) {
+        const ch = this.full.charAt(i);
+        if (ch === ' ' || ch === '\n') continue;
+        if (++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
+      }
+    }
+    if (this.shown >= this.full.length) {
+      this.typingEl = null;
+      this.gap = LINE_GAP;
+    }
+  };
+
+  NG.Chat = Chat;
+})(window.NG = window.NG || {});
+
 /* ===== src/shaders.js ===== */
 /* NOGGIN — GLSL ES 3.00 shader sources. */
 (function (NG) {
@@ -2780,6 +3955,81 @@ void main() {
     gl.bindVertexArray(null);
   };
 
+  /* ---- props (summoned objects) ------------------------------------------ */
+
+  /* Props share the character's vertex layout so they go through the same
+     surface shader, lighting and shadow pass. They never deform, so their
+     buffers are static and `stretch` is a constant zero. */
+  Renderer.prototype.createProp = function (mesh) {
+    const gl = this.gl;
+    const n = mesh.positions.length / 3;
+    const dyn = new Float32Array(n * 7);
+    const sta = new Float32Array(n * 4);
+    for (let i = 0; i < n; i++) {
+      dyn[i * 7] = mesh.positions[i * 3];
+      dyn[i * 7 + 1] = mesh.positions[i * 3 + 1];
+      dyn[i * 7 + 2] = mesh.positions[i * 3 + 2];
+      dyn[i * 7 + 3] = mesh.normals[i * 3];
+      dyn[i * 7 + 4] = mesh.normals[i * 3 + 1];
+      dyn[i * 7 + 5] = mesh.normals[i * 3 + 2];
+      dyn[i * 7 + 6] = 0;
+      sta[i * 4] = mesh.colors[i * 3];
+      sta[i * 4 + 1] = mesh.colors[i * 3 + 1];
+      sta[i * 4 + 2] = mesh.colors[i * 3 + 2];
+      sta[i * 4 + 3] = mesh.mats[i];
+    }
+
+    const vao = gl.createVertexArray();
+    gl.bindVertexArray(vao);
+
+    const vb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, vb);
+    gl.bufferData(gl.ARRAY_BUFFER, dyn, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(S.LOC.POS);
+    gl.vertexAttribPointer(S.LOC.POS, 3, gl.FLOAT, false, 28, 0);
+    gl.enableVertexAttribArray(S.LOC.NOR);
+    gl.vertexAttribPointer(S.LOC.NOR, 3, gl.FLOAT, false, 28, 12);
+    gl.enableVertexAttribArray(S.LOC.STRETCH);
+    gl.vertexAttribPointer(S.LOC.STRETCH, 1, gl.FLOAT, false, 28, 24);
+
+    const cb = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, cb);
+    gl.bufferData(gl.ARRAY_BUFFER, sta, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(S.LOC.COL);
+    gl.vertexAttribPointer(S.LOC.COL, 3, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(S.LOC.MAT);
+    gl.vertexAttribPointer(S.LOC.MAT, 1, gl.FLOAT, false, 16, 12);
+
+    const ib = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, mesh.indices, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+
+    return {
+      vao: vao, count: mesh.indices.length, buffers: [vb, cb, ib],
+      heightUnits: mesh.heightUnits, radiusUnits: mesh.radiusUnits
+    };
+  };
+
+  Renderer.prototype.destroyProp = function (prop) {
+    const gl = this.gl;
+    if (!prop) return;
+    gl.deleteVertexArray(prop.vao);
+    prop.buffers.forEach(function (b) { gl.deleteBuffer(b); });
+  };
+
+  Renderer.prototype.drawProps = function (props, useProgram) {
+    const gl = this.gl;
+    if (!props || !props.length) return;
+    for (let i = 0; i < props.length; i++) {
+      const p = props[i];
+      if (!p.handle) continue;
+      gl.uniformMatrix4fv(useProgram.u.uModel, false, p.matrix);
+      gl.bindVertexArray(p.handle.vao);
+      gl.drawElements(gl.TRIANGLES, p.handle.count, gl.UNSIGNED_INT, 0);
+    }
+  };
+
   /* ---- character mesh --------------------------------------------------- */
 
   Renderer.prototype.setMesh = function (mesh) {
@@ -3049,6 +4299,7 @@ void main() {
     gl.uniformMatrix4fv(pr.u.uLightVP, false, state.lightVP);
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    this.drawProps(state.props, pr);
   };
 
   Renderer.prototype.renderScene = function (state) {
@@ -3124,6 +4375,7 @@ void main() {
     gl.uniform1i(pr.u.uShadow, 0);
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
+    this.drawProps(state.props, pr);
 
     /* ring targets */
     if (state.rings && state.rings.length) {
@@ -3925,6 +5177,16 @@ void main() {
     this.popupPool = [];
     this.popups = [];
 
+    /* Atlas: the chat brain and the objects it pulls into the room. */
+    this.brain = new NG.Brain();
+    this.chat = new NG.Chat(this.audio, this.brain, {
+      log: $('chat-log'), input: $('chat-input'), form: $('chat-form'), panel: $('chat')
+    });
+    this.props = [];
+    const self = this;
+    this.chat.onSpawn = function (entry) { self.spawnProduce(entry); };
+    this.chat.onClear = function () { self.clearProduce(); };
+
     this.buildMesh(QUALITY[this.quality].subdiv);
     this.renderer.setShadowSize(QUALITY[this.quality].shadow);
     this.resize();
@@ -4193,6 +5455,7 @@ void main() {
     on('btn-adaptive', function () { self.adaptive = !self.adaptive; self.updateHudStatic(); });
     on('btn-sound', function () { self.toggleSound(); });
     on('btn-talk', function () { self.toggleTalk(); });
+    on('btn-keys', function () { $('controls').classList.toggle('hidden'); });
     on('btn-hud', function () { self.setHud(false); });
     on('mode-sandbox', function () { self.enterSandbox(); });
     on('mode-challenge', function () { self.startChallenge(); });
@@ -4278,6 +5541,78 @@ void main() {
     $('mode-challenge').classList.remove('active');
   };
 
+  /* ---- summoned objects ---------------------------------------------------- */
+
+  /* Meshes are built at true scale (1 unit = 10 cm), so placement only decides
+     where the object sits, never how big it looks. A coffee cherry really is a
+     speck next to his head, and that is the honest answer. */
+  App.prototype.spawnProduce = function (entry) {
+    const mesh = NG.P.build(entry);
+    const handle = this.renderer.createProp(mesh);
+
+    for (let i = 0; i < this.props.length; i++) this.props[i].fading = true;
+
+    const el = document.createElement('div');
+    el.className = 'obj-tag';
+    el.innerHTML = entry.name.toUpperCase() + ' &middot; <b>' +
+      (entry.lengthCm || entry.sizeCm) + ' cm</b>';
+    $('tags').appendChild(el);
+
+    this.props.push({
+      handle: handle, entry: entry, el: el,
+      matrix: M.m4(), t: 0, fade: 1, fading: false, spin: 0.6,
+      x: 1.35 + handle.radiusUnits,
+      y: -0.30,
+      z: 0.10
+    });
+    while (this.props.length > 3) this._removeProp(0);
+
+    /* Pull the camera back so the head and the object both fit. A watermelon
+       is genuinely bigger than he is, and the framing has to admit that. */
+    this.camera.targetDist = M.clamp(5.0 + handle.radiusUnits * 2.2, 5.0, 12);
+  };
+
+  App.prototype._removeProp = function (i) {
+    const p = this.props[i];
+    this.renderer.destroyProp(p.handle);
+    if (p.el && p.el.parentNode) p.el.parentNode.removeChild(p.el);
+    this.props.splice(i, 1);
+  };
+
+  App.prototype.clearProduce = function () {
+    while (this.props.length) this._removeProp(0);
+  };
+
+  App.prototype.updateProps = function (dt) {
+    for (let i = this.props.length - 1; i >= 0; i--) {
+      const p = this.props[i];
+      p.t += dt;
+      p.spin += dt * 0.45;
+      if (p.fading) {
+        p.fade -= dt * 1.6;
+        if (p.fade <= 0) { this._removeProp(i); continue; }
+        p.x += dt * 1.4;
+      }
+      /* Pop in with a little overshoot, then hold. */
+      const grow = p.t < 0.45 ? M.smoothstep(0, 0.45, p.t) * (1 + 0.12 * (1 - p.t / 0.45)) : 1;
+      const scale = Math.min(grow, 1.12) * (p.fading ? p.fade : 1);
+      const bob = Math.sin(this.time * 1.3 + i) * 0.05;
+      M.compose(p.matrix, p.x, p.y + bob, p.z, p.spin, 0, scale);
+
+      /* Park the size tag just above the object. */
+      const top = [p.x, p.y + bob + p.handle.heightUnits * 0.5 * scale + 0.22, p.z];
+      const vp = this.viewProj;
+      const w = vp[3] * top[0] + vp[7] * top[1] + vp[11] * top[2] + vp[15];
+      if (w <= 0.001) { p.el.style.display = 'none'; continue; }
+      const nx = (vp[0] * top[0] + vp[4] * top[1] + vp[8] * top[2] + vp[12]) / w;
+      const ny = (vp[1] * top[0] + vp[5] * top[1] + vp[9] * top[2] + vp[13]) / w;
+      p.el.style.display = '';
+      p.el.style.opacity = String(p.fading ? p.fade : Math.min(1, p.t * 3));
+      p.el.style.left = ((nx * 0.5 + 0.5) * this.cssW) + 'px';
+      p.el.style.top = ((0.5 - ny * 0.5) * this.cssH) + 'px';
+    }
+  };
+
   /* Presentation-only randomness; the simulation and the game use seeded
      generators so runs stay reproducible. */
   App.prototype.rand01 = function () {
@@ -4341,6 +5676,15 @@ void main() {
      bar so he can yap without hiding the rings he is yapping about. */
   App.prototype.updateChatter = function (dt) {
     const playing = this.game.state === 'playing';
+    this.chat.update(dt);
+
+    /* One voice at a time: while the conversation is live his idle rambling
+       stays out of it, or you end up reading him in two places at once. */
+    if (this.chat.busy() || this.chat.lastActivity < 14) {
+      this.chatter.silence();
+      return;
+    }
+
     this.chatter.update(dt, this.grabPointer >= 0);
     this.chatter.bubble.classList.toggle('playing', playing);
 
@@ -4384,6 +5728,9 @@ void main() {
   App.prototype.updateCamera = function (dt) {
     const c = this.camera;
     c.dist += (c.targetDist - c.dist) * Math.min(1, dt * 9);
+    /* Slide the look-at point between him and whatever he has summoned. */
+    const wantX = this.props.length ? 0.75 : 0;
+    this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
 
     const g = this.game;
     const trauma = g.trauma * g.trauma;
@@ -4645,6 +5992,7 @@ void main() {
       M.transformDir([0, 0, 0], this.invModel, M.sub3([0, 0, 0], this.eye, this.target)));
     this.game.update(dt, this.body, this.model, camDirLocal);
     this.handleEvents();
+    this.updateProps(dt);
     this.updateChatter(dt);
     this.updatePopups(dt);
 
@@ -4664,6 +6012,7 @@ void main() {
       floor: FLOOR,
       showFloor: this.showFloor,
       rings: this.game.rings,
+      props: this.props,
       particleCount: particleCount,
       highlight: Math.min(1, this.body.maxDisplacement * 0.5),
       bloom: 0.60,
@@ -4696,6 +6045,7 @@ void main() {
       '<div class="sub">Grab the face and pull. Everything is rubber.</div>' +
       '<div class="sub dim">Drag on the head to stretch &middot; drag the void to orbit &middot; wheel to zoom</div>';
     $('overlay-btn').textContent = 'START CHALLENGE';
+    this.chat.say(this.brain.greeting());
     $('overlay-skip').classList.remove('hidden');
     $('overlay-skip').onclick = function (e) {
       e.preventDefault();
