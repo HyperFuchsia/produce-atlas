@@ -6,7 +6,8 @@ Coined and adopted terms, each with a full dictionary-style entry.
 
 | Term | Part of speech | Sense |
 |---|---|---|
-| [**lexopoet**](./lexopoet.md) | n. | One who treats the growth of the lexicon as ongoing work — who, meeting a thing with no name, hunts a word that carries it and coins one when the hunt fails, and who does this continuously as a standing practice. |
+| [**lexopoet**](./lexopoet.md) | n. | One who treats the growth of the lexicon as ongoing work — who, meeting a thing with no name, refuses the general word that gestures at it and hunts or builds the term that fits exactly, and who does this continuously as a standing practice. |
+| [**acribonym**](./lexopoet.md#word-family) | n. | The exactly-fitting term: one whose boundary falls where the concept's does. What a lexopoet is hunting; opposed in use to the hypernym. |
 
 *Retired: **lexiurge** (word-worker, on `-ourgos`) was the first draft of the entry
 above. It is documented in `lexopoet.md` under "Why `-poiesis` carries the persistence,"
