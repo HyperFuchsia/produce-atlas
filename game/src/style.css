@@ -1,0 +1,454 @@
+/* RACHIS — visual identity
+ *
+ * Reference: Anna Atkins, Photographs of British Algae (1843) — the first book illustrated
+ * photographically, botanical specimens printed as white silhouettes on Prussian blue. That
+ * is the WILD world. Against it, CULTIVATED borrows from the agronomic survey plat: glaucous
+ * ground, ink hairlines, everything measured.
+ *
+ * The two phases are a tonal inversion of each other, and the entire interface inverts with
+ * them — not just the play area. This is why the page commits to a single visual world
+ * instead of following the viewer's light/dark preference: the page's own light and dark ARE
+ * the half-dimension, and letting the OS drive them would overwrite the mechanic with a
+ * setting. `prefers-color-scheme` is deliberately not consulted.
+ *
+ * "Glaucous" is the botanical term for the waxy blue-green bloom on a cabbage leaf or a
+ * grape. It is the neutral this page is built on, chosen rather than inherited.
+ */
+
+:root {
+  --serif: 'Iowan Old Style', 'Hoefler Text', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --seed: #e9b44c;
+  --courier: #c4483c;
+  --plot: #2fa08c;
+
+  --step: 0.42s cubic-bezier(0.22, 0.68, 0.28, 1);
+}
+
+/* WILD — cyanotype. Pale specimens floating on Prussian blue. */
+#app[data-phase='wild'] {
+  --void: #08203a;
+  --void-2: #0c2b4b;
+  --ink: #dcecf4;
+  --ink-dim: #7fa6bf;
+  --rule: rgba(220, 236, 244, 0.22);
+  --panel: rgba(6, 24, 45, 0.72);
+  --phase-mat: #3e7c87;
+  /* The block colour and the type colour are separated because a hue that reads correctly
+     as a solid on the ground does not necessarily carry as 11px text on it. */
+  --accent-text: #6fbccb;
+}
+
+/* CULTIVATED — survey plat. Ink on glaucous, the whole tonal order turned over. */
+#app[data-phase='cult'] {
+  --void: #8c9e8a;
+  --void-2: #7c8e7b;
+  --ink: #1b221b;
+  --ink-dim: #47513f;
+  --rule: rgba(27, 34, 27, 0.28);
+  --panel: rgba(216, 224, 209, 0.72);
+  --phase-mat: #b4762f;
+  --accent-text: #6d3f10;
+}
+
+* { box-sizing: border-box; }
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--step), color var(--step);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* ── Chrome ─────────────────────────────────────────────────────────────────────────── */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: clamp(0.75rem, 2.2vmin, 1.6rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.hud > * { pointer-events: auto; }
+
+.eyebrow {
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+/* Plate number + level name, set like the printed heading on a herbarium sheet. */
+.plate {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.plate .n {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  padding: 0.22rem 0.45rem;
+  border: 1px solid var(--rule);
+  transition: color var(--step), border-color var(--step);
+}
+
+.plate h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.15rem, 3.4vmin, 1.9rem);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+.plate .teaches {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+/* The dimension readout. The whole premise of the game is a claim about how many dimensions
+ * it has, so the claim is on screen, live, with the half visibly half. */
+.axes {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 0 0.55rem;
+  font-size: 0.7rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.axes .k {
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.axes .v { font-size: 0.86rem; }
+.axes .half .k, .axes .half .v { color: var(--accent-text); transition: color var(--step); }
+
+.axes .tally {
+  grid-column: 1 / -1;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  text-align: right;
+  transition: color var(--step), border-color var(--step);
+}
+
+/* Specimen label. Engraved binomial, typewritten collection data — the way a real sheet
+ * separates the name of the thing from the record of where it was found. */
+.label {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+  max-width: min(38ch, 68vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.label .binomial {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1rem;
+}
+
+.label .common {
+  font-family: var(--serif);
+  font-size: 0.9rem;
+}
+
+.label dl {
+  margin: 0.15rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.6rem;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.label dt { letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.58rem; padding-top: 0.1em; }
+.label dd { margin: 0; }
+
+/* Dates for domestication are ranges under argument, not facts with decimal places. Where
+   the literature is split, the interface says so rather than picking a round number. */
+.contested { color: var(--accent-text); }
+
+/* Controls + loop budget. */
+.keys {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.keys .row { display: flex; gap: 0.5rem; align-items: center; }
+
+kbd {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  border: 1px solid var(--rule);
+  padding: 0.1rem 0.3rem;
+  color: var(--ink);
+  transition: border-color var(--step), color var(--step);
+}
+
+/* Loops as a row of rings — spent ones filled. Growth rings, and a budget you can count. */
+.loops { display: flex; gap: 0.28rem; align-items: center; }
+
+.loops i {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  border: 1px solid var(--phase-mat);
+  transition: background var(--step), border-color var(--step);
+}
+
+.loops i.spent { background: var(--phase-mat); }
+
+button {
+  font: inherit;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: background var(--step), border-color var(--step), color var(--step);
+}
+
+button:hover { background: var(--panel); }
+button:focus-visible { outline: 2px solid var(--phase-mat); outline-offset: 2px; }
+
+.tools {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 4.6rem;
+}
+
+/* ── Touch controls ─────────────────────────────────────────────────────────────────── */
+
+.pad {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  display: none;
+  grid-template-columns: repeat(3, 3rem);
+  grid-template-rows: repeat(2, 3rem);
+  gap: 0.35rem;
+  margin-bottom: 5.5rem;
+}
+
+.pad button { font-size: 0.9rem; padding: 0; background: var(--panel); }
+.pad .up { grid-area: 1 / 2; }
+.pad .left { grid-area: 2 / 1; }
+.pad .down { grid-area: 2 / 2; }
+.pad .right { grid-area: 2 / 3; }
+.pad .flip { grid-area: 1 / 1; font-size: 0.55rem; }
+.pad .loop { grid-area: 1 / 3; font-size: 0.55rem; }
+
+@media (pointer: coarse) {
+  .pad { display: grid; }
+  .keys .row.desktop-only { display: none; }
+}
+
+/* ── Overlays ───────────────────────────────────────────────────────────────────────── */
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--void) 88%, transparent);
+  backdrop-filter: blur(3px);
+  z-index: 5;
+  animation: fade 0.3s ease both;
+}
+
+.sheet[hidden] { display: none; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.sheet .inner {
+  max-width: 46rem;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sheet h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 5vmin, 2.6rem);
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Body copy is the one place the serif carries running text; the mono elsewhere is for
+   record-keeping, and a paragraph of it is a wall. */
+.sheet p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 60ch;
+  color: var(--ink-dim);
+}
+
+.sheet p strong { color: var(--ink); font-weight: 400; }
+.sheet p.binomial { font-style: italic; color: var(--ink); }
+.sheet p.stat { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em; }
+
+.sheet .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.sheet .actions button { font-size: 0.72rem; padding: 0.5rem 0.9rem; }
+
+/* The dimension ledger on the title card — the argument, laid out as an account. */
+.ledger {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.74rem;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 0.8rem 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger b { font-weight: 400; font-family: var(--serif); font-size: 0.95rem; font-style: italic; }
+.ledger .amt { text-align: right; color: var(--phase-mat); }
+.ledger .why { color: var(--ink-dim); }
+.ledger .sum { border-top: 1px solid var(--rule); padding-top: 0.45rem; margin-top: 0.15rem; }
+.ledger .sum .amt { color: var(--ink); }
+
+/* Level select, laid out as the plate index of an atlas. */
+.plates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.plates button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.6rem;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+  min-height: 4.4rem;
+}
+
+.plates button[disabled] { opacity: 0.35; cursor: not-allowed; }
+.plates .pn { font-size: 0.56rem; letter-spacing: 0.16em; color: var(--ink-dim); white-space: nowrap; }
+.plates .pname { font-family: var(--serif); font-size: 0.95rem; }
+.plates .pcrop { font-size: 0.6rem; color: var(--ink-dim); font-style: italic; font-family: var(--serif); }
+.plates button.done .pn::after { content: ' ·  SOLVED'; color: var(--plot); }
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  z-index: 4;
+  animation: rise 0.3s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translate(-50%, 0.5rem); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.toast[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Narrow screens get a different arrangement rather than a squeezed one: the title takes a
+   full row instead of sharing it with the readout, the controls sit under the board, and the
+   specimen label keeps the bottom. */
+@media (max-width: 40rem) {
+  .hud {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 0.45rem;
+    padding: 0.7rem;
+  }
+
+  .plate { grid-column: 1 / -1; grid-row: 1; padding-right: 9.75rem; }
+  .plate h1 { font-size: 1.15rem; }
+  .plate .teaches { font-size: 0.66rem; }
+
+  .axes { grid-column: 1; grid-row: 2; justify-self: start; font-size: 0.6rem; gap: 0 0.5rem; }
+  .axes .tally { text-align: left; }
+
+  .keys { grid-column: 2; grid-row: 2; align-self: start; }
+
+  .tools { position: absolute; top: 0.7rem; right: 0.7rem; margin: 0; }
+
+  .pad { grid-column: 1 / -1; grid-row: 3; align-self: end; margin-bottom: 0.25rem; }
+
+  .label { grid-column: 1 / -1; grid-row: 4; max-width: 100%; }
+  .label dl { font-size: 0.62rem; grid-template-columns: 4.2rem 1fr; }
+}

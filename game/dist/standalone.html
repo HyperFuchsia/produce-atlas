@@ -1,0 +1,2390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>Rachis — a 4.5-dimensional game</title>
+
+<style>
+/* RACHIS — visual identity
+ *
+ * Reference: Anna Atkins, Photographs of British Algae (1843) — the first book illustrated
+ * photographically, botanical specimens printed as white silhouettes on Prussian blue. That
+ * is the WILD world. Against it, CULTIVATED borrows from the agronomic survey plat: glaucous
+ * ground, ink hairlines, everything measured.
+ *
+ * The two phases are a tonal inversion of each other, and the entire interface inverts with
+ * them — not just the play area. This is why the page commits to a single visual world
+ * instead of following the viewer's light/dark preference: the page's own light and dark ARE
+ * the half-dimension, and letting the OS drive them would overwrite the mechanic with a
+ * setting. `prefers-color-scheme` is deliberately not consulted.
+ *
+ * "Glaucous" is the botanical term for the waxy blue-green bloom on a cabbage leaf or a
+ * grape. It is the neutral this page is built on, chosen rather than inherited.
+ */
+
+:root {
+  --serif: 'Iowan Old Style', 'Hoefler Text', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --seed: #e9b44c;
+  --courier: #c4483c;
+  --plot: #2fa08c;
+
+  --step: 0.42s cubic-bezier(0.22, 0.68, 0.28, 1);
+}
+
+/* WILD — cyanotype. Pale specimens floating on Prussian blue. */
+#app[data-phase='wild'] {
+  --void: #08203a;
+  --void-2: #0c2b4b;
+  --ink: #dcecf4;
+  --ink-dim: #7fa6bf;
+  --rule: rgba(220, 236, 244, 0.22);
+  --panel: rgba(6, 24, 45, 0.72);
+  --phase-mat: #3e7c87;
+  /* The block colour and the type colour are separated because a hue that reads correctly
+     as a solid on the ground does not necessarily carry as 11px text on it. */
+  --accent-text: #6fbccb;
+}
+
+/* CULTIVATED — survey plat. Ink on glaucous, the whole tonal order turned over. */
+#app[data-phase='cult'] {
+  --void: #8c9e8a;
+  --void-2: #7c8e7b;
+  --ink: #1b221b;
+  --ink-dim: #47513f;
+  --rule: rgba(27, 34, 27, 0.28);
+  --panel: rgba(216, 224, 209, 0.72);
+  --phase-mat: #b4762f;
+  --accent-text: #6d3f10;
+}
+
+* { box-sizing: border-box; }
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--step), color var(--step);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* ── Chrome ─────────────────────────────────────────────────────────────────────────── */
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  padding: clamp(0.75rem, 2.2vmin, 1.6rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.hud > * { pointer-events: auto; }
+
+.eyebrow {
+  font-size: 0.62rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+/* Plate number + level name, set like the printed heading on a herbarium sheet. */
+.plate {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.plate .n {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  color: var(--ink-dim);
+  padding: 0.22rem 0.45rem;
+  border: 1px solid var(--rule);
+  transition: color var(--step), border-color var(--step);
+}
+
+.plate h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.15rem, 3.4vmin, 1.9rem);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+.plate .teaches {
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+/* The dimension readout. The whole premise of the game is a claim about how many dimensions
+ * it has, so the claim is on screen, live, with the half visibly half. */
+.axes {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  gap: 0 0.55rem;
+  font-size: 0.7rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.axes .k {
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.axes .v { font-size: 0.86rem; }
+.axes .half .k, .axes .half .v { color: var(--accent-text); transition: color var(--step); }
+
+.axes .tally {
+  grid-column: 1 / -1;
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+  text-align: right;
+  transition: color var(--step), border-color var(--step);
+}
+
+/* Specimen label. Engraved binomial, typewritten collection data — the way a real sheet
+ * separates the name of the thing from the record of where it was found. */
+.label {
+  grid-column: 1;
+  grid-row: 3;
+  align-self: end;
+  max-width: min(38ch, 68vw);
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.label .binomial {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1rem;
+}
+
+.label .common {
+  font-family: var(--serif);
+  font-size: 0.9rem;
+}
+
+.label dl {
+  margin: 0.15rem 0 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.6rem;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.label dt { letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.58rem; padding-top: 0.1em; }
+.label dd { margin: 0; }
+
+/* Dates for domestication are ranges under argument, not facts with decimal places. Where
+   the literature is split, the interface says so rather than picking a round number. */
+.contested { color: var(--accent-text); }
+
+/* Controls + loop budget. */
+.keys {
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
+  justify-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  font-size: 0.66rem;
+  color: var(--ink-dim);
+  transition: color var(--step);
+}
+
+.keys .row { display: flex; gap: 0.5rem; align-items: center; }
+
+kbd {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  border: 1px solid var(--rule);
+  padding: 0.1rem 0.3rem;
+  color: var(--ink);
+  transition: border-color var(--step), color var(--step);
+}
+
+/* Loops as a row of rings — spent ones filled. Growth rings, and a budget you can count. */
+.loops { display: flex; gap: 0.28rem; align-items: center; }
+
+.loops i {
+  width: 0.62rem;
+  height: 0.62rem;
+  border-radius: 50%;
+  border: 1px solid var(--phase-mat);
+  transition: background var(--step), border-color var(--step);
+}
+
+.loops i.spent { background: var(--phase-mat); }
+
+button {
+  font: inherit;
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--rule);
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  transition: background var(--step), border-color var(--step), color var(--step);
+}
+
+button:hover { background: var(--panel); }
+button:focus-visible { outline: 2px solid var(--phase-mat); outline-offset: 2px; }
+
+.tools {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 4.6rem;
+}
+
+/* ── Touch controls ─────────────────────────────────────────────────────────────────── */
+
+.pad {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  align-self: end;
+  justify-self: center;
+  display: none;
+  grid-template-columns: repeat(3, 3rem);
+  grid-template-rows: repeat(2, 3rem);
+  gap: 0.35rem;
+  margin-bottom: 5.5rem;
+}
+
+.pad button { font-size: 0.9rem; padding: 0; background: var(--panel); }
+.pad .up { grid-area: 1 / 2; }
+.pad .left { grid-area: 2 / 1; }
+.pad .down { grid-area: 2 / 2; }
+.pad .right { grid-area: 2 / 3; }
+.pad .flip { grid-area: 1 / 1; font-size: 0.55rem; }
+.pad .loop { grid-area: 1 / 3; font-size: 0.55rem; }
+
+@media (pointer: coarse) {
+  .pad { display: grid; }
+  .keys .row.desktop-only { display: none; }
+}
+
+/* ── Overlays ───────────────────────────────────────────────────────────────────────── */
+
+.sheet {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--void) 88%, transparent);
+  backdrop-filter: blur(3px);
+  z-index: 5;
+  animation: fade 0.3s ease both;
+}
+
+.sheet[hidden] { display: none; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.sheet .inner {
+  max-width: 46rem;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sheet h2 {
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: clamp(1.6rem, 5vmin, 2.6rem);
+  margin: 0;
+  text-wrap: balance;
+}
+
+/* Body copy is the one place the serif carries running text; the mono elsewhere is for
+   record-keeping, and a paragraph of it is a wall. */
+.sheet p {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1.6;
+  max-width: 60ch;
+  color: var(--ink-dim);
+}
+
+.sheet p strong { color: var(--ink); font-weight: 400; }
+.sheet p.binomial { font-style: italic; color: var(--ink); }
+.sheet p.stat { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.04em; }
+
+.sheet .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.4rem; }
+.sheet .actions button { font-size: 0.72rem; padding: 0.5rem 0.9rem; }
+
+/* The dimension ledger on the title card — the argument, laid out as an account. */
+.ledger {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.35rem 1rem;
+  font-size: 0.74rem;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 0.8rem 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger b { font-weight: 400; font-family: var(--serif); font-size: 0.95rem; font-style: italic; }
+.ledger .amt { text-align: right; color: var(--phase-mat); }
+.ledger .why { color: var(--ink-dim); }
+.ledger .sum { border-top: 1px solid var(--rule); padding-top: 0.45rem; margin-top: 0.15rem; }
+.ledger .sum .amt { color: var(--ink); }
+
+/* Level select, laid out as the plate index of an atlas. */
+.plates {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
+.plates button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  padding: 0.6rem;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: left;
+  min-height: 4.4rem;
+}
+
+.plates button[disabled] { opacity: 0.35; cursor: not-allowed; }
+.plates .pn { font-size: 0.56rem; letter-spacing: 0.16em; color: var(--ink-dim); white-space: nowrap; }
+.plates .pname { font-family: var(--serif); font-size: 0.95rem; }
+.plates .pcrop { font-size: 0.6rem; color: var(--ink-dim); font-style: italic; font-family: var(--serif); }
+.plates button.done .pn::after { content: ' ·  SOLVED'; color: var(--plot); }
+
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 12%;
+  transform: translateX(-50%);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  z-index: 4;
+  animation: rise 0.3s ease both;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translate(-50%, 0.5rem); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.toast[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* Narrow screens get a different arrangement rather than a squeezed one: the title takes a
+   full row instead of sharing it with the readout, the controls sit under the board, and the
+   specimen label keeps the bottom. */
+@media (max-width: 40rem) {
+  .hud {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto 1fr auto;
+    gap: 0.45rem;
+    padding: 0.7rem;
+  }
+
+  .plate { grid-column: 1 / -1; grid-row: 1; padding-right: 9.75rem; }
+  .plate h1 { font-size: 1.15rem; }
+  .plate .teaches { font-size: 0.66rem; }
+
+  .axes { grid-column: 1; grid-row: 2; justify-self: start; font-size: 0.6rem; gap: 0 0.5rem; }
+  .axes .tally { text-align: left; }
+
+  .keys { grid-column: 2; grid-row: 2; align-self: start; }
+
+  .tools { position: absolute; top: 0.7rem; right: 0.7rem; margin: 0; }
+
+  .pad { grid-column: 1 / -1; grid-row: 3; align-self: end; margin-bottom: 0.25rem; }
+
+  .label { grid-column: 1 / -1; grid-row: 4; max-width: 100%; }
+  .label dl { font-size: 0.62rem; grid-template-columns: 4.2rem 1fr; }
+}
+</style>
+
+
+<div id="app" data-phase="wild">
+  <canvas id="stage"></canvas>
+
+  <div class="hud">
+    <div class="plate">
+      <span class="n" id="plate-n">PLATE I</span>
+      <div>
+        <h1 id="plate-name">Furrow</h1>
+        <div class="teaches" id="plate-teaches"></div>
+      </div>
+    </div>
+
+    <div class="axes" id="axes">
+      <div><div class="k">X</div><div class="v" id="ax-x">0</div></div>
+      <div><div class="k">Y</div><div class="v" id="ax-y">0</div></div>
+      <div><div class="k">Z</div><div class="v" id="ax-z">0</div></div>
+      <div><div class="k">T</div><div class="v" id="ax-t">0</div></div>
+      <div class="half"><div class="k">&frac12; &Phi;</div><div class="v" id="ax-p">WILD</div></div>
+      <div class="tally" id="ax-tally">3 free &middot; 1 rewound &middot; &frac12; two-valued</div>
+    </div>
+
+    <div class="tools">
+      <button id="btn-plates" title="Plate index (Esc)">Plates</button>
+      <button id="btn-sound" title="Sound" aria-pressed="true">Sound</button>
+    </div>
+
+    <div class="pad">
+      <button class="flip" id="pad-flip">FLIP</button>
+      <button class="up" id="pad-up" aria-label="Move away">&uarr;</button>
+      <button class="loop" id="pad-loop">LOOP</button>
+      <button class="left" id="pad-left" aria-label="Move left">&larr;</button>
+      <button class="down" id="pad-down" aria-label="Move toward">&darr;</button>
+      <button class="right" id="pad-right" aria-label="Move right">&rarr;</button>
+    </div>
+
+    <aside class="label">
+      <div class="eyebrow">Origin plot</div>
+      <div class="common" id="crop-common"></div>
+      <div class="binomial" id="crop-binomial"></div>
+      <dl>
+        <dt>Wild</dt><dd id="crop-ancestor"></dd>
+        <dt>Origin</dt><dd id="crop-origin"></dd>
+        <dt>Since</dt><dd id="crop-years"></dd>
+        <dt>Evidence</dt><dd id="crop-confidence"></dd>
+      </dl>
+    </aside>
+
+    <nav class="keys">
+      <div class="loops" id="loops" title="Rewinds available"></div>
+      <div class="row desktop-only"><kbd>&larr;&uarr;&darr;&rarr;</kbd><span>move</span></div>
+      <div class="row desktop-only"><kbd>Space</kbd><span>flip phase</span></div>
+      <div class="row desktop-only"><kbd>R</kbd><span>rewind</span><kbd>Z</kbd><span>undo</span></div>
+      <div class="row desktop-only"><kbd>Q</kbd><kbd>E</kbd><span>turn</span><kbd>Enter</kbd><span>restart</span></div>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="inner" id="sheet-inner"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+var __m = {}, __c = {};
+function __req(id) {
+  if (__c[id]) return __c[id];
+  var x = __c[id] = {};
+  __m[id](x, __req);
+  return x;
+}
+__m["sim.js"] = function (__x, __req) {
+// sim.js — the rules. Pure, deterministic, and free of any DOM reference, so the same code
+// that runs the game also runs under `node --test` to prove every level is solvable.
+//
+// ── The dimensions ───────────────────────────────────────────────────────────────────────
+//   x, y, z   three fully traversable spatial axes                              = 3
+//   t         time, navigable: you rewind and your past run keeps playing        = 1
+//   phase     wild ⇄ cultivated — a real axis, but with exactly two positions.
+//             You can move along it, but there is nowhere to move to except the
+//             other end. A dimension with no interior: half a dimension.         = 0.5
+//                                                                          total = 4.5
+//
+// ── Resolution order within a tick ───────────────────────────────────────────────────────
+// Everything below is ordered deliberately; changing any of it changes which levels are
+// solvable, so the order is part of the game, not an implementation detail.
+//
+//   1. Actors act, oldest ghost first, the live courier LAST. The courier moving last is
+//      what lets you follow a ghost into the cell it just vacated — the alternative reads
+//      as the past self body-blocking you, which is miserable.
+//   2. Each action fully resolves before the next actor acts (a phase flip mid-tick is seen
+//      by every actor after it).
+//   3. Gravity runs once, globally, after all actions, iterated to a fixed point from the
+//      lowest mover upward so stacks settle in one pass.
+//   4. Loss is checked, then victory.
+//
+// ── Collision ────────────────────────────────────────────────────────────────────────────
+// Actors pass through each other but stand on each other. This is asymmetric on purpose:
+// mutual blocking would make the shared spawn cell an instant deadlock on every rewind, and
+// "my own past self is in the doorway" is the single least forgiving failure a time-loop
+// game can hand a player. Seeds, by contrast, block everything and get pushed.
+
+const T_AIR = 0;   // empty
+const T_ROCK = 1;  // solid in both phases — bedrock
+const T_WILD = 2;  // solid only while wild — thicket, scrub, unimproved ground
+const T_CULT = 3;  // solid only while cultivated — terrace, bund, raised bed
+
+const PH_WILD = 0;
+const PH_CULT = 1;
+
+const DIRS = {
+  N: { x: 0, z: -1 },
+  S: { x: 0, z: 1 },
+  E: { x: 1, z: 0 },
+  W: { x: -1, z: 0 },
+};
+
+const WAIT = '.';
+const FLIP = 'F';
+const REWIND = 'R';
+
+const isMove = (a) => Object.prototype.hasOwnProperty.call(DIRS, a);
+
+/** Terrain solidity is the only thing the phase actually changes. */
+function solidAt(kind, phase) {
+  return kind === T_ROCK
+    || (kind === T_WILD && phase === PH_WILD)
+    || (kind === T_CULT && phase === PH_CULT);
+}
+
+const LEGEND = {
+  '.': T_AIR, ' ': T_AIR,
+  '#': T_ROCK,
+  'w': T_WILD,
+  'c': T_CULT,
+  '@': T_AIR,  // courier spawn
+  's': T_AIR,  // seed
+  'o': T_AIR,  // origin plot
+};
+
+/**
+ * Parse a level. `layers[y]` is a list of `z` rows of `x` characters, y ascending, so the
+ * text reads bottom-slice first — the way a section drawing through soil reads.
+ */
+function parse(def) {
+  const layers = def.layers;
+  const h = layers.length;
+  const d = layers[0].length;
+  const w = layers[0][0].length;
+
+  for (let y = 0; y < h; y++) {
+    if (layers[y].length !== d) throw new Error(`${def.id}: layer ${y} has ${layers[y].length} rows, expected ${d}`);
+    for (let z = 0; z < d; z++) {
+      if (layers[y][z].length !== w) throw new Error(`${def.id}: layer ${y} row ${z} is ${layers[y][z].length} wide, expected ${w}`);
+    }
+  }
+
+  const terrain = new Uint8Array(w * h * d);
+  const plots = [];
+  const seeds = [];
+  let spawn = null;
+
+  for (let y = 0; y < h; y++) {
+    for (let z = 0; z < d; z++) {
+      for (let x = 0; x < w; x++) {
+        const ch = layers[y][z][x];
+        const kind = LEGEND[ch];
+        if (kind === undefined) throw new Error(`${def.id}: unknown glyph "${ch}" at ${x},${y},${z}`);
+        terrain[(y * d + z) * w + x] = kind;
+        if (ch === '@') {
+          if (spawn) throw new Error(`${def.id}: more than one spawn`);
+          spawn = { x, y, z };
+        }
+        if (ch === 's') seeds.push({ x, y, z });
+        if (ch === 'o') plots.push({ x, y, z });
+      }
+    }
+  }
+
+  if (!spawn) throw new Error(`${def.id}: no spawn`);
+  if (!plots.length) throw new Error(`${def.id}: no origin plot`);
+  if (seeds.length < plots.length) {
+    throw new Error(`${def.id}: ${seeds.length} seeds cannot fill ${plots.length} plots`);
+  }
+
+  return {
+    def, w, h, d, terrain, plots,
+    spawn,
+    seedStart: seeds,
+    startPhase: def.startPhase ?? PH_WILD,
+    maxLoops: def.maxLoops ?? 0,
+  };
+}
+
+/** Fresh runtime state: tick zero, no ghosts. */
+function start(level) {
+  const state = {
+    level,
+    t: 0,
+    phase: level.startPhase,
+    player: { ...level.spawn },
+    seeds: level.seedStart.map((s) => ({ ...s })),
+    ghosts: [],
+    lost: null,
+    won: false,
+  };
+  // Settle before the first tick so a level can be drawn with a seed hanging in the air
+  // and have it land where it belongs, rather than lurching downward on move one.
+  settle(state);
+  return state;
+}
+
+/** Reset the world but keep the ghosts — this is what a rewind does. */
+function reset(state) {
+  const lv = state.level;
+  const next = {
+    level: lv,
+    t: 0,
+    phase: lv.startPhase,
+    player: { ...lv.spawn },
+    seeds: lv.seedStart.map((s) => ({ ...s })),
+    ghosts: state.ghosts.map((g) => ({ actions: g.actions, x: lv.spawn.x, y: lv.spawn.y, z: lv.spawn.z })),
+    lost: null,
+    won: false,
+  };
+  settle(next);
+  return next;
+}
+
+function clone(state) {
+  return {
+    level: state.level,
+    t: state.t,
+    phase: state.phase,
+    player: { ...state.player },
+    seeds: state.seeds.map((s) => ({ ...s })),
+    // `actions` is append-only and never mutated in place, so sharing the array is safe
+    // and keeps an undo snapshot cheap even with a dozen ghosts on screen.
+    ghosts: state.ghosts.map((g) => ({ actions: g.actions, x: g.x, y: g.y, z: g.z })),
+    lost: state.lost,
+    won: state.won,
+  };
+}
+
+function terrainAt(lv, x, y, z) {
+  return lv.terrain[(y * lv.d + z) * lv.w + x];
+}
+
+/**
+ * Walls and ceiling are solid, the floor is not: falling out of the bottom is the only way
+ * to leave the world, which keeps "the void" a designed hazard rather than an escape hatch.
+ */
+function solid(state, x, y, z) {
+  const lv = state.level;
+  if (y < 0) return false;
+  if (x < 0 || x >= lv.w || z < 0 || z >= lv.d || y >= lv.h) return true;
+  return solidAt(terrainAt(lv, x, y, z), state.phase);
+}
+
+function seedAt(state, x, y, z, skip = -1) {
+  for (let i = 0; i < state.seeds.length; i++) {
+    if (i === skip) continue;
+    const s = state.seeds[i];
+    if (s.x === x && s.y === y && s.z === z) return i;
+  }
+  return -1;
+}
+
+function actorAt(state, x, y, z, skip = null) {
+  const all = [state.player, ...state.ghosts];
+  for (const a of all) {
+    if (a === skip) continue;
+    if (a.x === x && a.y === y && a.z === z) return a;
+  }
+  return null;
+}
+
+/** Can something occupy this cell? Actors are transparent here; seeds are not. */
+function open(state, x, y, z, skipSeed = -1) {
+  return !solid(state, x, y, z) && seedAt(state, x, y, z, skipSeed) === -1;
+}
+
+/** Anything underfoot holds you up: rock, a seed, or another courier's shoulders. */
+function supported(state, a, skipSeed = -1) {
+  if (a.y <= 0 && solid(state, a.x, -1, a.z)) return true;
+  return solid(state, a.x, a.y - 1, a.z)
+    || seedAt(state, a.x, a.y - 1, a.z, skipSeed) !== -1
+    || actorAt(state, a.x, a.y - 1, a.z, a) !== null;
+}
+
+/**
+ * One actor's move. Tries, in order: walk in, push a seed, then step up onto whatever
+ * blocked it. Returns a small record so the renderer can animate what actually happened.
+ */
+function step(state, actor, dir) {
+  const nx = actor.x + dir.x;
+  const nz = actor.z + dir.z;
+
+  // Walk into a past self and you step onto their shoulders. This is checked before the
+  // plain walk because actors are otherwise transparent, and "climb your own history" is
+  // the most legible thing the time axis does — it should be the thing that happens when
+  // you walk at it, not a trick you have to discover.
+  if (actorAt(state, nx, actor.y, nz, actor)
+      && open(state, nx, actor.y + 1, nz) && !actorAt(state, nx, actor.y + 1, nz, actor)
+      && open(state, actor.x, actor.y + 1, actor.z)) {
+    actor.x = nx; actor.z = nz; actor.y += 1;
+    return { kind: 'mount' };
+  }
+
+  // Straight in.
+  if (open(state, nx, actor.y, nz)) {
+    actor.x = nx; actor.z = nz;
+    return { kind: 'walk' };
+  }
+
+  // Push a seed one cell along, if there is somewhere for it to go.
+  const si = seedAt(state, nx, actor.y, nz);
+  if (si !== -1) {
+    const px = nx + dir.x;
+    const pz = nz + dir.z;
+    if (open(state, px, actor.y, pz, si) && !actorAt(state, px, actor.y, pz)) {
+      state.seeds[si].x = px;
+      state.seeds[si].z = pz;
+      actor.x = nx; actor.z = nz;
+      return { kind: 'push', seed: si };
+    }
+  }
+
+  // Step up — onto terrain or onto the seed that would not budge.
+  if (open(state, nx, actor.y + 1, nz) && open(state, actor.x, actor.y + 1, actor.z)) {
+    actor.x = nx; actor.z = nz; actor.y += 1;
+    return { kind: 'climb' };
+  }
+
+  return { kind: 'blocked' };
+}
+
+/**
+ * Flip the phase and eject anything caught inside newly solid ground.
+ *
+ * Ejection upward is not a safety valve bolted on to avoid a crash — it is the main way you
+ * gain height. Stand where a terrace will be, flip, and the ground lifts you. Resolving from
+ * the lowest occupant upward means a stacked column rises intact instead of colliding.
+ */
+function flip(state) {
+  state.phase = state.phase === PH_WILD ? PH_CULT : PH_WILD;
+
+  const movers = [
+    ...state.seeds.map((s, i) => ({ obj: s, seedIndex: i })),
+    ...[...state.ghosts, state.player].map((a) => ({ obj: a, seedIndex: -1 })),
+  ].sort((a, b) => a.obj.y - b.obj.y);
+
+  for (const m of movers) {
+    const o = m.obj;
+    if (!solid(state, o.x, o.y, o.z)) continue;
+    let y = o.y + 1;
+    while (y < state.level.h && !open(state, o.x, y, o.z, m.seedIndex)) y++;
+    if (y >= state.level.h) { state.lost = 'crush'; return; }
+    o.y = y;
+  }
+}
+
+/** Global gravity, iterated until nothing else can fall. */
+function settle(state) {
+  for (let pass = 0; pass < state.level.h + 2; pass++) {
+    let moved = false;
+
+    const movers = [
+      ...state.seeds.map((s, i) => ({ obj: s, seedIndex: i })),
+      ...[...state.ghosts, state.player].map((a) => ({ obj: a, seedIndex: -1 })),
+    ].sort((a, b) => a.obj.y - b.obj.y);
+
+    for (const m of movers) {
+      const o = m.obj;
+      while (!supported(state, o, m.seedIndex)) {
+        o.y -= 1;
+        moved = true;
+        if (o.y < 0) { state.lost = 'void'; return; }
+      }
+    }
+
+    if (!moved) break;
+  }
+}
+
+function act(state, actor, action) {
+  if (action === FLIP) { flip(state); return { kind: 'flip' }; }
+  if (isMove(action)) return step(state, actor, DIRS[action]);
+  return { kind: 'wait' };
+}
+
+function checkWin(state) {
+  return state.level.plots.every((p) => seedAt(state, p.x, p.y, p.z) !== -1);
+}
+
+/**
+ * Advance one tick. Mutates `state`; callers that want undo snapshot with `clone` first.
+ * Returns per-actor outcomes for the renderer.
+ */
+function tick(state, action) {
+  if (state.won || state.lost) return { events: [] };
+
+  const events = [];
+  const from = {
+    player: { ...state.player },
+    ghosts: state.ghosts.map((g) => ({ x: g.x, y: g.y, z: g.z })),
+    seeds: state.seeds.map((s) => ({ ...s })),
+  };
+
+  // Oldest ghost first, live courier last.
+  for (let i = 0; i < state.ghosts.length; i++) {
+    const g = state.ghosts[i];
+    const a = g.actions[state.t] ?? WAIT;
+    events.push({ who: `ghost${i}`, action: a, ...act(state, g, a) });
+    if (state.lost) break;
+  }
+  if (!state.lost) {
+    events.push({ who: 'player', action, ...act(state, state.player, action) });
+  }
+
+  if (!state.lost) settle(state);
+
+  state.t += 1;
+  if (!state.lost && checkWin(state)) state.won = true;
+
+  return { events, from };
+}
+
+/**
+ * End the current run: the courier's recording joins the chorus and the world resets.
+ * Returns null when the loop budget is spent.
+ */
+function rewind(state, recording) {
+  // A budget of zero means zero, not unlimited — the early levels rely on the time axis
+  // being unavailable so that the phase axis is the only thing left to try.
+  if (state.ghosts.length >= state.level.maxLoops) return null;
+  const next = reset(state);
+  next.ghosts = [
+    ...state.ghosts.map((g) => ({ actions: g.actions, x: state.level.spawn.x, y: state.level.spawn.y, z: state.level.spawn.z })),
+    { actions: recording.slice(), x: state.level.spawn.x, y: state.level.spawn.y, z: state.level.spawn.z },
+  ];
+  return next;
+}
+
+/**
+ * Replay a solution string. `R` rewinds, every other glyph is one tick.
+ * This is the function the test suite leans on: a level is only shipped if its recorded
+ * solution actually reaches `won` here.
+ */
+function replay(level, solution) {
+  let state = start(level);
+  let recording = [];
+
+  for (const ch of solution) {
+    if (ch === REWIND) {
+      const next = rewind(state, recording);
+      if (!next) return { state, ok: false, reason: 'loop budget exceeded' };
+      state = next;
+      recording = [];
+      continue;
+    }
+    if (ch !== WAIT && ch !== FLIP && !isMove(ch)) {
+      return { state, ok: false, reason: `unknown action "${ch}"` };
+    }
+    recording.push(ch);
+    tick(state, ch);
+    if (state.lost) return { state, ok: false, reason: `lost: ${state.lost}` };
+    if (state.won) return { state, ok: true, reason: 'won' };
+  }
+
+  return { state, ok: state.won, reason: state.won ? 'won' : 'solution ended without a win' };
+}
+
+Object.defineProperties(__x, { T_AIR: { get: () => T_AIR, enumerable: true }, T_ROCK: { get: () => T_ROCK, enumerable: true }, T_WILD: { get: () => T_WILD, enumerable: true }, T_CULT: { get: () => T_CULT, enumerable: true }, PH_WILD: { get: () => PH_WILD, enumerable: true }, PH_CULT: { get: () => PH_CULT, enumerable: true }, DIRS: { get: () => DIRS, enumerable: true }, WAIT: { get: () => WAIT, enumerable: true }, FLIP: { get: () => FLIP, enumerable: true }, REWIND: { get: () => REWIND, enumerable: true }, isMove: { get: () => isMove, enumerable: true }, solidAt: { get: () => solidAt, enumerable: true }, parse: { get: () => parse, enumerable: true }, start: { get: () => start, enumerable: true }, reset: { get: () => reset, enumerable: true }, clone: { get: () => clone, enumerable: true }, terrainAt: { get: () => terrainAt, enumerable: true }, solid: { get: () => solid, enumerable: true }, seedAt: { get: () => seedAt, enumerable: true }, actorAt: { get: () => actorAt, enumerable: true }, checkWin: { get: () => checkWin, enumerable: true }, tick: { get: () => tick, enumerable: true }, rewind: { get: () => rewind, enumerable: true }, replay: { get: () => replay, enumerable: true } });
+
+};
+__m["levels.js"] = function (__x, __req) {
+// levels.js — the twelve plates.
+//
+// Layers read bottom-slice upward, the way a section drawing through soil reads.
+//   #  bedrock, solid in both phases      w  thicket, solid only while WILD
+//   .  air                                c  terrace, solid only while CULTIVATED
+//   @  courier spawn                      s  seed                o  origin plot
+//
+// Every `solution` here is executed by the test suite and must reach a win, so none of them
+// is aspirational. The teaching order is: push, then the phase axis, then the time axis,
+// then both at once.
+//
+// Crop notes are deliberately hedged where the evidence is. Domestication was a process
+// spread over centuries, not an event with a date, and the round numbers below are midpoints
+// of archaeobotanical ranges, not discoveries.
+
+const LEVELS = [
+  {
+    id: 'furrow',
+    name: 'Furrow',
+    teaches: 'Walk into a seed to push it. Land it on the origin plot.',
+    crop: {
+      common: 'Emmer wheat',
+      binomial: 'Triticum turgidum subsp. dicoccum',
+      ancestor: 'Triticum turgidum subsp. dicoccoides',
+      origin: 'Fertile Crescent, south-eastern Anatolia',
+      years: '~10,500–9,500 years ago',
+      confidence: 'contested',
+      note: 'Wild emmer shatters when ripe — the stalk breaks and scatters the grain. The plants we eat descend from mutants that could not let go.',
+    },
+    maxLoops: 0,
+    solution: 'EEEE',
+    layers: [
+      ['#######', '#######', '#######'],
+      ['.......', '.@..s.o', '.......'],
+      ['.......', '.......', '.......'],
+    ],
+  },
+
+  {
+    id: 'shatter',
+    name: 'Shatter',
+    teaches: 'Thicket blocks you while the world is wild. Flip it.',
+    crop: {
+      common: 'Barley',
+      binomial: 'Hordeum vulgare subsp. vulgare',
+      ancestor: 'Hordeum vulgare subsp. spontaneum',
+      origin: 'Fertile Crescent, eastern and western wings',
+      years: '~10,500–9,500 years ago',
+      confidence: 'contested',
+      note: 'Barley tolerates salt and drought better than wheat, which is why it followed farming into places wheat could not go.',
+    },
+    maxLoops: 0,
+    solution: 'FEEEE',
+    layers: [
+      ['#######', '#######', '#######'],
+      ['...w...', '.@.ws.o', '...w...'],
+      ['...w...', '...w...', '...w...'],
+      ['.......', '.......', '.......'],
+    ],
+  },
+
+  {
+    id: 'terrace',
+    name: 'Terrace',
+    teaches: 'Stand where a terrace will be. Flipping lifts you with it.',
+    crop: {
+      common: 'Rice',
+      binomial: 'Oryza sativa',
+      ancestor: 'Oryza rufipogon',
+      origin: 'Lower Yangtze basin, China',
+      years: '~10,000–8,000 years ago',
+      confidence: 'contested',
+      note: 'Terracing let rice climb hillsides it could never have colonised on its own. The landscape was domesticated alongside the plant.',
+    },
+    maxLoops: 0,
+    solution: 'EFEEEE',
+    layers: [
+      ['########', '########', '########'],
+      ['...##...', '.@c##.so', '...##...'],
+      ['...##...', '..c##...', '...##...'],
+      ['........', '........', '........'],
+    ],
+  },
+
+  {
+    id: 'bund',
+    name: 'Bund',
+    teaches: 'A terrace lifts seeds too, not just couriers.',
+    crop: {
+      common: 'Potato',
+      binomial: 'Solanum tuberosum',
+      ancestor: 'Solanum candolleanum, in the brevicaule complex',
+      origin: 'Lake Titicaca basin, Peru and Bolivia',
+      years: '~10,000–7,000 years ago',
+      confidence: 'contested',
+      note: 'Andean farmers grew hundreds of varieties at once across different altitudes — a hedge against frost, blight and drought all at the same time.',
+    },
+    maxLoops: 0,
+    solution: 'EEEF',
+    layers: [
+      ['#######', '#######', '#######'],
+      ['.......', '.@.s.c.', '.......'],
+      ['.......', '.....o.', '.......'],
+    ],
+  },
+
+  {
+    id: 'threshold',
+    name: 'Threshold',
+    teaches: 'One flip can raise you and the seed together.',
+    crop: {
+      common: 'Maize',
+      binomial: 'Zea mays subsp. mays',
+      ancestor: 'Balsas teosinte, Zea mays subsp. parviglumis',
+      origin: 'Balsas river valley, southern Mexico',
+      years: '~9,000 years ago',
+      confidence: 'well-established',
+      note: 'Teosinte carries a dozen hard-cased kernels on a brittle stalk. Getting from that to a cob is the largest single transformation in any crop.',
+    },
+    maxLoops: 0,
+    solution: 'EEFEE',
+    layers: [
+      ['########', '########', '########'],
+      ['........', '.@scc##.', '........'],
+      ['........', '......o.', '........'],
+      ['........', '........', '........'],
+    ],
+  },
+
+  {
+    id: 'causeway',
+    name: 'Causeway',
+    teaches: 'Rewind. Your past self stays in the world — and holds weight.',
+    crop: {
+      common: 'Banana',
+      binomial: 'Musa acuminata cultivars',
+      ancestor: 'Musa acuminata subsp. banksii',
+      origin: 'Kuk Swamp, New Guinea highlands',
+      years: '~7,000–6,400 years ago',
+      confidence: 'contested',
+      note: 'Cultivated bananas are sterile clones. Every plant is a cutting of a cutting, which is why the crop is so exposed to a single disease.',
+    },
+    maxLoops: 1,
+    solution: 'SEEEN' + 'R' + '...EEEEE',
+    layers: [
+      ['#######', '#######', '#######'],
+      ['###.###', '###.###', '###.###'],
+      ['.......', '@s....o', '.......'],
+      ['.......', '.......', '.......'],
+    ],
+  },
+
+  {
+    id: 'sheaf',
+    name: 'Sheaf',
+    teaches: 'Two seeds, one flip. Set them both up first.',
+    crop: {
+      common: 'Common bean',
+      binomial: 'Phaseolus vulgaris',
+      ancestor: 'wild Phaseolus vulgaris',
+      origin: 'Mesoamerica and the Andes, independently',
+      years: '~8,000–4,300 years ago',
+      confidence: 'contested',
+      note: 'Domesticated twice, from two different wild populations. The beans in your kitchen belong to one lineage or the other.',
+    },
+    maxLoops: 0,
+    solution: 'ESEENEF',
+    layers: [
+      ['########', '########', '########'],
+      ['........', '.@sc.sc.', '........'],
+      ['........', '...o..o.', '........'],
+    ],
+  },
+
+  {
+    id: 'contour',
+    name: 'Contour',
+    teaches: 'Stacked terraces lift two cells in a single flip.',
+    crop: {
+      common: 'Squash',
+      binomial: 'Cucurbita pepo',
+      ancestor: 'Cucurbita pepo subsp. fraterna, not firmly resolved',
+      origin: 'Guilá Naquitz cave, Oaxaca, Mexico',
+      years: '~10,000 years ago',
+      confidence: 'well-established',
+      note: 'The oldest known domesticate in the Americas — squash seeds in Guilá Naquitz cave predate maize there by well over a thousand years.',
+    },
+    maxLoops: 0,
+    solution: 'EEFEE',
+    layers: [
+      ['########', '########', '########'],
+      ['........', '.@scc###', '........'],
+      ['........', '...cc###', '........'],
+      ['........', '......o.', '........'],
+      ['........', '........', '........'],
+    ],
+  },
+
+  {
+    id: 'bridgework',
+    name: 'Bridgework',
+    teaches: 'A wider gap needs more of your history standing in it.',
+    crop: {
+      common: 'Sorghum',
+      binomial: 'Sorghum bicolor',
+      ancestor: 'Sorghum bicolor subsp. verticilliflorum',
+      origin: 'Butana and Atbai, eastern Sudan',
+      years: '~5,500–4,000 years ago',
+      confidence: 'contested',
+      note: 'Sorghum sets seed on rainfall too erratic for maize or wheat, which is why it anchors farming across the dry Sahel.',
+    },
+    maxLoops: 2,
+    solution: 'SEEEN' + 'R' + 'NEEEES' + 'R' + '...EEEEE',
+    layers: [
+      ['#######', '#######', '#######'],
+      ['###..##', '###..##', '###..##'],
+      ['.......', '@s....o', '.......'],
+      ['.......', '.......', '.......'],
+    ],
+  },
+
+  {
+    id: 'scaffold',
+    name: 'Scaffold',
+    teaches: 'Walk into your past self to climb onto their shoulders.',
+    crop: {
+      common: 'Apple',
+      binomial: 'Malus domestica',
+      ancestor: 'Malus sieversii',
+      origin: 'Tian Shan mountains, Kazakhstan',
+      years: '~4,000–2,500 years ago',
+      confidence: 'contested',
+      note: 'Apples do not breed true from seed, so every named variety is a graft — a cutting kept alive on other roots, sometimes for centuries.',
+    },
+    maxLoops: 1,
+    solution: 'EE' + 'R' + 'EEEEE',
+    layers: [
+      ['########', '########', '########'],
+      ['....#...', '.@..#.so', '....#...'],
+      ['....#...', '....#...', '....#...'],
+      ['........', '........', '........'],
+      ['........', '........', '........'],
+    ],
+  },
+
+  {
+    id: 'dispersal',
+    name: 'Dispersal',
+    teaches: 'Bridge the gap with your history, then flip at the far end.',
+    crop: {
+      common: 'Cacao',
+      binomial: 'Theobroma cacao',
+      ancestor: 'wild Theobroma cacao',
+      origin: 'Upper Amazon, south-eastern Ecuador',
+      years: '~5,300 years ago',
+      confidence: 'well-established',
+      note: 'Residue on pottery at Santa Ana-La Florida pushed cacao use back millennia, and moved its origin from Mesoamerica to the Amazon.',
+    },
+    maxLoops: 1,
+    solution: 'SEEEN' + 'R' + '...EEEEEF',
+    layers: [
+      ['########', '########', '########'],
+      ['###.####', '###.####', '###.####'],
+      ['........', '@s....c.', '........'],
+      ['........', '......o.', '........'],
+    ],
+  },
+
+  {
+    id: 'rachis',
+    name: 'Rachis',
+    teaches: 'Everything at once. Two lanes, one bridge, one flip.',
+    crop: {
+      common: 'Sunflower',
+      binomial: 'Helianthus annuus',
+      ancestor: 'wild Helianthus annuus',
+      origin: 'Eastern North America',
+      years: '~4,500 years ago',
+      confidence: 'well-established',
+      note: 'One of the few crops domesticated north of Mexico, in a farming tradition that was largely abandoned once maize arrived from the south.',
+    },
+    maxLoops: 1,
+    solution: 'SEEEN' + 'R' + 'NEEEEEWWWWWSEEEEEF',
+    layers: [
+      ['#########', '#########', '#########'],
+      ['#########', '###.#####', '#########'],
+      ['.s....c..', '@s....c..', '.........'],
+      ['......o..', '......o..', '.........'],
+      ['.........', '.........', '.........'],
+    ],
+  },
+];
+
+/** Levels whose whole point is that a single run cannot solve them. */
+const NEEDS_TIME = ['causeway', 'bridgework', 'scaffold', 'dispersal', 'rachis'];
+
+/** Levels that must be impossible without the phase axis. */
+const NEEDS_PHASE = ['shatter', 'terrace', 'bund', 'threshold', 'sheaf', 'contour', 'dispersal', 'rachis'];
+
+Object.defineProperties(__x, { LEVELS: { get: () => LEVELS, enumerable: true }, NEEDS_TIME: { get: () => NEEDS_TIME, enumerable: true }, NEEDS_PHASE: { get: () => NEEDS_PHASE, enumerable: true } });
+
+};
+__m["gfx.js"] = function (__x, __req) {
+// gfx.js — orthographic voxel renderer.
+//
+// The world is a right-handed grid: +x east, +y up, +z south. Cells sit at integer
+// coordinates and every solid is a unit cube, which is what makes the painter's
+// algorithm below safe: axis-aligned unit cubes under an orthographic camera never
+// interpenetrate, so sorting by the depth of the centre is an exact ordering.
+
+const TAU = Math.PI * 2;
+
+/**
+ * Camera basis for an orthographic projection.
+ * `yaw` rotates around the vertical axis, `pitch` lifts the camera above the horizon.
+ */
+function basis(yaw, pitch) {
+  const cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const cp = Math.cos(pitch), sp = Math.sin(pitch);
+  return {
+    // direction from the world toward the camera
+    dir: { x: cp * sy, y: sp, z: cp * cy },
+    right: { x: cy, y: 0, z: -sy },
+    up: { x: -sp * sy, y: cp, z: -sp * cy },
+  };
+}
+
+function project(p, b, scale, ox, oy) {
+  return {
+    x: ox + (p.x * b.right.x + p.y * b.right.y + p.z * b.right.z) * scale,
+    y: oy - (p.x * b.up.x + p.y * b.up.y + p.z * b.up.z) * scale,
+  };
+}
+
+function depth(p, b) {
+  return p.x * b.dir.x + p.y * b.dir.y + p.z * b.dir.z;
+}
+
+// Unit-cube face definitions, corners wound so the polygon is convex on screen.
+// h is the half-extent; corners are given in cube-local space.
+const FACES = [
+  { n: { x: 0, y: 1, z: 0 }, c: [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]], key: 'top' },
+  { n: { x: 0, y: -1, z: 0 }, c: [[-1, -1, -1], [-1, -1, 1], [1, -1, 1], [1, -1, -1]], key: 'bottom' },
+  { n: { x: 1, y: 0, z: 0 }, c: [[1, -1, -1], [1, -1, 1], [1, 1, 1], [1, 1, -1]], key: 'east' },
+  { n: { x: -1, y: 0, z: 0 }, c: [[-1, -1, -1], [-1, 1, -1], [-1, 1, 1], [-1, -1, 1]], key: 'west' },
+  { n: { x: 0, y: 0, z: 1 }, c: [[-1, -1, 1], [-1, 1, 1], [1, 1, 1], [1, -1, 1]], key: 'south' },
+  { n: { x: 0, y: 0, z: -1 }, c: [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1]], key: 'north' },
+];
+
+/** Faces pointing away from the camera are never drawn, so a cube costs at most three fills. */
+function visibleFaces(b) {
+  return FACES.filter((f) => f.n.x * b.dir.x + f.n.y * b.dir.y + f.n.z * b.dir.z > 1e-6);
+}
+
+/**
+ * Lambert term in [0,1] for a face, against a fixed light. Kept deliberately shallow —
+ * the palette does the work and deep shading muddies the cyanotype inversion.
+ */
+const LIGHT = (() => {
+  const l = { x: -0.35, y: 0.86, z: -0.37 };
+  const m = Math.hypot(l.x, l.y, l.z);
+  return { x: l.x / m, y: l.y / m, z: l.z / m };
+})();
+
+function shade(n) {
+  const d = n.x * LIGHT.x + n.y * LIGHT.y + n.z * LIGHT.z;
+  return 0.45 + 0.55 * Math.max(0, d);
+}
+
+/**
+ * Draw one cube. `size` is the half-extent in world units (0.5 fills its cell exactly);
+ * shrinking it is how blocks bloom in and out across a phase flip.
+ */
+function cube(ctx, p, size, b, scale, ox, oy, faces, paint, seam) {
+  for (const f of faces) {
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const c = f.c[i];
+      const s = project(
+        { x: p.x + c[0] * size, y: p.y + c[1] * size, z: p.z + c[2] * size },
+        b, scale, ox, oy,
+      );
+      if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = paint(f, shade(f.n));
+    ctx.fill();
+    if (seam) {
+      ctx.strokeStyle = seam;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+}
+
+/** Screen-space polygon for a cube's silhouette, used for hit-testing and glows. */
+function cubeCentre(p, b, scale, ox, oy) {
+  return project(p, b, scale, ox, oy);
+}
+
+const ease = {
+  out: (t) => 1 - Math.pow(1 - t, 3),
+  inOut: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2),
+  back: (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.2 * Math.pow(t - 1, 2),
+};
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+/** Shortest signed angular distance from a to b, so yaw tweens never take the long way. */
+function angleDelta(a, b) {
+  let d = (b - a) % TAU;
+  if (d > Math.PI) d -= TAU;
+  if (d < -Math.PI) d += TAU;
+  return d;
+}
+
+/** Parse `#rrggbb` once so per-frame blending is plain arithmetic. */
+function rgb(hex) {
+  const v = parseInt(hex.slice(1), 16);
+  return { r: (v >> 16) & 255, g: (v >> 8) & 255, b: v & 255 };
+}
+
+function mix(a, b, t) {
+  return `rgb(${Math.round(lerp(a.r, b.r, t))},${Math.round(lerp(a.g, b.g, t))},${Math.round(lerp(a.b, b.b, t))})`;
+}
+
+function mixa(a, b, t, alpha) {
+  return `rgba(${Math.round(lerp(a.r, b.r, t))},${Math.round(lerp(a.g, b.g, t))},${Math.round(lerp(a.b, b.b, t))},${alpha})`;
+}
+
+function tint(c, k) {
+  return `rgb(${Math.round(Math.min(255, c.r * k))},${Math.round(Math.min(255, c.g * k))},${Math.round(Math.min(255, c.b * k))})`;
+}
+
+function tinta(c, k, alpha) {
+  return `rgba(${Math.round(Math.min(255, c.r * k))},${Math.round(Math.min(255, c.g * k))},${Math.round(Math.min(255, c.b * k))},${alpha})`;
+}
+
+Object.defineProperties(__x, { TAU: { get: () => TAU, enumerable: true }, basis: { get: () => basis, enumerable: true }, project: { get: () => project, enumerable: true }, depth: { get: () => depth, enumerable: true }, visibleFaces: { get: () => visibleFaces, enumerable: true }, shade: { get: () => shade, enumerable: true }, cube: { get: () => cube, enumerable: true }, cubeCentre: { get: () => cubeCentre, enumerable: true }, ease: { get: () => ease, enumerable: true }, lerp: { get: () => lerp, enumerable: true }, angleDelta: { get: () => angleDelta, enumerable: true }, rgb: { get: () => rgb, enumerable: true }, mix: { get: () => mix, enumerable: true }, mixa: { get: () => mixa, enumerable: true }, tint: { get: () => tint, enumerable: true }, tinta: { get: () => tinta, enumerable: true } });
+
+};
+__m["render.js"] = function (__x, __req) {
+// render.js — draws the world.
+//
+// Two palettes, one geometry. Flipping the phase does not move a single cube; it inverts the
+// tonal order of the whole scene — pale specimens on Prussian blue become ink on glaucous —
+// and swaps which phase-dependent blocks are present. Keeping the geometry fixed across the
+// inversion is what lets a player read the flip as "the same place, differently improved"
+// rather than as a new level.
+
+const {
+  basis, project, depth, visibleFaces, cube, ease, lerp, angleDelta, rgb, mix, mixa, tinta, TAU,
+} = __req("gfx.js");
+const { T_AIR, T_ROCK, T_WILD, T_CULT, terrainAt } = __req("sim.js");
+const PITCH = 0.6155; // atan(1/√2) — true isometric elevation
+const YAW0 = Math.PI / 4;
+
+const PALETTE = {
+  wild: {
+    void: rgb('#08203a'), void2: rgb('#0c2b4b'),
+    rock: rgb('#dcecf4'), mat: rgb('#3e7c87'),
+    seam: rgb('#08203a'), ink: rgb('#dcecf4'),
+  },
+  cult: {
+    void: rgb('#8c9e8a'), void2: rgb('#7c8e7b'),
+    rock: rgb('#1f2620'), mat: rgb('#b4762f'),
+    seam: rgb('#8c9e8a'), ink: rgb('#1b221b'),
+  },
+};
+
+const SEED = rgb('#e9b44c');
+const COURIER = rgb('#c4483c');
+const PLOT = rgb('#2fa08c');
+
+function makeView() {
+  return {
+    yaw: YAW0, yawTarget: YAW0, yawStep: 0,
+    phaseMix: 0, phaseTarget: 0,
+    scale: 40, ox: 0, oy: 0,
+    shake: 0,
+  };
+}
+
+function stepView(view, dt) {
+  const dy = angleDelta(view.yaw, view.yawTarget);
+  view.yaw += dy * Math.min(1, dt * 9);
+  if (Math.abs(angleDelta(view.yaw, view.yawTarget)) < 0.001) view.yaw = view.yawTarget;
+
+  const dp = view.phaseTarget - view.phaseMix;
+  view.phaseMix += dp * Math.min(1, dt * 11);
+  if (Math.abs(view.phaseTarget - view.phaseMix) < 0.002) view.phaseMix = view.phaseTarget;
+
+  view.shake = Math.max(0, view.shake - dt * 3.4);
+}
+
+/** Fit the level's bounding box into the canvas at the current yaw. */
+function fit(view, level, W, H) {
+  const b = basis(view.yaw, PITCH);
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+  for (const x of [-0.5, level.w - 0.5]) {
+    for (const y of [-0.5, level.h - 0.5]) {
+      for (const z of [-0.5, level.d - 0.5]) {
+        const p = project({ x, y, z }, b, 1, 0, 0);
+        minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+        minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      }
+    }
+  }
+
+  const pad = Math.min(W, H) * 0.11;
+  const scale = Math.min((W - pad * 2) / (maxX - minX), (H - pad * 2) / (maxY - minY));
+
+  // On a tall screen the touch pad and the specimen label own the lower third, so the board
+  // is lifted out from under them rather than being centred into them.
+  const lift = H > W * 1.2 ? -0.09 : 0;
+
+  view.scale = scale;
+  view.ox = W / 2 - ((minX + maxX) / 2) * scale;
+  view.oy = H / 2 - ((minY + maxY) / 2) * scale + H * lift;
+  return b;
+}
+
+function render(ctx, canvas, state, view, ent) {
+  const W = canvas.width / (window.devicePixelRatio || 1);
+  const H = canvas.height / (window.devicePixelRatio || 1);
+  const lv = state.level;
+  const m = ease.inOut(Math.min(1, Math.max(0, view.phaseMix)));
+
+  const b = fit(view, lv, W, H);
+  const faces = visibleFaces(b);
+
+  const pal = {
+    void: mix(PALETTE.wild.void, PALETTE.cult.void, m),
+    seam: mixa(PALETTE.wild.seam, PALETTE.cult.seam, m, 0.35),
+  };
+
+  // Ground and a soft vertical wash, so the horizon is felt rather than drawn.
+  ctx.save();
+  ctx.setTransform(window.devicePixelRatio || 1, 0, 0, window.devicePixelRatio || 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const wash = ctx.createLinearGradient(0, 0, 0, H);
+  wash.addColorStop(0, mix(PALETTE.wild.void2, PALETTE.cult.void2, m));
+  wash.addColorStop(1, pal.void);
+  ctx.fillStyle = wash;
+  ctx.fillRect(0, 0, W, H);
+
+  if (view.shake > 0) {
+    const s = view.shake * 6;
+    ctx.translate(Math.sin(view.shake * 41) * s, Math.cos(view.shake * 37) * s);
+  }
+
+  const ox = view.ox, oy = view.oy, sc = view.scale;
+  const draws = [];
+
+  // Unlit faces fall toward the colour of the void rather than toward black. Multiplying
+  // brightness would drive the cultivated palette's dark bedrock into a single black mush
+  // and lose every edge; blending toward the ground keeps the faces separable in both
+  // phases and reads as atmosphere instead of shadow.
+  const voidCol = blend(PALETTE.wild.void, PALETTE.cult.void, m);
+  const face = (base, sh, k) => mix(base, voidCol, (1 - sh) * k);
+
+  // ── Terrain ────────────────────────────────────────────────────────────────────────
+  const rockA = PALETTE.wild.rock, rockB = PALETTE.cult.rock;
+  const matA = PALETTE.wild.mat, matB = PALETTE.cult.mat;
+
+  for (let y = 0; y < lv.h; y++) {
+    for (let z = 0; z < lv.d; z++) {
+      for (let x = 0; x < lv.w; x++) {
+        const kind = terrainAt(lv, x, y, z);
+        if (kind === T_AIR) continue;
+
+        // Presence: bedrock is always here; the other two bloom in and out with the phase.
+        let grow = 1;
+        if (kind === T_WILD) grow = 1 - m;
+        else if (kind === T_CULT) grow = m;
+        if (grow <= 0.002) continue;
+
+        if (buried(lv, state, x, y, z)) continue;
+
+        const isRock = kind === T_ROCK;
+        const size = 0.5 * (isRock ? 1 : ease.out(grow));
+        const p = { x, y, z };
+
+        draws.push({
+          d: depth(p, b),
+          f: () => cube(ctx, p, size, b, sc, ox, oy, faces, (_f, sh) => (
+            face(blend(isRock ? rockA : matA, isRock ? rockB : matB, m), sh, 0.85)
+          ), pal.seam),
+        });
+      }
+    }
+  }
+
+  // ── Origin plots ───────────────────────────────────────────────────────────────────
+  for (const p of lv.plots) {
+    const filled = state.seeds.some((s) => s.x === p.x && s.y === p.y && s.z === p.z);
+    draws.push({
+      d: depth(p, b) - 0.01,
+      f: () => plotMark(ctx, p, b, sc, ox, oy, filled, state.t),
+    });
+  }
+
+  // ── Seeds ──────────────────────────────────────────────────────────────────────────
+  for (const s of ent.seeds) {
+    draws.push({
+      d: depth(s, b),
+      f: () => cube(ctx, s, 0.235, b, sc, ox, oy, faces,
+        (_f, sh) => face(SEED, sh, 0.5), tinta(SEED, 0.45, 0.9)),
+    });
+  }
+
+  // ── Past selves, then the courier ──────────────────────────────────────────────────
+  ent.ghosts.forEach((g, i) => {
+    const a = 0.44 + 0.05 * i;
+    draws.push({
+      d: depth(g, b),
+      f: () => {
+        cube(ctx, g, 0.33, b, sc, ox, oy, faces,
+          (_f, sh) => tinta(COURIER, 0.4 + sh * 0.6, a), tinta(COURIER, 0.9, a + 0.3));
+        crown(ctx, g, b, sc, ox, oy, tinta(COURIER, 1.1, a + 0.35), i + 1);
+      },
+    });
+  });
+
+  draws.push({
+    d: depth(ent.player, b),
+    f: () => {
+      cube(ctx, ent.player, 0.35, b, sc, ox, oy, faces,
+        (_f, sh) => face(COURIER, sh, 0.5), tinta(COURIER, 0.5, 0.9));
+      crown(ctx, ent.player, b, sc, ox, oy, tinta(COURIER, 1.5, 0.95), 0);
+    },
+  });
+
+  draws.sort((p, q) => p.d - q.d);
+  for (const dr of draws) dr.f();
+
+  ctx.restore();
+}
+
+/** True when every neighbour is solid in both phases, so the cell can never be seen. */
+function buried(lv, state, x, y, z) {
+  const n = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+  for (const [dx, dy, dz] of n) {
+    const nx = x + dx, ny = y + dy, nz = z + dz;
+    if (nx < 0 || nx >= lv.w || ny < 0 || ny >= lv.h || nz < 0 || nz >= lv.d) return false;
+    const k = terrainAt(lv, nx, ny, nz);
+    if (k === T_AIR) return false;
+    if (k !== T_ROCK) return false; // a neighbour that comes and goes can expose this cell
+  }
+  return true;
+}
+
+function blend(a, b, t) {
+  return { r: lerp(a.r, b.r, t), g: lerp(a.g, b.g, t), b: lerp(a.b, b.b, t) };
+}
+
+/** The plot ring, drawn flat on the floor of its cell. */
+function plotMark(ctx, p, b, sc, ox, oy, filled, t) {
+  const y = p.y - 0.46;
+  const r = filled ? 0.34 : 0.3 + Math.sin(t * 0.4) * 0.012;
+  const pts = [[-r, -r], [r, -r], [r, r], [-r, r]].map(([dx, dz]) =>
+    project({ x: p.x + dx, y, z: p.z + dz }, b, sc, ox, oy));
+
+  ctx.beginPath();
+  pts.forEach((s, i) => (i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y)));
+  ctx.closePath();
+
+  if (filled) {
+    ctx.fillStyle = tinta(PLOT, 1, 0.4);
+    ctx.fill();
+  }
+  ctx.strokeStyle = tinta(PLOT, 1, filled ? 1 : 0.85);
+  ctx.lineWidth = filled ? 2.4 : 1.6;
+  ctx.stroke();
+
+  // Inner cross — a survey mark, not a target reticle.
+  const c = project({ x: p.x, y, z: p.z }, b, sc, ox, oy);
+  const a = project({ x: p.x - r * 0.4, y, z: p.z }, b, sc, ox, oy);
+  const d = project({ x: p.x, y, z: p.z - r * 0.4 }, b, sc, ox, oy);
+  ctx.beginPath();
+  ctx.moveTo(c.x - (a.x - c.x), c.y - (a.y - c.y)); ctx.lineTo(a.x, a.y);
+  ctx.moveTo(c.x - (d.x - c.x), c.y - (d.y - c.y)); ctx.lineTo(d.x, d.y);
+  ctx.strokeStyle = tinta(PLOT, 1, 0.6);
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+/** A tick mark above a courier's head; ghosts carry their loop number. */
+function crown(ctx, p, b, sc, ox, oy, colour, n) {
+  const top = project({ x: p.x, y: p.y + 0.42, z: p.z }, b, sc, ox, oy);
+  const tip = project({ x: p.x, y: p.y + 0.78, z: p.z }, b, sc, ox, oy);
+  ctx.beginPath();
+  ctx.moveTo(top.x, top.y);
+  ctx.lineTo(tip.x, tip.y);
+  ctx.strokeStyle = colour;
+  ctx.lineWidth = n === 0 ? 2 : 1.2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(tip.x, tip.y, n === 0 ? 3.2 : 2.2, 0, TAU);
+  ctx.fillStyle = colour;
+  ctx.fill();
+}
+
+Object.defineProperties(__x, { PITCH: { get: () => PITCH, enumerable: true }, YAW0: { get: () => YAW0, enumerable: true }, makeView: { get: () => makeView, enumerable: true }, stepView: { get: () => stepView, enumerable: true }, render: { get: () => render, enumerable: true } });
+
+};
+__m["audio.js"] = function (__x, __req) {
+// audio.js — everything is synthesised at runtime. No samples, nothing to fetch.
+//
+// The palette is deliberately woody and dry: struck-bar tones over a low drone, which sits
+// closer to a field recording than to an arcade. The one exception is the phase flip, which
+// gets the biggest gesture in the game because it is the mechanic the player must never
+// lose track of.
+
+const PENT = [0, 2, 4, 7, 9]; // minor-free pentatonic: no interval in it can sound like a mistake
+
+function noteHz(step) {
+  const oct = Math.floor(step / PENT.length);
+  return 220 * Math.pow(2, (PENT[((step % PENT.length) + PENT.length) % PENT.length] + oct * 12) / 12);
+}
+
+class Audio {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+    this.ready = false;
+  }
+
+  /** Lazily built, because browsers refuse to start a context outside a user gesture. */
+  init() {
+    if (this.ctx) {
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      return;
+    }
+    const AC = globalThis.AudioContext || globalThis.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.5;
+    this.master.connect(this.ctx.destination);
+
+    // A short synthetic room. Noise with an exponential tail is a crude impulse response,
+    // but at this length it reads as air around the tones rather than as an effect.
+    this.verb = this.ctx.createConvolver();
+    const len = Math.floor(this.ctx.sampleRate * 1.6);
+    const ir = this.ctx.createBuffer(2, len, this.ctx.sampleRate);
+    for (let ch = 0; ch < 2; ch++) {
+      const d = ir.getChannelData(ch);
+      let seed = ch === 0 ? 0x2545f491 : 0x814fd3b7;
+      for (let i = 0; i < len; i++) {
+        // xorshift keeps the reverb identical between sessions, which matters when the
+        // same level is replayed for verification and nothing should differ but the pixels.
+        seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; seed |= 0;
+        const r = (seed / 0x7fffffff) % 1;
+        d[i] = r * Math.pow(1 - i / len, 2.6);
+      }
+    }
+    this.verb.buffer = ir;
+
+    this.wet = this.ctx.createGain();
+    this.wet.gain.value = 0.24;
+    this.verb.connect(this.wet);
+    this.wet.connect(this.master);
+
+    this.ready = true;
+  }
+
+  get t() { return this.ctx.currentTime; }
+
+  /** One struck bar: a sine body with a brief inharmonic knock on the attack. */
+  tone(freq, { at = 0, dur = 0.5, gain = 0.3, type = 'sine', send = 0.5, detune = 0 } = {}) {
+    if (!this.ready || !this.enabled) return;
+    const t0 = this.t + at;
+    const o = this.ctx.createOscillator();
+    o.type = type;
+    o.frequency.value = freq;
+    o.detune.value = detune;
+
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    o.connect(g);
+    g.connect(this.master);
+    if (send > 0) {
+      const s = this.ctx.createGain();
+      s.gain.value = send;
+      g.connect(s);
+      s.connect(this.verb);
+    }
+    o.start(t0);
+    o.stop(t0 + dur + 0.05);
+  }
+
+  /** Filtered noise burst — soil, chaff, footfall. */
+  noise({ at = 0, dur = 0.18, gain = 0.2, freq = 900, q = 1.2, sweep = 0 } = {}) {
+    if (!this.ready || !this.enabled) return;
+    const t0 = this.t + at;
+    const len = Math.max(1, Math.floor(this.ctx.sampleRate * dur));
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let seed = 0x9e3779b9;
+    for (let i = 0; i < len; i++) {
+      seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; seed |= 0;
+      d[i] = ((seed / 0x7fffffff) % 1) * Math.pow(1 - i / len, 1.8);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(freq, t0);
+    if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(40, freq * sweep), t0 + dur);
+    f.Q.value = q;
+
+    const g = this.ctx.createGain();
+    g.gain.value = gain;
+
+    src.connect(f); f.connect(g); g.connect(this.master);
+    const s = this.ctx.createGain(); s.gain.value = 0.3;
+    g.connect(s); s.connect(this.verb);
+    src.start(t0);
+  }
+
+  step(height = 0) {
+    this.noise({ dur: 0.09, gain: 0.11, freq: 380 + height * 40, q: 0.9, sweep: 0.5 });
+  }
+
+  blocked() {
+    this.noise({ dur: 0.07, gain: 0.14, freq: 190, q: 2.4 });
+    this.tone(96, { dur: 0.1, gain: 0.1, type: 'triangle', send: 0.1 });
+  }
+
+  land(drop = 1) {
+    this.noise({ dur: 0.16, gain: 0.13 + Math.min(0.1, drop * 0.03), freq: 240, q: 0.7, sweep: 0.4 });
+  }
+
+  /**
+   * The signature sound. Two tones cross in opposite directions — one falls as the other
+   * rises — so the ear hears an inversion, matching what the screen does.
+   */
+  flip(toCultivated) {
+    if (!this.ready || !this.enabled) return;
+    const t0 = this.t;
+    const [a, b] = toCultivated ? [220, 660] : [660, 220];
+    for (const [from, to, type] of [[a, b, 'sine'], [a * 1.5, b * 1.5, 'triangle']]) {
+      const o = this.ctx.createOscillator();
+      o.type = type;
+      o.frequency.setValueAtTime(from, t0);
+      o.frequency.exponentialRampToValueAtTime(to, t0 + 0.34);
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.4);
+      o.connect(g); g.connect(this.master);
+      const s = this.ctx.createGain(); s.gain.value = 0.6;
+      g.connect(s); s.connect(this.verb);
+      o.start(t0); o.stop(t0 + 0.45);
+    }
+    this.noise({ dur: 0.3, gain: 0.08, freq: toCultivated ? 400 : 1600, q: 0.6, sweep: toCultivated ? 3 : 0.25 });
+  }
+
+  seed() {
+    this.tone(noteHz(7), { dur: 0.5, gain: 0.2 });
+    this.tone(noteHz(9), { at: 0.05, dur: 0.6, gain: 0.14 });
+  }
+
+  /** Stepping up onto a past self — a small hollow knock, then the tone a fifth above. */
+  mount() {
+    this.noise({ dur: 0.1, gain: 0.1, freq: 520, q: 1.6, sweep: 0.7 });
+    this.tone(noteHz(6), { at: 0.03, dur: 0.34, gain: 0.13, type: 'triangle', send: 0.4 });
+  }
+
+  /** Rising figure — a seed reaching its origin plot. */
+  planted(index = 0) {
+    for (let i = 0; i < 3; i++) {
+      this.tone(noteHz(5 + index + i * 2), { at: i * 0.07, dur: 0.7, gain: 0.17 - i * 0.02 });
+    }
+  }
+
+  rewind() {
+    if (!this.ready || !this.enabled) return;
+    const t0 = this.t;
+    const o = this.ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(520, t0);
+    o.frequency.exponentialRampToValueAtTime(110, t0 + 0.5);
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(2600, t0);
+    f.frequency.exponentialRampToValueAtTime(320, t0 + 0.5);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.12, t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.55);
+    o.connect(f); f.connect(g); g.connect(this.master);
+    const s = this.ctx.createGain(); s.gain.value = 0.5;
+    g.connect(s); s.connect(this.verb);
+    o.start(t0); o.stop(t0 + 0.6);
+  }
+
+  undo() {
+    this.tone(noteHz(4), { dur: 0.16, gain: 0.1, type: 'triangle', send: 0.2 });
+  }
+
+  win() {
+    [0, 2, 4, 7].forEach((s, i) => {
+      this.tone(noteHz(s + 5), { at: i * 0.09, dur: 1.5, gain: 0.18, send: 0.8 });
+      this.tone(noteHz(s + 10), { at: i * 0.09 + 0.02, dur: 1.2, gain: 0.07, send: 0.8, detune: 4 });
+    });
+  }
+
+  toggle() {
+    this.enabled = !this.enabled;
+    return this.enabled;
+  }
+}
+
+Object.defineProperties(__x, { Audio: { get: () => Audio, enumerable: true } });
+
+};
+__m["main.js"] = function (__x, __req) {
+// main.js — input, animation, chrome.
+//
+// The simulation in sim.js is turn-based and instantaneous. Everything here is the layer that
+// makes that legible: tweening between ticks, easing the palette across a flip, and keeping
+// the dimension readout honest about where you are in all four and a half of them.
+
+const { parse, start, tick, clone, rewind, PH_WILD, PH_CULT } = __req("sim.js");
+const { LEVELS } = __req("levels.js");
+const { makeView, stepView, render, YAW0 } = __req("render.js");
+const { ease, lerp } = __req("gfx.js");
+const { Audio } = __req("audio.js");
+const TICK_MS = 145;
+const STORE_KEY = 'rachis.progress.v1';
+
+const $ = (id) => document.getElementById(id);
+const canvas = $('stage');
+const ctx = canvas.getContext('2d');
+const app = $('app');
+
+const audio = new Audio();
+const view = makeView();
+
+const levels = LEVELS.map(parse);
+
+let idx = 0;
+let state = null;
+let recording = [];
+let undoStack = [];
+let anim = null;          // { from, to, t, snap }
+let busy = false;         // true while an overlay owns the screen
+let toastTimer = 0;
+
+// ── Progress ─────────────────────────────────────────────────────────────────────────
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* private browsing, embedded frames — play unsaved rather than fail */ }
+  return { solved: [], seen: false };
+}
+
+let progress = loadProgress();
+
+function saveProgress() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(progress)); } catch { /* ignore */ }
+}
+
+const unlocked = (i) => i === 0 || progress.solved.includes(LEVELS[i - 1].id);
+
+// ── Level lifecycle ──────────────────────────────────────────────────────────────────
+
+const filledPlots = () =>
+  levels[idx].plots.filter((p) => state.seeds.some((s) => s.x === p.x && s.y === p.y && s.z === p.z)).length;
+
+function snapshotEntities(s) {
+  return {
+    player: { ...s.player },
+    ghosts: s.ghosts.map((g) => ({ x: g.x, y: g.y, z: g.z })),
+    seeds: s.seeds.map((sd) => ({ ...sd })),
+  };
+}
+
+function load(i, { keepCamera = false } = {}) {
+  idx = i;
+  state = start(levels[i]);
+  recording = [];
+  undoStack = [];
+  anim = { from: snapshotEntities(state), to: snapshotEntities(state), t: 1, snap: true };
+  view.phaseMix = state.phase === PH_CULT ? 1 : 0;
+  view.phaseTarget = view.phaseMix;
+  if (!keepCamera) {
+    view.yawStep = 0;
+    view.yaw = YAW0;
+    view.yawTarget = YAW0;
+  }
+  syncChrome();
+}
+
+function syncChrome() {
+  const def = LEVELS[idx];
+  app.dataset.phase = state.phase === PH_WILD ? 'wild' : 'cult';
+
+  $('plate-n').textContent = `PLATE ${roman(idx + 1)}`;
+  $('plate-name').textContent = def.name;
+  $('plate-teaches').textContent = def.teaches;
+
+  $('crop-common').textContent = def.crop.common;
+  $('crop-binomial').textContent = def.crop.binomial;
+  $('crop-ancestor').textContent = def.crop.ancestor;
+  $('crop-origin').textContent = def.crop.origin;
+  $('crop-years').textContent = def.crop.years;
+  const conf = $('crop-confidence');
+  conf.textContent = def.crop.confidence;
+  conf.className = def.crop.confidence === 'contested' ? 'contested' : '';
+
+  $('ax-x').textContent = state.player.x;
+  $('ax-y').textContent = state.player.y;
+  $('ax-z').textContent = state.player.z;
+  $('ax-t').textContent = String(state.t).padStart(2, '0');
+  $('ax-p').textContent = state.phase === PH_WILD ? 'WILD' : 'CULT';
+
+  const budget = levels[idx].maxLoops;
+  const spent = state.ghosts.length;
+  const loops = $('loops');
+  loops.innerHTML = '';
+  if (budget > 0) {
+    const cap = document.createElement('span');
+    cap.className = 'eyebrow';
+    cap.textContent = 'rewinds';
+    loops.append(cap);
+    for (let k = 0; k < budget; k++) {
+      const dot = document.createElement('i');
+      if (k < spent) dot.className = 'spent';
+      loops.append(dot);
+    }
+  }
+}
+
+function roman(n) {
+  const map = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let out = '';
+  for (const [v, s] of map) while (n >= v) { out += s; n -= v; }
+  return out;
+}
+
+// ── Actions ──────────────────────────────────────────────────────────────────────────
+
+const animating = () => anim && !anim.snap && anim.t < 1;
+
+function pushUndo() {
+  undoStack.push({ state: clone(state), recording: recording.slice() });
+  if (undoStack.length > 400) undoStack.shift();
+}
+
+// One buffered input. Holding a direction should feel continuous rather than eating every
+// keypress that lands mid-tween, but buffering more than one turns a puzzle game into a
+// place where you overshoot and cannot say why.
+let buffered = null;
+
+function flush() {
+  if (buffered === null) return;
+  const next = buffered;
+  buffered = null;
+  act(next);
+}
+
+function act(action) {
+  if (busy || state.won || state.lost) return;
+  if (animating()) { buffered = action; return; }
+
+  audio.init();
+  const plotsBefore = filledPlots();
+  const before = snapshotEntities(state);
+  const phaseBefore = state.phase;
+
+  pushUndo();
+  recording.push(action);
+  const { events } = tick(state, action);
+
+  const after = snapshotEntities(state);
+  anim = { from: before, to: after, t: 0, snap: false };
+
+  if (state.phase !== phaseBefore) {
+    view.phaseTarget = state.phase === PH_CULT ? 1 : 0;
+    view.shake = 0.55;
+    audio.flip(state.phase === PH_CULT);
+  } else {
+    const mine = events.find((e) => e.who === 'player');
+    if (mine?.kind === 'blocked') audio.blocked();
+    else if (mine?.kind === 'mount') audio.mount();
+    else if (after.player.y < before.player.y) audio.land(before.player.y - after.player.y);
+    else audio.step(after.player.y);
+  }
+
+  const gained = filledPlots() - plotsBefore;
+  if (gained > 0 && !state.won) audio.planted(plotsBefore);
+
+  syncChrome();
+
+  if (state.lost) {
+    view.shake = 0.8;
+    toast(state.lost === 'void' ? 'Lost to the void — rewinding that move.' : 'Buried. Rewinding that move.');
+    setTimeout(() => { undo({ silent: true }); }, 620);
+  } else if (state.won) {
+    audio.win();
+    setTimeout(showWin, 520);
+  }
+}
+
+function doRewind() {
+  if (busy || animating() || state.won || state.lost) return;
+  audio.init();
+
+  const next = rewind(state, recording);
+  if (!next) {
+    audio.blocked();
+    toast(levels[idx].maxLoops === 0 ? 'No rewinds on this plate.' : 'No rewinds left — press Enter to restart.');
+    return;
+  }
+
+  pushUndo();
+  state = next;
+  recording = [];
+  view.phaseTarget = state.phase === PH_CULT ? 1 : 0;
+  view.phaseMix = view.phaseTarget;
+  view.shake = 0.7;
+  anim = { from: snapshotEntities(state), to: snapshotEntities(state), t: 1, snap: true };
+  audio.rewind();
+  syncChrome();
+  toast(`Loop ${state.ghosts.length} — your last run is walking it again.`);
+}
+
+function undo({ silent = false } = {}) {
+  if (busy || !undoStack.length) return;
+  const prev = undoStack.pop();
+  state = prev.state;
+  recording = prev.recording;
+  view.phaseTarget = state.phase === PH_CULT ? 1 : 0;
+  view.phaseMix = view.phaseTarget;
+  anim = { from: snapshotEntities(state), to: snapshotEntities(state), t: 1, snap: true };
+  if (!silent) audio.undo();
+  syncChrome();
+}
+
+function restart() {
+  if (busy) return;
+  load(idx, { keepCamera: true });
+  audio.init();
+  audio.rewind();
+}
+
+function turn(dir) {
+  view.yawStep = (view.yawStep + dir + 4) % 4;
+  view.yawTarget = YAW0 + view.yawStep * (Math.PI / 2);
+}
+
+// Arrow keys name screen directions; the world direction they mean depends on where the
+// camera is standing. Recomputing here (rather than storing screen-relative moves) is what
+// keeps a recording valid after the player turns the camera mid-loop.
+const CYCLE = ['N', 'E', 'S', 'W'];
+const worldDir = (i) => CYCLE[(i - view.yawStep + 4) % 4];
+
+// ── Overlays ─────────────────────────────────────────────────────────────────────────
+
+const sheet = $('sheet');
+const sheetInner = $('sheet-inner');
+
+function openSheet(build) {
+  busy = true;
+  sheetInner.innerHTML = '';
+  build(sheetInner);
+  sheet.hidden = false;
+  const first = sheetInner.querySelector('button');
+  if (first) first.focus();
+}
+
+function closeSheet() {
+  sheet.hidden = true;
+  busy = false;
+}
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function button(label, onClick) {
+  const b = el('button', null, label);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+function showTitle() {
+  openSheet((root) => {
+    root.append(el('div', 'eyebrow', 'Produce Atlas'));
+    root.append(el('h2', null, 'Rachis'));
+
+    const p = el('p');
+    p.innerHTML = 'The <em>rachis</em> is the stalk that holds grain on a cereal plant. '
+      + 'Wild cereals shatter — the rachis snaps and scatters the seed. Every domesticated '
+      + 'cereal descends from plants that could not do that, and so had to be carried. '
+      + '<strong>You are what carries them.</strong>';
+    root.append(p);
+
+    const ledger = el('div', 'ledger');
+    const rows = [
+      ['x, y, z', '3', 'space — you walk all three'],
+      ['t', '1', 'time — rewind, and your past run keeps walking'],
+      ['Φ', '½', 'wild ⇄ cultivated — an axis with two positions and no middle'],
+    ];
+    for (const [name, amt, why] of rows) {
+      ledger.append(el('b', null, name), el('div', 'amt', amt), el('div', 'why', why));
+    }
+    ledger.append(
+      el('b', 'sum', 'total'),
+      el('div', 'amt sum', '4½'),
+      el('div', 'why sum', 'the half is the one you cannot stand in the middle of'),
+    );
+    root.append(ledger);
+
+    const p2 = el('p');
+    p2.innerHTML = 'Push each seed onto its origin plot — the place that crop actually came from. '
+      + 'Twelve plates, twelve real centres of domestication.';
+    root.append(p2);
+
+    const actions = el('div', 'actions');
+    actions.append(button(progress.solved.length ? 'Continue' : 'Begin', () => {
+      progress.seen = true;
+      saveProgress();
+      audio.init();
+      closeSheet();
+    }));
+    actions.append(button('Plate index', () => showPlates()));
+    root.append(actions);
+  });
+}
+
+function showPlates() {
+  openSheet((root) => {
+    root.append(el('div', 'eyebrow', 'Plate index'));
+    root.append(el('h2', null, 'Twelve origins'));
+
+    const grid = el('div', 'plates');
+    LEVELS.forEach((def, i) => {
+      const b = el('button');
+      if (progress.solved.includes(def.id)) b.classList.add('done');
+      b.disabled = !unlocked(i);
+      b.append(el('div', 'pn', `PLATE ${roman(i + 1)}`));
+      b.append(el('div', 'pname', def.name));
+      b.append(el('div', 'pcrop', def.crop.common));
+      b.addEventListener('click', () => { load(i); closeSheet(); });
+      grid.append(b);
+    });
+    root.append(grid);
+
+    const actions = el('div', 'actions');
+    actions.append(button('Back', () => (progress.seen ? closeSheet() : showTitle())));
+    actions.append(button('About the dimensions', () => showTitle()));
+    root.append(actions);
+  });
+}
+
+function showWin() {
+  const def = LEVELS[idx];
+  if (!progress.solved.includes(def.id)) progress.solved.push(def.id);
+  saveProgress();
+
+  openSheet((root) => {
+    root.append(el('div', 'eyebrow', `Plate ${roman(idx + 1)} · delivered`));
+    root.append(el('h2', null, def.crop.common));
+
+    root.append(el('p', 'binomial', def.crop.binomial));
+
+    const dl = el('div', 'ledger');
+    dl.append(el('b', null, 'Wild'), el('div', 'amt', ''), el('div', 'why', def.crop.ancestor));
+    dl.append(el('b', null, 'Origin'), el('div', 'amt', ''), el('div', 'why', def.crop.origin));
+    dl.append(el('b', null, 'Since'), el('div', 'amt', ''), el('div', 'why', def.crop.years));
+    dl.append(el('b', null, 'Evidence'), el('div', 'amt', ''),
+      el('div', `why ${def.crop.confidence === 'contested' ? 'contested' : ''}`, def.crop.confidence));
+    root.append(dl);
+
+    root.append(el('p', null, def.crop.note));
+
+    root.append(el('p', 'stat',
+      `Delivered in ${state.t} moves${state.ghosts.length ? ` across ${state.ghosts.length + 1} loops` : ''}.`));
+
+    const actions = el('div', 'actions');
+    if (idx + 1 < LEVELS.length) {
+      actions.append(button('Next plate', () => { load(idx + 1); closeSheet(); }));
+    } else {
+      actions.append(button('Plate index', () => showPlates()));
+    }
+    actions.append(button('Replay', () => { load(idx, { keepCamera: true }); closeSheet(); }));
+    root.append(actions);
+  });
+}
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+
+// ── Input ────────────────────────────────────────────────────────────────────────────
+
+const KEYS = {
+  ArrowUp: 0, KeyW: 0,
+  ArrowRight: 1, KeyD: 1,
+  ArrowDown: 2, KeyS: 2,
+  ArrowLeft: 3, KeyA: 3,
+};
+
+window.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    if (!sheet.hidden) closeSheet(); else showPlates();
+    return;
+  }
+
+  if (!sheet.hidden) return;
+
+  if (e.code in KEYS) { e.preventDefault(); act(worldDir(KEYS[e.code])); return; }
+
+  switch (e.code) {
+    case 'Space': e.preventDefault(); act('F'); break;
+    case 'KeyR': e.preventDefault(); doRewind(); break;
+    case 'KeyZ': case 'Backspace': e.preventDefault(); undo(); break;
+    case 'KeyQ': e.preventDefault(); turn(-1); break;
+    case 'KeyE': e.preventDefault(); turn(1); break;
+    case 'Enter': e.preventDefault(); restart(); break;
+    case 'Period': e.preventDefault(); act('.'); break;
+    default: break;
+  }
+});
+
+const bind = (id, fn) => {
+  const node = $(id);
+  node.addEventListener('click', (e) => { e.preventDefault(); fn(); });
+};
+
+bind('pad-up', () => act(worldDir(0)));
+bind('pad-right', () => act(worldDir(1)));
+bind('pad-down', () => act(worldDir(2)));
+bind('pad-left', () => act(worldDir(3)));
+bind('pad-flip', () => act('F'));
+bind('pad-loop', () => doRewind());
+bind('btn-plates', () => (sheet.hidden ? showPlates() : closeSheet()));
+bind('btn-sound', () => {
+  audio.init();
+  const on = audio.toggle();
+  $('btn-sound').setAttribute('aria-pressed', String(on));
+  $('btn-sound').textContent = on ? 'Sound' : 'Muted';
+});
+
+// Drag horizontally to orbit — the fastest way to prove to yourself the world is really 3D.
+let dragX = null;
+canvas.addEventListener('pointerdown', (e) => { dragX = e.clientX; });
+canvas.addEventListener('pointerup', () => { dragX = null; });
+canvas.addEventListener('pointercancel', () => { dragX = null; });
+canvas.addEventListener('pointermove', (e) => {
+  if (dragX === null) return;
+  const dx = e.clientX - dragX;
+  if (Math.abs(dx) > 60) {
+    turn(dx > 0 ? -1 : 1);
+    dragX = e.clientX;
+  }
+});
+
+// ── Frame loop ───────────────────────────────────────────────────────────────────────
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(canvas.clientWidth * dpr);
+  canvas.height = Math.floor(canvas.clientHeight * dpr);
+}
+
+window.addEventListener('resize', resize);
+
+/** Horizontal motion eases; a fall accelerates. Nothing about this touches the rules. */
+function interp(from, to, t) {
+  const e = ease.out(t);
+  const y = to.y === from.y ? from.y
+    : to.y < from.y ? lerp(from.y, to.y, t * t)
+      : lerp(from.y, to.y, ease.out(t));
+  return { x: lerp(from.x, to.x, e), y, z: lerp(from.z, to.z, e) };
+}
+
+function entities() {
+  if (!anim || anim.snap || anim.t >= 1) return snapshotEntities(state);
+  const t = anim.t;
+  const n = Math.min(anim.from.ghosts.length, anim.to.ghosts.length);
+  return {
+    player: interp(anim.from.player, anim.to.player, t),
+    ghosts: anim.to.ghosts.map((g, i) => (i < n ? interp(anim.from.ghosts[i], g, t) : g)),
+    seeds: anim.to.seeds.map((s, i) => interp(anim.from.seeds[i] ?? s, s, t)),
+  };
+}
+
+let last = 0;
+
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000 || 0);
+  last = now;
+
+  if (anim && !anim.snap && anim.t < 1) {
+    anim.t = Math.min(1, anim.t + (dt * 1000) / TICK_MS);
+    if (anim.t >= 1) flush();
+  }
+
+  stepView(view, dt);
+  render(ctx, canvas, state, view, entities());
+
+  requestAnimationFrame(frame);
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────────────
+
+resize();
+
+const firstUnsolved = LEVELS.findIndex((d) => !progress.solved.includes(d.id));
+load(firstUnsolved === -1 ? 0 : firstUnsolved);
+
+if (!progress.seen) showTitle();
+
+requestAnimationFrame((t) => { last = t; frame(t); });
+
+};
+__req("main.js");
+})();
+</script>
+
+</body>
+</html>

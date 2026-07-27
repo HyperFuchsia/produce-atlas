@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rachis — a 4.5-dimensional game</title>
+<!--
+  Development entry point: loads the modules unbundled, so changes show up on reload with no
+  build step. Needs a server (`npm run serve`) because file:// blocks ES module loading.
+  The shipped artefact is dist/rachis.html, produced by `npm run build`.
+-->
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div id="app" data-phase="wild">
+  <canvas id="stage"></canvas>
+
+  <div class="hud">
+    <div class="plate">
+      <span class="n" id="plate-n">PLATE I</span>
+      <div>
+        <h1 id="plate-name">Furrow</h1>
+        <div class="teaches" id="plate-teaches"></div>
+      </div>
+    </div>
+
+    <div class="axes" id="axes">
+      <div><div class="k">X</div><div class="v" id="ax-x">0</div></div>
+      <div><div class="k">Y</div><div class="v" id="ax-y">0</div></div>
+      <div><div class="k">Z</div><div class="v" id="ax-z">0</div></div>
+      <div><div class="k">T</div><div class="v" id="ax-t">0</div></div>
+      <div class="half"><div class="k">&frac12; &Phi;</div><div class="v" id="ax-p">WILD</div></div>
+      <div class="tally" id="ax-tally">3 free &middot; 1 rewound &middot; &frac12; two-valued</div>
+    </div>
+
+    <div class="tools">
+      <button id="btn-plates" title="Plate index (Esc)">Plates</button>
+      <button id="btn-sound" title="Sound" aria-pressed="true">Sound</button>
+    </div>
+
+    <div class="pad">
+      <button class="flip" id="pad-flip">FLIP</button>
+      <button class="up" id="pad-up" aria-label="Move away">&uarr;</button>
+      <button class="loop" id="pad-loop">LOOP</button>
+      <button class="left" id="pad-left" aria-label="Move left">&larr;</button>
+      <button class="down" id="pad-down" aria-label="Move toward">&darr;</button>
+      <button class="right" id="pad-right" aria-label="Move right">&rarr;</button>
+    </div>
+
+    <aside class="label">
+      <div class="eyebrow">Origin plot</div>
+      <div class="common" id="crop-common"></div>
+      <div class="binomial" id="crop-binomial"></div>
+      <dl>
+        <dt>Wild</dt><dd id="crop-ancestor"></dd>
+        <dt>Origin</dt><dd id="crop-origin"></dd>
+        <dt>Since</dt><dd id="crop-years"></dd>
+        <dt>Evidence</dt><dd id="crop-confidence"></dd>
+      </dl>
+    </aside>
+
+    <nav class="keys">
+      <div class="loops" id="loops" title="Rewinds available"></div>
+      <div class="row desktop-only"><kbd>&larr;&uarr;&darr;&rarr;</kbd><span>move</span></div>
+      <div class="row desktop-only"><kbd>Space</kbd><span>flip phase</span></div>
+      <div class="row desktop-only"><kbd>R</kbd><span>rewind</span><kbd>Z</kbd><span>undo</span></div>
+      <div class="row desktop-only"><kbd>Q</kbd><kbd>E</kbd><span>turn</span><kbd>Enter</kbd><span>restart</span></div>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <div class="sheet" id="sheet" hidden>
+    <div class="inner" id="sheet-inner"></div>
+  </div>
+</div>
+
+<script type="module" src="./main.js"></script>
+</body>
+</html>

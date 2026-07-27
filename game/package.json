@@ -1,0 +1,13 @@
+{
+  "name": "rachis",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A 4.5-dimensional puzzle game about the domestication of food plants.",
+  "type": "module",
+  "scripts": {
+    "build": "node tools/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "node tools/build.mjs && node --test test/*.test.mjs",
+    "serve": "node tools/serve.mjs"
+  }
+}
