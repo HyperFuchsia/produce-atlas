@@ -7,12 +7,26 @@ Written from scratch in WebGL2 with **no dependencies and no build step**. Open
 `index.html` and it runs.
 
 ```
-open noggin/index.html
-# or, if your browser is strict about local files:
-npx http-server noggin -p 8099    # then visit http://127.0.0.1:8099
+open noggin/play.html     # single self-contained file, no server needed
+open noggin/index.html    # the same game, loaded as separate modules
 ```
 
 Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
+
+## Building the single file
+
+`play.html` is **generated** — don't edit it directly. `index.html` and `src/`
+are the only source of truth. `build.js` inlines the modules into one file with
+no dependencies and no toolchain:
+
+```
+node noggin/build.js                       # -> noggin/play.html
+node noggin/build.js --fragment out.html   # body-only, for hosts that supply
+                                           # their own document shell
+```
+
+The bundle makes zero external network requests, so it runs from `file://`, from
+any static host, or inside a sandboxed frame with a strict content policy.
 
 ## Modes
 
@@ -124,6 +138,8 @@ so treat the timings as an upper bound, not a benchmark):
 
 ```
 index.html        markup, HUD, styling
+play.html         generated single-file bundle (build.js output)
+build.js          zero-dependency bundler
 src/math.js       vec3 / mat4 / PRNG
 src/geometry.js   icosphere, adjacency, head sculpt, character build, skin binding
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking

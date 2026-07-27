@@ -387,12 +387,22 @@
   };
 
   App.prototype.toggleFullscreen = function () {
-    if (!document.fullscreenElement) {
-      const el = document.documentElement;
-      const req = el.requestFullscreen || el.webkitRequestFullscreen;
-      if (req) req.call(el);
-    } else {
-      document.exitFullscreen();
+    /* Embedded in an iframe without an allow-fullscreen grant, the request
+       rejects; swallow it and tell the player rather than throwing. */
+    const self = this;
+    try {
+      if (!document.fullscreenElement) {
+        const el = document.documentElement;
+        const req = el.requestFullscreen || el.webkitRequestFullscreen;
+        if (!req) { this.flashHint('FULLSCREEN UNAVAILABLE'); return; }
+        const r = req.call(el);
+        if (r && r.catch) r.catch(function () { self.flashHint('FULLSCREEN BLOCKED HERE'); });
+      } else {
+        const r = document.exitFullscreen();
+        if (r && r.catch) r.catch(function () { /* already exited */ });
+      }
+    } catch (e) {
+      this.flashHint('FULLSCREEN BLOCKED HERE');
     }
   };
 
@@ -834,8 +844,15 @@
   }
 
   /* Building the mesh and its binding takes a beat; yield twice so the
-     loading state actually paints before the main thread is tied up. */
-  window.addEventListener('load', function () {
+     loading state actually paints before the main thread is tied up.
+     When bundled into a single file the script can execute after `load` has
+     already fired, so check readyState instead of waiting unconditionally. */
+  function scheduleBoot() {
     requestAnimationFrame(function () { requestAnimationFrame(boot); });
-  });
+  }
+  if (document.readyState === 'complete') {
+    scheduleBoot();
+  } else {
+    window.addEventListener('load', scheduleBoot);
+  }
 })(window.NG = window.NG || {});
