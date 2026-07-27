@@ -79,6 +79,14 @@ uniform mat4 uViewProj;
 uniform mat4 uLightVP;
 uniform float uTime;
 uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
+uniform float uVoice;    /* 0..1, rises while it is speaking */
+uniform vec3 uFocusDir;  /* world direction its attention is on */
+
+/* Speech ripple: wavelength in radians of arc, speed, and height. */
+const float RIPPLE_K = 9.0;
+const float RIPPLE_W = 22.0;
+const float RIPPLE_A = 0.045;
+const float RIPPLE_R = 1.15;   /* nominal radius, for the normal tilt */
 
 out vec3 vWPos;
 out vec3 vNor;
@@ -99,8 +107,37 @@ void main() {
             * sin(p.z * 2.9 + uTime * 1.9);
     p += normalize(aNor) * n * 0.34 * uGas;
   }
+
+  vec3 nrm = normalize(aNor);
+  vec3 wn = mat3(uModel) * nrm;
+
+  /* Speaking shakes it. The wave travels in the angle from the focal point —
+     the point that carries its attention — so the ripple radiates from where
+     the voice is coming from and dies away round the back. Gated on the shell
+     material, because props go through this same program and a talking apple
+     should not be rippling too. */
+  if (uVoice > 0.001 && aMat > 4.5 && aMat < 5.5) {
+    vec3 wnn = normalize(wn);
+    vec3 f = normalize(uFocusDir);
+    float c = clamp(dot(wnn, f), -1.0, 1.0);
+    float band = acos(c);
+    float phase = band * RIPPLE_K - uTime * RIPPLE_W;
+    float amp = RIPPLE_A * uVoice * exp(-band * 0.35) * (1.0 - 0.7 * uGas)
+              * (0.75 + 0.25 * sin(uTime * 5.3 + band * 3.0));
+    p += nrm * sin(phase) * amp;
+
+    /* Tilt the normal to match. Without this the ripple only shows on the
+       silhouette and the surface it is crossing stays glassy and still —
+       and it is the iridescence bending that sells it, not the outline. */
+    vec3 t = f - wnn * c;                        /* tangent, toward the focus */
+    float tl = length(t);
+    if (tl > 1e-4) {
+      float dh = amp * RIPPLE_K * cos(phase);    /* d(height) / d(band) */
+      wn = normalize(wnn + (t / tl) * (dh / RIPPLE_R));
+    }
+  }
+
   vec4 wp = uModel * vec4(p, 1.0);
-  vec3 wn = mat3(uModel) * aNor;
   vWPos = wp.xyz;
   vNor = wn;
   vCol = aCol;
@@ -214,11 +251,13 @@ void main() {
     float focus = pow(max(dot(N, normalize(uFocusDir)), 0.0), 13.0);
     col += uFocusColor * focus * (1.5 + 0.8 * uVoice);
 
-    // Speech travels outward from the focal point as concentric rings.
+    // Speech travels outward from the focal point as concentric rings. Same
+    // wave the vertex stage is riding, so the bright bands sit on the crests
+    // of the ripple rather than beating against them.
     if (uVoice > 0.001) {
-      float band = dot(N, normalize(uFocusDir));
-      float wave = 0.5 + 0.5 * sin(band * 17.0 - uTime * 7.5);
-      col += iri * wave * uVoice * 0.30;
+      float band = acos(clamp(dot(N, normalize(uFocusDir)), -1.0, 1.0));
+      float wave = 0.5 + 0.5 * sin(band * 9.0 - uTime * 22.0);
+      col += iri * wave * uVoice * 0.24 * exp(-band * 0.35);
     }
 
     // Pulled hard, the shell stresses and glows along the strain.

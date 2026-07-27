@@ -251,6 +251,14 @@ sweeps the way an oil film does — light through the middle, spectrum gathering
 at the rim. Nothing else surrounds it: there is the being and the room, and
 that is the entire cast.
 
+**At rest it is an exact sphere** — no lobing, no wobble, nothing to soften it.
+Everything that disturbs that shape does so for a reason, which is what makes
+each disturbance mean something. **Speaking is one of them:** a wave travels
+outward in the angle from the focal point, displacing the shell and tilting its
+normals with it, so the ripple crosses the surface as bending iridescence and
+not just as a wobbling outline. It shakes hardest where the voice is coming
+from and dies away round the back.
+
 It has no face, so **a bright focal point on the shell carries all of the
 looking**. It slides to whatever has its attention: the specimen, your
 viewpoint when you type, or somewhere across the room when the stage is empty.

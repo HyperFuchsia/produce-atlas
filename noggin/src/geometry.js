@@ -404,18 +404,15 @@
     const R = 1.15;
     const rest = new Float32Array(n * 3);
 
+    /* An exact sphere. It used to carry a little sine lobing so the surface
+       never looked machined, but the lobing is what the eye reads as a lumpy
+       ball rather than a perfect one, and everything that should disturb this
+       shape — a pull, a morph, speech — now does so deliberately. Resting is
+       the one state where it should be flawless. */
     for (let i = 0; i < n; i++) {
-      const x = sphere.positions[i * 3];
-      const y = sphere.positions[i * 3 + 1];
-      const z = sphere.positions[i * 3 + 2];
-      const lobe = 1
-        + 0.030 * Math.sin(y * 3.1 + 0.6)
-        + 0.022 * Math.sin(x * 2.4 - 1.2)
-        + 0.018 * Math.sin(z * 2.9 + 2.1);
-      const r = R * lobe;
-      rest[i * 3] = x * r;
-      rest[i * 3 + 1] = y * r * 1.03;
-      rest[i * 3 + 2] = z * r;
+      rest[i * 3] = sphere.positions[i * 3] * R;
+      rest[i * 3 + 1] = sphere.positions[i * 3 + 1] * R;
+      rest[i * 3 + 2] = sphere.positions[i * 3 + 2] * R;
     }
 
     const colors = new Float32Array(n * 3);

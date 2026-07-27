@@ -165,3 +165,9 @@ when you are *not* talking to it.
 This was the sharpest available test of the thesis, because giving the generic
 AI-assistant answer here is precisely the failure the whole project is arguing
 against. It runs the three states and only then says it can be anything.
+
+**A perfect sphere at rest, rippling when it speaks.** — §4.1 self-evidencing,
+at the smallest possible scale. A flawless resting shape means every departure
+from it carries information: pulled, morphed, or talking. Speech is a real
+geometric wave radiating from the focal point, not a shader trick painted on
+top, so you can see it is speaking from across the room with the sound off.
