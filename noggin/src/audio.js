@@ -168,6 +168,33 @@
     f.frequency.exponentialRampToValueAtTime(5200, t + 0.16);
   };
 
+  /* Speech blip. Pitch is derived from the character being typed so the
+     babble has the contour of words without being actual words. */
+  Audio.prototype.blip = function (charCode) {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    /* Keep it inside a pleasant interval instead of the full character range. */
+    const step = (charCode % 12) - 6;
+    const freq = 420 * Math.pow(2, step / 24);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.16, t + 0.05);
+
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1700;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.075);
+
+    osc.connect(filt); filt.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + 0.09);
+  };
+
   Audio.prototype.click = function () {
     if (!this.ready || !this.enabled) return;
     this._noise(0.05, 'highpass', 2400, 0.8, 0.08, this.ctx.currentTime);

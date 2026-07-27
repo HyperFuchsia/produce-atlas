@@ -3,8 +3,8 @@
 A 3-D floating head you can grab and pull like the *Super Mario 64* title screen,
 built as a real game: pull the face through floating rings against the clock.
 
-Written from scratch in WebGL2 with **no dependencies and no build step**. Open
-`index.html` and it runs.
+Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
+either file and it runs — nothing to install, no server required.
 
 ```
 open noggin/play.html     # single self-contained file, no server needed
@@ -35,6 +35,20 @@ any static host, or inside a sandboxed frame with a strict content policy.
   only way to reach one is to grab the face and stretch a piece of it through the
   aperture. Consecutive pops build a combo multiplier; smaller and further rings
   are worth more. Best score is saved to `localStorage`.
+
+## He talks
+
+Leave him alone and he starts telling you things. Unprompted botany facts, one
+after another, in a speech bubble that follows him around — with a procedural
+babble voice blipping along under the typing.
+
+Grab his face and he gets cut off mid-word. Let go and he starts the exact same
+fact over from the beginning, prefaced with a complaint. That is the whole bit:
+you can't skip a fact by interrupting it, you can only make it take longer.
+
+Every fact he states is true — he's annoying, not wrong. Press `T` (or the
+`TALK` button) when you have had enough. He goes quiet during a timed run,
+because the screen is busy enough there without a monologue.
 
 ## Controls
 
@@ -143,6 +157,7 @@ build.js          zero-dependency bundler
 src/math.js       vec3 / mat4 / PRNG
 src/geometry.js   icosphere, adjacency, head sculpt, character build, skin binding
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
+src/chatter.js    the monologue: fact pool, typing, interruption
 src/shaders.js    all GLSL ES 3.00
 src/renderer.js   WebGL2 pipeline, render targets, GPU timing
 src/audio.js      procedural SFX (no audio assets)

@@ -284,6 +284,64 @@
     100% { opacity: 0; }
   }
 
+  /* ---- speech bubble ---- */
+
+  #bubble {
+    position: absolute;
+    /* Fixed width, free height: the tail stays put under a stable centre while
+       the bubble grows upward as he rambles, instead of reflowing sideways on
+       every keystroke. */
+    width: min(340px, 62vw);
+    padding: 13px 16px;
+    background: rgba(10, 20, 32, 0.86);
+    border: 1px solid rgba(70, 224, 255, 0.4);
+    border-radius: 12px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    font-size: 12.5px;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+    color: #dff0fa;
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 26px rgba(70, 224, 255, 0.12);
+    transform: translate(-50%, -100%) scale(0.92);
+    opacity: 0;
+    transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.2, 1.4, 0.4, 1);
+    pointer-events: none;
+    text-wrap: pretty;
+  }
+  #bubble.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+
+
+  /* Tail, drawn as a rotated square tucked under the bottom edge. */
+  #bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 11px;
+    height: 11px;
+    margin-left: -5.5px;
+    background: rgba(10, 20, 32, 0.86);
+    border-right: 1px solid rgba(70, 224, 255, 0.4);
+    border-bottom: 1px solid rgba(70, 224, 255, 0.4);
+    transform: rotate(45deg);
+  }
+
+  /* Blinking cursor while he is mid-sentence. */
+  #bubble-text::after {
+    content: "▌";
+    margin-left: 1px;
+    color: var(--accent);
+    animation: caret 1s steps(2) infinite;
+  }
+  #bubble.done #bubble-text::after { content: ""; }
+  @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #bubble { transition: opacity 0.16s ease; }
+    #bubble-text::after { animation: none; }
+  }
+
   /* ---- popups ---- */
 
   .popup {
@@ -470,6 +528,7 @@
     <div class="row"><span class="k">quality</span><span class="v"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span></div>
     <div class="row"><span class="k">output / hud / floor</span><span class="v"><kbd>K</kbd><kbd>H</kbd><kbd>G</kbd></span></div>
     <div class="row"><span class="k">fullscreen / mute</span><span class="v"><kbd>F</kbd><kbd>M</kbd></span></div>
+    <div class="row"><span class="k">make him stop talking</span><span class="v"><kbd>T</kbd></span></div>
   </div>
 
   <div class="panel" id="buttons">
@@ -479,11 +538,13 @@
     <button class="btn" id="btn-fps">TARGET 120</button>
     <button class="btn" id="btn-adaptive">RES: AUTO</button>
     <button class="btn" id="btn-sound">SOUND ON</button>
+    <button class="btn" id="btn-talk">TALK: ON</button>
     <button class="btn" id="btn-fullscreen">FULLSCREEN</button>
     <button class="btn" id="btn-hud">HIDE HUD</button>
   </div>
 
   <div id="hint"></div>
+  <div id="bubble"><span id="bubble-text"></span></div>
 </div>
 
 <button class="btn hidden" id="hud-show">SHOW HUD</button>
@@ -505,6 +566,7 @@
 <script src="src/math.js"></script>
 <script src="src/geometry.js"></script>
 <script src="src/softbody.js"></script>
+<script src="src/chatter.js"></script>
 <script src="src/shaders.js"></script>
 <script src="src/renderer.js"></script>
 <script src="src/audio.js"></script>

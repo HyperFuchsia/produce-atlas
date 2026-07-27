@@ -285,6 +285,64 @@
     100% { opacity: 0; }
   }
 
+  /* ---- speech bubble ---- */
+
+  #bubble {
+    position: absolute;
+    /* Fixed width, free height: the tail stays put under a stable centre while
+       the bubble grows upward as he rambles, instead of reflowing sideways on
+       every keystroke. */
+    width: min(340px, 62vw);
+    padding: 13px 16px;
+    background: rgba(10, 20, 32, 0.86);
+    border: 1px solid rgba(70, 224, 255, 0.4);
+    border-radius: 12px;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    font-size: 12.5px;
+    line-height: 1.6;
+    letter-spacing: 0.015em;
+    color: #dff0fa;
+    box-shadow: 0 12px 44px rgba(0, 0, 0, 0.55), 0 0 26px rgba(70, 224, 255, 0.12);
+    transform: translate(-50%, -100%) scale(0.92);
+    opacity: 0;
+    transition: opacity 0.16s ease, transform 0.16s cubic-bezier(0.2, 1.4, 0.4, 1);
+    pointer-events: none;
+    text-wrap: pretty;
+  }
+  #bubble.show { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+
+
+  /* Tail, drawn as a rotated square tucked under the bottom edge. */
+  #bubble::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -6px;
+    width: 11px;
+    height: 11px;
+    margin-left: -5.5px;
+    background: rgba(10, 20, 32, 0.86);
+    border-right: 1px solid rgba(70, 224, 255, 0.4);
+    border-bottom: 1px solid rgba(70, 224, 255, 0.4);
+    transform: rotate(45deg);
+  }
+
+  /* Blinking cursor while he is mid-sentence. */
+  #bubble-text::after {
+    content: "▌";
+    margin-left: 1px;
+    color: var(--accent);
+    animation: caret 1s steps(2) infinite;
+  }
+  #bubble.done #bubble-text::after { content: ""; }
+  @keyframes caret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #bubble { transition: opacity 0.16s ease; }
+    #bubble-text::after { animation: none; }
+  }
+
   /* ---- popups ---- */
 
   .popup {
@@ -470,6 +528,7 @@
     <div class="row"><span class="k">quality</span><span class="v"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span></div>
     <div class="row"><span class="k">output / hud / floor</span><span class="v"><kbd>K</kbd><kbd>H</kbd><kbd>G</kbd></span></div>
     <div class="row"><span class="k">fullscreen / mute</span><span class="v"><kbd>F</kbd><kbd>M</kbd></span></div>
+    <div class="row"><span class="k">make him stop talking</span><span class="v"><kbd>T</kbd></span></div>
   </div>
 
   <div class="panel" id="buttons">
@@ -479,11 +538,13 @@
     <button class="btn" id="btn-fps">TARGET 120</button>
     <button class="btn" id="btn-adaptive">RES: AUTO</button>
     <button class="btn" id="btn-sound">SOUND ON</button>
+    <button class="btn" id="btn-talk">TALK: ON</button>
     <button class="btn" id="btn-fullscreen">FULLSCREEN</button>
     <button class="btn" id="btn-hud">HIDE HUD</button>
   </div>
 
   <div id="hint"></div>
+  <div id="bubble"><span id="bubble-text"></span></div>
 </div>
 
 <button class="btn hidden" id="hud-show">SHOW HUD</button>
@@ -1721,6 +1782,260 @@
   };
 
   NG.Softbody = Softbody;
+})(window.NG = window.NG || {});
+
+/* ===== src/chatter.js ===== */
+/* NOGGIN — the mouth.
+
+   He talks whenever he is left alone, one unsolicited botany fact after
+   another, and he does not read the room. Grabbing his face cuts him off
+   mid-word; letting go makes him start the exact same fact over from the
+   beginning, which is the entire joke. */
+(function (NG) {
+  'use strict';
+
+  const M = NG.M;
+
+  /* Every fact here is true. He is annoying, not wrong. */
+  const FACTS = [
+    'a banana is botanically a berry, and a strawberry is not a berry at all.',
+    'broccoli, cauliflower, kale, cabbage, kohlrabi and brussels sprouts are all the same species. Brassica oleracea. One plant. Six haircuts.',
+    'a peanut is not a nut. It is a legume, and it grows underground, which nuts have the decency not to do.',
+    'the cashew grows dangling off the bottom of a fleshy false fruit called a cashew apple, like an afterthought.',
+    'almonds are the seeds of a drupe. They are close relatives of peaches. You have been eating peach cousins.',
+    'vanilla comes from the seed pod of an orchid. The only orchid we bother to eat.',
+    'the strawberry wears its seeds on the outside, and technically those are not even seeds. They are tiny fruits called achenes.',
+    'orange carrots are a recent fashion. For most of their history carrots were purple, white, and yellow.',
+    'a pineapple plant takes around two years to produce one single pineapple. One. In two years.',
+    'the cacao pods grow straight out of the trunk of the tree, not the branches. It is called cauliflory and it looks deeply wrong.',
+    'nutmeg and mace are two different spices harvested from the same fruit. Same fruit! Two spices! Value!',
+    'cinnamon is just bark. You are seasoning your breakfast with bark.',
+    'the chilli burn comes from capsaicin, and birds cannot taste it at all. The plant is spicy specifically at mammals. At us.',
+    'apples do not grow true from seed. Plant a seed from your favourite apple and you get a stranger. Every named variety is a cutting of one original tree.',
+    'the Cavendish banana you buy is a sterile clone. Wild bananas are packed with hard black seeds and are frankly unpleasant.',
+    'rhubarb stalks are a dessert and rhubarb leaves are poisonous. Same plant. Choose carefully.',
+    'maize was domesticated from a scrawny grass called teosinte with about a dozen kernels on it.',
+    'potatoes were domesticated in the Andes, and there are still thousands of varieties there in colours you would not accept in a shop.',
+    'an avocado is a berry. One enormous seed, one berry. I do not make the rules.',
+    'saffron is the dried stigma of a crocus flower, and each flower gives you three. That is why it costs what it costs.',
+    'cucumbers, pumpkins, courgettes, melons and watermelons are all one family. The gourds. A big damp family.',
+    'lettuce is in the daisy family. You are eating an unopened flower relative in your sandwich.',
+    'most wasabi served outside Japan is horseradish with green colouring. Real wasabi is a fussy riverside plant that hates being farmed.',
+    'black pepper and chilli peppers are completely unrelated. Columbus got confused and the name stuck for five centuries.',
+    'the kiwifruit was called the Chinese gooseberry until New Zealand exporters decided that was bad for business.',
+    'pineapple contains bromelain, an enzyme that digests protein. When you eat pineapple, the pineapple is also eating you.',
+    'watermelon is about ninety two percent water, which really should have been obvious from the name.',
+    'onions make you cry using a gas they build on purpose the moment you cut them. It is a chemical alarm. You triggered it.',
+    'brazil nuts mostly still come from wild rainforest trees, because the trees refuse to cooperate on plantations.',
+    'a tomato is a fruit, a berry in fact, and the reason it sits in the savoury aisle is entirely cultural.',
+    'figs are not really a fruit, they are an inside-out cluster of flowers. You are eating a bouquet.',
+    'asparagus can grow around ten centimetres in a single day, which means it is faster than it looks and it knows it.',
+    'garlic and onions and leeks and chives are all the same genus. Allium. The whole pungent gang.',
+    'the durian is banned on public transport in parts of Southeast Asia. That is a fruit with a criminal record.',
+    'oats, wheat, rice, maize, barley and sugarcane are all grasses. Most of what humanity eats is grass.',
+    'a coconut is not a nut either. It is a drupe. Nothing is a nut. I have looked into it and almost nothing is a nut.'
+  ];
+
+  const OPENERS = [
+    'Oh! Oh! Did you know?',
+    'Okay okay okay, but did you know',
+    'HEY. Hey. Hey. Did you know',
+    'Right, so, anyway, did you know',
+    'This one is important. Did you know',
+    'I have been saving this one. Did you know',
+    'Not to interrupt myself, but did you know',
+    'You are going to love this. Did you know',
+    'Wait wait wait. Did you know',
+    'Nobody ever asks me this, but did you know'
+  ];
+
+  /* Trailing neediness, appended once he has been ignored for a while. */
+  const TAGS = [
+    ' ...Anyway. Anyway! What were we doing.',
+    ' I could go on. I am going to go on.',
+    ' Are you even listening to me.',
+    ' No, don\'t answer. I will just keep talking.',
+    ' That is the kind of thing I know.',
+    ' Take your time. Absorb it.',
+    ' I have four hundred more of these.',
+    ' You are welcome, by the way.',
+    ' I said what I said.'
+  ];
+
+  const INTERRUPTS = ['MMPH!', 'GHK—', 'hey—', 'excuse me—', 'ow ow ow—', 'MMF—', 'not the face—'];
+
+  const RESUMPTIONS = [
+    'As I was SAYING.',
+    'Rude.',
+    'You could have just asked me to stop.',
+    'Where was I. Right.',
+    'I am not even mad. I am going to keep talking.',
+    'Unbelievable. Anyway.',
+    'We are not done here.',
+    'I will start again. From the top.'
+  ];
+
+  const CHARS_PER_SEC = 34;
+  const HOLD_AFTER_LINE = 1.9;
+  const GAP_BETWEEN_LINES = 0.55;
+  const INTERRUPT_FLASH = 1.0;
+  const RESUME_DELAY = 0.7;
+
+  function Chatter(audio, bubbleEl, textEl) {
+    this.audio = audio;
+    this.bubble = bubbleEl;
+    this.text = textEl;
+    this.enabled = true;
+
+    this.mode = 'waiting';     /* waiting | typing | holding | flash | muted */
+    this.timer = 0.9;
+    this.full = '';
+    this.shown = 0;
+    this.pendingFact = null;   /* the fact he was cut off during */
+    this.lineCount = 0;
+    this.rand = M.rng(0x1f2e3d4c);
+    this._lastBlip = 0;
+    this._visible = false;
+  }
+
+  Chatter.prototype._pick = function (list) {
+    return list[Math.floor(this.rand() * list.length) % list.length];
+  };
+
+  Chatter.prototype._compose = function () {
+    /* Reuse the interrupted fact so that cutting him off costs you the whole
+       thing over again. */
+    const fact = this.pendingFact || this._pick(FACTS);
+    this.pendingFact = null;
+    let line = this._pick(OPENERS) + ' ' + fact;
+    /* The longer he goes unbothered, the needier the sign-off. */
+    if (this.lineCount >= 1 && this.rand() < 0.75) line += this._pick(TAGS);
+    return { line: line, fact: fact };
+  };
+
+  Chatter.prototype._show = function (visible) {
+    if (this._visible === visible) return;
+    this._visible = visible;
+    this.bubble.classList.toggle('show', visible);
+  };
+
+  Chatter.prototype.setEnabled = function (on) {
+    this.enabled = on;
+    if (!on) {
+      this._show(false);
+      this.mode = 'waiting';
+      this.timer = 1.2;
+      this.shown = 0;
+    }
+  };
+
+  /* Grabbing his face cuts him off wherever he happens to be. */
+  Chatter.prototype.interrupt = function () {
+    if (!this.enabled) return;
+    if (this.mode === 'typing' || this.mode === 'holding') {
+      this.pendingFact = this.currentFact || null;
+      const cut = this.full.slice(0, Math.max(1, this.shown)) + '—' + this._pick(INTERRUPTS);
+      this.text.textContent = cut;
+      this.mode = 'flash';
+      this.timer = INTERRUPT_FLASH;
+      this.lineCount = 0;
+    } else {
+      this._show(false);
+      this.mode = 'muted';
+    }
+  };
+
+  /* Let go and he restarts the same fact, prefaced with a complaint. */
+  Chatter.prototype.resume = function () {
+    if (!this.enabled) return;
+    this.mode = 'waiting';
+    this.timer = RESUME_DELAY;
+    this.resumeWith = this._pick(RESUMPTIONS);
+  };
+
+  Chatter.prototype.silence = function () {
+    this._show(false);
+    this.mode = 'muted';
+    this.shown = 0;
+  };
+
+  Chatter.prototype.update = function (dt, busy) {
+    this._update(dt, busy);
+    /* The caret only belongs there while he is actually mid-sentence. */
+    this.bubble.classList.toggle('done', this.mode !== 'typing');
+  };
+
+  Chatter.prototype._update = function (dt, busy) {
+    if (!this.enabled) return;
+
+    if (busy) {
+      /* Stay out of the way while his face is being handled, except for the
+         brief indignant squawk. */
+      if (this.mode === 'flash') {
+        this.timer -= dt;
+        this._show(true);
+        if (this.timer <= 0) { this._show(false); this.mode = 'muted'; }
+      } else if (this.mode !== 'muted') {
+        this.interrupt();
+      }
+      return;
+    }
+
+    if (this.mode === 'flash') {
+      this.timer -= dt;
+      if (this.timer <= 0) { this._show(false); this.mode = 'waiting'; this.timer = GAP_BETWEEN_LINES; }
+      return;
+    }
+
+    if (this.mode === 'muted') {
+      this.mode = 'waiting';
+      this.timer = RESUME_DELAY;
+    }
+
+    if (this.mode === 'waiting') {
+      this.timer -= dt;
+      if (this.timer > 0) return;
+      const composed = this._compose();
+      this.full = this.resumeWith ? this.resumeWith + ' ' + composed.line : composed.line;
+      this.currentFact = composed.fact;
+      this.resumeWith = null;
+      this.shown = 0;
+      this.text.textContent = '';
+      this.mode = 'typing';
+      this._show(true);
+      return;
+    }
+
+    if (this.mode === 'typing') {
+      const before = Math.floor(this.shown);
+      this.shown = Math.min(this.full.length, this.shown + CHARS_PER_SEC * dt);
+      const now = Math.floor(this.shown);
+      if (now !== before) {
+        this.text.textContent = this.full.slice(0, now);
+        /* One blip every few characters, skipping whitespace, so it reads as
+           speech rather than a machine gun. */
+        for (let i = before; i < now; i++) {
+          const ch = this.full.charAt(i);
+          if (ch === ' ' || ch === '\n') continue;
+          if (++this._lastBlip % 3 === 0) this.audio.blip(ch.charCodeAt(0));
+        }
+      }
+      if (this.shown >= this.full.length) {
+        this.mode = 'holding';
+        this.timer = HOLD_AFTER_LINE;
+        this.lineCount++;
+      }
+      return;
+    }
+
+    if (this.mode === 'holding') {
+      this.timer -= dt;
+      if (this.timer <= 0) { this.mode = 'waiting'; this.timer = GAP_BETWEEN_LINES; }
+    }
+  };
+
+  Chatter.FACTS = FACTS;
+  NG.Chatter = Chatter;
 })(window.NG = window.NG || {});
 
 /* ===== src/shaders.js ===== */
@@ -2963,6 +3278,33 @@ void main() {
     f.frequency.exponentialRampToValueAtTime(5200, t + 0.16);
   };
 
+  /* Speech blip. Pitch is derived from the character being typed so the
+     babble has the contour of words without being actual words. */
+  Audio.prototype.blip = function (charCode) {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    /* Keep it inside a pleasant interval instead of the full character range. */
+    const step = (charCode % 12) - 6;
+    const freq = 420 * Math.pow(2, step / 24);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 1.16, t + 0.05);
+
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1700;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.075);
+
+    osc.connect(filt); filt.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + 0.09);
+  };
+
   Audio.prototype.click = function () {
     if (!this.ready || !this.enabled) return;
     this._noise(0.05, 'highpass', 2400, 0.8, 0.08, this.ctx.currentTime);
@@ -3407,6 +3749,7 @@ void main() {
     this.renderer = new NG.Renderer(this.canvas);
     this.audio = new NG.Audio();
     this.game = new NG.Game();
+    this.chatter = new NG.Chatter(this.audio, $('bubble'), $('bubble-text'));
 
     this.quality = 1;
     this.fpsTargetIndex = 1;
@@ -3620,6 +3963,7 @@ void main() {
     M.copy3(this.grabPrev, hit);
     M.set3(this.grabVel, 0, 0, 0);
     this.audio.setStretch(0, true);
+    this.chatter.interrupt();
     return true;
   };
 
@@ -3664,6 +4008,7 @@ void main() {
     const amount = this.body.endGrab(this.grabVel, 0.45);
     this.grabPointer = -1;
     this.audio.setStretch(0, false);
+    this.chatter.resume();
     if (amount > 0.05) {
       this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
     }
@@ -3693,6 +4038,7 @@ void main() {
       case 'g': this.showFloor = !this.showFloor; break;
       case 'p': this.paused = !this.paused; break;
       case 'm': this.toggleSound(); break;
+      case 't': this.toggleTalk(); break;
       case '1': this.setQuality(0); break;
       case '2': this.setQuality(1); break;
       case '3': this.setQuality(2); break;
@@ -3722,6 +4068,7 @@ void main() {
     });
     on('btn-adaptive', function () { self.adaptive = !self.adaptive; self.updateHudStatic(); });
     on('btn-sound', function () { self.toggleSound(); });
+    on('btn-talk', function () { self.toggleTalk(); });
     on('btn-hud', function () { self.setHud(false); });
     on('mode-sandbox', function () { self.enterSandbox(); });
     on('mode-challenge', function () { self.startChallenge(); });
@@ -3739,6 +4086,12 @@ void main() {
     this.audio.resume();
     this.audio.setEnabled(!this.audio.enabled);
     $('btn-sound').textContent = this.audio.enabled ? 'SOUND ON' : 'SOUND OFF';
+  };
+
+  App.prototype.toggleTalk = function () {
+    this.chatter.setEnabled(!this.chatter.enabled);
+    $('btn-talk').textContent = this.chatter.enabled ? 'TALK: ON' : 'TALK: OFF';
+    this.flashHint(this.chatter.enabled ? 'HE IS BACK' : 'PEACE AND QUIET');
   };
 
   App.prototype.toggleFullscreen = function () {
@@ -3850,6 +4203,36 @@ void main() {
     void el.offsetWidth;
     el.classList.add('run');
     this.popups.push({ el: el, t: 0 });
+  };
+
+  /* He talks when left alone. Being grabbed shuts him up, and so does the
+     timed mode — the screen is busy enough there without a monologue. */
+  App.prototype.updateChatter = function (dt) {
+    const playing = this.game.state === 'playing';
+    if (playing) {
+      this.chatter.silence();
+      return;
+    }
+    this.chatter.update(dt, this.grabPointer >= 0);
+
+    if (!this.chatter._visible) return;
+
+    /* Anchor the bubble up and to his right, in his own local space, so it
+       rides along with the bob and stays put when the camera orbits. */
+    const world = M.transformPoint([0, 0, 0], this.model, [1.05, 1.05, 0.25]);
+    const vp = this.viewProj;
+    const w = vp[3] * world[0] + vp[7] * world[1] + vp[11] * world[2] + vp[15];
+    if (w <= 0.001) { this.chatter._show(false); return; }
+    const nx = (vp[0] * world[0] + vp[4] * world[1] + vp[8] * world[2] + vp[12]) / w;
+    const ny = (vp[1] * world[0] + vp[5] * world[1] + vp[9] * world[2] + vp[13]) / w;
+
+    const bubble = this.chatter.bubble;
+    const halfW = bubble.offsetWidth * 0.5 + 12;
+    const h = bubble.offsetHeight + 12;
+    const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, halfW, Math.max(halfW, this.cssW - halfW));
+    const y = M.clamp((0.5 - ny * 0.5) * this.cssH, h, Math.max(h, this.cssH - 12));
+    bubble.style.left = x + 'px';
+    bubble.style.top = y + 'px';
   };
 
   App.prototype.updatePopups = function (dt) {
@@ -4124,6 +4507,7 @@ void main() {
       M.transformDir([0, 0, 0], this.invModel, M.sub3([0, 0, 0], this.eye, this.target)));
     this.game.update(dt, this.body, this.model, camDirLocal);
     this.handleEvents();
+    this.updateChatter(dt);
     this.updatePopups(dt);
 
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);

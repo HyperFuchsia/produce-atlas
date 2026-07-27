@@ -52,6 +52,7 @@
     this.renderer = new NG.Renderer(this.canvas);
     this.audio = new NG.Audio();
     this.game = new NG.Game();
+    this.chatter = new NG.Chatter(this.audio, $('bubble'), $('bubble-text'));
 
     this.quality = 1;
     this.fpsTargetIndex = 1;
@@ -265,6 +266,7 @@
     M.copy3(this.grabPrev, hit);
     M.set3(this.grabVel, 0, 0, 0);
     this.audio.setStretch(0, true);
+    this.chatter.interrupt();
     return true;
   };
 
@@ -309,6 +311,7 @@
     const amount = this.body.endGrab(this.grabVel, 0.45);
     this.grabPointer = -1;
     this.audio.setStretch(0, false);
+    this.chatter.resume();
     if (amount > 0.05) {
       this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
     }
@@ -338,6 +341,7 @@
       case 'g': this.showFloor = !this.showFloor; break;
       case 'p': this.paused = !this.paused; break;
       case 'm': this.toggleSound(); break;
+      case 't': this.toggleTalk(); break;
       case '1': this.setQuality(0); break;
       case '2': this.setQuality(1); break;
       case '3': this.setQuality(2); break;
@@ -367,6 +371,7 @@
     });
     on('btn-adaptive', function () { self.adaptive = !self.adaptive; self.updateHudStatic(); });
     on('btn-sound', function () { self.toggleSound(); });
+    on('btn-talk', function () { self.toggleTalk(); });
     on('btn-hud', function () { self.setHud(false); });
     on('mode-sandbox', function () { self.enterSandbox(); });
     on('mode-challenge', function () { self.startChallenge(); });
@@ -384,6 +389,12 @@
     this.audio.resume();
     this.audio.setEnabled(!this.audio.enabled);
     $('btn-sound').textContent = this.audio.enabled ? 'SOUND ON' : 'SOUND OFF';
+  };
+
+  App.prototype.toggleTalk = function () {
+    this.chatter.setEnabled(!this.chatter.enabled);
+    $('btn-talk').textContent = this.chatter.enabled ? 'TALK: ON' : 'TALK: OFF';
+    this.flashHint(this.chatter.enabled ? 'HE IS BACK' : 'PEACE AND QUIET');
   };
 
   App.prototype.toggleFullscreen = function () {
@@ -495,6 +506,36 @@
     void el.offsetWidth;
     el.classList.add('run');
     this.popups.push({ el: el, t: 0 });
+  };
+
+  /* He talks when left alone. Being grabbed shuts him up, and so does the
+     timed mode — the screen is busy enough there without a monologue. */
+  App.prototype.updateChatter = function (dt) {
+    const playing = this.game.state === 'playing';
+    if (playing) {
+      this.chatter.silence();
+      return;
+    }
+    this.chatter.update(dt, this.grabPointer >= 0);
+
+    if (!this.chatter._visible) return;
+
+    /* Anchor the bubble up and to his right, in his own local space, so it
+       rides along with the bob and stays put when the camera orbits. */
+    const world = M.transformPoint([0, 0, 0], this.model, [1.05, 1.05, 0.25]);
+    const vp = this.viewProj;
+    const w = vp[3] * world[0] + vp[7] * world[1] + vp[11] * world[2] + vp[15];
+    if (w <= 0.001) { this.chatter._show(false); return; }
+    const nx = (vp[0] * world[0] + vp[4] * world[1] + vp[8] * world[2] + vp[12]) / w;
+    const ny = (vp[1] * world[0] + vp[5] * world[1] + vp[9] * world[2] + vp[13]) / w;
+
+    const bubble = this.chatter.bubble;
+    const halfW = bubble.offsetWidth * 0.5 + 12;
+    const h = bubble.offsetHeight + 12;
+    const x = M.clamp((nx * 0.5 + 0.5) * this.cssW, halfW, Math.max(halfW, this.cssW - halfW));
+    const y = M.clamp((0.5 - ny * 0.5) * this.cssH, h, Math.max(h, this.cssH - 12));
+    bubble.style.left = x + 'px';
+    bubble.style.top = y + 'px';
   };
 
   App.prototype.updatePopups = function (dt) {
@@ -769,6 +810,7 @@
       M.transformDir([0, 0, 0], this.invModel, M.sub3([0, 0, 0], this.eye, this.target)));
     this.game.update(dt, this.body, this.model, camDirLocal);
     this.handleEvents();
+    this.updateChatter(dt);
     this.updatePopups(dt);
 
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);
