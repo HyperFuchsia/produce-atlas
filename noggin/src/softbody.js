@@ -57,6 +57,19 @@
     return topV;
   };
 
+  /* One pull: which vertices it holds, how strongly, and where they were when
+     it took hold. Sized for the whole body once, so taking hold allocates
+     nothing. */
+  function GrabSlot(n) {
+    this.idx = new Int32Array(n);
+    this.w = new Float32Array(n);
+    this.base = new Float32Array(n * 3);
+    this.count = 0;
+    this.active = false;
+    this.delta = [0, 0, 0];
+    this.anchor = [0, 0, 0];
+  }
+
   function Softbody(mesh, opts) {
     opts = opts || {};
     this.mesh = mesh;
@@ -96,14 +109,12 @@
     this.refreshEdgeLengths();
     this.refreshRestLengths();
 
-    /* Grab state. */
+    /* Grab state, as a small fixed pool rather than one set of fields. Two
+       independent pulls have to be able to coexist: the being reaches in and
+       stretches itself alongside you, and one shared grab would mean whoever
+       moved last won. */
+    this.grabs = [new GrabSlot(this.headCount), new GrabSlot(this.headCount)];
     this.grabbing = false;
-    this.grabIdx = new Int32Array(this.headCount);
-    this.grabW = new Float32Array(this.headCount);
-    this.grabBase = new Float32Array(this.headCount * 3);
-    this.grabCount = 0;
-    this.grabDelta = [0, 0, 0];
-    this.grabAnchor = [0, 0, 0];
 
     /* Scratch for the geodesic flood. */
     this._heap = new Heap();
@@ -190,19 +201,21 @@
       disp[i3] = dx + ax; disp[i3 + 1] = dy + ay; disp[i3 + 2] = dz + az;
     }
 
-    if (this.grabbing) this._applyGrab(dt);
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (this.grabs[s].active) this._applyGrab(this.grabs[s], dt);
+    }
     /* _applyLimits also re-derives `disp` from `pos`, which is what keeps the
        two in step after the grab has moved vertices kinematically. */
     this._applyLimits();
   };
 
-  Softbody.prototype._applyGrab = function (dt) {
+  Softbody.prototype._applyGrab = function (slot, dt) {
     const pos = this.pos, vel = this.vel;
-    const idx = this.grabIdx, w = this.grabW, base = this.grabBase;
-    const dx = this.grabDelta[0], dy = this.grabDelta[1], dz = this.grabDelta[2];
+    const idx = slot.idx, w = slot.w, base = slot.base;
+    const dx = slot.delta[0], dy = slot.delta[1], dz = slot.delta[2];
     const invDt = dt > 1e-6 ? 1 / dt : 0;
 
-    for (let g = 0; g < this.grabCount; g++) {
+    for (let g = 0; g < slot.count; g++) {
       const i = idx[g], i3 = i * 3, g3 = g * 3;
       const wi = w[g];
       const tx = base[g3] + dx * wi;
@@ -385,8 +398,17 @@
 
   /* Flood geodesic distance from the seed vertex and build a falloff-weighted
      grab set. Geodesic (not euclidean) distance matters: grabbing the nose
-     tip must not drag the lip that happens to sit close in space. */
+     tip must not drag the lip that happens to sit close in space.
+
+     Returns a slot id to pass back to setGrabTarget and endGrab, or -1 when
+     every slot is already in use. */
   Softbody.prototype.beginGrab = function (seedVertex, radius, anchor) {
+    let slot = null, slotId = -1;
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (!this.grabs[s].active) { slot = this.grabs[s]; slotId = s; break; }
+    }
+    if (!slot) return -1;
+
     const off = this.adj.offset, nbr = this.adj.idx, elen = this.edgeLen;
     const dist = this._dist, visited = this._visited;
     const stamp = ++this._visitStamp;
@@ -398,7 +420,7 @@
     heap.push(0, seedVertex);
 
     let count = 0;
-    const idxOut = this.grabIdx, wOut = this.grabW, base = this.grabBase;
+    const idxOut = slot.idx, wOut = slot.w, base = slot.base;
     const pos = this.pos;
 
     while (heap.size()) {
@@ -431,33 +453,55 @@
       }
     }
 
-    this.grabCount = count;
-    this.grabbing = count > 0;
-    this.grabDelta[0] = this.grabDelta[1] = this.grabDelta[2] = 0;
-    M.copy3(this.grabAnchor, anchor);
-    return this.grabbing;
+    slot.count = count;
+    slot.active = count > 0;
+    slot.delta[0] = slot.delta[1] = slot.delta[2] = 0;
+    M.copy3(slot.anchor, anchor);
+    this._syncGrabbing();
+    return slot.active ? slotId : -1;
   };
 
-  Softbody.prototype.setGrabTarget = function (worldLocalPoint) {
-    this.grabDelta[0] = worldLocalPoint[0] - this.grabAnchor[0];
-    this.grabDelta[1] = worldLocalPoint[1] - this.grabAnchor[1];
-    this.grabDelta[2] = worldLocalPoint[2] - this.grabAnchor[2];
+  Softbody.prototype._syncGrabbing = function () {
+    this.grabbing = false;
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (this.grabs[s].active) { this.grabbing = true; return; }
+    }
+  };
+
+  Softbody.prototype.grabAnchorOf = function (slotId) {
+    const s = this.grabs[slotId];
+    return s ? s.anchor : null;
+  };
+
+  Softbody.prototype.grabDeltaOf = function (slotId) {
+    const s = this.grabs[slotId];
+    return s ? s.delta : null;
+  };
+
+  Softbody.prototype.setGrabTarget = function (slotId, worldLocalPoint) {
+    const slot = this.grabs[slotId];
+    if (!slot || !slot.active) return;
+    slot.delta[0] = worldLocalPoint[0] - slot.anchor[0];
+    slot.delta[1] = worldLocalPoint[1] - slot.anchor[1];
+    slot.delta[2] = worldLocalPoint[2] - slot.anchor[2];
   };
 
   /* Releasing hands the accumulated drag velocity back to the mesh, scaled by
      `flick`, which is what makes a fast release snap and wobble. */
-  Softbody.prototype.endGrab = function (flickVel, flick) {
-    if (!this.grabbing) return 0;
-    const vel = this.vel, idx = this.grabIdx, w = this.grabW;
-    for (let g = 0; g < this.grabCount; g++) {
+  Softbody.prototype.endGrab = function (slotId, flickVel, flick) {
+    const slot = this.grabs[slotId];
+    if (!slot || !slot.active) return 0;
+    const vel = this.vel, idx = slot.idx, w = slot.w;
+    for (let g = 0; g < slot.count; g++) {
       const i3 = idx[g] * 3, wi = w[g] * flick;
       vel[i3] += flickVel[0] * wi;
       vel[i3 + 1] += flickVel[1] * wi;
       vel[i3 + 2] += flickVel[2] * wi;
     }
-    const amount = M.len3(this.grabDelta);
-    this.grabbing = false;
-    this.grabCount = 0;
+    const amount = M.len3(slot.delta);
+    slot.active = false;
+    slot.count = 0;
+    this._syncGrabbing();
     return amount;
   };
 
@@ -478,8 +522,11 @@
         this.vel[i] += (this.rest[i] - this.pos[i]) * 6.0;
       }
     }
+    for (let s = 0; s < this.grabs.length; s++) {
+      this.grabs[s].active = false;
+      this.grabs[s].count = 0;
+    }
     this.grabbing = false;
-    this.grabCount = 0;
   };
 
   /* Nudge the whole surface, used for impacts and celebratory jiggles. */

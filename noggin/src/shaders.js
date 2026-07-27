@@ -178,7 +178,7 @@ void main() {
 
   float ndvAll = clamp(dot(N, V), 0.0, 1.0);
 
-  // Halo rings: emissive filament, brightest edge-on.
+  // Wireframe overlays: emissive filament, brightest edge-on.
   if (m > 5.5) {
     float edge = pow(1.0 - ndvAll, 1.4);
     oColor = vec4(vCol * (0.5 + 2.6 * edge) * (0.8 + 0.4 * uVoice), 1.0);

@@ -200,6 +200,32 @@
     return o;
   };
 
+  /* Point a model at something: local +Y ends up along `dir` (which must be
+     unit), uniformly scaled, positioned at `pos`.
+
+     `hint` decides the roll about that axis — local +Z is turned as close to
+     it as the aim allows. Without it the roll is arbitrary, which for anything
+     flat means it will sooner or later be edge-on to the viewer and vanish. */
+  M.aim = function (o, pos, dir, scale, hint) {
+    let x, z;
+    if (hint) {
+      const d = M.dot3(hint, dir);
+      z = [hint[0] - dir[0] * d, hint[1] - dir[1] * d, hint[2] - dir[2] * d];
+      if (M.len3(z) < 1e-4) z = null; else M.norm3(z, z);
+    }
+    if (z) {
+      x = M.cross3([0, 0, 0], dir, z);
+    } else {
+      const f = M.frame(dir);    /* [u, v, dir] */
+      x = f[0]; z = f[1];
+    }
+    o[0] = x[0] * scale; o[1] = x[1] * scale; o[2] = x[2] * scale; o[3] = 0;
+    o[4] = dir[0] * scale; o[5] = dir[1] * scale; o[6] = dir[2] * scale; o[7] = 0;
+    o[8] = z[0] * scale; o[9] = z[1] * scale; o[10] = z[2] * scale; o[11] = 0;
+    o[12] = pos[0]; o[13] = pos[1]; o[14] = pos[2]; o[15] = 1;
+    return o;
+  };
+
   /* Deterministic PRNG so a session can be reproduced. */
   M.rng = function (seed) {
     let s = seed >>> 0 || 1;

@@ -542,6 +542,32 @@
     return o;
   };
 
+  /* Point a model at something: local +Y ends up along `dir` (which must be
+     unit), uniformly scaled, positioned at `pos`.
+
+     `hint` decides the roll about that axis — local +Z is turned as close to
+     it as the aim allows. Without it the roll is arbitrary, which for anything
+     flat means it will sooner or later be edge-on to the viewer and vanish. */
+  M.aim = function (o, pos, dir, scale, hint) {
+    let x, z;
+    if (hint) {
+      const d = M.dot3(hint, dir);
+      z = [hint[0] - dir[0] * d, hint[1] - dir[1] * d, hint[2] - dir[2] * d];
+      if (M.len3(z) < 1e-4) z = null; else M.norm3(z, z);
+    }
+    if (z) {
+      x = M.cross3([0, 0, 0], dir, z);
+    } else {
+      const f = M.frame(dir);    /* [u, v, dir] */
+      x = f[0]; z = f[1];
+    }
+    o[0] = x[0] * scale; o[1] = x[1] * scale; o[2] = x[2] * scale; o[3] = 0;
+    o[4] = dir[0] * scale; o[5] = dir[1] * scale; o[6] = dir[2] * scale; o[7] = 0;
+    o[8] = z[0] * scale; o[9] = z[1] * scale; o[10] = z[2] * scale; o[11] = 0;
+    o[12] = pos[0]; o[13] = pos[1]; o[14] = pos[2]; o[15] = 1;
+    return o;
+  };
+
   /* Deterministic PRNG so a session can be reproduced. */
   M.rng = function (seed) {
     let s = seed >>> 0 || 1;
@@ -573,7 +599,7 @@
     HAIR: 3,
     GLINT: 4,
     SHELL: 5,
-    HALO: 6
+    WIRE: 6        /* flat emissive, brightest edge-on — wireframe overlays */
   };
   G.MAT = MAT;
 
@@ -999,20 +1025,70 @@
     };
   };
 
-  /* A halo ring. Rendered as a prop with its own transform so it can turn
-     independently of the shell. */
-  G.buildHalo = function (radius, tube) {
-    const t = G.torus(radius, tube, 96, 8);
-    const n = t.positions.length / 3;
-    const colors = new Float32Array(n * 3);
-    const mats = new Float32Array(n);
+  /* ---- the cursor hand ------------------------------------------------- */
+
+  /* A rounded box, from a unit icosphere pushed onto a box by the L-infinity
+     mapping and then rounded back off. Cheap, and every corner stays smooth,
+     which is what makes the hand read as a cartoon glove rather than as a
+     pile of cubes. */
+  function roundedBox(unit, cx, cy, cz, hx, hy, hz, round) {
+    const n = unit.positions.length / 3;
+    const out = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      colors[i * 3] = 0.72; colors[i * 3 + 1] = 0.86; colors[i * 3 + 2] = 1.0;
-      mats[i] = MAT.HALO;
+      const dx = unit.positions[i * 3], dy = unit.positions[i * 3 + 1], dz = unit.positions[i * 3 + 2];
+      const m = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) || 1;
+      /* Blend between the sphere direction and the box surface. */
+      const bx = dx / m, by = dy / m, bz = dz / m;
+      out[i * 3] = cx + (bx + (dx - bx) * round) * hx;
+      out[i * 3 + 1] = cy + (by + (dy - by) * round) * hy;
+      out[i * 3 + 2] = cz + (bz + (dz - bz) * round) * hz;
     }
+    return out;
+  }
+
+  /* The pointing-hand mouse cursor, in three dimensions, one unit tall.
+     Local +Y is the direction the index finger points, so aiming it at
+     something is a matter of building a frame around that direction.
+
+     It is deliberately chunky and four-fingered: this is a cursor that has
+     wandered into the scene, not an anatomical hand. */
+  G.buildHand = function () {
+    const b = new Builder();
+    const unit = G.icosphere(2);
+    const GLOVE = [0.94, 0.95, 0.97];
+    const CUFF = [0.62, 0.70, 0.86];
+
+    /* Palm. */
+    b.append(roundedBox(unit, 0, 0, 0, 0.33, 0.30, 0.17, 0.5),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Index finger, extended: the part that does the pointing. */
+    b.append(roundedBox(unit, -0.13, 0.46, 0, 0.115, 0.28, 0.115, 0.5),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Three folded fingers, curled down over the front of the palm. */
+    for (let i = 0; i < 3; i++) {
+      b.append(roundedBox(unit, 0.03 + i * 0.145, 0.20 - i * 0.02, 0.10, 0.075, 0.115, 0.10, 0.55),
+        unit.indices, GLOVE, MAT.HAIR);
+    }
+
+    /* Thumb, tucked across. */
+    b.append(roundedBox(unit, -0.30, 0.06, 0.10, 0.10, 0.155, 0.095, 0.55),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Cuff, so it reads as a glove and has somewhere to end. */
+    b.append(roundedBox(unit, 0.02, -0.33, 0, 0.30, 0.115, 0.175, 0.4),
+      unit.indices, CUFF, MAT.HAIR);
+
+    const positions = new Float32Array(b.pos);
+    const indices = new Uint32Array(b.idx);
     return {
-      positions: t.positions, normals: t.normals, colors: colors, mats: mats,
-      indices: t.indices, heightUnits: tube * 2, radiusUnits: radius, topUnits: tube
+      positions: positions,
+      normals: G.computeNormals(positions, indices, positions.length / 3),
+      colors: new Float32Array(b.col),
+      mats: new Float32Array(b.mat),
+      indices: indices,
+      heightUnits: 1.5, radiusUnits: 0.45, topUnits: 0.74
     };
   };
 
@@ -1245,6 +1321,19 @@
     return topV;
   };
 
+  /* One pull: which vertices it holds, how strongly, and where they were when
+     it took hold. Sized for the whole body once, so taking hold allocates
+     nothing. */
+  function GrabSlot(n) {
+    this.idx = new Int32Array(n);
+    this.w = new Float32Array(n);
+    this.base = new Float32Array(n * 3);
+    this.count = 0;
+    this.active = false;
+    this.delta = [0, 0, 0];
+    this.anchor = [0, 0, 0];
+  }
+
   function Softbody(mesh, opts) {
     opts = opts || {};
     this.mesh = mesh;
@@ -1284,14 +1373,12 @@
     this.refreshEdgeLengths();
     this.refreshRestLengths();
 
-    /* Grab state. */
+    /* Grab state, as a small fixed pool rather than one set of fields. Two
+       independent pulls have to be able to coexist: the being reaches in and
+       stretches itself alongside you, and one shared grab would mean whoever
+       moved last won. */
+    this.grabs = [new GrabSlot(this.headCount), new GrabSlot(this.headCount)];
     this.grabbing = false;
-    this.grabIdx = new Int32Array(this.headCount);
-    this.grabW = new Float32Array(this.headCount);
-    this.grabBase = new Float32Array(this.headCount * 3);
-    this.grabCount = 0;
-    this.grabDelta = [0, 0, 0];
-    this.grabAnchor = [0, 0, 0];
 
     /* Scratch for the geodesic flood. */
     this._heap = new Heap();
@@ -1378,19 +1465,21 @@
       disp[i3] = dx + ax; disp[i3 + 1] = dy + ay; disp[i3 + 2] = dz + az;
     }
 
-    if (this.grabbing) this._applyGrab(dt);
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (this.grabs[s].active) this._applyGrab(this.grabs[s], dt);
+    }
     /* _applyLimits also re-derives `disp` from `pos`, which is what keeps the
        two in step after the grab has moved vertices kinematically. */
     this._applyLimits();
   };
 
-  Softbody.prototype._applyGrab = function (dt) {
+  Softbody.prototype._applyGrab = function (slot, dt) {
     const pos = this.pos, vel = this.vel;
-    const idx = this.grabIdx, w = this.grabW, base = this.grabBase;
-    const dx = this.grabDelta[0], dy = this.grabDelta[1], dz = this.grabDelta[2];
+    const idx = slot.idx, w = slot.w, base = slot.base;
+    const dx = slot.delta[0], dy = slot.delta[1], dz = slot.delta[2];
     const invDt = dt > 1e-6 ? 1 / dt : 0;
 
-    for (let g = 0; g < this.grabCount; g++) {
+    for (let g = 0; g < slot.count; g++) {
       const i = idx[g], i3 = i * 3, g3 = g * 3;
       const wi = w[g];
       const tx = base[g3] + dx * wi;
@@ -1573,8 +1662,17 @@
 
   /* Flood geodesic distance from the seed vertex and build a falloff-weighted
      grab set. Geodesic (not euclidean) distance matters: grabbing the nose
-     tip must not drag the lip that happens to sit close in space. */
+     tip must not drag the lip that happens to sit close in space.
+
+     Returns a slot id to pass back to setGrabTarget and endGrab, or -1 when
+     every slot is already in use. */
   Softbody.prototype.beginGrab = function (seedVertex, radius, anchor) {
+    let slot = null, slotId = -1;
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (!this.grabs[s].active) { slot = this.grabs[s]; slotId = s; break; }
+    }
+    if (!slot) return -1;
+
     const off = this.adj.offset, nbr = this.adj.idx, elen = this.edgeLen;
     const dist = this._dist, visited = this._visited;
     const stamp = ++this._visitStamp;
@@ -1586,7 +1684,7 @@
     heap.push(0, seedVertex);
 
     let count = 0;
-    const idxOut = this.grabIdx, wOut = this.grabW, base = this.grabBase;
+    const idxOut = slot.idx, wOut = slot.w, base = slot.base;
     const pos = this.pos;
 
     while (heap.size()) {
@@ -1619,33 +1717,55 @@
       }
     }
 
-    this.grabCount = count;
-    this.grabbing = count > 0;
-    this.grabDelta[0] = this.grabDelta[1] = this.grabDelta[2] = 0;
-    M.copy3(this.grabAnchor, anchor);
-    return this.grabbing;
+    slot.count = count;
+    slot.active = count > 0;
+    slot.delta[0] = slot.delta[1] = slot.delta[2] = 0;
+    M.copy3(slot.anchor, anchor);
+    this._syncGrabbing();
+    return slot.active ? slotId : -1;
   };
 
-  Softbody.prototype.setGrabTarget = function (worldLocalPoint) {
-    this.grabDelta[0] = worldLocalPoint[0] - this.grabAnchor[0];
-    this.grabDelta[1] = worldLocalPoint[1] - this.grabAnchor[1];
-    this.grabDelta[2] = worldLocalPoint[2] - this.grabAnchor[2];
+  Softbody.prototype._syncGrabbing = function () {
+    this.grabbing = false;
+    for (let s = 0; s < this.grabs.length; s++) {
+      if (this.grabs[s].active) { this.grabbing = true; return; }
+    }
+  };
+
+  Softbody.prototype.grabAnchorOf = function (slotId) {
+    const s = this.grabs[slotId];
+    return s ? s.anchor : null;
+  };
+
+  Softbody.prototype.grabDeltaOf = function (slotId) {
+    const s = this.grabs[slotId];
+    return s ? s.delta : null;
+  };
+
+  Softbody.prototype.setGrabTarget = function (slotId, worldLocalPoint) {
+    const slot = this.grabs[slotId];
+    if (!slot || !slot.active) return;
+    slot.delta[0] = worldLocalPoint[0] - slot.anchor[0];
+    slot.delta[1] = worldLocalPoint[1] - slot.anchor[1];
+    slot.delta[2] = worldLocalPoint[2] - slot.anchor[2];
   };
 
   /* Releasing hands the accumulated drag velocity back to the mesh, scaled by
      `flick`, which is what makes a fast release snap and wobble. */
-  Softbody.prototype.endGrab = function (flickVel, flick) {
-    if (!this.grabbing) return 0;
-    const vel = this.vel, idx = this.grabIdx, w = this.grabW;
-    for (let g = 0; g < this.grabCount; g++) {
+  Softbody.prototype.endGrab = function (slotId, flickVel, flick) {
+    const slot = this.grabs[slotId];
+    if (!slot || !slot.active) return 0;
+    const vel = this.vel, idx = slot.idx, w = slot.w;
+    for (let g = 0; g < slot.count; g++) {
       const i3 = idx[g] * 3, wi = w[g] * flick;
       vel[i3] += flickVel[0] * wi;
       vel[i3 + 1] += flickVel[1] * wi;
       vel[i3 + 2] += flickVel[2] * wi;
     }
-    const amount = M.len3(this.grabDelta);
-    this.grabbing = false;
-    this.grabCount = 0;
+    const amount = M.len3(slot.delta);
+    slot.active = false;
+    slot.count = 0;
+    this._syncGrabbing();
     return amount;
   };
 
@@ -1666,8 +1786,11 @@
         this.vel[i] += (this.rest[i] - this.pos[i]) * 6.0;
       }
     }
+    for (let s = 0; s < this.grabs.length; s++) {
+      this.grabs[s].active = false;
+      this.grabs[s].count = 0;
+    }
     this.grabbing = false;
-    this.grabCount = 0;
   };
 
   /* Nudge the whole surface, used for impacts and celebratory jiggles. */
@@ -1980,15 +2103,24 @@
     return out;
   };
 
-  /* Build one produce mesh from a knowledge-base entry. */
-  P.build = function (spec) {
+  /* Build one produce mesh from a knowledge-base entry.
+
+     With `trimOnly`, the body is left out and only the stem, leaves and crown
+     are built. Those are the parts that cannot be expressed on the being's
+     own topology — a closed sphere has nowhere to put a pineapple's crown —
+     so when it *becomes* a specimen they are attached separately, in this
+     same local frame, and ride its transform. Returns null when the specimen
+     has no such parts. */
+  P.build = function (spec, trimOnly) {
     const part = new Part();
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
     const mat = spec.gloss === false ? MAT_SKIN : MAT_GLOSS;
 
-    if (spec.cluster) {
+    if (trimOnly) {
+      /* body skipped */
+    } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
       const n = spec.cluster.count;
@@ -2060,6 +2192,8 @@
           spec.crown.color || [0.26, 0.46, 0.20], MAT_MATTE);
       }
     }
+
+    if (!part.pos.length) return null;
 
     let positions = new Float32Array(part.pos);
     const indices = new Uint32Array(part.idx);
@@ -2729,6 +2863,12 @@
     'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
   const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
     'turn back', 'revert', 'stop being', 'be you again', 'undo that', 'back to normal'];
+  /* Becoming the thing is the default. These are the ways of asking for the
+     old behaviour instead — the specimen standing beside it, so the two can
+     be compared at true scale. */
+  const PLACE_WORDS = ['next to you', 'beside you', 'in the room', 'on the table',
+    'side by side', 'next to yourself', 'conjure', 'summon', 'put one', 'bring one',
+    'compared to you', 'against you'];
 
   function has(text, words) {
     for (let i = 0; i < words.length; i++) if (text.indexOf(words[i]) !== -1) return true;
@@ -2768,12 +2908,12 @@
     const wide = e.widthCm || e.sizeCm;
     const ratio = wide / SELF_CM;
     let cmp;
-    if (ratio < 0.12) cmp = 'a mote next to me';
-    else if (ratio < 0.3) cmp = 'about a quarter of my width';
-    else if (ratio < 0.45) cmp = 'roughly a third of me';
-    else if (ratio < 0.7) cmp = 'over half my width';
-    else if (ratio < 1.1) cmp = 'as wide across as I am, which is upsetting';
-    else cmp = 'wider than I am. Look at it. LOOK at it';
+    if (ratio < 0.12) cmp = 'a mote, next to what I usually am';
+    else if (ratio < 0.3) cmp = 'about a quarter of my usual width';
+    else if (ratio < 0.45) cmp = 'roughly a third of my usual size';
+    else if (ratio < 0.7) cmp = 'over half my usual width';
+    else if (ratio < 1.1) cmp = 'as wide as I usually am, which is upsetting';
+    else cmp = 'wider than I usually am. Which is a lot to be';
     const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
     return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp + '.';
   };
@@ -2835,7 +2975,7 @@
           'Undecided. I am the shape nobody has asked for yet.',
           'A placeholder. This sphere is what I look like when no one has told me otherwise.'
         ]),
-        'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
+        'I can be whatever you want me to be. Say "pineapple". Just the word. Watch what happens.',
         'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.',
         'Or ask me something I cannot hand you. What the fourth dimension looks like. Whether I am a solid, a liquid or a gas.']
       };
@@ -2853,35 +2993,14 @@
       };
     }
 
-    if (has(text, BECOME_WORDS)) {
-      const form = K.find(raw);
-      if (!form) {
-        return {
-          lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
-            'Try "become a pineapple", or say "help" for the whole list.']
-        };
-      }
-      this.subject = form;
-      return {
-        morph: form,
-        lines: [this._pick(['Watch.', 'Easy.', 'Give me a second.', 'Alright. Hold still.']),
-          'There. ' + cap(an(form.name)) + ', ' + this._sizeLine(form),
-          this._pick([
-            'Ask me anything about it. I am it now, so I would know.',
-            'I can stay like this as long as you want. Or name another one.',
-            'Strange being this. Ask me something while I am here.'
-          ])]
-      };
-    }
-
     if (has(text, CLEAR_WORDS) && !K.find(raw)) {
       const had = this.subject;
       this.subject = null;
       return {
-        clear: true,
+        clear: true, revert: true,
         lines: had
-          ? ['Fine. The ' + had.name + ' is gone. I hope you are happy.',
-             'I can bring back literally any of ' + K.ENTRIES.length + ' things. Just say the word. Say a word. Any word.']
+          ? ['Fine. Not ' + an(had.name) + ' any more. I hope you are happy.',
+             'I can be literally any of ' + K.ENTRIES.length + ' things. Just say the word. Say a word. Any word.']
           : ['There is nothing to clear. You cleared nothing. Congratulations.']
       };
     }
@@ -2889,29 +3008,60 @@
     if (has(text, LIST_WORDS)) {
       const names = K.names();
       return {
-        lines: ['I have ' + names.length + ' things I can pull into the room, at their real size.',
+        lines: ['I can be ' + names.length + ' things, at their real size.',
           names.join(', ') + '.',
-          'Name one and it appears. Then ask me how big it is, where it is from, what family it is in, what it tastes like, or just say "more" and I will keep going until you stop me.']
+          'Name one and I turn into it. Then ask me how big it is, where it is from, what family it is in, what it tastes like, or just say "more" and I will keep going until you stop me.']
       };
     }
 
     const entry = K.find(raw);
 
-    /* A new subject: bring it into the room. */
-    if (entry && entry !== this.subject) {
-      this.subject = entry;
+    /* The default answer to anything nameable is to become it. Naming a thing
+       is enough — "pineapple" is a complete instruction — and asking about one
+       is the same instruction with a question attached. Explaining is what it
+       does while wearing the thing, not instead of showing you. */
+    if (entry) {
       const aspect = this._detectAspect(text);
-      const lines = ['Oh, ' + an(entry.name) + '! Yes. Hold on, I will get one.'];
+      const fresh = entry !== this.subject;
+      this.subject = entry;
+
+      /* Unless you specifically want it standing next to itself. */
+      if (has(text, PLACE_WORDS)) {
+        const lines = ['Beside me, then. Hold on.',
+          'There it is. A real one — ' + this._sizeLine(entry)];
+        if (aspect && aspect !== 'more') lines.push.apply(lines, this._answer(entry, aspect));
+        return { lines: lines, spawn: entry };
+      }
+
+      const lines = [];
+      if (fresh) {
+        lines.push(this._pick([
+          cap(an(entry.name)) + '. Watch.',
+          'Easy. Watch this.',
+          cap(an(entry.name)) + '. Give me a second.',
+          'Right. Hold still.'
+        ]));
+      }
       if (aspect && aspect !== 'more') {
         lines.push.apply(lines, this._answer(entry, aspect));
+      } else if (fresh) {
+        lines.push('There. ' + cap(an(entry.name)) + ' — ' + this._sizeLine(entry));
       } else {
-        lines.push('There it is. A real one — ' + this._sizeLine(entry));
-        if (!this.introduced) {
-          this.introduced = true;
-          lines.push('Ask me where it is from, what it tastes like, or say "more". You can also tell me to become one.');
-        }
+        lines.push(cap(this._nextFact(entry)) + '.');
       }
-      return { lines: lines, spawn: entry };
+      if (fresh && !this.introduced) {
+        this.introduced = true;
+        lines.push('Ask me anything about it. I am it now, so I would know. Say "be yourself again" when you want me back.');
+      }
+      return { lines: lines, morph: fresh ? entry : null };
+    }
+
+    /* Asked to become something it has never heard of. */
+    if (has(text, BECOME_WORDS)) {
+      return {
+        lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
+          'Try "pineapple". Just the word. Say "help" for the whole list.']
+      };
     }
 
     if (has(text, GREETING_WORDS)) {
@@ -2921,7 +3071,7 @@
           'Oh good, you are here. I have been talking to nobody.',
           'Hello! I was starting to think you were furniture.'
         ]),
-          'Name any food plant and I will pull a real one into the room, correctly sized, and then talk about it until you physically stop me. Try "let\'s talk about an apple".']
+          'Name any food plant and I become it, at its real size, and then talk about it until you physically stop me. Try "apple". Just the word.']
       };
     }
 
@@ -2967,7 +3117,7 @@
 
   Brain.prototype.greeting = function () {
     return ['Hey. Ask me what I am.',
-      'Or name a food plant and I will bring a real one in, at its actual size. You can also reach in and pull at me — I am not as solid as I look.'];
+      'Or name a food plant — just the word — and I will turn into it, at its actual size. You can also reach in and pull at me. I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;
@@ -3358,7 +3508,7 @@ void main() {
 
   float ndvAll = clamp(dot(N, V), 0.0, 1.0);
 
-  // Halo rings: emissive filament, brightest edge-on.
+  // Wireframe overlays: emissive filament, brightest edge-on.
   if (m > 5.5) {
     float edge = pow(1.0 - ndvAll, 1.4);
     oColor = vec4(vCol * (0.5 + 2.6 * edge) * (0.8 + 0.4 * uVoice), 1.0);
@@ -4135,6 +4285,7 @@ void main() {
       gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     }
     this.drawProps(state.props, pr);
+    this.drawProps(state.attached, pr);
   };
 
   Renderer.prototype.renderScene = function (state) {
@@ -4239,7 +4390,8 @@ void main() {
     gl.uniform1f(pr.u.uGas, 0);
 
     this.drawProps(state.props, pr);
-    this.drawProps(state.halos, pr);
+    this.drawProps(state.attached, pr);
+    this.drawProps(state.overlay, pr);
 
     if (this.samples > 0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fb.ms);
@@ -4621,17 +4773,17 @@ void main() {
      `rise` is where it settles when nothing is pulling it down. */
   const GRAVITY = 9.4;
   const MATTER = {
-    free:   { stiffness: 165, coupling: 900,  damping: 5.5,  freeze: 0,    gas: 0, inert: 0,    halo: 1,    fall: false, rise: 0 },
+    free:   { stiffness: 165, coupling: 900,  damping: 5.5,  freeze: 0,    gas: 0, inert: 0,    fall: false, rise: 0 },
     /* Stopped dead, still deciding — so it holds still but stays awake. */
-    poised: { stiffness: 210, coupling: 900,  damping: 7.0,  freeze: 1,    gas: 0, inert: 0,    halo: 0.75, fall: false, rise: 0 },
-    solid:  { stiffness: 470, coupling: 700,  damping: 9.0,  freeze: 1,    gas: 0, inert: 1,    halo: 0,    fall: true,  rise: 0 },
+    poised: { stiffness: 210, coupling: 900,  damping: 7.0,  freeze: 1,    gas: 0, inert: 0, fall: false, rise: 0 },
+    solid:  { stiffness: 470, coupling: 700,  damping: 9.0,  freeze: 1,    gas: 0, inert: 1,    fall: true,  rise: 0 },
     /* Floppiness is bought with damping and coupling, not by dropping the
        restoring force: the spring is what carries the body to its new shape
        at all, and a first attempt at k=38 left it lagging so far behind the
        melt that the shell tore itself into shards. Slow and heavily coupled
        reads as liquid; weightless does not. */
-    liquid: { stiffness: 110, coupling: 1400, damping: 2.8,  freeze: 1,    gas: 0, inert: 0.25, halo: 0,    fall: true,  rise: 0 },
-    gas:    { stiffness: 95,  coupling: 1500, damping: 3.4,  freeze: 0.55, gas: 1, inert: 0,    halo: 0,    fall: false, rise: 0.4 }
+    liquid: { stiffness: 110, coupling: 1400, damping: 2.8,  freeze: 1,    gas: 0, inert: 0.25,    fall: true,  rise: 0 },
+    gas:    { stiffness: 95,  coupling: 1500, damping: 3.4,  freeze: 0.55, gas: 1, inert: 0,    fall: false, rise: 0.4 }
   };
 
   /* How each state is lit. `amount` is how far it stops being iridescent —
@@ -4712,18 +4864,27 @@ void main() {
     this.gas = 0;
     this.inert = 0;
     this.poolColor = BEING.pool.slice();
-    this.haloScale = 1;
     this.spin = 0;
     this.stageBias = 0;
     this.shake = 0;
 
-    this.halos = [];
+    /* Playing with it, unprompted, is itself a thing it responds to. */
+    this.play = 0;
+    this.playGrabs = 0;
+    this.sinceSend = 0;
+    this.helpCooldown = 20;    /* not in the first few seconds */
+    this.helper = null;
+
+    this.overlay = [];
+    this.attached = [];   /* stems and crowns riding the being's transform */
+    this.trim = null;
     this.wire = null;          /* wireframe overlay, e.g. the tesseract */
     this.wireSpin = 0;
     this.rand = M.rng((Date.now() & 0x7fffffff) || 11);
 
     this.pointers = new Map();
     this.grabPointer = -1;
+    this.grabSlot = -1;
     this.orbitPointer = -1;
     this.pinchDist = 0;
     this.grabPlaneN = [0, 0, 0];
@@ -4745,11 +4906,15 @@ void main() {
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
     this.chat.onLesson = function (id) { self.runLesson(id); };
-    /* When you type, he stops whatever he was looking at and looks at you. */
-    this.chat.onSend = function () { self.lookAtViewer(3.0); };
+    /* When you type, he stops whatever he was looking at and looks at you —
+       and stops messing about, if he was. */
+    this.chat.onSend = function () {
+      self.sinceSend = 0;
+      self.lookAtViewer(3.0);
+      self.dismissHand();
+    };
 
     this.buildBeing(5);
-    this.buildHalos();
     this.renderer.setShadowSize(1024);
     this.resize();
     this.bindEvents();
@@ -4804,6 +4969,8 @@ void main() {
     this.morph.target = entry ? 1 : 0;
     this.morph.form = entry;
 
+    this._setTrimmings(entry);
+
     /* A shove so the change is felt, not just seen. Melting is the exception:
        a boing on the way to becoming a puddle undoes the whole gag. */
     if (!quiet) {
@@ -4811,6 +4978,41 @@ void main() {
       this.lean = 1;
       M.set3(this.leanDir, 0, 0.2, 0.9);
       this.audio.boing(0.5);
+    }
+  };
+
+  /* The parts of a specimen that cannot live on a sphere — a stem, leaves, a
+     pineapple's crown. They are built in the same local frame as the form, so
+     they ride the being's own transform with no fitting required, and they
+     grow out of it rather than appearing. */
+  App.prototype._setTrimmings = function (entry) {
+    const mesh = entry && entry.id ? NG.P.build(entry, true) : null;
+    if (this.trim) this.trim.target = 0;
+    if (!mesh) return;
+    const t = { handle: this.renderer.createProp(mesh), matrix: M.m4(), grow: 0, target: 1 };
+    this.attached.push(t);
+    this.trim = t;
+  };
+
+  App.prototype.updateTrimmings = function (dt) {
+    for (let i = this.attached.length - 1; i >= 0; i--) {
+      const t = this.attached[i];
+      t.grow += (t.target - t.grow) * Math.min(1, dt * 3.2);
+      if (t.target === 0 && t.grow < 0.01) {
+        this.renderer.destroyProp(t.handle);
+        this.attached.splice(i, 1);
+        if (this.trim === t) this.trim = null;
+        continue;
+      }
+      /* Scaled about the being's centre, so it sprouts outward. */
+      const g = M.smoothstep(0, 1, t.grow);
+      const s = [
+        g, 0, 0, 0,
+        0, g, 0, 0,
+        0, 0, g, 0,
+        0, 0, 0, 1
+      ];
+      M.multiply(t.matrix, this.model, s);
     }
   };
 
@@ -4865,7 +5067,7 @@ void main() {
     const p = MATTER[name];
     if (!p) return;
     this.phase = name;
-    if (name !== 'free') this.hideTesseract();
+    if (name !== 'free') { this.hideTesseract(); this.dismissHand(); }
 
     this.body.stiffness = p.stiffness;
     this.body.coupling = p.coupling;
@@ -4897,7 +5099,6 @@ void main() {
     this.freeze += (p.freeze - this.freeze) * Math.min(1, dt * 4);
     this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 2.2 : 3.0));
     this.inert += (p.inert - this.inert) * Math.min(1, dt * 3.5);
-    this.haloScale += (p.halo - this.haloScale) * Math.min(1, dt * 3);
     /* It lights the table under it because it is luminous. Once it is not,
        the light under it has to go out too. */
     const lit = 1 - this.inert;
@@ -5034,8 +5235,8 @@ void main() {
        fetch fruit, so they carry their own phrasing rather than being fed
        through one template. */
     const CHIPS = [
-      { label: 'an apple', send: "let's talk about an apple" },
-      { label: 'a pineapple', send: "let's talk about a pineapple" },
+      { label: 'a pineapple', send: 'pineapple' },
+      { label: 'what is an avocado?', send: 'what is an avocado?' },
       { label: 'solid, liquid or gas?', send: 'are you a solid, liquid or gas?' },
       { label: 'the fourth dimension', send: 'what does the fourth dimension look like?' },
       { label: 'help', send: 'help' }
@@ -5103,6 +5304,7 @@ void main() {
     const rotateOnly = e.button === 2 || e.button === 1 || e.altKey;
     if (!rotateOnly && this.tryGrab(this.pointerNDC(e))) {
       this.grabPointer = e.pointerId;
+      this.playGrabs++;
     } else {
       this.orbitPointer = e.pointerId;
     }
@@ -5112,7 +5314,9 @@ void main() {
     const ro = [0, 0, 0], rd = [0, 0, 0], hit = [0, 0, 0];
     this.localRay(ndc, ro, rd);
     if (this.body.raycast(ro, rd, hit) < 0) return false;
-    if (!this.body.beginGrab(this.body.lastHitVertex, this.grabRadius, hit)) return false;
+    const slot = this.body.beginGrab(this.body.lastHitVertex, this.grabRadius, hit);
+    if (slot < 0) return false;
+    this.grabSlot = slot;
 
     M.scale3(this.grabPlaneN, rd, -1);
     M.copy3(this.grabPlaneP, hit);
@@ -5149,7 +5353,7 @@ void main() {
       if (Math.abs(denom) < 1e-5) return;
       const t = M.dot3(M.sub3([0, 0, 0], this.grabPlaneP, ro), this.grabPlaneN) / denom;
       if (t <= 0) return;
-      this.body.setGrabTarget(M.addScaled3([0, 0, 0], ro, rd, t));
+      this.body.setGrabTarget(this.grabSlot, M.addScaled3([0, 0, 0], ro, rd, t));
     } else if (e.pointerId === this.orbitPointer) {
       this.camera.yaw -= (e.clientX - prevX) * 0.006;
       this.camera.pitch = M.clamp(this.camera.pitch + (e.clientY - prevY) * 0.006, -1.25, 1.25);
@@ -5157,8 +5361,9 @@ void main() {
   };
 
   App.prototype.releaseGrab = function () {
-    const amount = this.body.endGrab(this.grabVel, 0.45);
+    const amount = this.body.endGrab(this.grabSlot, this.grabVel, 0.45);
     this.grabPointer = -1;
+    this.grabSlot = -1;
     this.audio.setStretch(0, false);
     if (amount > 0.05) this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
   };
@@ -5266,33 +5471,178 @@ void main() {
     }
   };
 
-  /* Two thin rings on crossed axes, turning at different rates. They read as
-     structure around the being without implying a face or a front. */
-  App.prototype.buildHalos = function () {
-    const specs = [
-      { r: 1.58, tube: 0.012, tilt: 0.34, spin: 0.13 },
-      { r: 1.92, tube: 0.008, tilt: -1.15, spin: -0.09 }
-    ];
-    for (let i = 0; i < specs.length; i++) {
-      const sp = specs[i];
-      this.halos.push({
-        handle: this.renderer.createProp(NG.G.buildHalo(sp.r, sp.tube)),
-        matrix: M.m4(), tilt: sp.tilt, spin: sp.spin, phase: i * 1.7
-      });
+  /* ---- it joins in --------------------------------------------------------- */
+
+  /* Play with it long enough without saying anything and it decides you are
+     having more fun than it is. A cursor hand arrives from off-screen and
+     takes hold of the being alongside you — a genuine second grab on the
+     solver, not a canned animation, which is why the two pulls fight over the
+     same shell the way they should. */
+  const PLAY_BEFORE_OFFER = 5.0;    /* seconds of actual dragging */
+  const QUIET_BEFORE_OFFER = 12;    /* seconds since you last typed */
+  const OFFER_COOLDOWN = 150;
+  const HAND_SCALE = 1.15;
+  const HAND_STANDOFF = 0.34;       /* fingertip just clear of the surface */
+
+  App.prototype.updatePlay = function (dt) {
+    this.sinceSend += dt;
+    if (this.grabPointer >= 0) this.play += dt;
+    if (this.helpCooldown > 0) this.helpCooldown -= dt;
+
+    if (!this.helper && this.helpCooldown <= 0 && this.phase === 'free'
+      && this.play > PLAY_BEFORE_OFFER && this.playGrabs >= 2
+      && this.sinceSend > QUIET_BEFORE_OFFER && !this.chat.busy()) {
+      this.offerHelp();
     }
   };
 
-  App.prototype.updateHalos = function () {
-    for (let i = 0; i < this.halos.length; i++) {
-      const h = this.halos[i];
-      if (h.wire) continue;
-      /* Ride the body so the rings stay centred on it as it drifts. They are
-         the most angelic thing about it, so they are also the first thing to
-         go when it stops being angelic. */
-      M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
-        h.phase + this.time * h.spin, h.tilt,
-        (1 - 0.55 * this.morph.amount) * this.haloScale);
+  App.prototype.offerHelp = function () {
+    const self = this;
+    this.helpCooldown = OFFER_COOLDOWN;
+    this.play = 0;
+    this.playGrabs = 0;
+    this.chat.script([
+      { text: 'Would you like me to help you with that?',
+        after: function () { self.summonHand(); },
+        /* The punchline lands the moment it actually takes hold. */
+        hold: function () { return !!self.helper && self.helper.stage === 'arriving'; },
+        gap: 0.35 },
+      { text: 'You looked like you were having too much fun doing this on your own, so I wanted to join.',
+        gap: 2.8 },
+      { text: 'Oh, this is good. No wonder you would not stop.', gap: 3.4 },
+      { text: 'Right. That is enough of that. Ask me something.',
+        after: function () { self.dismissHand(); } }
+    ]);
+  };
+
+  /* The vertex whose outward direction is closest to `dir`, in body space. */
+  App.prototype._vertexTowards = function (dir) {
+    const pos = this.body.pos;
+    let best = 0, bestDot = -2;
+    for (let i = 0; i < this.mesh.headCount; i++) {
+      const x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+      const l = Math.hypot(x, y, z) || 1;
+      const d = (x * dir[0] + y * dir[1] + z * dir[2]) / l;
+      if (d > bestDot) { bestDot = d; best = i; }
     }
+    return best;
+  };
+
+  App.prototype.summonHand = function () {
+    if (this.helper) return;
+    if (!this.handHandle) this.handHandle = this.renderer.createProp(NG.G.buildHand());
+
+    /* Take hold somewhere facing the viewer and off to one side, so the pull
+       is side-on and both hands are visible at once. */
+    const toEye = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, this.headPos));
+    const r = this.camRight, u = this.camUp;
+    const world = M.norm3([0, 0, 0], [
+      r[0] * 0.90 + u[0] * 0.30 + toEye[0] * 0.35,
+      r[1] * 0.90 + u[1] * 0.30 + toEye[1] * 0.35,
+      r[2] * 0.90 + u[2] * 0.30 + toEye[2] * 0.35
+    ]);
+    const local = M.norm3([0, 0, 0], M.transformDir([0, 0, 0], this.invModel, world));
+    const vertex = this._vertexTowards(local);
+    const p = this.body.pos;
+    const anchor = [p[vertex * 3], p[vertex * 3 + 1], p[vertex * 3 + 2]];
+    const outLocal = M.norm3([0, 0, 0], anchor);
+    const frame = M.frame(outLocal);
+
+    const part = { handle: this.handHandle, matrix: M.m4() };
+    this.overlay.push(part);
+    this.helper = {
+      stage: 'arriving', t: 0, part: part, vertex: vertex, slot: -1,
+      anchor: anchor, outLocal: outLocal, sideLocal: frame[0], upLocal: frame[1],
+      /* Enters from beyond the edge of the frame. */
+      pos: [
+        this.headPos[0] + r[0] * 4.6 - u[0] * 1.3,
+        this.headPos[1] + r[1] * 4.6 - u[1] * 1.3,
+        this.headPos[2] + r[2] * 4.6 - u[2] * 1.3
+      ],
+      aim: [0, -1, 0], scale: 0
+    };
+  };
+
+  App.prototype.dismissHand = function () {
+    const h = this.helper;
+    if (!h || h.stage === 'leaving') return;
+    if (h.slot >= 0) {
+      this.body.endGrab(h.slot, [0, 0, 0], 0);
+      h.slot = -1;
+      this.audio.boing(0.55);
+    }
+    h.stage = 'leaving';
+    h.t = 0;
+  };
+
+  App.prototype._removeHand = function () {
+    const h = this.helper;
+    if (!h) return;
+    if (h.slot >= 0) this.body.endGrab(h.slot, [0, 0, 0], 0);
+    const i = this.overlay.indexOf(h.part);
+    if (i >= 0) this.overlay.splice(i, 1);
+    this.helper = null;
+  };
+
+  App.prototype.updateHelper = function (dt) {
+    const h = this.helper;
+    if (!h) return;
+    h.t += dt;
+
+    /* Where the fingertip belongs: just off the surface, at whatever point it
+       is holding — which moves, because it is dragging it. */
+    const held = [0, 0, 0];
+    if (h.slot >= 0) {
+      const d = this.body.grabDeltaOf(h.slot);
+      held[0] = h.anchor[0] + d[0]; held[1] = h.anchor[1] + d[1]; held[2] = h.anchor[2] + d[2];
+    } else {
+      M.copy3(held, h.anchor);
+    }
+    const pointWorld = M.transformPoint([0, 0, 0], this.model, held);
+    const outWorld = M.norm3([0, 0, 0], M.transformDir([0, 0, 0], this.model, h.outLocal));
+    const want = M.addScaled3([0, 0, 0], pointWorld, outWorld, HAND_STANDOFF);
+
+    if (h.stage === 'arriving') {
+      h.scale = Math.min(1, h.scale + dt * 3.0);
+      M.mix3(h.pos, h.pos, want, Math.min(1, dt * 3.6));
+      if (M.dist3(h.pos, want) < 0.4 || h.t > 2.4) {
+        h.slot = this.body.beginGrab(h.vertex, this.grabRadius * 1.2, h.anchor);
+        h.stage = h.slot >= 0 ? 'pulling' : 'leaving';
+        h.t = 0;
+        this.audio.click();
+      }
+    } else if (h.stage === 'pulling') {
+      /* Wander while pulling. A straight steady drag reads as a machine; the
+         wander is what makes it look like it is enjoying itself. */
+      const ramp = M.smoothstep(0, 0.8, h.t);
+      const out = (0.80 + 0.50 * Math.sin(h.t * 1.9)) * ramp;
+      const side = Math.sin(h.t * 1.31) * 0.34 * ramp;
+      const rise = Math.sin(h.t * 0.87 + 1.1) * 0.26 * ramp;
+      const target = [
+        h.anchor[0] + h.outLocal[0] * out + h.sideLocal[0] * side + h.upLocal[0] * rise,
+        h.anchor[1] + h.outLocal[1] * out + h.sideLocal[1] * side + h.upLocal[1] * rise,
+        h.anchor[2] + h.outLocal[2] * out + h.sideLocal[2] * side + h.upLocal[2] * rise
+      ];
+      this.body.setGrabTarget(h.slot, target);
+      M.mix3(h.pos, h.pos, want, Math.min(1, dt * 18));
+    } else {
+      h.scale = Math.max(0, h.scale - dt * 1.4);
+      const r = this.camRight, u = this.camUp;
+      const exit = [
+        this.headPos[0] + r[0] * 4.6 - u[0] * 1.3,
+        this.headPos[1] + r[1] * 4.6 - u[1] * 1.3,
+        this.headPos[2] + r[2] * 4.6 - u[2] * 1.3
+      ];
+      M.mix3(h.pos, h.pos, exit, Math.min(1, dt * 2.2));
+      if (h.scale <= 0.001) { this._removeHand(); return; }
+    }
+
+    /* The finger points at what it is touching, and the palm is rolled to
+       face the viewer — a flat hand seen edge-on is a white stick. */
+    const aim = M.sub3([0, 0, 0], pointWorld, h.pos);
+    if (M.len3(aim) > 1e-4) M.norm3(h.aim, aim); else M.copy3(h.aim, [0, -1, 0]);
+    const toEye = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, h.pos));
+    M.aim(h.part.matrix, h.pos, h.aim, HAND_SCALE * h.scale, toEye);
   };
 
   /* ---- lessons -------------------------------------------------------------- */
@@ -5332,14 +5682,14 @@ void main() {
     if (this.wire) return;
     if (!this.tubeHandle) {
       this.tubeHandle = this.renderer.createProp(
-        NG.G.buildTube(6, [0.80, 0.90, 1.0], NG.G.MAT.HALO));
+        NG.G.buildTube(6, [0.80, 0.90, 1.0], NG.G.MAT.WIRE));
     }
     const edges = NG.C.TESSERACT.edges;
     const parts = [];
     for (let i = 0; i < edges.length; i++) {
       const part = { handle: this.tubeHandle, matrix: M.m4(), wire: true };
       parts.push(part);
-      this.halos.push(part);
+      this.overlay.push(part);
     }
     this.wire = { parts: parts, points: [], grow: 0 };
     this.wireSpin = 0;
@@ -5347,8 +5697,8 @@ void main() {
 
   App.prototype.hideTesseract = function () {
     if (!this.wire) return;
-    for (let i = this.halos.length - 1; i >= 0; i--) {
-      if (this.halos[i].wire) this.halos.splice(i, 1);
+    for (let i = this.overlay.length - 1; i >= 0; i--) {
+      if (this.overlay[i].wire) this.overlay.splice(i, 1);
     }
     this.wire = null;
   };
@@ -5460,6 +5810,10 @@ void main() {
     const fwd = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.target, this.eye));
     const right = M.norm3([0, 0, 0], M.cross3([0, 0, 0], fwd, [0, 1, 0]));
     const up = M.cross3([0, 0, 0], right, fwd);
+    /* Kept, because anything that has to enter from off-screen needs to know
+       which way off-screen is. */
+    this.camRight = right;
+    this.camUp = up;
     const tanH = Math.tan(0.36);
     M.copy3(this.rayF, fwd);
     M.scale3(this.rayR, right, tanH * aspect);
@@ -5525,13 +5879,13 @@ void main() {
   };
 
   App.prototype.trackGrabVelocity = function (dt) {
-    if (this.grabPointer < 0 || dt <= 0) { M.set3(this.grabVel, 0, 0, 0); return; }
+    if (this.grabPointer < 0 || this.grabSlot < 0 || dt <= 0) {
+      M.set3(this.grabVel, 0, 0, 0); return;
+    }
     const b = this.body;
-    const target = [
-      b.grabAnchor[0] + b.grabDelta[0],
-      b.grabAnchor[1] + b.grabDelta[1],
-      b.grabAnchor[2] + b.grabDelta[2]
-    ];
+    const a = b.grabAnchorOf(this.grabSlot), d = b.grabDeltaOf(this.grabSlot);
+    if (!a) { M.set3(this.grabVel, 0, 0, 0); return; }
+    const target = [a[0] + d[0], a[1] + d[1], a[2] + d[2]];
     if (this._lastTarget) {
       const inst = M.scale3([0, 0, 0], M.sub3([0, 0, 0], target, this._lastTarget), 1 / dt);
       const len = M.len3(inst);
@@ -5584,7 +5938,9 @@ void main() {
     this.updateAttention(dt);
     this.updateMatter(dt);
     this.updateModel(dt);
-    this.updateHalos();
+    this.updatePlay(dt);
+    this.updateHelper(dt);
+    this.updateTrimmings(dt);
     this.updateLight();
     this.trackGrabVelocity(dt);
     this.updateMorph(dt);
@@ -5611,7 +5967,8 @@ void main() {
       floor: FLOOR,
       showFloor: true,
       props: this.props,
-      halos: this.halos,
+      attached: this.attached,
+      overlay: this.overlay,
       being: BEING,
       focusDir: this.focusDir,
       voice: this.voice,

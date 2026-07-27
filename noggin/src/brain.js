@@ -40,6 +40,12 @@
     'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
   const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
     'turn back', 'revert', 'stop being', 'be you again', 'undo that', 'back to normal'];
+  /* Becoming the thing is the default. These are the ways of asking for the
+     old behaviour instead — the specimen standing beside it, so the two can
+     be compared at true scale. */
+  const PLACE_WORDS = ['next to you', 'beside you', 'in the room', 'on the table',
+    'side by side', 'next to yourself', 'conjure', 'summon', 'put one', 'bring one',
+    'compared to you', 'against you'];
 
   function has(text, words) {
     for (let i = 0; i < words.length; i++) if (text.indexOf(words[i]) !== -1) return true;
@@ -79,12 +85,12 @@
     const wide = e.widthCm || e.sizeCm;
     const ratio = wide / SELF_CM;
     let cmp;
-    if (ratio < 0.12) cmp = 'a mote next to me';
-    else if (ratio < 0.3) cmp = 'about a quarter of my width';
-    else if (ratio < 0.45) cmp = 'roughly a third of me';
-    else if (ratio < 0.7) cmp = 'over half my width';
-    else if (ratio < 1.1) cmp = 'as wide across as I am, which is upsetting';
-    else cmp = 'wider than I am. Look at it. LOOK at it';
+    if (ratio < 0.12) cmp = 'a mote, next to what I usually am';
+    else if (ratio < 0.3) cmp = 'about a quarter of my usual width';
+    else if (ratio < 0.45) cmp = 'roughly a third of my usual size';
+    else if (ratio < 0.7) cmp = 'over half my usual width';
+    else if (ratio < 1.1) cmp = 'as wide as I usually am, which is upsetting';
+    else cmp = 'wider than I usually am. Which is a lot to be';
     const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
     return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp + '.';
   };
@@ -146,7 +152,7 @@
           'Undecided. I am the shape nobody has asked for yet.',
           'A placeholder. This sphere is what I look like when no one has told me otherwise.'
         ]),
-        'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
+        'I can be whatever you want me to be. Say "pineapple". Just the word. Watch what happens.',
         'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.',
         'Or ask me something I cannot hand you. What the fourth dimension looks like. Whether I am a solid, a liquid or a gas.']
       };
@@ -164,35 +170,14 @@
       };
     }
 
-    if (has(text, BECOME_WORDS)) {
-      const form = K.find(raw);
-      if (!form) {
-        return {
-          lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
-            'Try "become a pineapple", or say "help" for the whole list.']
-        };
-      }
-      this.subject = form;
-      return {
-        morph: form,
-        lines: [this._pick(['Watch.', 'Easy.', 'Give me a second.', 'Alright. Hold still.']),
-          'There. ' + cap(an(form.name)) + ', ' + this._sizeLine(form),
-          this._pick([
-            'Ask me anything about it. I am it now, so I would know.',
-            'I can stay like this as long as you want. Or name another one.',
-            'Strange being this. Ask me something while I am here.'
-          ])]
-      };
-    }
-
     if (has(text, CLEAR_WORDS) && !K.find(raw)) {
       const had = this.subject;
       this.subject = null;
       return {
-        clear: true,
+        clear: true, revert: true,
         lines: had
-          ? ['Fine. The ' + had.name + ' is gone. I hope you are happy.',
-             'I can bring back literally any of ' + K.ENTRIES.length + ' things. Just say the word. Say a word. Any word.']
+          ? ['Fine. Not ' + an(had.name) + ' any more. I hope you are happy.',
+             'I can be literally any of ' + K.ENTRIES.length + ' things. Just say the word. Say a word. Any word.']
           : ['There is nothing to clear. You cleared nothing. Congratulations.']
       };
     }
@@ -200,29 +185,60 @@
     if (has(text, LIST_WORDS)) {
       const names = K.names();
       return {
-        lines: ['I have ' + names.length + ' things I can pull into the room, at their real size.',
+        lines: ['I can be ' + names.length + ' things, at their real size.',
           names.join(', ') + '.',
-          'Name one and it appears. Then ask me how big it is, where it is from, what family it is in, what it tastes like, or just say "more" and I will keep going until you stop me.']
+          'Name one and I turn into it. Then ask me how big it is, where it is from, what family it is in, what it tastes like, or just say "more" and I will keep going until you stop me.']
       };
     }
 
     const entry = K.find(raw);
 
-    /* A new subject: bring it into the room. */
-    if (entry && entry !== this.subject) {
-      this.subject = entry;
+    /* The default answer to anything nameable is to become it. Naming a thing
+       is enough — "pineapple" is a complete instruction — and asking about one
+       is the same instruction with a question attached. Explaining is what it
+       does while wearing the thing, not instead of showing you. */
+    if (entry) {
       const aspect = this._detectAspect(text);
-      const lines = ['Oh, ' + an(entry.name) + '! Yes. Hold on, I will get one.'];
+      const fresh = entry !== this.subject;
+      this.subject = entry;
+
+      /* Unless you specifically want it standing next to itself. */
+      if (has(text, PLACE_WORDS)) {
+        const lines = ['Beside me, then. Hold on.',
+          'There it is. A real one — ' + this._sizeLine(entry)];
+        if (aspect && aspect !== 'more') lines.push.apply(lines, this._answer(entry, aspect));
+        return { lines: lines, spawn: entry };
+      }
+
+      const lines = [];
+      if (fresh) {
+        lines.push(this._pick([
+          cap(an(entry.name)) + '. Watch.',
+          'Easy. Watch this.',
+          cap(an(entry.name)) + '. Give me a second.',
+          'Right. Hold still.'
+        ]));
+      }
       if (aspect && aspect !== 'more') {
         lines.push.apply(lines, this._answer(entry, aspect));
+      } else if (fresh) {
+        lines.push('There. ' + cap(an(entry.name)) + ' — ' + this._sizeLine(entry));
       } else {
-        lines.push('There it is. A real one — ' + this._sizeLine(entry));
-        if (!this.introduced) {
-          this.introduced = true;
-          lines.push('Ask me where it is from, what it tastes like, or say "more". You can also tell me to become one.');
-        }
+        lines.push(cap(this._nextFact(entry)) + '.');
       }
-      return { lines: lines, spawn: entry };
+      if (fresh && !this.introduced) {
+        this.introduced = true;
+        lines.push('Ask me anything about it. I am it now, so I would know. Say "be yourself again" when you want me back.');
+      }
+      return { lines: lines, morph: fresh ? entry : null };
+    }
+
+    /* Asked to become something it has never heard of. */
+    if (has(text, BECOME_WORDS)) {
+      return {
+        lines: ['I can only be things in the atlas — ' + K.ENTRIES.length + ' of them.',
+          'Try "pineapple". Just the word. Say "help" for the whole list.']
+      };
     }
 
     if (has(text, GREETING_WORDS)) {
@@ -232,7 +248,7 @@
           'Oh good, you are here. I have been talking to nobody.',
           'Hello! I was starting to think you were furniture.'
         ]),
-          'Name any food plant and I will pull a real one into the room, correctly sized, and then talk about it until you physically stop me. Try "let\'s talk about an apple".']
+          'Name any food plant and I become it, at its real size, and then talk about it until you physically stop me. Try "apple". Just the word.']
       };
     }
 
@@ -278,7 +294,7 @@
 
   Brain.prototype.greeting = function () {
     return ['Hey. Ask me what I am.',
-      'Or name a food plant and I will bring a real one in, at its actual size. You can also reach in and pull at me — I am not as solid as I look.'];
+      'Or name a food plant — just the word — and I will turn into it, at its actual size. You can also reach in and pull at me. I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;

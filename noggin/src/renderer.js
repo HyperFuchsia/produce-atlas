@@ -477,6 +477,7 @@
       gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     }
     this.drawProps(state.props, pr);
+    this.drawProps(state.attached, pr);
   };
 
   Renderer.prototype.renderScene = function (state) {
@@ -581,7 +582,8 @@
     gl.uniform1f(pr.u.uGas, 0);
 
     this.drawProps(state.props, pr);
-    this.drawProps(state.halos, pr);
+    this.drawProps(state.attached, pr);
+    this.drawProps(state.overlay, pr);
 
     if (this.samples > 0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fb.ms);

@@ -14,7 +14,7 @@
     HAIR: 3,
     GLINT: 4,
     SHELL: 5,
-    HALO: 6
+    WIRE: 6        /* flat emissive, brightest edge-on — wireframe overlays */
   };
   G.MAT = MAT;
 
@@ -440,20 +440,70 @@
     };
   };
 
-  /* A halo ring. Rendered as a prop with its own transform so it can turn
-     independently of the shell. */
-  G.buildHalo = function (radius, tube) {
-    const t = G.torus(radius, tube, 96, 8);
-    const n = t.positions.length / 3;
-    const colors = new Float32Array(n * 3);
-    const mats = new Float32Array(n);
+  /* ---- the cursor hand ------------------------------------------------- */
+
+  /* A rounded box, from a unit icosphere pushed onto a box by the L-infinity
+     mapping and then rounded back off. Cheap, and every corner stays smooth,
+     which is what makes the hand read as a cartoon glove rather than as a
+     pile of cubes. */
+  function roundedBox(unit, cx, cy, cz, hx, hy, hz, round) {
+    const n = unit.positions.length / 3;
+    const out = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
-      colors[i * 3] = 0.72; colors[i * 3 + 1] = 0.86; colors[i * 3 + 2] = 1.0;
-      mats[i] = MAT.HALO;
+      const dx = unit.positions[i * 3], dy = unit.positions[i * 3 + 1], dz = unit.positions[i * 3 + 2];
+      const m = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) || 1;
+      /* Blend between the sphere direction and the box surface. */
+      const bx = dx / m, by = dy / m, bz = dz / m;
+      out[i * 3] = cx + (bx + (dx - bx) * round) * hx;
+      out[i * 3 + 1] = cy + (by + (dy - by) * round) * hy;
+      out[i * 3 + 2] = cz + (bz + (dz - bz) * round) * hz;
     }
+    return out;
+  }
+
+  /* The pointing-hand mouse cursor, in three dimensions, one unit tall.
+     Local +Y is the direction the index finger points, so aiming it at
+     something is a matter of building a frame around that direction.
+
+     It is deliberately chunky and four-fingered: this is a cursor that has
+     wandered into the scene, not an anatomical hand. */
+  G.buildHand = function () {
+    const b = new Builder();
+    const unit = G.icosphere(2);
+    const GLOVE = [0.94, 0.95, 0.97];
+    const CUFF = [0.62, 0.70, 0.86];
+
+    /* Palm. */
+    b.append(roundedBox(unit, 0, 0, 0, 0.33, 0.30, 0.17, 0.5),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Index finger, extended: the part that does the pointing. */
+    b.append(roundedBox(unit, -0.13, 0.46, 0, 0.115, 0.28, 0.115, 0.5),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Three folded fingers, curled down over the front of the palm. */
+    for (let i = 0; i < 3; i++) {
+      b.append(roundedBox(unit, 0.03 + i * 0.145, 0.20 - i * 0.02, 0.10, 0.075, 0.115, 0.10, 0.55),
+        unit.indices, GLOVE, MAT.HAIR);
+    }
+
+    /* Thumb, tucked across. */
+    b.append(roundedBox(unit, -0.30, 0.06, 0.10, 0.10, 0.155, 0.095, 0.55),
+      unit.indices, GLOVE, MAT.HAIR);
+
+    /* Cuff, so it reads as a glove and has somewhere to end. */
+    b.append(roundedBox(unit, 0.02, -0.33, 0, 0.30, 0.115, 0.175, 0.4),
+      unit.indices, CUFF, MAT.HAIR);
+
+    const positions = new Float32Array(b.pos);
+    const indices = new Uint32Array(b.idx);
     return {
-      positions: t.positions, normals: t.normals, colors: colors, mats: mats,
-      indices: t.indices, heightUnits: tube * 2, radiusUnits: radius, topUnits: tube
+      positions: positions,
+      normals: G.computeNormals(positions, indices, positions.length / 3),
+      colors: new Float32Array(b.col),
+      mats: new Float32Array(b.mat),
+      indices: indices,
+      heightUnits: 1.5, radiusUnits: 0.45, topUnits: 0.74
     };
   };
 

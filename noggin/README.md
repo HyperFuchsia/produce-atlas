@@ -1,11 +1,39 @@
 # Produce Atlas
 
-A luminous being you can talk to. Name a food plant and it conjures a real one
-into the room **at its true size**, then tells you far more about it than you
-asked for. Ask it something it cannot hand you — the fourth dimension, say, or
-whether it is a solid — and it becomes the answer instead, at length, without
-waiting for you. You can also reach in and pull at it; it is not as solid as it
-looks. Usually.
+**Say a word, and the thing you named is standing in the room.**
+
+```
+you   pineapple
+it    A pineapple. Watch.
+```
+
+And it *is* one. Not a picture of one, not a paragraph about one — the being
+you were talking to a second ago is now a pineapple, 18 cm tall, crown and all,
+and you can reach in and squash it.
+
+## Why bother
+
+Every chat interface built so far is the same interface: you put text in a box,
+and text comes back. That was remarkable in 2022. In 2026 it is a text field.
+You can bolt features onto it forever — memory, tools, longer context — and it
+is still a text field, and text fields get old.
+
+The problem is not that the answers are bad. It is that **the answer is always
+the same shape as the question.** Ask what a pineapple is and you get a
+paragraph. Ask what the fourth dimension looks like and you get a paragraph
+about how hard it is to picture — which is the one thing a paragraph is worst
+at. The model knows the answer and hands you the least useful possible form of
+it.
+
+This is the other option. The reply is not a description of the thing, it *is*
+the thing: to scale, in the room, lit, and pullable. Ask about a pineapple and
+it becomes a pineapple. Ask what the fourth dimension looks like and it walks
+you from a point to a line to a square to a cube and then turns itself into a
+tesseract's shadow. Ask whether it is a solid, and it turns to stone and falls
+on the floor.
+
+None of that is a feature bolted onto a chat box. It is what happens when the
+answer is allowed to have a shape.
 
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
@@ -17,16 +45,25 @@ open noggin/index.html    # the same thing, loaded as separate modules
 
 Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
 
-## Ask it what it is
+## Naming something is the whole instruction
+
+There is no command to learn. Anything that names something it knows makes it
+become that thing, and every one of these does the same:
 
 ```
-you   what are you?
-it    Undecided. I am the shape nobody has asked for yet.
-it    I can be whatever you want me to be. Say "become a pineapple" and watch
-      what happens.
+pineapple                    what is a pineapple?
+tell me about pineapples     how big is a pineapple?
+become a pineapple           is a pineapple a berry?
 ```
 
-And then it does. `become a banana`, `turn into a carrot`, `be yourself again`.
+A question is just the same instruction with something to answer attached — it
+becomes the pineapple *and* tells you it is a collective fruit, dozens of
+flowers fused into one body. Then it holds the subject, so `where is it from?`
+works without naming it again, and it answers as the thing it currently is.
+
+If you want the old behaviour — the specimen standing *beside* it, so the two
+can be compared at true scale — say so: `show me a watermelon next to you`.
+And `be yourself again` puts it back.
 
 This works because every specimen can be projected onto the being's own
 icosphere topology — polar angle picks the profile parameter, azimuth picks the
@@ -34,6 +71,26 @@ way round — so taking a form is a **morph of rest positions**, not a mesh swap
 Same vertex count, same adjacency, solver running throughout, which is why the
 change wobbles its way there instead of snapping. It keeps a little
 interference along the rim the whole time, so it never stops being itself.
+
+What a closed sphere cannot express — a stem, leaves, a pineapple's crown — is
+built separately in the same local frame and rides its transform, growing out
+of the body as the morph lands.
+
+## It gets bored
+
+Pull it around for a while without typing anything and it makes an offer:
+
+```
+it    Would you like me to help you with that?
+```
+
+Then a cursor hand flies in from off-screen, hooks a finger into the shell, and
+starts stretching it alongside you. *"You looked like you were having too much
+fun doing this on your own, so I wanted to join."*
+
+It is a real second grab on the solver, not an animation played over the top —
+which is why the two pulls fight over the same shell the way two hands would.
+Type anything and it lets go, slightly embarrassed.
 
 ## Ask what it is made of
 
@@ -53,7 +110,7 @@ Each state is a different physical object, not a costume:
 
 | | shape | body | look |
 | --- | --- | --- | --- |
-| **solid** | unchanged | stiff, settles in a beat | dark, no glow, no rings, and the light it was casting on the floor goes out |
+| **solid** | unchanged | stiff, settles in a beat | dark, no glow, and the light it was casting on the floor goes out with it |
 | **liquid** | a wide domed puddle with an uneven rim | slack and heavily coupled, so the wobble travels | wet, still glistening |
 | **gas** | a lumpy cloud, twice its own size | loose | additive, mottled, thinning to nothing at the edge — no silhouette |
 
@@ -96,27 +153,20 @@ spoken:
 the steps. There are two so far; adding a third is adding an entry to that
 table, not writing code.
 
-## Using it
+## Follow-ups
 
-```
-you   let's talk about an apple
-him   Oh, an apple! Yes. Hold on, I will get one.
-him   There it is. A real one — 7.2 cm long and 8 cm across — roughly a third
-      of me.
-```
-
-Then ask follow-ups — it holds the subject, so you don't have to keep naming it:
+It holds the subject, so you never have to name it twice:
 
 | Ask | You get |
 | --- | --- |
-| `how big is it?` | dimensions in cm, measured against the being |
+| `how big is it?` | dimensions in cm, measured against its usual size |
 | `where is it from?` | origin and wild ancestor |
 | `what family is it in?` | family and binomial |
 | `is it a fruit?` | what it actually is, botanically |
 | `what does it taste like?` | flavour, and the chemistry behind it |
 | `more` | it will not stop |
-| `help` | every specimen it holds |
-| `clear` | sends it away |
+| `help` | everything it can be |
+| `be yourself again` | back to the orb |
 
 Drag on it to pull the shell around, drag the background to orbit, wheel or
 pinch to zoom.
@@ -177,7 +227,8 @@ keep-out sphere stop a hard push folding the shell through itself.
 **Its appearance** is a thin-film interference shell over a lit core. Film
 thickness varies with view angle and drifts across the surface, so the hue
 sweeps the way an oil film does — light through the middle, spectrum gathering
-at the rim — wrapped in two halo rings turning on crossed axes.
+at the rim. Nothing else surrounds it: there is the being and the room, and
+that is the entire cast.
 
 It has no face, so **a bright focal point on the shell carries all of the
 looking**. It slides to whatever has its attention: the specimen, your
@@ -215,7 +266,7 @@ index.html        markup, styling
 play.html         generated single-file bundle
 build.js          zero-dependency bundler
 src/math.js       vec3 / mat4 / PRNG
-src/geometry.js   icosphere, adjacency, the being's shell and halo rings
+src/geometry.js   icosphere, adjacency, the being's shell, the cursor hand
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts

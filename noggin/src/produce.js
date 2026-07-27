@@ -263,15 +263,24 @@
     return out;
   };
 
-  /* Build one produce mesh from a knowledge-base entry. */
-  P.build = function (spec) {
+  /* Build one produce mesh from a knowledge-base entry.
+
+     With `trimOnly`, the body is left out and only the stem, leaves and crown
+     are built. Those are the parts that cannot be expressed on the being's
+     own topology — a closed sphere has nowhere to put a pineapple's crown —
+     so when it *becomes* a specimen they are attached separately, in this
+     same local frame, and ride its transform. Returns null when the specimen
+     has no such parts. */
+  P.build = function (spec, trimOnly) {
     const part = new Part();
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
     const mat = spec.gloss === false ? MAT_SKIN : MAT_GLOSS;
 
-    if (spec.cluster) {
+    if (trimOnly) {
+      /* body skipped */
+    } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
       const n = spec.cluster.count;
@@ -343,6 +352,8 @@
           spec.crown.color || [0.26, 0.46, 0.20], MAT_MATTE);
       }
     }
+
+    if (!part.pos.length) return null;
 
     let positions = new Float32Array(part.pos);
     const indices = new Uint32Array(part.idx);
