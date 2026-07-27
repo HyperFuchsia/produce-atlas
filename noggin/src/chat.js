@@ -53,8 +53,13 @@
     return row;
   };
 
-  Chat.prototype.say = function (lines) {
-    for (let i = 0; i < lines.length; i++) this.queue.push(lines[i]);
+  /* Queue entries carry an optional callback that fires the moment that line
+     finishes typing, which is how the specimen arrives *after* he has said he
+     will fetch it rather than materialising while he is still offering. */
+  Chat.prototype.say = function (lines, afterFirstLine) {
+    for (let i = 0; i < lines.length; i++) {
+      this.queue.push({ text: lines[i], after: i === 0 ? (afterFirstLine || null) : null });
+    }
   };
 
   Chat.prototype.send = function (raw) {
@@ -62,18 +67,23 @@
     if (!text) return;
     this.lastActivity = 0;
 
-    /* A second send finishes the current line rather than stacking up. */
+    /* A second send finishes the current line rather than stacking up. Run its
+       pending callback too, or an interrupted line would swallow its spawn. */
     if (this.typingEl) {
       this.typingEl.textContent = this.full;
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
+      this._runAfter();
     }
 
     this._append('you', text);
+    if (this.onSend) this.onSend();
     const reply = this.brain.respond(text);
     if (reply.clear && this.onClear) this.onClear();
-    if (reply.spawn && this.onSpawn) this.onSpawn(reply.spawn);
-    this.say(reply.lines);
+    const self = this;
+    this.say(reply.lines, reply.spawn ? function () {
+      if (self.onSpawn) self.onSpawn(reply.spawn);
+    } : null);
   };
 
   Chat.prototype.update = function (dt) {
@@ -82,7 +92,9 @@
     if (!this.typingEl) {
       if (this.gap > 0) { this.gap -= dt; return; }
       if (!this.queue.length) return;
-      this.full = this.queue.shift();
+      const item = this.queue.shift();
+      this.full = item.text;
+      this._after = item.after;
       this.shown = 0;
       this.typingEl = this._append('him typing', '');
       return;
@@ -104,7 +116,14 @@
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
       this.gap = LINE_GAP;
+      this._runAfter();
     }
+  };
+
+  Chat.prototype._runAfter = function () {
+    const fn = this._after;
+    this._after = null;
+    if (fn) fn();
   };
 
   NG.Chat = Chat;

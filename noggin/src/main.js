@@ -84,6 +84,16 @@
     this.rayR = [0, 0, 0];
     this.rayU = [0, 0, 0];
 
+    /* Attention: where he is looking, how far he has drifted from home, and
+       how much he is currently leaning in at something. */
+    this.gaze = [0, 0, 4];
+    this.gazeTarget = [0, 0, 4];
+    this.gazeTimer = 2;
+    this.headPos = [0, 0, 0];
+    this.lean = 0;
+    this.leanDir = [0, 0, 0];
+    this.rand = M.rng((Date.now() & 0x7fffffff) || 11);
+
     this.pointers = new Map();
     this.grabPointer = -1;
     this.orbitPointer = -1;
@@ -100,6 +110,8 @@
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onClear = function () { self.clearSpecimens(); };
+    /* When you type, he stops whatever he was looking at and looks at you. */
+    this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
     this.buildMesh(5);
     this.renderer.setShadowSize(1024);
@@ -341,6 +353,16 @@
     });
     while (this.props.length > 3) this._removeProp(0);
 
+    /* He notices it: turns to look, leans in, and physically startles. */
+    this.lookAtSpecimen(4.5);
+    this.lean = 1;
+    M.norm3(this.leanDir, [
+      this.props[this.props.length - 1].x,
+      this.props[this.props.length - 1].y,
+      this.props[this.props.length - 1].z + 0.4
+    ]);
+    this.body.impulse([0, 0.1, 1.1], 1.5, 1.9);
+
     this.refitCamera();
   };
 
@@ -400,6 +422,55 @@
     }
   };
 
+  /* ---- attention ----------------------------------------------------------- */
+
+  App.prototype.lookAt = function (point, hold) {
+    M.copy3(this.gazeTarget, point);
+    this.gazeTimer = hold;
+  };
+
+  App.prototype.lookAtViewer = function (hold) {
+    this.lookAt(this.eye, hold);
+  };
+
+  App.prototype.lookAtSpecimen = function (hold) {
+    const p = this.props[this.props.length - 1];
+    if (!p) return this.lookAtViewer(hold);
+    this.lookAt([p.x, p.y + p.handle.topUnits * 0.4, p.z], hold);
+  };
+
+  /* Pick something to be interested in. With a specimen on stage he mostly
+     studies it and occasionally checks whether you are still there; with an
+     empty stage he glances around the room. */
+  App.prototype.pickInterest = function () {
+    const r = this.rand;
+    if (this.props.length && r() < 0.65) {
+      this.lookAtSpecimen(2.2 + r() * 2.5);
+      return;
+    }
+    if (r() < 0.45) {
+      this.lookAtViewer(1.8 + r() * 2.0);
+      return;
+    }
+    /* Somewhere out in the room, biased to the front so he stays readable. */
+    const ang = (r() - 0.5) * 2.4;
+    const rise = (r() - 0.35) * 2.2;
+    this.lookAt([Math.sin(ang) * 4.5, rise, Math.cos(ang) * 4.5 + 1.0], 1.4 + r() * 2.2);
+  };
+
+  App.prototype.updateAttention = function (dt) {
+    this.gazeTimer -= dt;
+    if (this.gazeTimer <= 0) this.pickInterest();
+
+    /* Ease toward the point of interest rather than snapping to it. */
+    const k = Math.min(1, dt * 2.6);
+    this.gaze[0] += (this.gazeTarget[0] - this.gaze[0]) * k;
+    this.gaze[1] += (this.gazeTarget[1] - this.gaze[1]) * k;
+    this.gaze[2] += (this.gazeTarget[2] - this.gaze[2]) * k;
+
+    this.lean = Math.max(0, this.lean - dt * 0.6);
+  };
+
   /* ---- frame --------------------------------------------------------------- */
 
   App.prototype.updateCamera = function (dt) {
@@ -440,8 +511,37 @@
 
   App.prototype.updateModel = function () {
     const t = this.time;
-    M.compose(this.model, 0, Math.sin(t * 1.1) * 0.05, 0,
-      Math.sin(t * 0.35) * 0.09, Math.cos(t * 0.27) * 0.04, 1);
+
+    /* Free drift. Layered incommensurate frequencies never repeat visibly, so
+       he reads as floating rather than looping. */
+    let px = Math.sin(t * 0.31) * 0.10 + Math.sin(t * 0.17 + 1.3) * 0.06;
+    let py = Math.sin(t * 0.47) * 0.06 + Math.sin(t * 0.23 + 2.1) * 0.05;
+    let pz = Math.sin(t * 0.29 + 0.7) * 0.05;
+
+    /* Talking adds a small nod on top so he is not a static speaker. */
+    if (this.chat.busy()) py += Math.sin(t * 7.3) * 0.012;
+
+    /* Leaning in at something he has just conjured. */
+    if (this.lean > 0.001) {
+      const e = this.lean * this.lean * 0.42;
+      px += this.leanDir[0] * e;
+      py += this.leanDir[1] * e;
+      pz += this.leanDir[2] * e;
+    }
+
+    M.set3(this.headPos, px, py, pz);
+
+    /* Face the thing he is looking at. His face points down local +Z, and
+       M.compose builds Ry * Rx, so local +Z lands on (sy*cx, -sx, cy*cx). */
+    const dx = this.gaze[0] - px, dy = this.gaze[1] - py, dz = this.gaze[2] - pz;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    /* Turn only part of the way. A full turn puts him in profile and hides the
+       face doing the looking, which loses the whole point; a partial turn
+       reads as glancing over while his eyes stay visible. */
+    const ry = M.clamp(Math.atan2(dx / len, dz / len), -1.2, 1.2) * 0.6;
+    const rx = M.clamp(Math.asin(M.clamp(-dy / len, -1, 1)), -0.6, 0.6) * 0.7;
+
+    M.compose(this.model, px, py, pz, ry, rx, 1);
     M.invert(this.invModel, this.model);
   };
 
@@ -514,8 +614,9 @@
     const frameStart = performance.now();
     this.time += dt;
 
-    this.updateModel();
     this.updateCamera(dt);
+    this.updateAttention(dt);
+    this.updateModel();
     this.updateLight();
     this.trackGrabVelocity(dt);
     this.stepPhysics(dt);
