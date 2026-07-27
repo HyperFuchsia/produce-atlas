@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>Produce Atlas</title>
 <style>
@@ -181,8 +181,9 @@
     border-radius: 7px;
     color: var(--paper);
     font-family: var(--sans);
-    font-size: 13px;
-    padding: 11px 13px;
+    /* 16px minimum: anything smaller makes iOS zoom the page on focus. */
+    font-size: 16px;
+    padding: 10px 13px;
     outline: none;
     transition: border-color 0.15s ease;
   }

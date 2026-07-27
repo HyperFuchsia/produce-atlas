@@ -129,6 +129,7 @@
     }
     this.cssW = cssW;
     this.cssH = cssH;
+    const wasNarrow = this.narrow;
     const narrow = cssW < NARROW_AT;
     this.narrow = narrow;
     this._panelW = narrow ? 0 : $('panel').getBoundingClientRect().width;
@@ -137,7 +138,10 @@
        the subject into the strip that is actually visible. */
     this.stageY = narrow ? -1.05 : 0.02;
     this.distBoost = narrow ? 1.5 : 1;
-    this.refitCamera();
+    /* Only refit when the layout actually flips. Resize fires whenever a
+       mobile keyboard opens, and refitting there yanked the camera back to
+       its default distance mid-sentence. */
+    if (narrow !== wasNarrow) this.refitCamera();
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -175,6 +179,7 @@
     canvas.addEventListener('pointercancel', function (e) { self.onPointerUp(e); });
     canvas.addEventListener('wheel', function (e) {
       e.preventDefault();
+      self.userZoomed = true;
       self.camera.targetDist = M.clamp(self.camera.targetDist + e.deltaY * 0.0035, 2.8, 12);
     }, { passive: false });
 
@@ -271,6 +276,7 @@
       const a = it.next().value, b = it.next().value;
       const d = Math.hypot(a.x - b.x, a.y - b.y);
       if (this.pinchDist > 0) {
+        this.userZoomed = true;
         this.camera.targetDist = M.clamp(this.camera.targetDist * (this.pinchDist / Math.max(d, 1)), 2.8, 12);
       }
       this.pinchDist = d;
@@ -338,8 +344,12 @@
     this.refitCamera();
   };
 
-  /* Pull back far enough for the head and the largest specimen together. */
+  /* Pull back far enough for the head and the largest specimen together.
+     The moment the viewer zooms by hand, this stops touching the camera —
+     having the framing jump on you mid-conversation is worse than a specimen
+     that overflows the frame, and they can always pinch back out. */
   App.prototype.refitCamera = function () {
+    if (this.userZoomed) return;
     let reach = 0;
     for (let i = 0; i < this.props.length; i++) {
       const h = this.props[i].handle;
