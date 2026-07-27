@@ -99,9 +99,11 @@ A case that hides these is worth nothing.
 - **So the vocabulary is small** — 26 food plants, a growing set of made
   things, and 3 routines. It answers well inside that and admits ignorance
   outside it rather than inventing.
-- **The morph only expresses what fits one closed sphere.** Stems, leaves and
-  crowns are attached separately; anything with genuinely different topology
-  (a bunch of grapes, say) becomes an approximation.
+- **The morph only expresses what fits one closed sphere.** Anything that is
+  really two volumes — a car's body and its glasshouse — needs the second one
+  attached separately, and attached parts are rigid, so they do not deform when
+  you pull the being around. Good enough at rest, visibly a seam if you stretch
+  it. Genuinely different topology (a bunch of grapes) stays an approximation.
 - **This is the demo, not the product.** The product claim is that *any* model
   could drive this layer. Nothing here proves that integration is cheap.
 

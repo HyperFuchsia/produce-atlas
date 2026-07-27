@@ -24,15 +24,34 @@
          difference between a car and a loaf of bread. */
       kind: 'hull',
       lengthCm: 450, widthCm: 180, heightCm: 145,
-      /* rear bumper ....................................... front bumper */
-      top: [0.44, 0.58, 0.63, 0.76, 0.88, 0.88, 0.74, 0.56, 0.50, 0.42],
-      bottom: [0.32, 0.19, 0.15, 0.14, 0.14, 0.14, 0.14, 0.15, 0.20, 0.32],
-      wide: [0.58, 0.86, 0.96, 1.00, 1.00, 1.00, 0.98, 0.90, 0.76, 0.54],
-      corner: 5.0,
+      /* The lower body only: sills, shoulder, and a beltline at about 90 cm.
+         Everything above that is the glasshouse, which is a separate shell.
+         rear bumper ....................................... front bumper */
+      top: [0.46, 0.58, 0.62, 0.64, 0.65, 0.65, 0.63, 0.58, 0.52, 0.44],
+      bottom: [0.22, 0.14, 0.11, 0.10, 0.10, 0.10, 0.10, 0.11, 0.14, 0.22],
+      wide: [0.66, 0.90, 0.98, 1.00, 1.00, 1.00, 0.99, 0.94, 0.84, 0.62],
+      /* sill ......... shoulder ......... belt: widest in the middle */
+      taper: [0.84, 0.96, 1.00, 0.99, 0.93],
+      corner: 6.0,
       color: [0.17, 0.028, 0.026],
+
+      cabin: {
+        kind: 'hull',
+        lengthCm: 252, widthCm: 142, heightCm: 56,
+        atXCm: -16, atYCm: 40,
+        /* backlight ......... roof ......... windscreen */
+        top: [0.22, 0.68, 0.92, 1.00, 1.00, 0.97, 0.84, 0.50, 0.16, 0.04],
+        bottom: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        wide: [0.42, 0.80, 0.95, 1.00, 1.00, 1.00, 0.97, 0.86, 0.60, 0.32],
+        taper: [1.00, 0.97, 0.91, 0.82, 0.70],
+        corner: 4.5,
+        color: [0.030, 0.038, 0.052]
+      },
+
       wheels: {
-        diameterCm: 64, widthCm: 22, atXCm: 144, atYCm: -40.5, atZCm: 78,
-        color: [0.08, 0.08, 0.09]
+        diameterCm: 64, widthCm: 22, atXCm: 143, atYCm: -40.5, atZCm: 76,
+        hubCm: 38,
+        color: [0.022, 0.022, 0.025], hubColor: [0.38, 0.40, 0.43]
       },
 
       family: 'road vehicles, which is not a clade and I want that on the record',

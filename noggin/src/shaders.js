@@ -291,7 +291,10 @@ void main() {
       float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
       vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
       vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
-      form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
+      /* Car paint, not satin plastic: a tight highlight rather than a broad
+         one. At 0.30 roughness the lobe smeared a white band down the entire
+         flank of anything with a large flat panel. */
+      form += uLightColor * ggx(N, V, L, 0.17) * 0.22;
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
@@ -303,8 +306,11 @@ void main() {
          enough to stay an edge rather than a wash. */
       vec3 sheen = 0.5 + 0.5 * cos(6.28318 * (f * 1.6 + uTime * 0.05
                  + vec3(0.0, 0.33, 0.67)));
-      form += (sheen * pow(1.0 - ndvAll, 5.0) * 0.22 + uFocusColor * focus * 0.5)
-            * (1.0 - uInert);
+      /* No focal point here. It is a tight spot on a sphere because the normal
+         turns away fast; a car's flank is one normal over two square metres,
+         so the whole side lit up. It is the being's own tell in any case, and
+         whatever it has become does not get to keep it. */
+      form += sheen * pow(1.0 - ndvAll, 5.0) * 0.12 * (1.0 - uInert);
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
       form += uRimColor * pow(1.0 - ndvAll, 3.2) * 0.35 * uInert;
@@ -381,8 +387,12 @@ void main() {
   lit += uLightColor * spec;
 
   float ndv = clamp(dot(N, V), 0.0, 1.0);
+  // Rim light is reflected light, so a black surface should barely take any.
+  // Without this a tyre picks up the same warm edge as a lemon and reads as
+  // grey plastic.
   float rim = pow(1.0 - ndv, 3.2);
-  lit += uRimColor * rim * (0.45 + 0.9 * st);
+  float reflectivity = 0.22 + 0.78 * dot(base, vec3(0.3333));
+  lit += uRimColor * rim * (0.45 + 0.9 * st) * reflectivity;
 
   // Rubber under tension goes hot: direct visual feedback for how far the
   // player has pulled a region.

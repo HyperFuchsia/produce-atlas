@@ -87,8 +87,15 @@ anything too big to hover rests on the ground on its own.
 
 A car is not a solid of revolution, so it is a **hull**: lofted along its own
 length with separate roofline and floorpan curves and a superellipse
-cross-section, which is a rounded rectangle when you want one. Wheels ride
-along as attached parts, the same mechanism that carries a pineapple's crown.
+cross-section, which is a rounded rectangle when you want one. Sections narrow
+as they rise — tumblehome — because a constant-width section is a loaf.
+
+But a car is **two volumes**, the body and the narrower glasshouse sitting on
+it, and one cross-section per station cannot be two widths at once however it
+is tapered. So the cabin is its own lofted shell in glass rather than paint,
+riding along with the wheels and hubs on the same mechanism that carries a
+pineapple's crown. Dark glass above a coloured body is most of what "car" looks
+like from any distance; wheels are the rest.
 
 And it does not pretend to have a botany. Ask what it is and it says it is a
 machine — no ancestor, no wild relative, somebody drew it. The plant answers are

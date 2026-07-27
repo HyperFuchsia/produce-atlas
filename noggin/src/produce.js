@@ -260,14 +260,26 @@
       const cy = (top + bot) * 0.5 * tall - tall * 0.5;   /* origin at mid-height */
       const hz = Math.max(wide * halfW, 1e-3);
 
-      const ay = Math.cos(Math.atan2(dy, dz)), az = Math.sin(Math.atan2(dy, dz));
+      const phi = Math.atan2(dy, dz);
+      const ay = Math.cos(phi), az = Math.sin(phi);
       const n = spec.corner || 4;
       const r = 1 / Math.pow(
         Math.pow(Math.abs(ay / hy), n) + Math.pow(Math.abs(az / hz), n), 1 / n);
 
+      let y = ay * r, z = az * r;
+
+      /* Tumblehome: the section narrows as it rises. Without it every station
+         is a slab of constant width and the result is a loaf — a car is
+         widest at the shoulder and tucks in above and below it. The taper is
+         applied after solving the section, which keeps the curve closed. */
+      if (spec.taper) {
+        const yn = M.clamp((y + hy) / (2 * hy), 0, 1);
+        z *= sampleProfile(spec.taper, yn);
+      }
+
       out[0] = (t - 0.5) * len;
-      out[1] = ay * r + cy;
-      out[2] = az * r;
+      out[1] = y + cy;
+      out[2] = z;
       return out;
     }
 
@@ -305,6 +317,22 @@
     return out;
   };
 
+  /* A lofted shell, built by pushing a sphere through the same mapping the
+     being uses — so there is one definition of the shape and the standalone
+     specimen and the worn form cannot drift apart. */
+  function hullMesh(spec) {
+    const unit = G.icosphere(4);
+    const n = unit.positions.length / 3;
+    const pos = new Float32Array(n * 3);
+    const o = [0, 0, 0];
+    for (let i = 0; i < n; i++) {
+      P.formOnSphere(o, spec,
+        unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
+      pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
+    }
+    return { positions: pos, indices: unit.indices };
+  }
+
   /* Build one produce mesh from a knowledge-base entry.
 
      With `trimOnly`, the body is left out and only the stem, leaves and crown
@@ -323,18 +351,8 @@
     if (trimOnly) {
       /* body skipped */
     } else if (spec.kind === 'hull') {
-      /* Built by pushing a sphere through the same mapping the being uses, so
-         there is one definition of the shape and the standalone specimen and
-         the worn form cannot drift apart. */
-      const unit = G.icosphere(4);
-      const n = unit.positions.length / 3;
-      const pos = new Float32Array(n * 3);
-      const o = [0, 0, 0];
-      for (let i = 0; i < n; i++) {
-        P.formOnSphere(o, spec, unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
-        pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
-      }
-      part.add(pos, unit.indices, spec.color, mat);
+      const hull = hullMesh(spec);
+      part.add(hull.positions, hull.indices, spec.color, mat);
     } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
@@ -408,6 +426,20 @@
       }
     }
 
+    /* The glasshouse. A car is two volumes — the body, and the narrower
+       cabin sitting on it — and one cross-section per station cannot be two
+       widths at once however it is tapered. So the cabin is its own lofted
+       shell, riding on top, in glass rather than paint. It is also the second
+       strongest cue after the wheels: dark glass above a coloured body is
+       most of what "car" looks like from any distance. */
+    if (spec.cabin) {
+      const c = spec.cabin;
+      const shell = hullMesh(c);
+      part.add(
+        translate(shell.positions, (c.atXCm || 0) * scale, (c.atYCm || 0) * scale, 0),
+        shell.indices, c.color || [0.05, 0.06, 0.08], MAT_GLOSS);
+    }
+
     /* Wheels. Four of them, and they are the single strongest cue that a
        lumpy box is a car, so they are worth their own case. Revolved about Y
        like everything else here, then laid on their side. */
@@ -419,12 +451,31 @@
         profile: [0, 0.88, 1, 1, 1, 1, 1, 0.88, 0]
       });
       const laid = rotateX(disc.positions, Math.PI * 0.5);
+
+      /* A hub, standing slightly proud of the tyre so it reads on the wheel
+         face. Without it a wheel is a dark blob, and a dark blob at each
+         corner is not the same cue as a wheel. */
+      let hub = null;
+      if (w.hubCm) {
+        const h = revolve({
+          rings: 6, segments: 18,
+          height: w.widthCm * 1.12 * scale, radius: w.hubCm * 0.5 * scale,
+          profile: [0, 1, 1, 1, 1, 0]
+        });
+        hub = { pos: rotateX(h.positions, Math.PI * 0.5), idx: h.indices };
+      }
+
       const corners = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
       for (let i = 0; i < corners.length; i++) {
-        part.add(
-          translate(laid, corners[i][0] * w.atXCm * scale, w.atYCm * scale,
-            corners[i][1] * w.atZCm * scale),
-          disc.indices, w.color || [0.09, 0.09, 0.10], MAT_MATTE);
+        const x = corners[i][0] * w.atXCm * scale;
+        const y = w.atYCm * scale;
+        const z = corners[i][1] * w.atZCm * scale;
+        part.add(translate(laid, x, y, z), disc.indices,
+          w.color || [0.09, 0.09, 0.10], MAT_MATTE);
+        if (hub) {
+          part.add(translate(hub.pos, x, y, z), hub.idx,
+            w.hubColor || [0.42, 0.44, 0.47], MAT_GLOSS);
+        }
       }
     }
 

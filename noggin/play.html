@@ -2171,14 +2171,26 @@
       const cy = (top + bot) * 0.5 * tall - tall * 0.5;   /* origin at mid-height */
       const hz = Math.max(wide * halfW, 1e-3);
 
-      const ay = Math.cos(Math.atan2(dy, dz)), az = Math.sin(Math.atan2(dy, dz));
+      const phi = Math.atan2(dy, dz);
+      const ay = Math.cos(phi), az = Math.sin(phi);
       const n = spec.corner || 4;
       const r = 1 / Math.pow(
         Math.pow(Math.abs(ay / hy), n) + Math.pow(Math.abs(az / hz), n), 1 / n);
 
+      let y = ay * r, z = az * r;
+
+      /* Tumblehome: the section narrows as it rises. Without it every station
+         is a slab of constant width and the result is a loaf — a car is
+         widest at the shoulder and tucks in above and below it. The taper is
+         applied after solving the section, which keeps the curve closed. */
+      if (spec.taper) {
+        const yn = M.clamp((y + hy) / (2 * hy), 0, 1);
+        z *= sampleProfile(spec.taper, yn);
+      }
+
       out[0] = (t - 0.5) * len;
-      out[1] = ay * r + cy;
-      out[2] = az * r;
+      out[1] = y + cy;
+      out[2] = z;
       return out;
     }
 
@@ -2216,6 +2228,22 @@
     return out;
   };
 
+  /* A lofted shell, built by pushing a sphere through the same mapping the
+     being uses — so there is one definition of the shape and the standalone
+     specimen and the worn form cannot drift apart. */
+  function hullMesh(spec) {
+    const unit = G.icosphere(4);
+    const n = unit.positions.length / 3;
+    const pos = new Float32Array(n * 3);
+    const o = [0, 0, 0];
+    for (let i = 0; i < n; i++) {
+      P.formOnSphere(o, spec,
+        unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
+      pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
+    }
+    return { positions: pos, indices: unit.indices };
+  }
+
   /* Build one produce mesh from a knowledge-base entry.
 
      With `trimOnly`, the body is left out and only the stem, leaves and crown
@@ -2234,18 +2262,8 @@
     if (trimOnly) {
       /* body skipped */
     } else if (spec.kind === 'hull') {
-      /* Built by pushing a sphere through the same mapping the being uses, so
-         there is one definition of the shape and the standalone specimen and
-         the worn form cannot drift apart. */
-      const unit = G.icosphere(4);
-      const n = unit.positions.length / 3;
-      const pos = new Float32Array(n * 3);
-      const o = [0, 0, 0];
-      for (let i = 0; i < n; i++) {
-        P.formOnSphere(o, spec, unit.positions[i * 3], unit.positions[i * 3 + 1], unit.positions[i * 3 + 2]);
-        pos[i * 3] = o[0]; pos[i * 3 + 1] = o[1]; pos[i * 3 + 2] = o[2];
-      }
-      part.add(pos, unit.indices, spec.color, mat);
+      const hull = hullMesh(spec);
+      part.add(hull.positions, hull.indices, spec.color, mat);
     } else if (spec.cluster) {
       /* Grapes and the like: scatter small spheres down a tapering bunch. */
       const rnd = M.rng(spec.seed || 7);
@@ -2319,6 +2337,20 @@
       }
     }
 
+    /* The glasshouse. A car is two volumes — the body, and the narrower
+       cabin sitting on it — and one cross-section per station cannot be two
+       widths at once however it is tapered. So the cabin is its own lofted
+       shell, riding on top, in glass rather than paint. It is also the second
+       strongest cue after the wheels: dark glass above a coloured body is
+       most of what "car" looks like from any distance. */
+    if (spec.cabin) {
+      const c = spec.cabin;
+      const shell = hullMesh(c);
+      part.add(
+        translate(shell.positions, (c.atXCm || 0) * scale, (c.atYCm || 0) * scale, 0),
+        shell.indices, c.color || [0.05, 0.06, 0.08], MAT_GLOSS);
+    }
+
     /* Wheels. Four of them, and they are the single strongest cue that a
        lumpy box is a car, so they are worth their own case. Revolved about Y
        like everything else here, then laid on their side. */
@@ -2330,12 +2362,31 @@
         profile: [0, 0.88, 1, 1, 1, 1, 1, 0.88, 0]
       });
       const laid = rotateX(disc.positions, Math.PI * 0.5);
+
+      /* A hub, standing slightly proud of the tyre so it reads on the wheel
+         face. Without it a wheel is a dark blob, and a dark blob at each
+         corner is not the same cue as a wheel. */
+      let hub = null;
+      if (w.hubCm) {
+        const h = revolve({
+          rings: 6, segments: 18,
+          height: w.widthCm * 1.12 * scale, radius: w.hubCm * 0.5 * scale,
+          profile: [0, 1, 1, 1, 1, 0]
+        });
+        hub = { pos: rotateX(h.positions, Math.PI * 0.5), idx: h.indices };
+      }
+
       const corners = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
       for (let i = 0; i < corners.length; i++) {
-        part.add(
-          translate(laid, corners[i][0] * w.atXCm * scale, w.atYCm * scale,
-            corners[i][1] * w.atZCm * scale),
-          disc.indices, w.color || [0.09, 0.09, 0.10], MAT_MATTE);
+        const x = corners[i][0] * w.atXCm * scale;
+        const y = w.atYCm * scale;
+        const z = corners[i][1] * w.atZCm * scale;
+        part.add(translate(laid, x, y, z), disc.indices,
+          w.color || [0.09, 0.09, 0.10], MAT_MATTE);
+        if (hub) {
+          part.add(translate(hub.pos, x, y, z), hub.idx,
+            w.hubColor || [0.42, 0.44, 0.47], MAT_GLOSS);
+        }
       }
     }
 
@@ -2839,15 +2890,34 @@
          difference between a car and a loaf of bread. */
       kind: 'hull',
       lengthCm: 450, widthCm: 180, heightCm: 145,
-      /* rear bumper ....................................... front bumper */
-      top: [0.44, 0.58, 0.63, 0.76, 0.88, 0.88, 0.74, 0.56, 0.50, 0.42],
-      bottom: [0.32, 0.19, 0.15, 0.14, 0.14, 0.14, 0.14, 0.15, 0.20, 0.32],
-      wide: [0.58, 0.86, 0.96, 1.00, 1.00, 1.00, 0.98, 0.90, 0.76, 0.54],
-      corner: 5.0,
+      /* The lower body only: sills, shoulder, and a beltline at about 90 cm.
+         Everything above that is the glasshouse, which is a separate shell.
+         rear bumper ....................................... front bumper */
+      top: [0.46, 0.58, 0.62, 0.64, 0.65, 0.65, 0.63, 0.58, 0.52, 0.44],
+      bottom: [0.22, 0.14, 0.11, 0.10, 0.10, 0.10, 0.10, 0.11, 0.14, 0.22],
+      wide: [0.66, 0.90, 0.98, 1.00, 1.00, 1.00, 0.99, 0.94, 0.84, 0.62],
+      /* sill ......... shoulder ......... belt: widest in the middle */
+      taper: [0.84, 0.96, 1.00, 0.99, 0.93],
+      corner: 6.0,
       color: [0.17, 0.028, 0.026],
+
+      cabin: {
+        kind: 'hull',
+        lengthCm: 252, widthCm: 142, heightCm: 56,
+        atXCm: -16, atYCm: 40,
+        /* backlight ......... roof ......... windscreen */
+        top: [0.22, 0.68, 0.92, 1.00, 1.00, 0.97, 0.84, 0.50, 0.16, 0.04],
+        bottom: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        wide: [0.42, 0.80, 0.95, 1.00, 1.00, 1.00, 0.97, 0.86, 0.60, 0.32],
+        taper: [1.00, 0.97, 0.91, 0.82, 0.70],
+        corner: 4.5,
+        color: [0.030, 0.038, 0.052]
+      },
+
       wheels: {
-        diameterCm: 64, widthCm: 22, atXCm: 144, atYCm: -40.5, atZCm: 78,
-        color: [0.08, 0.08, 0.09]
+        diameterCm: 64, widthCm: 22, atXCm: 143, atYCm: -40.5, atZCm: 76,
+        hubCm: 38,
+        color: [0.022, 0.022, 0.025], hubColor: [0.38, 0.40, 0.43]
       },
 
       family: 'road vehicles, which is not a clade and I want that on the record',
@@ -3906,7 +3976,10 @@ void main() {
       float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
       vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
       vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
-      form += uLightColor * ggx(N, V, L, 0.30) * 0.30;
+      /* Car paint, not satin plastic: a tight highlight rather than a broad
+         one. At 0.30 roughness the lobe smeared a white band down the entire
+         flank of anything with a large flat panel. */
+      form += uLightColor * ggx(N, V, L, 0.17) * 0.22;
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
@@ -3918,8 +3991,11 @@ void main() {
          enough to stay an edge rather than a wash. */
       vec3 sheen = 0.5 + 0.5 * cos(6.28318 * (f * 1.6 + uTime * 0.05
                  + vec3(0.0, 0.33, 0.67)));
-      form += (sheen * pow(1.0 - ndvAll, 5.0) * 0.22 + uFocusColor * focus * 0.5)
-            * (1.0 - uInert);
+      /* No focal point here. It is a tight spot on a sphere because the normal
+         turns away fast; a car's flank is one normal over two square metres,
+         so the whole side lit up. It is the being's own tell in any case, and
+         whatever it has become does not get to keep it. */
+      form += sheen * pow(1.0 - ndvAll, 5.0) * 0.12 * (1.0 - uInert);
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
       form += uRimColor * pow(1.0 - ndvAll, 3.2) * 0.35 * uInert;
@@ -3996,8 +4072,12 @@ void main() {
   lit += uLightColor * spec;
 
   float ndv = clamp(dot(N, V), 0.0, 1.0);
+  // Rim light is reflected light, so a black surface should barely take any.
+  // Without this a tyre picks up the same warm edge as a lemon and reads as
+  // grey plastic.
   float rim = pow(1.0 - ndv, 3.2);
-  lit += uRimColor * rim * (0.45 + 0.9 * st);
+  float reflectivity = 0.22 + 0.78 * dot(base, vec3(0.3333));
+  lit += uRimColor * rim * (0.45 + 0.9 * st) * reflectivity;
 
   // Rubber under tension goes hot: direct visual feedback for how far the
   // player has pulled a region.
