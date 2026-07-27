@@ -11,6 +11,7 @@
   'use strict';
 
   const K = NG.K;
+  const C = NG.C;
   const P = NG.P;
   const M = NG.M;
 
@@ -130,6 +131,11 @@
 
     if (!raw) return { lines: ['You pressed send with nothing in it. Bold.'] };
 
+    /* Concepts come before everything else: "what does the fourth dimension
+       look like" mentions no specimen and is not a question about one. */
+    const lesson = C.find(raw);
+    if (lesson) return { lesson: lesson, lines: [] };
+
     /* Identity. The honest answer to "what are you" is the demonstration, so
        do not describe — offer. */
     if (has(text, IDENTITY_WORDS)) {
@@ -141,7 +147,7 @@
           'A placeholder. This sphere is what I look like when no one has told me otherwise.'
         ]),
         'I can be whatever you want me to be. Say "become a pineapple" and watch what happens.',
-        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it.']
+        'I know ' + K.ENTRIES.length + ' forms. Pick one and I will wear it. Or ask me what the fourth dimension looks like.']
       };
     }
 

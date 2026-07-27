@@ -124,6 +124,38 @@
     return { positions: positions, normals: normals, indices: indices };
   };
 
+  /* Unit tube along +Y from 0 to 1, radius 1. Laid onto arbitrary segments by
+     M.segment, which is how wireframes are drawn without rebuilding geometry. */
+  G.buildTube = function (sides, color, mat) {
+    const positions = new Float32Array(sides * 2 * 3);
+    const normals = new Float32Array(sides * 2 * 3);
+    const indices = [];
+    for (let i = 0; i < sides; i++) {
+      const a = (i / sides) * Math.PI * 2;
+      const cx = Math.cos(a), cz = Math.sin(a);
+      for (let k = 0; k < 2; k++) {
+        const o = (i * 2 + k) * 3;
+        positions[o] = cx; positions[o + 1] = k; positions[o + 2] = cz;
+        normals[o] = cx; normals[o + 1] = 0; normals[o + 2] = cz;
+      }
+      const a0 = i * 2, a1 = i * 2 + 1;
+      const b0 = ((i + 1) % sides) * 2, b1 = b0 + 1;
+      indices.push(a0, b0, b1, a0, b1, a1);
+    }
+    const n = sides * 2;
+    const colors = new Float32Array(n * 3);
+    const mats = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = color[0]; colors[i * 3 + 1] = color[1]; colors[i * 3 + 2] = color[2];
+      mats[i] = mat;
+    }
+    return {
+      positions: positions, normals: normals, colors: colors, mats: mats,
+      indices: new Uint32Array(indices),
+      heightUnits: 1, radiusUnits: 1, topUnits: 1
+    };
+  };
+
   /* ---- head sculpt ---------------------------------------------------- */
 
   /* An anisotropic gaussian bump anchored to a direction on the unit sphere.

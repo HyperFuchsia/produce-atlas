@@ -93,6 +93,15 @@
     }
   };
 
+  /* Run an ordered script: each item may carry its own action and its own
+     pause, which is what lets an explanation pace itself against what the
+     scene is doing. */
+  Chat.prototype.script = function (items) {
+    for (let i = 0; i < items.length; i++) {
+      this.queue.push({ text: items[i].text, after: items[i].after || null, gap: items[i].gap });
+    }
+  };
+
   Chat.prototype.send = function (raw) {
     const text = String(raw || '').trim();
     if (!text) return;
@@ -110,6 +119,7 @@
     this._append('you', text);
     if (this.onSend) this.onSend();
     const reply = this.brain.respond(text);
+    if (reply.lesson && this.onLesson) { this.onLesson(reply.lesson); return; }
     if (reply.clear && this.onClear) this.onClear();
     const self = this;
     /* Whatever it promised in the first line happens when that line lands. */
@@ -130,6 +140,7 @@
       const item = this.queue.shift();
       this.full = item.text;
       this._after = item.after;
+      this._gap = item.gap !== undefined ? item.gap : LINE_GAP;
       this.shown = 0;
       this.typingEl = this._append('him typing', '');
       return;
@@ -149,7 +160,7 @@
     if (this.shown >= this.full.length) {
       this.typingEl.classList.remove('typing');
       this.typingEl = null;
-      this.gap = LINE_GAP;
+      this.gap = this._gap;
       this._runAfter();
     }
   };

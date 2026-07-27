@@ -187,6 +187,19 @@
     return o;
   };
 
+  /* Place a unit tube (+Y, 0..1, radius 1) onto the segment a->b. */
+  M.segment = function (o, a, b, radius) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const len = Math.hypot(dx, dy, dz) || 1e-6;
+    const dir = [dx / len, dy / len, dz / len];
+    const f = M.frame(dir);      /* [u, v, dir] */
+    o[0] = f[0][0] * radius; o[1] = f[0][1] * radius; o[2] = f[0][2] * radius; o[3] = 0;
+    o[4] = dir[0] * len; o[5] = dir[1] * len; o[6] = dir[2] * len; o[7] = 0;
+    o[8] = f[1][0] * radius; o[9] = f[1][1] * radius; o[10] = f[1][2] * radius; o[11] = 0;
+    o[12] = a[0]; o[13] = a[1]; o[14] = a[2]; o[15] = 1;
+    return o;
+  };
+
   /* Deterministic PRNG so a session can be reproduced. */
   M.rng = function (seed) {
     let s = seed >>> 0 || 1;

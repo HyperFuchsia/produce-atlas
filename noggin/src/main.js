@@ -102,6 +102,8 @@
     this.voice = 0;
     this.focusDir = [0, 0, 1];
     this.halos = [];
+    this.wire = null;          /* wireframe overlay, e.g. the tesseract */
+    this.wireSpin = 0;
     this.rand = M.rng((Date.now() & 0x7fffffff) || 11);
 
     this.pointers = new Map();
@@ -126,6 +128,7 @@
     this.chat.onClear = function () { self.clearSpecimens(); };
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
+    this.chat.onLesson = function (id) { self.runLesson(id); };
     /* When you type, he stops whatever he was looking at and looks at you. */
     this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
@@ -160,6 +163,7 @@
      is a morph of rest positions. The solver keeps running throughout, which is
      what makes the change wobble instead of snapping. */
   App.prototype.becomeForm = function (entry) {
+    if (!entry || entry.kind !== 'point') this.hideTesseract();
     const n = this.mesh.total;
     const target = new Float32Array(n * 3);
     const out = [0, 0, 0];
@@ -480,7 +484,7 @@
      that overflows the frame, and they can always pinch back out. */
   App.prototype.refitCamera = function () {
     if (this.userZoomed) return;
-    let reach = this.beingReach || 0;
+    let reach = Math.max(this.beingReach || 0, this.wire ? 1.9 : 0);
     for (let i = 0; i < this.props.length; i++) {
       const h = this.props[i].handle;
       reach = Math.max(reach, h.radiusUnits, (h.topUnits || 0) * 0.8);
@@ -548,9 +552,76 @@
   App.prototype.updateHalos = function () {
     for (let i = 0; i < this.halos.length; i++) {
       const h = this.halos[i];
+      if (h.wire) continue;
       /* Ride the body so the rings stay centred on it as it drifts. */
       M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
         h.phase + this.time * h.spin, h.tilt, 1 - 0.55 * this.morph.amount);
+    }
+  };
+
+  /* ---- lessons -------------------------------------------------------------- */
+
+  App.prototype.runLesson = function (id) {
+    const lesson = NG.C.LESSONS[id];
+    if (!lesson) return;
+    const self = this;
+    this.chat.script(lesson.steps.map(function (step) {
+      return {
+        text: step.text,
+        gap: step.gap,
+        after: (step.form || step.wire !== undefined) ? function () {
+          if (step.form) self.becomeForm(NG.C.FORMS[step.form]);
+          if (step.wire) self.showTesseract();
+        } : null
+      };
+    }));
+  };
+
+  /* ---- tesseract overlay ------------------------------------------------------ */
+
+  /* One unit tube drawn 32 times, each with a matrix laying it along an edge.
+     The corners are recomputed every frame from a real 4-D rotation, so the
+     shape genuinely turns through w rather than faking it in 3-D. */
+  App.prototype.showTesseract = function () {
+    if (this.wire) return;
+    if (!this.tubeHandle) {
+      this.tubeHandle = this.renderer.createProp(
+        NG.G.buildTube(6, [0.80, 0.90, 1.0], NG.G.MAT.HALO));
+    }
+    const edges = NG.C.TESSERACT.edges;
+    const parts = [];
+    for (let i = 0; i < edges.length; i++) {
+      const part = { handle: this.tubeHandle, matrix: M.m4(), wire: true };
+      parts.push(part);
+      this.halos.push(part);
+    }
+    this.wire = { parts: parts, points: [], grow: 0 };
+    this.wireSpin = 0;
+  };
+
+  App.prototype.hideTesseract = function () {
+    if (!this.wire) return;
+    for (let i = this.halos.length - 1; i >= 0; i--) {
+      if (this.halos[i].wire) this.halos.splice(i, 1);
+    }
+    this.wire = null;
+  };
+
+  App.prototype.updateTesseract = function (dt) {
+    const w = this.wire;
+    if (!w) return;
+    w.grow = Math.min(1, w.grow + dt * 0.8);
+    this.wireSpin += dt;
+
+    const pts = NG.C.projectTesseract(
+      w.points, this.wireSpin * 0.45, this.wireSpin * 0.28, 0.85 * w.grow, 2.6);
+    const edges = NG.C.TESSERACT.edges;
+    const a = [0, 0, 0], b = [0, 0, 0];
+    for (let i = 0; i < edges.length; i++) {
+      const p = pts[edges[i][0]], q = pts[edges[i][1]];
+      a[0] = p[0] + this.headPos[0]; a[1] = p[1] + this.headPos[1]; a[2] = p[2] + this.headPos[2];
+      b[0] = q[0] + this.headPos[0]; b[1] = q[1] + this.headPos[1]; b[2] = q[2] + this.headPos[2];
+      M.segment(w.parts[i].matrix, a, b, 0.012);
     }
   };
 
@@ -755,6 +826,7 @@
     this.trackGrabVelocity(dt);
     this.updateMorph(dt);
     this.stepPhysics(dt);
+    this.updateTesseract(dt);
 
     if (this.grabPointer >= 0) {
       this.audio.setStretch(this.body.maxDisplacement / this.body.maxStretch, true);

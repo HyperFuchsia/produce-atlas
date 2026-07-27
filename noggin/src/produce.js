@@ -193,6 +193,21 @@
   const FALLBACK_PROFILE = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
 
   P.formOnSphere = function (out, spec, dx, dy, dz) {
+    /* Primitives are defined directly rather than as a revolved profile: a
+       cube is not a solid of revolution. The L-infinity mapping (divide the
+       direction by its largest component) lands exactly on a box surface. */
+    if (spec.kind === 'point') {
+      out[0] = dx * spec.size; out[1] = dy * spec.size; out[2] = dz * spec.size;
+      return out;
+    }
+    if (spec.kind === 'box') {
+      const m = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz)) || 1;
+      out[0] = (dx / m) * spec.hx;
+      out[1] = (dy / m) * spec.hy;
+      out[2] = (dz / m) * spec.hz;
+      return out;
+    }
+
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;

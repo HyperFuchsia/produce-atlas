@@ -2,8 +2,9 @@
 
 A luminous being you can talk to. Name a food plant and it conjures a real one
 into the room **at its true size**, then tells you far more about it than you
-asked for. You can also reach in and pull at it — it is not as solid as it
-looks.
+asked for. Ask it something it cannot hand you — the fourth dimension, say — and
+it becomes the explanation instead. You can also reach in and pull at it; it is
+not as solid as it looks.
 
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
@@ -32,6 +33,38 @@ way round — so taking a form is a **morph of rest positions**, not a mesh swap
 Same vertex count, same adjacency, solver running throughout, which is why the
 change wobbles its way there instead of snapping. It keeps a little
 interference along the rim the whole time, so it never stops being itself.
+
+## Ask it to explain something
+
+Because it can take any shape, it can also *be* the explanation. Ask about the
+fourth dimension and it does not describe one — it builds up to it.
+
+```
+you   what does the fourth dimension look like?
+it    Zero dimensions. A point. It has a position and nothing else.
+it    Drag that point along one direction and it sweeps out a line...
+```
+
+It becomes each one as it says it: a point, a line, a square, a cube, and then —
+because there is no fourth direction to point at — it shrinks to a seed at the
+centre of a **tesseract**, drawn as 16 corners and 32 edges rotating in the *xw*
+and *yw* planes and projected down to three dimensions from the *w* axis. That
+projection is the whole lesson: corners further along *w* land closer to the
+middle, which is exactly why the inner cube looks small when it is not.
+
+A lesson is data — an ordered list of steps, each one a line of narration plus
+what the scene should do while it is spoken:
+
+```js
+{ text: 'Drag the square at a right angle to both of those...',
+  form: 'cube',      /* morph the being to this shape       */
+  wire: true,        /* switch the wireframe overlay on/off */
+  gap: 2.2 }         /* pause after the line, in seconds    */
+```
+
+`src/concepts.js` holds the forms, the phrases that trigger each lesson, and the
+steps. Dimensions is the only one written so far; adding another is adding an
+entry to that table, not writing code.
 
 ## Using it
 
@@ -156,6 +189,7 @@ src/geometry.js   icosphere, adjacency, the being's shell and halo rings
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts
+src/concepts.js   lessons it acts out, and the tesseract's 4-D projection
 src/brain.js      intent matching and answers over the atlas
 src/chat.js       the conversation surface
 src/shaders.js    all GLSL ES 3.00
