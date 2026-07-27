@@ -97,10 +97,21 @@ and reach a planet by travelling to it. 2.5 forbids twitch input, and that is a
 line a flight mode can cross without noticing, so here is where it sits:
 
 - Turning **MUST** be rate-commanded through at least two integrations, so no
-  single frame of input produces a visible jump. Measured: one frame of held
-  input turns under a third of a degree.
+  single frame of input produces a visible jump. Measured: one frame of full
+  stick deflection turns 0.013°, and an eighth of a second of it turns 0.42°.
+- A directional control **MUST** be proportional. A key that is off or fully on
+  cannot ask for two degrees a second, so it makes the operator fly in the only
+  increment it has. The stick is a rate-command device — deflection sets how
+  fast, not where — which is the same thing the model underneath already was.
 - Speed **MUST** be a small set of named notches, set and left. No continuous
   throttle, no held accelerate.
+- **No control may latch.** Every held input **MUST** release on pointerup, on
+  pointercancel, on the window losing focus, and on anything taking the screen.
+  This is a MUST because it has already failed twice: a turn key held when a
+  hostile hail covered it kept its rate and flew the vessel into a planet, and
+  the arrow keys shipped with no keyup listener in the file at all.
+- A control that overrides the operator **MUST** say so on the control itself,
+  not only in a log.
 - Velocity **MUST** lag attitude, and the lag **MUST** be shown, so the mass of
   the vessel is an instrument rather than a feel.
 - There **MUST** be a commanded approach that arrives safely without the

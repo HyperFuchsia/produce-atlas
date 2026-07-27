@@ -62,6 +62,7 @@ ticked once you have merged it.
 
 - [ ] H1 · Hazards live in the light-year frame and so do not exist inside a system. The conn crosses 6 AU of real space with nothing in it but worlds; debris, dust and wrecks belong in there too, at AU scale, and the survey should have to find them. · blocked-by: B2
 - [ ] H2 · A raider is drawn in the conn at its true bearing but its range is quoted in light years, because that is the frame it closes in. Inside a system that reads as a unit mismatch. Decide whether hostiles get in-system positions or whether the readout should say so plainly. · blocked-by:
+- [ ] H5 · The stick has two axes and the vessel has three. There is no roll, so the horizon cannot be banked and a turn is always flat — which is fine for a lighter and wrong for the feel. Decide whether roll is worth an axis, and if so what instrument reports it. · blocked-by:
 - [ ] H3 · There is no reason to fly manually. The governed approach is strictly better than hand-flying, so the manual controls are a trap with no upside. Give hand-flying something it can do that ALIGN cannot — a hazard to thread, a body ALIGN will not take you to, a reason to point somewhere other than at the target. · blocked-by: H1
 - [ ] H4 · Air is the only cost of flight. A drive that never breaks and never runs out of anything makes a fifty-second crossing free in every way that matters except the clock. · blocked-by: E3
 
@@ -92,6 +93,7 @@ ticked once you have merged it.
 - [x] Cultural contests — tally, hold, precedence, continuation
 - [x] Hostiles: four kinds, on the scope, with their own dialogue and demands
 - [x] The conn: first-person flight in a system, and planets reached by flying
+- [x] A proportional stick, and the whole plate as a drag surface
 
 ---
 

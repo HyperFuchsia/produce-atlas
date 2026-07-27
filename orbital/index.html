@@ -855,6 +855,40 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
    directly above, deliberately. */
 #ctl-conn{display:contents}
 #ctl-conn[hidden]{display:none}
+/* The conn deck: two columns of keys and the gate beside them, where a thumb
+   already is in portrait. The gate spans both rows so it is square-ish, because
+   a stick gate that is wider than it is tall lies about its own travel. */
+/* Rows are content-sized and the deck sits at the bottom. Measured: without
+   this the four conn keys and the gate divided the whole control area between
+   two rows and the gate came out 112 x 443 — a travel circle that tall lies
+   about every deflection in it, and the keys were 220 px of empty box each. The
+   chart deck never showed this because nine keys over three rows happened to
+   fill the area; four over two does not. */
+#ctl[data-mode="conn"]{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) 112px;
+  grid-auto-rows:min-content;
+  align-content:end;
+}
+#stick{
+  grid-column:3; grid-row:1/3;
+  align-self:end;
+  height:112px;                      /* square with its own column */
+  border:var(--hair) solid var(--frame);
+  display:flex; flex-direction:column; align-items:stretch; justify-content:flex-end;
+  gap:1px;
+  touch-action:none;                 /* it is a stick, not a scroll surface */
+  user-select:none; -webkit-user-select:none;
+  cursor:grab;
+}
+#stick[data-live="1"]{border-color:var(--grid); box-shadow:0 0 12px rgba(34,255,136,.45); cursor:grabbing}
+#stick canvas{display:block; flex:1 1 auto; width:100%; min-height:0}
+#stick .sub{
+  font-size:8px;color:var(--frame);letter-spacing:.06em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;
+  flex:none;
+}
+#stick[data-live="1"] .sub{color:var(--grid)}
+
 #ctl[data-mode="conn"] #k-go,
 #ctl[data-mode="conn"] #k-near,
 #ctl[data-mode="conn"] #k-scoop,
@@ -1037,6 +1071,10 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
     gap:6px;
   }
   .key{min-height:54px}
+  /* In the rail the gate gets a full-width row of its own, which is wider than
+     it is tall — so cap its height to keep the travel circle honest. */
+  #ctl[data-mode="conn"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #stick{grid-column:1/-1; grid-row:auto; height:132px}
   #oplog{
     display:block;
     grid-column:1/-1;
@@ -1353,14 +1391,16 @@ button{font:inherit;color:inherit;background:none;border:none;margin:0;padding:0
          grid: turn on the outside where a thumb falls, the two decisions
          (thrust and align) in the middle, and the way out top right. -->
     <div id="ctl-conn" hidden>
-      <button class="key" id="c-yl">&#9664; YAW</button>
       <button class="key" id="c-thr">THRUST<span class="sub" id="c-thr-lbl">STOP</span></button>
-      <button class="key" id="c-yr">YAW &#9654;</button>
       <button class="key" id="c-out">CHART<span class="sub">LEAVE CONN</span></button>
-      <button class="key" id="c-pd">&#9660; PITCH</button>
       <button class="key key--go" id="c-align">ALIGN<span class="sub" id="c-align-lbl">NO TARGET</span></button>
-      <button class="key" id="c-pu">&#9650; PITCH</button>
       <button class="key" id="c-slow">SLOW<span class="sub" id="c-slow-lbl">EASE OFF</span></button>
+      <!-- The stick. Four keys that were off or fully on became one gate that
+           is proportional, which is how a rate command is actually given. -->
+      <div id="stick" aria-label="flight stick">
+        <canvas id="stickcv"></canvas>
+        <span class="sub" id="stick-lbl">CENTRED</span>
+      </div>
     </div>
     <button class="key key--xeno" id="k-xeno">XENO CONTACT<span class="sub" id="xeno-lbl">OPEN CHANNEL</span></button>
   </section>
@@ -4017,6 +4057,8 @@ function connEnter(tgt){
   if(tgt){ conn.tgt=tgt; conn.align=true; conn.aligned=false; }
   if(plot.open) plotStow();
   sim.view='CONN';
+  connChrome();
+  stickCentre(); stickResize();
   /* Put the eye where the vessel is NOW. Waiting for the first connStep() would
      render one frame from the old orbiting chart camera, and one wrong frame on
      a phosphor tube is a visible jolt. */
@@ -4047,6 +4089,160 @@ function connChrome(){
   $('ctl-conn').hidden = !conn.on;
 }
 
+/* --- the stick ----------------------------------------------------------
+   Four keys that were either off or fully on are not how anybody flies. A
+   fighter stick is a RATE COMMAND device — deflection sets how fast the
+   airframe rotates, not where it points — and that is exactly what the model
+   underneath this already was, so the stick is the honest input for it and the
+   buttons were the approximation. Proportional deflection is the whole gain:
+   you can ask for two degrees a second instead of thirty-five.
+
+   It stays the right side of the charter's line on twitch input (2.5, 2.5a) for
+   the same reason the keys did, and the reason is structural rather than a
+   matter of taste: deflection sets the COMMANDED rate, the actual rate still
+   eases toward it over CONN_TURN_TAU, and attitude integrates that. Two
+   integrations between a thumb and the view means no input can produce a jump —
+   a stick slammed to the stop from centre still takes a third of a second to
+   reach rate. Measured below rather than asserted.
+
+   And it is centre-return, because a stick that stayed where you left it is a
+   trim wheel, and trim is a thing you set and forget, which is the opposite of
+   what this control is for. */
+
+/* Deadzone. A thumb resting on the gate is not a command. 0.12 of full travel
+   is about five pixels on a phone-sized gate, which is smaller than the
+   wobble of a thumb that thinks it is holding still. */
+const STICK_DEAD=0.12;
+/* How far a drag on the main view has to travel for full deflection. 92 px is
+   a comfortable thumb sweep on a 390-wide plate and leaves room to reach the
+   stop without lifting. */
+const STICK_REACH=92;
+/* And how far it may travel before it stops counting as a tap. Below this a
+   drag is a press, and a press on the view picks a body. */
+const STICK_TAP=7;
+
+const stick={
+  x:0, y:0,              // deflection, -1..1. +x starboard, +y nose up.
+  live:false, id:null,   // the pointer currently flying it
+  from:null,             // where a view drag started, if that is the input
+  moved:0,               // how far that drag has gone, for tap/drag
+  cv:null, cx:null, W:0, H:0, dpr:1
+};
+
+/* Response curve. Squared, signed: half deflection asks for a quarter rate, so
+   the middle of the gate is where the fine work happens and the stops are
+   where the authority is. Real sticks are shaped like this and the reason is
+   the same — most of the time you want a little. */
+function stickResp(v){
+  const a=Math.abs(v);
+  if(a<=STICK_DEAD) return 0;
+  const n=(a-STICK_DEAD)/(1-STICK_DEAD);
+  return Math.sign(v)*n*n;
+}
+
+/* Deflect. Anything past the rim is held at the rim — a gate is a circle and
+   the stop is the same in every direction, which is what makes a diagonal
+   command mean what it looks like. */
+function stickSet(x,y){
+  const m=Math.hypot(x,y);
+  if(m>1){ x/=m; y/=m; }
+  stick.x=x; stick.y=y;
+  if(conn.align && (Math.abs(stickResp(x))>0||Math.abs(stickResp(y))>0)){
+    conn.align=false; conn.aligned=false; logLine('ALIGN RELEASED');
+  }
+}
+
+function stickCentre(){
+  stick.x=0; stick.y=0; stick.live=false; stick.id=null; stick.from=null; stick.moved=0;
+}
+
+/* Size the backing store from the box CSS has already given the canvas, and
+   never write back to c.style. Writing the height back was a feedback loop: the
+   canvas took its height from the parent, setting it changed the parent's
+   content height, the observer fired again, and resizing a canvas CLEARS it —
+   so in portrait the gate was wiped every frame and measured zero lit pixels
+   forever. Landscape escaped it only because its height happens to be pinned in
+   the media query, which is exactly the kind of accident that makes a bug look
+   like it is about screen size. */
+function stickResize(){
+  const c=$('stickcv'); if(!c) return;
+  const r=c.getBoundingClientRect();
+  if(r.width<1||r.height<1) return;
+  stick.dpr=Math.min(devicePixelRatio||1,2);
+  stick.W=Math.max(1,Math.round(r.width));
+  stick.H=Math.max(1,Math.round(r.height));
+  const w=Math.round(stick.W*stick.dpr), h=Math.round(stick.H*stick.dpr);
+  if(c.width!==w||c.height!==h){ c.width=w; c.height=h; }
+  stick.cv=c; stick.cx=c.getContext('2d');
+}
+
+/* The gate, drawn. Everything on it reports something: where the stick is, how
+   far it can go, where the deadzone ends, and what rate the deflection is
+   actually asking the vessel for — which is the number the operator is
+   commanding and so the number that has to be legible. */
+function drawStick(){
+  const cx=stick.cx; if(!cx) return;
+  const W=stick.W, H=stick.H;
+  cx.setTransform(stick.dpr,0,0,stick.dpr,0,0);
+  cx.clearRect(0,0,W,H);
+  const ox=W/2, oy=H/2, R=Math.min(W,H)*0.42;
+
+  const line=(pts,col,w,g)=>{
+    cx.strokeStyle=col; cx.lineWidth=w;
+    if(g){ cx.shadowColor=col; cx.shadowBlur=g; }
+    cx.beginPath();
+    pts.forEach((p,i)=>i?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]));
+    cx.stroke(); cx.shadowBlur=0;
+  };
+  const arc=(r,col,w,g)=>{
+    cx.strokeStyle=col; cx.lineWidth=w;
+    if(g){ cx.shadowColor=col; cx.shadowBlur=g; }
+    cx.beginPath(); cx.arc(ox,oy,r,0,6.2832); cx.stroke(); cx.shadowBlur=0;
+  };
+
+  /* The boot: a square gate with cut corners, which is the shape of the plate
+     a stick comes through. */
+  const g=R*1.24;
+  line([[ox-g,oy-g*0.72],[ox-g*0.78,oy-g],[ox+g*0.78,oy-g],[ox+g,oy-g*0.72],
+        [ox+g,oy+g*0.72],[ox+g*0.78,oy+g],[ox-g*0.78,oy+g],[ox-g,oy+g*0.72],
+        [ox-g,oy-g*0.72]],'#12386E',1,0);
+
+  /* The travel limit, and the quarter detents inside it. A stick with no scale
+     on it cannot tell you how much you have asked for. */
+  arc(R,'rgba(61,139,255,0.55)',1.2,0);
+  for(const k of [0.25,0.5,0.75]) arc(R*k,'rgba(61,139,255,0.20)',1,0);
+  /* Where the deadzone ends — inside this the stick is centred and says so. */
+  arc(R*STICK_DEAD,'rgba(255,154,31,0.45)',1,0);
+  /* Cross hairs, broken at the middle so they never hide the boss. */
+  line([[ox-R,oy],[ox-R*0.30,oy]],'rgba(61,139,255,0.30)',1,0);
+  line([[ox+R*0.30,oy],[ox+R,oy]],'rgba(61,139,255,0.30)',1,0);
+  line([[ox,oy-R],[ox,oy-R*0.30]],'rgba(61,139,255,0.30)',1,0);
+  line([[ox,oy+R*0.30],[ox,oy+R]],'rgba(61,139,255,0.30)',1,0);
+
+  /* The boss. Screen y is inverted against the stick's own axis, because
+     pulling back on a stick raises the nose and back is down the screen. */
+  const bx=ox+stick.x*R, by=oy-stick.y*R;
+  const cy2=stickResp(stick.x), cp2=stickResp(stick.y);
+  const hot = (cy2||cp2) ? '#22FF88' : '#8CE6FF';
+  if(stick.x||stick.y) line([[ox,oy],[bx,by]],hot,1.2,4);
+  cx.strokeStyle=hot; cx.lineWidth=stick.live?2:1.5;
+  cx.shadowColor=hot; cx.shadowBlur=stick.live?9:5;
+  cx.beginPath(); cx.arc(bx,by,R*0.20,0,6.2832); cx.stroke();
+  cx.shadowBlur=0;
+  /* A tick through the boss so a centred stick is still visibly a stick and not
+     an empty ring. */
+  line([[bx-R*0.20,by],[bx+R*0.20,by]],hot,1,0);
+}
+
+/* What the gate is asking for, in the units the vessel turns in. */
+function stickLabel(){
+  const cy2=stickResp(stick.x)*CONN_TURN*DEG;
+  const cp2=stickResp(stick.y)*CONN_TURN*DEG;
+  if(!cy2 && !cp2) return 'CENTRED';
+  const f=(v,a,b)=>Math.abs(v)<0.5?'':(v>0?a:b)+Math.abs(v).toFixed(0).padStart(2,'0')+'°/S';
+  return [f(cy2,'STBD ','PORT '), f(cp2,'UP ','DN ')].filter(Boolean).join('  ');
+}
+
 /* --- the flight model --------------------------------------------------- */
 
 function connStep(dt){
@@ -4060,7 +4256,14 @@ function connStep(dt){
        itself into something while the operator read a demand for their fuel.
        The autopilot below is a machine and keeps holding its heading, which is
        the difference between a control and an instruction. */
-    if(conn.cy||conn.cp) connRelease();
+    if(stick.x||stick.y||conn.cy||conn.cp) connRelease();
+  }
+
+  /* The gate is the command. Read it every frame so the deflection the operator
+     is holding and the rate the vessel is turning at cannot come apart. */
+  if(!conn.align){
+    conn.cy=stickResp(stick.x);
+    conn.cp=stickResp(stick.y);
   }
 
   /* Turning onto the target, if that was asked for. The vessel does this at
@@ -4073,9 +4276,11 @@ function connStep(dt){
     let dy=wy-conn.yaw;
     while(dy> Math.PI) dy-=2*Math.PI;
     while(dy<-Math.PI) dy+=2*Math.PI;
+    /* wp is a look-down angle like conn.pitch, so the error has to be negated
+       to become a nose-up command. */
     const dp=wp-conn.pitch;
     conn.cy=clamp(dy*2.2,-1,1);
-    conn.cp=clamp(dp*2.2,-1,1);
+    conn.cp=clamp(-dp*2.2,-1,1);
     if(Math.abs(dy)<0.012 && Math.abs(dp)<0.012){
       conn.yaw=wy; conn.pitch=wp; conn.cy=conn.cp=0;
       conn.yr=conn.pr=0;
@@ -4094,7 +4299,14 @@ function connStep(dt){
   conn.yr += (conn.cy*CONN_TURN - conn.yr)*k;
   conn.pr += (conn.cp*CONN_TURN - conn.pr)*k;
   conn.yaw += conn.yr*dt;
-  conn.pitch = clamp(conn.pitch + conn.pr*dt, -CONN_PITCH_MAX, CONN_PITCH_MAX);
+  /* MINUS, and the sign is the whole point of this line. conn.pitch shares
+     cam.pitch's convention, in which positive is looking DOWN — that is what
+     toCam does and the nose formula agrees with it. conn.cp is the commanded
+     NOSE-UP rate, because that is what the control is labelled and what pulling
+     a stick back means. The two conventions are opposite, and they were being
+     added: measured, the key marked PITCH UP drove conn.pitch to +1.04 and put
+     the nose at y −0.862, which is pointing at the floor. */
+  conn.pitch = clamp(conn.pitch - conn.pr*dt, -CONN_PITCH_MAX, CONN_PITCH_MAX);
   if(conn.pitch<=-CONN_PITCH_MAX||conn.pitch>=CONN_PITCH_MAX) conn.pr=0;
 
   /* The approach governor. While ALIGN is holding — that is, while the operator
@@ -4258,21 +4470,20 @@ function connThr(n){
   refresh();
 }
 
-/* Drop every manual command and un-light every key that was being held. */
+/* Drop every manual command and centre the gate. */
 function connRelease(){
   conn.cy=0; conn.cp=0;
-  for(const id of ['c-yl','c-yr','c-pu','c-pd']){
-    const b=$(id); if(b) b.dataset.held='';
-  }
+  stickCentre();
+  const g=$('stick'); if(g) g.dataset.live='';
 }
 
-/* A manual input cancels the autopilot, because two things flying the vessel
-   at once is how an instrument starts lying. */
+/* Kept as the single entry point for a discrete steer — the keyboard uses it,
+   and it deflects the gate rather than bypassing it, so what the operator sees
+   on the plate is always what is actually commanding the vessel. */
 function connSteer(axis,dir){
   if(!conn.on) return;
-  if(conn.align && dir!==0){ conn.align=false; conn.aligned=false; logLine('ALIGN RELEASED'); }
-  if(axis==='y') conn.cy=dir;
-  else           conn.cp=dir;
+  if(axis==='y') stickSet(dir, stick.y);
+  else           stickSet(stick.x, dir);
 }
 
 function connAlign(){
@@ -5280,6 +5491,9 @@ function render(){
     drawAcquire();
   }
   drawFrame();
+  /* The gate lives outside the tube, on its own canvas, so it is painted here
+     rather than inside the plate's draw order. */
+  if(conn.on) drawStick();
   if(crt.on){ drawSparkle(); drawBloom(); }
   /* The plate is live while it is up: the differential drifts, hazards drift,
      and the corridor has to say so. */
@@ -8231,6 +8445,8 @@ function refresh(){
      under it does not tell you which notch you are in, and the notch is the
      only thing you have set. */
   if(conn.on){
+    const sl=$('stick-lbl');
+    if(sl) sl.textContent = conn.align ? 'AUTOPILOT' : stickLabel();
     $('c-thr-lbl').textContent = conn.gov!=null
       ? 'GOVERNED '+CONN_NOTCH_LBL[conn.thr] : CONN_NOTCH_LBL[conn.thr];
     $('c-thr').dataset.on = conn.thr>0 ? '1' : '';
@@ -8376,6 +8592,14 @@ cv=$('stage');
 cv.addEventListener('pointerdown',e=>{
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   cv.setPointerCapture(e.pointerId);
+  /* In the conn the plate itself is the stick. A drag anywhere on it deflects
+     from wherever the thumb went down, which is how you fly a touchscreen —
+     you should not have to find a control first. A press that does not travel
+     is still a tap, and a tap still picks a body. */
+  if(conn.on && pointers.size===1){
+    stick.from={x:e.clientX,y:e.clientY}; stick.moved=0;
+    stick.live=true; stick.id=e.pointerId;
+  }
   if(pointers.size===2){
     const [a,b]=[...pointers.values()];
     pinch0=Math.hypot(a.x-b.x,a.y-b.y); dist0=cam.dist;
@@ -8385,6 +8609,22 @@ cv.addEventListener('pointermove',e=>{
   const prev=pointers.get(e.pointerId); if(!prev) return;
   const dx=e.clientX-prev.x, dy=e.clientY-prev.y;
   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(conn.on){
+    if(stick.from && e.pointerId===stick.id){
+      e.preventDefault();
+      stick.moved=Math.max(stick.moved, Math.hypot(e.clientX-stick.from.x, e.clientY-stick.from.y));
+      if(stick.moved>=STICK_TAP){
+        $('stick').dataset.live='1';
+        stickSet((e.clientX-stick.from.x)/STICK_REACH,
+                -(e.clientY-stick.from.y)/STICK_REACH);
+      }
+    }
+    /* And the chart's orbit gesture does NOT run in here. The conn owns the
+       camera; a drag that also spun cam.yaw would be a second hand on the
+       controls, and it left the CAM readout claiming manual control of a
+       camera it no longer had. */
+    return;
+  }
   if(pointers.size===1){
     cam.mode=1;                                   // taking manual control
     $('btn-cam').textContent=CAM_MODES[1];
@@ -8396,7 +8636,17 @@ cv.addEventListener('pointermove',e=>{
     cam.dist=clamp(dist0*pinch0/Math.max(d,1),4,90);
   }
 });
-const dropPointer=e=>{ pointers.delete(e.pointerId); if(pointers.size<2) pinch0=0; };
+const dropPointer=e=>{
+  pointers.delete(e.pointerId);
+  if(pointers.size<2) pinch0=0;
+  if(conn.on && stick.id===e.pointerId){
+    /* Remember whether this was a drag, so the click that follows knows not to
+       treat the end of a turn as a request to fly somewhere else. */
+    stick.wasDrag = stick.moved>=STICK_TAP;
+    stickCentre();
+    const g=$('stick'); if(g) g.dataset.live='';
+  }
+};
 cv.addEventListener('pointerup',dropPointer);
 cv.addEventListener('pointercancel',dropPointer);
 cv.addEventListener('wheel',e=>{
@@ -8412,7 +8662,11 @@ cv.addEventListener('click',e=>{
   const mx=e.clientX-r.left, my=e.clientY-r.top;
   /* In the near field a tap picks a body to approach; on the chart it picks a
      star to plot to. Same gesture, two instruments. */
-  if(conn.on){ if(connPick(mx,my)) refresh(); return; }
+  if(conn.on){
+    if(stick.wasDrag){ stick.wasDrag=false; return; }
+    if(connPick(mx,my)) refresh();
+    return;
+  }
   if(sim.view==='LOCAL'){ if(localPick(mx,my)) refresh(); return; }
   let best=null;
   STARS.forEach((st,i)=>{
@@ -8439,7 +8693,18 @@ addEventListener('keydown',e=>{
     if(b) b.click();
     return;
   }
-  if(e.code==='KeyV'){ e.preventDefault(); setView(sim.view==='LOCAL'?'CHART':'LOCAL'); return; }
+  /* Arrows fly it on a desktop. Full deflection while held, released on keyup,
+     and they go through the gate so the plate shows the command. */
+  if(conn.on && /^Arrow(Left|Right|Up|Down)$/.test(e.code)){
+    e.preventDefault();
+    if(e.code==='ArrowLeft')  stickSet(-1, stick.y);
+    if(e.code==='ArrowRight') stickSet( 1, stick.y);
+    if(e.code==='ArrowUp')    stickSet(stick.x,  1);
+    if(e.code==='ArrowDown')  stickSet(stick.x, -1);
+    $('stick').dataset.live='1';
+    return;
+  }
+  if(e.code==='KeyV'){ e.preventDefault(); setView(sim.view==='CHART'?'LOCAL':sim.view==='LOCAL'?'CONN':'CHART'); return; }
   if(e.code==='Enter'||e.code==='KeyG'){ e.preventDefault(); engage(); return; }
   if(e.code==='ArrowLeft'||e.code==='KeyA'){ e.preventDefault(); stepTarget(-1); }
   if(e.code==='ArrowRight'||e.code==='KeyD'){ e.preventDefault(); stepTarget(1); }
@@ -8530,22 +8795,41 @@ $('btn-view').addEventListener('click',()=>{
 });
 
 /* --- the conn deck ------------------------------------------------------ */
-/* A turn key latches its rate while held and releases on the way up, on every
-   path out — pointerup, cancel and leave — because a rate that stuck on
-   because a thumb slid off the key would fly the vessel into a planet. */
-[['c-yl','y',-1],['c-yr','y',1],['c-pu','p',1],['c-pd','p',-1]].forEach(([id,ax,dir])=>{
-  const b=$(id);
-  const down=e=>{
-    e.preventDefault();
-    try{ b.setPointerCapture(e.pointerId); }catch(_){}
-    b.dataset.held='1'; connSteer(ax,dir); sndKey();
+/* The gate. Deflection is where the thumb is relative to the centre of the
+   travel circle, so putting a thumb down at the rim is an immediate full
+   command — which is right, it is a stick, and the rate still has to build.
+
+   It releases on pointerup, pointercancel AND pointerleave. All three, because
+   the failure mode is not hypothetical: a rate left latched because a thumb
+   slid off the control flies the vessel into a planet, and that is exactly the
+   bug the turn keys had when a hostile hail covered them. */
+(()=>{
+  const g=$('stick'); if(!g) return;
+  const deflect=e=>{
+    const r=g.getBoundingClientRect();
+    const R=Math.min(r.width, r.height-13)*0.42;
+    stickSet((e.clientX-(r.left+r.width/2))/R,
+             -(e.clientY-(r.top+(r.height-13)/2))/R);
   };
-  const up=()=>{ b.dataset.held=''; connSteer(ax,0); };
-  b.addEventListener('pointerdown',down);
-  b.addEventListener('pointerup',up);
-  b.addEventListener('pointercancel',up);
-  b.addEventListener('pointerleave',up);
-});
+  g.addEventListener('pointerdown',e=>{
+    if(!conn.on) return;
+    e.preventDefault();
+    try{ g.setPointerCapture(e.pointerId); }catch(_){}
+    stick.live=true; stick.id=e.pointerId; g.dataset.live='1';
+    deflect(e); sndKey();
+  });
+  g.addEventListener('pointermove',e=>{
+    if(!stick.live || e.pointerId!==stick.id) return;
+    e.preventDefault(); deflect(e);
+  });
+  const up=e=>{
+    if(stick.id!=null && e.pointerId!==stick.id) return;
+    stickCentre(); g.dataset.live='';
+  };
+  g.addEventListener('pointerup',up);
+  g.addEventListener('pointercancel',up);
+  g.addEventListener('pointerleave',up);
+})();
 $('c-thr').addEventListener('click',()=>connThr(1));
 $('c-slow').addEventListener('click',()=>connThr(-1));
 $('c-align').addEventListener('click',connAlign);
@@ -8914,7 +9198,20 @@ addEventListener('pointerdown',()=>{
   }
 },{capture:true});
 $('view').classList.add('crt-on');
+/* Arrows have to let go. There was no keyup listener in this file at all, which
+   was fine while every key was a discrete press; a held arrow that deflects the
+   gate and never releases it would fly the vessel into something. */
+addEventListener('keyup',e=>{
+  if(!conn.on) return;
+  if(e.code==='ArrowLeft'||e.code==='ArrowRight') stickSet(0, stick.y);
+  if(e.code==='ArrowUp'||e.code==='ArrowDown')    stickSet(stick.x, 0);
+  if(!stick.x && !stick.y){ const g=$('stick'); if(g) g.dataset.live=''; }
+});
+/* The window losing focus mid-turn is the same failure as a thumb sliding off. */
+addEventListener('blur',()=>{ if(conn.on) connRelease(); });
+
 new ResizeObserver(resize).observe($('stage'));
+new ResizeObserver(stickResize).observe($('stickcv'));
 new ResizeObserver(()=>{ if(comms.open) commsResize(); }).observe($('face-wrap'));
 buildGlyphRanks();
 newFlight();
