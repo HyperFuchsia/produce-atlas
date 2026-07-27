@@ -2466,8 +2466,29 @@ function plotArrive(j){
    anything there.
    ========================================================================== */
 
+/* Five kinds, five hues, five silhouettes. Both of the last two matter.
+
+   The hue that changed is the giant's. It was #FFD23D, which is --ship — the
+   colour this console uses for the operator's own vessel and its trajectory,
+   everywhere. A gas giant painted in the vehicle's colour is not a near miss,
+   it is the same mark meaning two things, and clause 2.2 asks colour to be
+   semantic AND consistent. Violet is the only hue on the plate not already
+   spoken for: blue is chassis, cyan label, green graticule and nominal, amber
+   the vessel, orange caution, red alarm, magenta contact.
+
+   The rest keep their hues because their hues were already right: an ice body is
+   cold and cyan, an iron world is thermal and orange, a rocky world is the same
+   yellow-green the console draws coastlines in, and an anomaly is somebody
+   else's vessel, which is what magenta has always meant here.
+
+   And every kind gets its own OUTLINE, because five hues on a phosphor tube is
+   four too many to rely on: violet and magenta collapse toward each other for a
+   deuteranope, and the whole tube collapses on a bad monitor. An oblate banded
+   disc, a capped disc, a hexagon and a lumpy disc are all still four different
+   things in one colour, so the shape is the identification and the hue is the
+   speed. Roadmap F3 asks for exactly this and this is a down payment on it. */
 const BODY={
-  gas:  {label:'GAS GIANT',   yield:'fuel', col:'#FFD23D', unit:'LY RANGE'},
+  gas:  {label:'GAS GIANT',   yield:'fuel', col:'#A06CFF', unit:'LY RANGE'},
   ice:  {label:'ICE BODY',    yield:'air',  col:'#8CE6FF', unit:'% ATMOS'},
   iron: {label:'IRON WORLD',  yield:'hull', col:'#FF9A1F', unit:'% HULL'},
   rock: {label:'ROCKY WORLD', yield:'hull', col:'#D8FF3C', unit:'% HULL'},
@@ -2528,6 +2549,10 @@ function makeBody(st,r,kind,idx,slot){
     rate:(0.0045+r()*0.0075)/Math.sqrt(orbit),
     rad:kind==='gas'?0.62+r()*0.30:kind==='anom'?0.24:0.28+r()*0.20,
     tilt:(r()-0.5)*0.5,
+    /* Some giants are ringed. Drawn from the generator so it is deterministic
+       per star name like everything else in here, and only ever true for a
+       giant — a rocky world with a ring would be inventing astronomy. */
+    ring: kind==='gas' && r()<0.55,
     rich,
     /* The floor is where the approach starts costing hull. It is a property
        of the body and the console can only estimate it. */
@@ -3552,14 +3577,19 @@ function drawLocal(){
   /* The primary. Drawn as a real sphere of latitude and longitude, because
      at this scale it is a body rather than a point. */
   const col=st.col;
+  /* Segment count from apparent size, for the same reason the bodies have it:
+     inside the system the primary is the largest thing on the plate and a
+     twenty-four-gon sun is a twenty-four-gon. */
+  const sq0=project([0,0,0]);
+  const sseg=sq0 ? Math.max(24, Math.min(96, Math.round(sq0.s*0.9))) : 24;
   for(let i=1;i<6;i++){
     const v=i/6, y=Math.cos(v*Math.PI)*0.95, rr=Math.sin(v*Math.PI)*0.95;
     const pts=[];
-    for(let j=0;j<=24;j++){
-      const a=j/24*6.2832;
+    for(let j=0;j<=sseg;j++){
+      const a=j/sseg*6.2832;
       pts.push(project([Math.cos(a)*rr, y, Math.sin(a)*rr]));
     }
-    strokePolyline(pts,col,1,5,true);
+    strokePolyline(pts,col,1.4,6,true);
   }
   for(let j=0;j<8;j++){
     const a=j/8*6.2832, pts=[];
@@ -3585,22 +3615,8 @@ function drawLocal(){
     const p=bodyPos(b), q=project(p);
     if(!q) continue;
     const rr=Math.max(3, b.rad*q.s);
-    const pts=[];
-    for(let i=0;i<=20;i++){
-      const a=i/20*6.2832;
-      pts.push({x:q.x+Math.cos(a)*rr, y:q.y+Math.sin(a)*rr});
-    }
     const live = !b.taken;
-    strokePolyline(pts, live?B.col:'rgba(61,139,255,0.35)', live?1.3:1, live?6:0, true);
-    if(b.k==='gas'){                                    // banding, so a giant reads as one
-      for(const f of [-0.45,0,0.45]) strokePolyline(
-        [{x:q.x-rr*Math.cos(Math.asin(f)),y:q.y+rr*f},
-         {x:q.x+rr*Math.cos(Math.asin(f)),y:q.y+rr*f}], B.col,1,0);
-    }
-    if(b.k==='anom'){                                   // an anomaly does not resolve
-      const k=0.5+0.5*Math.sin(sim.t*4.1);
-      drawCross(q.x,q.y,rr*2.4*(0.8+k*0.4),B.col);
-    }
+    drawWorld(b,q,rr,live);
     const sel = approach.open && approach.body===b;
     if(sel) drawCross(q.x,q.y,rr+11,'#EAFBFF');
     claimLabel(b.id+(b.taken?' · WORKED':' · '+B.label), q.x+rr+6, q.y, live?B.col:'#12386E', sel);
@@ -3628,6 +3644,155 @@ function drawLocal(){
   }
 
   drawShipLocal();
+}
+
+/* --- the worlds, drawn as what they are ---------------------------------
+   A circle with a different colour is not identification, it is a legend you
+   have to remember. So each kind is a different SHAPE, built out of the thing
+   that actually distinguishes it:
+
+     GAS GIANT   oblate, banded, sometimes ringed. Real giants are visibly
+                 flattened — Saturn by a tenth — and the flattening is the one
+                 property you can see from outside at any range.
+     ICE BODY    round, bright-limbed, polar caps. High albedo is why the edge
+                 is the brightest part of it.
+     IRON WORLD  faceted. A hexagon rather than a circle, because dense metal
+                 reads as cut rather than grown, and because a hexagon is
+                 unmistakable at four pixels across.
+     ROCKY WORLD lumpy, cratered. Its outline is not a circle and that is the
+                 whole point: it is too small to have pulled itself round.
+     ANOMALY     does not resolve. No disc at all — a pulsing cross and the
+                 derelict bitmap, which is all the sensor actually returns.
+
+   The segment count scales with apparent size. At twenty segments a giant
+   filling the viewport in the conn was a visible icosagon; a body four pixels
+   across does not need ninety-six. */
+
+/* A stable 0..1 per body per index. Derived from the body's own id rather than
+   stored on it, so a rocky world has the same lumps every frame and on every
+   visit WITHOUT adding a draw from buildSystem's generator — which would have
+   shifted the sequence and silently rearranged every system in the catalogue. */
+function bodyWobble(b,i){
+  return (hashName(b.id+':'+i)%1024)/1024;
+}
+
+function drawWorld(b,q,rr,live){
+  const B=BODY[b.k];
+  const col = live ? B.col : 'rgba(61,139,255,0.42)';
+  const wide = live ? 1.6 : 1;
+  const glow = live ? 7 : 0;
+  const seg  = Math.max(20, Math.min(96, Math.round(rr*1.2)));
+
+  /* An anomaly is the absence of a body, so it does not get one. */
+  if(b.k==='anom'){
+    const k=0.5+0.5*Math.sin(sim.t*4.1);
+    drawCross(q.x,q.y,rr*2.4*(0.8+k*0.4),col);
+    return;
+  }
+
+  const ell=(rx,ry,n)=>{
+    const o=[];
+    for(let i=0;i<=n;i++){ const a=i/n*6.2832; o.push({x:q.x+Math.cos(a)*rx, y:q.y+Math.sin(a)*ry}); }
+    return o;
+  };
+  /* The limb, doubled. Two strokes a hair apart read as a thick bright edge on
+     a phosphor tube, where one thick stroke just reads as a thick stroke. This
+     is the "more definitive outline": the body has an edge you can see against
+     a starfield rather than a hairline that disappears into it. */
+  const limb=(rx,ry,n)=>{
+    strokePolyline(ell(rx,ry,n), col, wide, glow, true);
+    if(rr>7) strokePolyline(ell(rx*0.93,ry*0.93,n), col, live?1:0.8, 0, true);
+  };
+
+  if(b.k==='gas'){
+    /* Oblate. 0.90 is Saturn's flattening rounded off; it is the same for every
+       giant because the console has no figure data for these, only a radius. */
+    const ry=rr*0.90;
+    limb(rr,ry,seg);
+    /* Banding, as straight chords. A chord is what a circle of latitude
+       actually projects to on a sphere seen equator-on, and the console has no
+       axial tilt to draw anything more confident than that. Brighter toward the
+       equator, which is where the bands are. */
+    for(const f of [-0.62,-0.32,0,0.32,0.62]){
+      const w=rr*Math.sqrt(1-f*f);
+      strokePolyline([{x:q.x-w,y:q.y+ry*f},{x:q.x+w,y:q.y+ry*f}],
+                     col, 1, 0);
+    }
+    /* And a ring on some of them, lying in the orbital plane — which is a first
+       approximation the solar system mostly agrees with, and the only plane
+       this console knows about for a body. b.tilt is that inclination, so the
+       ring's openness is real data rather than a look. */
+    if(b.ring && rr>6){
+      const rx=rr*1.95, ry2=rx*(0.16+Math.abs(b.tilt));
+      strokePolyline(ell(rx,ry2,Math.max(28,seg)), col, live?1.2:0.8, live?4:0, true);
+      strokePolyline(ell(rx*0.74,ry2*0.74,Math.max(28,seg)), col, live?1:0.8, 0, true);
+    }
+    return;
+  }
+
+  if(b.k==='ice'){
+    limb(rr,rr,seg);
+    /* Polar caps, as ARCS of the limb rather than chords across the disc. They
+       were chords, and a chord across a circle is the same mark a giant's
+       banding uses — so at twenty pixels an ice body and an unringed giant were
+       both "a disc with lines across it" and the shape stopped identifying
+       anything. An arc at the pole cannot be confused with a band, and it is
+       also the truer picture: what a survey array returns off an ice cap is a
+       bright limb at the pole, not a line across the middle. */
+    ctx.strokeStyle=col; ctx.lineWidth=live?2.2:1.2;
+    ctx.shadowColor=col; ctx.shadowBlur=live?7:0;
+    for(const c of [-1,1]){
+      ctx.beginPath();
+      const mid=c<0 ? -Math.PI/2 : Math.PI/2;
+      ctx.arc(q.x,q.y,rr*0.97, mid-0.62, mid+0.62);
+      ctx.stroke();
+    }
+    ctx.shadowBlur=0;
+    return;
+  }
+
+  if(b.k==='iron'){
+    /* Six facets. Rotated so a flat sits at the bottom rather than a point,
+       which is what makes it read as cut metal and not as a badly drawn ball. */
+    const hexs=(k)=>{
+      const o=[];
+      for(let i=0;i<=6;i++){ const a=i/6*6.2832+Math.PI/6; o.push({x:q.x+Math.cos(a)*rr*k, y:q.y+Math.sin(a)*rr*k}); }
+      return o;
+    };
+    strokePolyline(hexs(1), col, wide, glow, true);
+    if(rr>7) strokePolyline(hexs(0.86), col, live?1:0.8, 0, true);
+    /* Two cleavage planes across the facets. Dense metal fractures on planes
+       and this is what a wireframe of that looks like. */
+    if(rr>6) for(const k of [-0.34,0.34])
+      strokePolyline([{x:q.x-rr*0.80,y:q.y+rr*k},{x:q.x+rr*0.80,y:q.y+rr*k}], col, 1, 0);
+    return;
+  }
+
+  /* Rock. Not round — a body this size never pulled itself round, and the
+     irregular outline is the readout for that. Fourteen vertices so the lumps
+     survive being small, perturbed by a hash of the body's own name so the
+     same world is the same shape forever. */
+  const n=14, o=[];
+  for(let i=0;i<=n;i++){
+    const a=i/n*6.2832;
+    const k=0.86+0.26*bodyWobble(b, i%n);
+    o.push({x:q.x+Math.cos(a)*rr*k, y:q.y+Math.sin(a)*rr*k});
+  }
+  strokePolyline(o, col, wide, glow, true);
+  /* Craters. Two of them, placed and sized off the same hash, because a rocky
+     world that has been hit is the normal case and the impacts are the surface
+     detail an array would return. */
+  if(rr>8){
+    for(let c=0;c<2;c++){
+      const a=bodyWobble(b,40+c)*6.2832;
+      const d=rr*(0.18+0.34*bodyWobble(b,50+c));
+      const cr=rr*(0.14+0.16*bodyWobble(b,60+c));
+      const cx0=q.x+Math.cos(a)*d, cy0=q.y+Math.sin(a)*d;
+      const ring=[];
+      for(let i=0;i<=14;i++){ const t=i/14*6.2832; ring.push({x:cx0+Math.cos(t)*cr, y:cy0+Math.sin(t)*cr}); }
+      strokePolyline(ring, col, 1, 0, true);
+    }
+  }
 }
 
 /* The vehicle, parked. It is drawn small and off the plane because that is
@@ -5077,6 +5242,18 @@ function render(){
     const a2=pt.getBoundingClientRect(), b2=cv.getBoundingClientRect();
     labelRects.push({l:a2.left-b2.left-6, t:a2.top-b2.top-4,
                      r:a2.right-b2.left+6, b:a2.bottom-b2.top+4});
+  }
+  /* The conn's two written warnings are claimed before anything else gets to
+     write, for the same reason the tool strip is: they are drawn last, so
+     without this a body's name lands in the band first and the message telling
+     the operator they are about to hit something gets a planet label through
+     the middle of it. Measured on a crowded frame — "WRECK IN 10.8 S" came out
+     with "SOL-5 · GAS GIANT" written across it. The two bands are narrow and
+     they sit either side of the boresight, which is where the eye already is. */
+  if(conn.on && !sim.jumping){
+    const m=Math.min(W,H), R=clamp(m*0.055,16,34);
+    labelRects.push({l:CX-m*0.19, t:CY-R-32, r:CX+m*0.19, b:CY-R-8});
+    labelRects.push({l:CX-m*0.19, t:CY+m*0.10-11, r:CX+m*0.19, b:CY+m*0.10+11});
   }
   drawStars();
   if(sim.jumping){
