@@ -1,0 +1,138 @@
+# NOGGIN — Zero-G Stretch Lab
+
+A 3-D floating head you can grab and pull like the *Super Mario 64* title screen,
+built as a real game: pull the face through floating rings against the clock.
+
+Written from scratch in WebGL2 with **no dependencies and no build step**. Open
+`index.html` and it runs.
+
+```
+open noggin/index.html
+# or, if your browser is strict about local files:
+npx http-server noggin -p 8099    # then visit http://127.0.0.1:8099
+```
+
+Requires a browser with WebGL2 (Chrome/Edge/Firefox/Safari 15+).
+
+## Modes
+
+- **Sandbox** — just the head. Pull it around, flick it, let it wobble.
+- **Challenge** — 60 seconds. Rings spawn out of reach of the resting head, so the
+  only way to reach one is to grab the face and stretch a piece of it through the
+  aperture. Consecutive pops build a combo multiplier; smaller and further rings
+  are worth more. Best score is saved to `localStorage`.
+
+## Controls
+
+| Action | Input |
+| --- | --- |
+| Stretch the face | drag on the head |
+| Orbit | drag empty space, or right-drag |
+| Zoom | wheel / pinch |
+| Grab radius | `[` `]` or shift+wheel |
+| Snap back | `space` / `R` |
+| Quality preset | `1` `2` `3` |
+| Output mode / HUD / floor | `K` / `H` / `G` |
+| Fullscreen / mute | `F` / `M` |
+| Start challenge / back to sandbox | `enter` / `esc` |
+
+Touch works too: one finger stretches, two fingers orbit and pinch-zoom.
+
+## How the stretching works
+
+The head is simulated in local space as a **displacement field over the mesh
+vertices**. Each vertex is pulled toward its rest position by a spring, while a
+Laplacian coupling term diffuses displacement across the one-ring neighbourhood:
+
+```
+d_i    = p_i - rest_i
+lap_i  = mean(d_j for j in neighbours(i)) - d_i
+a_i    = -k * d_i + c * lap_i
+```
+
+The coupling term is what makes a single pulled point drag a smooth rubbery tube
+of surface with it, and what makes the release wobble travel across the face
+instead of snapping back vertex-by-vertex. Stiffness and damping are tuned to a
+damping ratio near 0.2 — enough overshoot to read as rubber, few enough cycles
+that the face is home in about a second.
+
+Grabbing floods **geodesic** distance outward from the picked vertex (Dijkstra
+over rest edge lengths) rather than euclidean distance, so pulling the nose tip
+doesn't drag the lip that happens to sit nearby in space. Vertices inside the
+radius become kinematic with a smoothstep falloff, and their induced motion is
+blended into their velocity, so releasing a fast drag flicks the surface.
+
+Two constraints keep it from breaking: a soft displacement ceiling with an
+elastic knee, and a keep-out sphere at the core so a hard inward push cannot
+fold the face through the back of the skull.
+
+The eyes, ears, brows and hair curl are **not** part of the simulated topology.
+They are skinned to the head's displacement field through precomputed
+nearest-vertex weights, so they ride along with whatever the face does. Because
+that skinning only translates them, their normals are computed once at build
+time and never recomputed — which is also why per-frame normal work covers only
+the head's triangles.
+
+The head itself is procedural: an icosphere displaced by a set of anisotropic
+gaussian features (nose, brow ridge, cheeks, chin, eye sockets, lips, jaw taper),
+with the facial detail that geometry reads too softly — lips, nose tip, ear
+cartilage, cheek flush — carried in vertex colour.
+
+## How the 4K / 120 fps side works
+
+The scene renders into an HDR (`RGBA16F`) offscreen target whose size is
+**decoupled from the canvas backing store**. That separation is the whole trick:
+the canvas can be a true 3840×2160 while the internal target scales down to hold
+the frame budget, and the composite pass upscales on the way out.
+
+- **Output modes** (`K`): `AUTO` (capped device pixel ratio), `4K` (forces a
+  3840×2160 backing store regardless of window size), `NATIVE` (raw DPR).
+- **Adaptive resolution** targets a configurable frame budget — 60/120/144/165/240.
+  It measures real GPU time via `EXT_disjoint_timer_query_webgl2` where available
+  and falls back to CPU frame time. Changes are quantised and gated behind a
+  20-frame hold so the render targets aren't reallocated on every wobble.
+- **Physics is decoupled from rendering** at a fixed 240 Hz. At 120 fps that lands
+  on exactly two substeps per frame. On a machine that can't hold the target the
+  step widens rather than dropping simulated time, so the rubber keeps behaving in
+  real time instead of going slow-motion.
+- Streaming vertex data alternates between two buffers, so a per-frame write never
+  lands on the buffer the GPU is still reading.
+
+The HUD reports all of it live: fps, CPU frame time, GPU time, soft-body time,
+backing store, render target, scale, megapixels shaded, and GPU headroom.
+
+Pipeline per frame: shadow depth → HDR scene (optionally 4× MSAA, resolved) →
+bloom prefilter and separable blur at half res → ACES tonemap, vignette,
+chromatic aberration and dither to the default framebuffer.
+
+## Verified behaviour
+
+Checked in headless Chromium (the numbers below come from a software rasterizer,
+so treat the timings as an upper bound, not a benchmark):
+
+- 4K path allocates 3840×2160 with a complete framebuffer, renders a full frame
+  with zero GL errors, and reads back as a real shaded image.
+- Adaptive controller drops 3840 → 2304 px wide under simulated overload and
+  recovers to 3840 when the load clears.
+- Release settles from a 1.66-unit pull to 0.03 within 1.5 s of simulated time,
+  with a single strong overshoot.
+- Rings spawn, score, build combos, expire, and end the round; best score
+  persists.
+- All three quality presets rebuild the mesh and GPU resources cleanly.
+
+## Files
+
+```
+index.html        markup, HUD, styling
+src/math.js       vec3 / mat4 / PRNG
+src/geometry.js   icosphere, adjacency, head sculpt, character build, skin binding
+src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
+src/shaders.js    all GLSL ES 3.00
+src/renderer.js   WebGL2 pipeline, render targets, GPU timing
+src/audio.js      procedural SFX (no audio assets)
+src/game.js       rings, scoring, particles, screen shake
+src/main.js       camera, input, frame pacing, adaptive resolution, HUD
+```
+
+Sound is synthesised at runtime — the stretch voice tracks how far you're
+pulling, and the release boing's pitch sweep and wobble scale with it.
