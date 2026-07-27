@@ -1,0 +1,3631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1">
+<meta name="theme-color" content="#000000">
+<meta name="color-scheme" content="dark">
+<title>LIGHTER MC-44 / OPERATOR CONSOLE</title>
+<style>
+/* The document is a bezel around one canvas. Nothing here may introduce a fill,
+   a radius or a shadow: every mark the operator sees is stroked by the beam. */
+*{margin:0;padding:0;box-sizing:border-box;border-radius:0!important}
+html,body{
+  height:100%;width:100%;background:#000;overflow:hidden;
+  overscroll-behavior:none;touch-action:none;
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-touch-callout:none;
+}
+canvas{display:block;position:fixed;left:0;top:0;width:100%;height:100%;background:#000}
+</style>
+</head>
+<body>
+<canvas id="scr"></canvas>
+<script>
+"use strict";
+/* ==========================================================================
+   LIGHTER MC-44 "CASSANDRA" — OPERATOR CONSOLE
+   One file. No libraries, no assets, no network, no build.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- numbers */
+
+/* xorshift32. The console prints its seed, so anything derived from it can be
+   reproduced by the operator on paper if they are stubborn enough. */
+function rng(seed){
+  let s = seed>>>0 || 0x9e3779b9;
+  return function(){
+    s ^= s<<13; s>>>=0;
+    s ^= s>>>17;
+    s ^= s<<5;  s>>>=0;
+    return s/4294967296;
+  };
+}
+function hashStr(str){
+  let h = 0x811c9dc5;
+  for(let i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h,0x01000193)>>>0; }
+  return h>>>0;
+}
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const lerp=(a,b,t)=>a+(b-a)*t;
+const TAU=Math.PI*2, D2R=Math.PI/180, R2D=180/Math.PI;
+const fmt=(v,d)=>{ const s=(v<0?'-':''), a=Math.abs(v); return s+a.toFixed(d); };
+/* Tabular figures: pad to a fixed column so digits never dance between frames. */
+function pad(v,w,d){ let s=(d===undefined)?String(v):fmt(v,d); while(s.length<w) s=' '+s; return s; }
+function pad0(v,w){ let s=String(Math.floor(v)); while(s.length<w) s='0'+s; return s; }
+
+function v3(x,y,z){ return {x:x,y:y,z:z}; }
+function vsub(a,b){ return {x:a.x-b.x,y:a.y-b.y,z:a.z-b.z}; }
+function vadd(a,b){ return {x:a.x+b.x,y:a.y+b.y,z:a.z+b.z}; }
+function vmul(a,s){ return {x:a.x*s,y:a.y*s,z:a.z*s}; }
+function vdot(a,b){ return a.x*b.x+a.y*b.y+a.z*b.z; }
+function vlen(a){ return Math.sqrt(a.x*a.x+a.y*a.y+a.z*a.z); }
+function vdist(a,b){ const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z; return Math.sqrt(dx*dx+dy*dy+dz*dz); }
+function vnorm(a){ const l=vlen(a)||1; return {x:a.x/l,y:a.y/l,z:a.z/l}; }
+
+/* Bearing/elevation are what the operator actually types, so the conversion
+   between them and a unit vector is the single most load-bearing function in
+   the vehicle. Bearing is measured in the equatorial plane from +X toward +Z;
+   elevation is above that plane toward +Y. */
+function beToVec(bearingDeg, elevDeg){
+  const b=bearingDeg*D2R, e=elevDeg*D2R, ce=Math.cos(e);
+  return {x:ce*Math.cos(b), y:Math.sin(e), z:ce*Math.sin(b)};
+}
+function vecToBE(v){
+  const r=vlen(v)||1e-9;
+  let b=Math.atan2(v.z,v.x)*R2D; if(b<0) b+=360;
+  return {bearing:b, elev:Math.asin(clamp(v.y/r,-1,1))*R2D, range:r};
+}
+
+/* ------------------------------------------------------------- the palette */
+
+/* Colour is a channel, not a taste. Nothing is coloured for looks; if a mark
+   changes colour the operator must be able to say what changed. */
+const C = {
+  CHASSIS:'#3f7bff',   /* structure, frames, graticules — the vehicle itself   */
+  NOMINAL:'#2bff6a',   /* within limits                                        */
+  CAUTION:'#ffb01f',   /* out of limits, recoverable                           */
+  ALARM  :'#ff2f28',   /* out of limits, not recoverable by waiting            */
+  CONTACT:'#ff3fc8',   /* something else that moves                            */
+  LABEL  :'#35dcff',   /* a name for a thing, never a value                    */
+  READOUT:'#e6f2ff'    /* a value                                              */
+};
+/* Elevation is brightness. There is no depth here, only how hard the beam is
+   driven, so these are the only three "layers" the console has. */
+const B = { DIM:0.30, MID:0.62, HI:1.0 };
+
+/* ------------------------------------------------------------ vector font */
+
+/* A 5x7 stroke font on an integer lattice: x in 0..4, y in 0..6 with y down.
+   Each glyph is a run of "xy" digit pairs, polylines separated by "/". This is
+   the same machinery the alien scripts use, which is why they can share a line
+   of text with roman glyphs without either looking pasted in. */
+const FONT_SRC = {
+  ' ':'',
+  'A':'062046/1434','B':'0006/003041423303/033344453606','C':'4130100105163645',
+  'D':'0006/003041453606','E':'40000646/0333','F':'400006/0333',
+  'G':'41301001051636454323','H':'0006/4046/0343','I':'1030/2026/1636',
+  'J':'1030/2025/20251605','K':'0006/400346','L':'000646','M':'0600234046',
+  'N':'06004640','O':'103041453616050110','P':'0006/003041423303',
+  'Q':'103041453616050110/2446','R':'0006/003041423303/2346',
+  'S':'413010010213334445361605','T':'0040/2026','U':'000516364540',
+  'V':'002640','W':'0016223640','X':'0046/4006','Y':'0023/4023/2326','Z':'00400646',
+  '0':'103041453616050110/0541','1':'0122/2026/1636',
+  '2':'01103041420646','3':'01103041423313/334445361605',
+  '4':'36300444','5':'400003334445361605','6':'30100105163645443303',
+  '7':'004016/1333','8':'13030201103041423313/1304051636454433',
+  '9':'16364541301001021343',
+  '.':'2526','·':'2425',',':'252616',':':'2223/2526',';':'2223/252616',
+  '-':'1343','=':'1232/1434','_':'0646','+':'1333/2125','*':'2125/0244/0442',
+  '/':'4006','\\':'0046','|':'2026','(':'30111536',')':'10313516',
+  '[':'30101636',']':'10303616','<':'400346','>':'004306',
+  '!':'2024/2526','?':'01103041422324/2526','#':'1016/3036/0242/0444',
+  '%':'0446/0010111001/3545464635','\'':'2022','"':'1012/3032',
+  '°':'2031221120','^':'0221/2140','~':'0312213241','&':'4106',
+  '\u00b1':'0333/2124/0646',
+  '@':'41301001051636453323132132 4',
+  '$':'2026/4110300112223342444536261606'
+};
+/* Glyph the console prints where it has a character but no way to draw it. */
+const TOFU='0040460600';
+
+function parseGlyph(src){
+  const polys=[];
+  const parts=src.split('/');
+  for(let p=0;p<parts.length;p++){
+    const s=parts[p].replace(/[^0-9]/g,'');
+    if(s.length<4) continue;
+    const pts=[];
+    for(let i=0;i+1<s.length;i+=2) pts.push(+s[i], +s[i+1]);
+    polys.push(pts);
+  }
+  return polys;
+}
+const FONT={};
+for(const k in FONT_SRC) FONT[k]=parseGlyph(FONT_SRC[k]);
+const FONT_TOFU=parseGlyph(TOFU);
+
+/* --------------------------------------------------- batched stroke queue */
+
+/* Every mark for the frame is accumulated by colour/width/brightness and then
+   emitted as one path per bucket. A dense panel is 3000+ segments; without
+   this the phone spends the whole budget in the driver. */
+const LAYERS=new Map();
+const LAYER_ORDER=[];
+function bucket(col,w,a){
+  const k=col+w.toFixed(2)+a.toFixed(2);
+  let L=LAYERS.get(k);
+  if(!L){ L={col:col,w:w,a:a,d:[],n:0}; LAYERS.set(k,L); LAYER_ORDER.push(L); }
+  return L;
+}
+function pushSeg(L,x0,y0,x1,y1){ const d=L.d; d[L.n++]=x0; d[L.n++]=y0; d[L.n++]=x1; d[L.n++]=y1; }
+function line(x0,y0,x1,y1,col,a,w){ pushSeg(bucket(col,w||1,a===undefined?B.MID:a),x0,y0,x1,y1); }
+function polyline(pts,col,a,w,close){
+  const L=bucket(col,w||1,a===undefined?B.MID:a);
+  for(let i=0;i+3<pts.length;i+=2) pushSeg(L,pts[i],pts[i+1],pts[i+2],pts[i+3]);
+  if(close&&pts.length>=4) pushSeg(L,pts[pts.length-2],pts[pts.length-1],pts[0],pts[1]);
+}
+function rect(x,y,w,h,col,a,lw){
+  const L=bucket(col,lw||1,a===undefined?B.MID:a);
+  pushSeg(L,x,y,x+w,y); pushSeg(L,x+w,y,x+w,y+h);
+  pushSeg(L,x+w,y+h,x,y+h); pushSeg(L,x,y+h,x,y);
+}
+function circle(cx,cy,r,col,a,lw,seg){
+  const n=seg||Math.max(10,Math.min(34,Math.round(r*0.62)+8));
+  const L=bucket(col,lw||1,a===undefined?B.MID:a);
+  let px=cx+r, py=cy;
+  for(let i=1;i<=n;i++){
+    const t=i/n*TAU, x=cx+Math.cos(t)*r, y=cy+Math.sin(t)*r;
+    pushSeg(L,px,py,x,y); px=x; py=y;
+  }
+}
+function arc(cx,cy,r,a0,a1,col,a,lw,seg){
+  const n=seg||Math.max(4,Math.round(Math.abs(a1-a0)*r*0.35)+3);
+  const L=bucket(col,lw||1,a===undefined?B.MID:a);
+  let px=cx+Math.cos(a0)*r, py=cy+Math.sin(a0)*r;
+  for(let i=1;i<=n;i++){
+    const t=a0+(a1-a0)*i/n, x=cx+Math.cos(t)*r, y=cy+Math.sin(t)*r;
+    pushSeg(L,px,py,x,y); px=x; py=y;
+  }
+}
+function cross(x,y,r,col,a,lw){
+  const L=bucket(col,lw||1,a===undefined?B.MID:a);
+  pushSeg(L,x-r,y,x+r,y); pushSeg(L,x,y-r,x,y+r);
+}
+function diamond(x,y,r,col,a,lw){
+  polyline([x,y-r,x+r,y,x,y+r,x-r,y],col,a,lw,true);
+}
+
+/* ------------------------------------------------------------ text output */
+
+const TRACK=5/6;                       /* advance in cap-heights            */
+function textW(str,size){ return str.length*size*TRACK; }
+/* Cut a line to the width it has. A readout that runs off its panel has
+   stopped being a readout. */
+function fit(str,size,width){
+  const n=Math.floor(width/(size*TRACK));
+  if(str.length<=n) return str;
+  return n>1?str.substr(0,n-1)+'-':str.substr(0,Math.max(0,n));
+}
+
+/* script: null for roman, else a generated alien glyph table. Unknown code
+   points draw as tofu rather than silently vanishing — a missing character is
+   itself a fault report. */
+function text(x,y,size,str,col,a,w,script){
+  const s=size/6, adv=size*TRACK;
+  const L=bucket(col,w||1,a===undefined?B.MID:a);
+  for(let i=0;i<str.length;i++){
+    const ch=str[i];
+    let g;
+    if(script){ g=script.glyphs[script.map(ch)]; }
+    else { g=FONT[ch] || FONT[ch.toUpperCase()] || (ch===' '?FONT[' ']:FONT_TOFU); }
+    if(!g){ i===i; }
+    const ox=x+i*adv;
+    if(g) for(let p=0;p<g.length;p++){
+      const pts=g[p];
+      for(let q=0;q+3<pts.length;q+=2)
+        pushSeg(L, ox+pts[q]*s, y+pts[q+1]*s, ox+pts[q+2]*s, y+pts[q+3]*s);
+    }
+  }
+  return str.length*adv;
+}
+function textR(xRight,y,size,str,col,a,w){ return text(xRight-textW(str,size),y,size,str,col,a,w); }
+function textC(cx,y,size,str,col,a,w){ return text(cx-textW(str,size)/2,y,size,str,col,a,w); }
+
+/* A label, a value, and a dotted rule joining them: the console never leaves
+   the eye to guess which number belongs to which name. */
+function leader(x,y,wid,size,label,value,lcol,vcol,a){
+  text(x,y,size,label,lcol||C.LABEL,a===undefined?B.MID:a);
+  const vw=textW(value,size);
+  textR(x+wid,y,size,value,vcol||C.READOUT,a===undefined?B.HI:a);
+  const lw=textW(label,size);
+  const x0=x+lw+size*0.5, x1=x+wid-vw-size*0.5;
+  if(x1>x0){
+    const L=bucket(lcol||C.LABEL,1,B.DIM);
+    const step=size*0.62;
+    for(let px=x0;px<x1;px+=step) pushSeg(L,px,y+size*0.86,px+0.9,y+size*0.86);
+  }
+}
+
+/* ------------------------------------------------------------ the display */
+
+const scr=document.getElementById('scr');
+const mainCtx=scr.getContext('2d',{alpha:false,desynchronized:true});
+let VW=0, VH=0, DPR=1, PW=1, PH=1;
+
+const vec=document.createElement('canvas');
+const vctx=vec.getContext('2d',{alpha:false});
+const bloomA=document.createElement('canvas'), bctxA=bloomA.getContext('2d',{alpha:false});
+const bloomB=document.createElement('canvas'), bctxB=bloomB.getContext('2d',{alpha:false});
+const bloomC=document.createElement('canvas'), bctxC=bloomC.getContext('2d',{alpha:false});
+let grilleH=4;
+
+/* Display-side faults. These are not mood: every one of them is a function of
+   HULL, so the operator reads the structural state off the picture before any
+   gauge has told them. */
+const CRT={
+  persistence:0.34,   /* how fast the phosphor gives up the previous frame    */
+  jitter:0,           /* beam deflection error, px                            */
+  tear:0,             /* probability/extent of horizontal line displacement   */
+  grain:0,            /* phosphor grain                                       */
+  roll:0,             /* interlace roll bar position, 0..1                    */
+  rollRate:0.035,
+  bloom:0.85,
+  fault:0             /* the single term the three above are driven from      */
+};
+
+function sizeDisplay(force){
+  const w=Math.max(240,window.innerWidth|0), h=Math.max(240,window.innerHeight|0);
+  /* The backing store is capped by TOTAL pixels, not by device ratio: a large
+     desktop window at 2x asks for four times a phone's work for the same
+     picture, and the grille throws most of it away regardless. */
+  const byArea=Math.sqrt(PERF.pxBudget/(w*h));
+  const dpr=Math.max(1,Math.min(window.devicePixelRatio||1, PERF.dprCap, byArea));
+  if(!force && w===VW && h===VH && Math.abs(dpr-DPR)<0.01) return;
+  VW=w; VH=h; DPR=dpr; PW=Math.round(w*dpr); PH=Math.round(h*dpr);
+  scr.width=PW; scr.height=PH;
+  vec.width=PW; vec.height=PH;
+  bloomA.width=Math.max(2,Math.round(PW*0.5)); bloomA.height=Math.max(2,Math.round(PH*0.5));
+  bloomB.width=Math.max(2,Math.round(PW*0.25)); bloomB.height=Math.max(2,Math.round(PH*0.25));
+  bloomC.width=Math.max(2,Math.round(PW*0.125)); bloomC.height=Math.max(2,Math.round(PH*0.125));
+  vctx.setTransform(1,0,0,1,0,0);
+  vctx.fillStyle='#000'; vctx.fillRect(0,0,PW,PH);
+  bctxA.fillStyle='#000'; bctxA.fillRect(0,0,bloomA.width,bloomA.height);
+  bctxB.fillStyle='#000'; bctxB.fillRect(0,0,bloomB.width,bloomB.height);
+  bctxC.fillStyle='#000'; bctxC.fillRect(0,0,bloomC.width,bloomC.height);
+  buildGrille();
+  layout();
+}
+
+/* The aperture grille, the scanline gaps and the phosphor grain all live in
+   one repeating tile, because they are all properties of the same screen and
+   because one pattern fill is all the fill rate a phone can spare. The grain
+   level is quantised into buckets so a tile only has to be rebuilt when the
+   hull damage actually changes what the operator would see. */
+const GRILLE={pitch:0,line:0,tiles:null,bucket:-1};
+function buildGrille(){
+  const px=Math.max(1,Math.round(DPR));
+  GRILLE.pitch=Math.max(3,Math.round(DPR*1.6));
+  GRILLE.line=Math.max(2,Math.round(DPR*2.0));
+  grilleH=GRILLE.line;
+  GRILLE.bucket=-1;
+  GRILLE.tiles=null;
+  makeGrilleTiles(0);
+}
+function makeGrilleTiles(bucket){
+  const gw=GRILLE.pitch, gh=GRILLE.line, px=Math.max(1,Math.round(DPR));
+  /* Eight tiles wide so the noise does not read as a repeating stamp. */
+  const TW=gw*8, TH=gh*8;
+  const grainAmt=bucket/8;
+  const out=[];
+  for(let k=0;k<3;k++){
+    const t=document.createElement('canvas'); t.width=TW; t.height=TH;
+    const c=t.getContext('2d');
+    const img=c.createImageData(TW,TH);
+    const d=img.data;
+    const r=rng(0x51ed+k*7919+bucket*104729);
+    for(let y=0;y<TH;y++){
+      for(let x=0;x<TW;x++){
+        const i=(y*TW+x)*4;
+        let rr=0,gg=0,bb=0,aa=0;
+        /* Grille bar and scanline gap: opaque black at partial alpha. */
+        const bar=(x%gw)>=gw-px, lin=(y%gh)>=gh-px;
+        if(bar||lin){ aa=Math.max(bar?0.30:0, lin?0.26:0); }
+        /* Grain: a speck of phosphor that is brighter or dimmer than its
+           neighbours. Mixed into the same tile so it costs no extra pass. */
+        const v=r();
+        if(grainAmt>0 && v>0.90){
+          const s=(v-0.90)/0.10*grainAmt;
+          const na=Math.min(0.5,s*0.55);
+          const t2=na/(na+aa+1e-6);
+          rr=gg=bb=255; aa=aa*(1-t2)+na;
+          if(aa>0){ const w=na/aa; rr=gg=bb=Math.round(255*w); }
+        }
+        d[i]=rr; d[i+1]=gg; d[i+2]=bb; d[i+3]=Math.round(clamp(aa,0,1)*255);
+      }
+    }
+    c.putImageData(img,0,0);
+    out.push(mainCtx.createPattern(t,'repeat'));
+  }
+  GRILLE.tiles=out; GRILLE.bucket=bucket;
+}
+
+function beginFrame(){
+  for(let i=0;i<LAYER_ORDER.length;i++) LAYER_ORDER[i].n=0;
+}
+
+/* Faults are one number. Everything the tube does wrong is a function of it,
+   so a cracked hull looks like a cracked hull without a single word of text. */
+function setFault(f){
+  CRT.fault=f;
+  CRT.jitter=f*1.9;
+  CRT.tear=f*f*1.35;
+  CRT.grain=0.05+f*0.55;
+  CRT.persistence=0.34-f*0.14;
+}
+
+let jitPhase=0;
+
+/* One pass of the beam over the frame's geometry, and the single most
+   expensive thing the console does — better than four fifths of the frame at
+   three thousand strokes. Butt caps rather than round: at these widths the
+   difference is under a device pixel and the bloom covers it, while the
+   rasteriser charges half again as much for the round ones. Measured. */
+function strikeLayers(ctx,jx,jy){
+  ctx.setTransform(DPR,0,0,DPR,jx,jy);
+  ctx.globalCompositeOperation='lighter';
+  ctx.lineCap='butt';
+  for(let i=0;i<LAYER_ORDER.length;i++){
+    const L=LAYER_ORDER[i];
+    if(!L.n) continue;
+    ctx.strokeStyle=L.col;
+    ctx.globalAlpha=L.a;
+    ctx.lineWidth=L.w;
+    ctx.beginPath();
+    const d=L.d;
+    for(let j=0;j<L.n;j+=4){ ctx.moveTo(d[j],d[j+1]); ctx.lineTo(d[j+2],d[j+3]); }
+    ctx.stroke();
+  }
+  ctx.globalAlpha=1;
+  ctx.setTransform(1,0,0,1,0,0);
+}
+
+function endFrame(dt,rand){
+  /* Persistence: the tube is never cleared, only asked to forget a little. */
+  vctx.setTransform(1,0,0,1,0,0);
+  vctx.globalCompositeOperation='source-over';
+  vctx.globalAlpha=1;
+  vctx.fillStyle='rgba(0,0,0,'+CRT.persistence.toFixed(3)+')';
+  vctx.fillRect(0,0,PW,PH);
+
+  /* Beam deflection error. A steady deflection amplifier drifts; a damaged one
+     hunts. The jitter is therefore correlated frame to frame, not white. */
+  jitPhase+=dt*11;
+  const jx=(Math.sin(jitPhase*1.7)+Math.sin(jitPhase*4.3)*0.5)*CRT.jitter*0.5+(rand()-0.5)*CRT.jitter;
+  const jy=(Math.sin(jitPhase*2.3+1.1))*CRT.jitter*0.35+(rand()-0.5)*CRT.jitter*0.6;
+
+  strikeLayers(vctx,jx,jy);
+  composite(dt,rand);
+}
+
+function composite(dt,rand){
+  const m=mainCtx;
+  m.setTransform(1,0,0,1,0,0);
+  m.globalCompositeOperation='copy';
+  m.globalAlpha=1;
+
+  /* Horizontal tear. A line-rate fault displaces whole scanline groups; it is
+     drawn as a displacement of the raster, not as an effect over it. */
+  const bands=(CRT.tear>0.02 && rand()<clamp(CRT.tear,0,0.9))?(3+((rand()*5)|0)):0;
+  if(!bands){
+    m.drawImage(vec,0,0);
+  } else {
+    m.fillStyle='#000'; m.fillRect(0,0,PW,PH);
+    m.globalCompositeOperation='source-over';
+    let y=0;
+    while(y<PH){
+      const h=Math.max(4,((rand()*PH/6)|0));
+      const off=(rand()<0.4)?((rand()-0.5)*CRT.tear*90*DPR):0;
+      const hh=Math.min(h,PH-y);
+      m.drawImage(vec,0,y,PW,hh,off,y,PW,hh);
+      y+=hh;
+    }
+  }
+
+  /* Bloom, on the display side and at half resolution and below. Each level is
+     a coarser sampling of the phosphor than the last; they are summed into the
+     first one so the full-resolution upscale happens exactly once, and that
+     upscale is deliberately unfiltered — a blocky halo at half a scanline is
+     indistinguishable from phosphor structure and costs half as much. */
+  if(PERF.bloom>0){
+    bctxA.globalCompositeOperation='copy'; bctxA.globalAlpha=1;
+    bctxA.drawImage(vec,0,0,bloomA.width,bloomA.height);
+    if(PERF.bloom>1){
+      bctxB.globalCompositeOperation='copy'; bctxB.globalAlpha=1;
+      bctxB.drawImage(bloomA,0,0,bloomB.width,bloomB.height);
+      if(PERF.bloom>2){
+        bctxC.globalCompositeOperation='copy'; bctxC.globalAlpha=1;
+        bctxC.drawImage(bloomB,0,0,bloomC.width,bloomC.height);
+      }
+      bctxA.globalCompositeOperation='lighter';
+      bctxA.globalAlpha=0.70; bctxA.drawImage(bloomB,0,0,bloomA.width,bloomA.height);
+      if(PERF.bloom>2){ bctxA.globalAlpha=0.55; bctxA.drawImage(bloomC,0,0,bloomA.width,bloomA.height); }
+      bctxA.globalAlpha=1;
+    }
+    m.imageSmoothingEnabled=false;
+    m.globalCompositeOperation='lighter';
+    m.globalAlpha=0.46*CRT.bloom;
+    m.drawImage(bloomA,0,0,PW,PH);
+    m.imageSmoothingEnabled=true;
+  }
+
+  /* The interlace roll bar: one frame of vertical sync error, sliding. It is
+     drawn before the grille because the sync error is in the signal, and the
+     grille is in front of it. */
+  CRT.roll+=dt*CRT.rollRate*(1+CRT.fault*6);
+  if(CRT.roll>1) CRT.roll-=1;
+  const rb=CRT.roll*(PH+260)-130;
+  m.globalCompositeOperation='lighter';
+  m.globalAlpha=0.030+CRT.fault*0.055;
+  m.fillStyle='#9fc8ff';
+  m.fillRect(0,rb,PW,26*DPR);
+  m.globalAlpha=0.016;
+  m.fillRect(0,rb-20*DPR,PW,20*DPR);
+
+  /* Grille, scanlines and grain: one tile, one pass, rolling with the sync. */
+  const wantBucket=Math.min(8,Math.round(CRT.grain*8));
+  if(wantBucket!==GRILLE.bucket) makeGrilleTiles(wantBucket);
+  m.globalCompositeOperation='source-over';
+  m.globalAlpha=1;
+  m.save();
+  /* The tile is shifted only by whole grille pitches and whole scanlines, so
+     the bars land on the same screen columns every frame and only the grain
+     inside them changes. The one sub-line component is the roll itself. */
+  const kx=(rand()*8)|0, ky=(rand()*8)|0;
+  m.translate(-kx*GRILLE.pitch, CRT.roll*GRILLE.line-GRILLE.line*(8+ky));
+  m.fillStyle=GRILLE.tiles[(grainFrame++)%3];
+  m.fillRect(0,0,PW+GRILLE.pitch*8,PH+GRILLE.line*17+2);
+  m.restore();
+  m.globalAlpha=1;
+}
+let grainFrame=0;
+
+/* Measured, not guessed: the loop watches its own frame time and sheds the
+   most expensive display work before it starts dropping frames. Bloom levels
+   go first because losing the outermost halo is the least legible loss; the
+   backing resolution goes last because that is where the strokes live. */
+const PERF={ dprCap:2, pxBudget:2.4e6, bloom:2, fps:60, ms:16.7, samples:0, sum:0, cooldown:2.0 };
+function perfStep(dt,frameMs){
+  PERF.sum+=frameMs; PERF.samples++;
+  PERF.cooldown-=dt;
+  if(PERF.samples<30) return;
+  const avg=PERF.sum/PERF.samples;
+  PERF.ms=avg; PERF.fps=1000/avg;
+  PERF.sum=0; PERF.samples=0;
+  if(PERF.cooldown>0) return;
+  /* Shed in proportion to how far over budget the frame is. A console that
+     takes nine seconds to work out it is too slow has already spent them. */
+  if(avg>30){
+    PERF.bloom=0;
+    if(PERF.pxBudget>0.9e6){ PERF.pxBudget=Math.max(0.9e6,PERF.pxBudget*0.45); sizeDisplay(true); }
+    PERF.cooldown=1.4;
+  }
+  else if(avg>20.5 && PERF.bloom>1){ PERF.bloom--; PERF.cooldown=1.0; }
+  else if(avg>20.5 && PERF.pxBudget>0.9e6){ PERF.pxBudget*=0.62; PERF.cooldown=1.4; sizeDisplay(true); }
+  else if(avg>20.5 && PERF.bloom>0){ PERF.bloom=0; PERF.cooldown=1.4; }
+  else if(avg<11.5 && PERF.bloom<3){ PERF.bloom++; PERF.cooldown=6.0; }
+}
+
+/* ------------------------------------------------------------ layout grid */
+
+/* One thumb, portrait. The instrument gets the top, the controls get the
+   bottom third where the thumb actually reaches. In landscape the same blocks
+   are re-stacked side by side rather than scaled down. */
+const LY={};
+function layout(){
+  const w=VW,h=VH;
+  const safeT=Math.max(13,Math.round(h*0.017)), safeB=Math.max(10,Math.round(h*0.012));
+  LY.w=w; LY.h=h;
+  LY.portrait = h>=w;
+  LY.pad=Math.max(5,Math.round(Math.min(w,h)*0.017));
+  const p=LY.pad;
+  /* The type scale is set by the narrowest column that has to carry a line of
+     text, never by the viewport. A tall desktop window does not make the
+     status column any wider, and a sixteen-pixel cap height in a three-hundred
+     pixel column is how readouts end up written on top of each other. */
+  const colW=LY.portrait?0:clamp(Math.round(w*0.30),200,430);
+  const textCol=LY.portrait?(w-p*2-12):(colW-14);
+  const CHARS=60;
+  LY.t0=clamp(Math.round(textCol/(CHARS*TRACK)),6,12);   /* dense tables      */
+  LY.t1=Math.max(LY.t0+1,Math.round(LY.t0*1.22));        /* body              */
+  LY.t2=Math.max(LY.t1+1,Math.round(LY.t0*1.62));        /* headings          */
+  LY.t3=Math.max(LY.t2+2,Math.round(LY.t0*2.30));        /* the one big number*/
+  LY.lh0=Math.round(LY.t0*1.75); LY.lh1=Math.round(LY.t1*1.72); LY.lh2=Math.round(LY.t2*1.6);
+
+  if(LY.portrait){
+    LY.status={x:p,y:safeT,w:w-p*2,h:Math.max(102,Math.round(h*0.128))};
+    const ctrlH=Math.round(h*0.345);
+    LY.ctrl={x:p,y:h-safeB-ctrlH,w:w-p*2,h:ctrlH};
+    /* A strip the instrument may not use, so the console always has somewhere
+       to put the last thing it said. */
+    LY.newsH=LY.lh0+4;
+    const instTop=LY.status.y+LY.status.h+p;
+    LY.inst={x:p,y:instTop,w:w-p*2,h:LY.ctrl.y-p-LY.newsH-instTop};
+    LY.newsY=LY.inst.y+LY.inst.h+3;
+  } else {
+    LY.status={x:p,y:safeT,w:colW,h:h-safeT-safeB};
+    LY.ctrl={x:w-p-colW,y:safeT,w:colW,h:h-safeT-safeB};
+    const iw=LY.ctrl.x-p-(LY.status.x+colW+p);
+    const ih=Math.min(h-safeT-safeB, Math.max(iw*0.92, (h-safeT-safeB)*0.62));
+    LY.inst={x:LY.status.x+colW+p,y:safeT,w:iw,h:ih};
+    LY.newsH=(h-safeT-safeB)-ih-3;
+    LY.newsY=LY.inst.y+ih+3;
+  }
+  LY.instCx=LY.inst.x+LY.inst.w/2;
+  LY.instCy=LY.inst.y+LY.inst.h/2;
+  LY.instR=Math.min(LY.inst.w,LY.inst.h)/2;
+}
+
+/* ------------------------------------------------------------------ input */
+
+/* Immediate-mode hit regions: a control that was not drawn this frame cannot
+   be pressed, which removes a whole class of ghost-button faults. */
+let HITS=[], pressId=null, pressRepeat=false, pressT=0, repeatT=0, pointer={x:0,y:0,down:false};
+const lastUp={x:0,y:0};   /* where the thumb was lifted, for chart picking */
+let drag={active:false,x:0,y:0,dx:0,dy:0,moved:0};
+function hit(x,y,w,h,id,opts){ HITS.push({x:x,y:y,w:w,h:h,id:id,o:opts||null}); }
+function hitAt(px,py){
+  for(let i=HITS.length-1;i>=0;i--){
+    const r=HITS[i];
+    if(px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h) return r;
+  }
+  return null;
+}
+let fired=null;
+function consume(id){ if(fired===id){ fired=null; return true; } return false; }
+function held(id){ return pressId===id; }
+
+function ptPos(e){
+  const t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
+  return {x:t.clientX, y:t.clientY};
+}
+function onDown(e){
+  audioKick();
+  const p=ptPos(e); pointer.x=p.x; pointer.y=p.y; pointer.down=true;
+  const r=hitAt(p.x,p.y);
+  pressId=r?r.id:null; pressT=0; repeatT=0;
+  pressRepeat=!!(r&&r.o&&r.o.repeat);
+  drag.active=true; drag.x=p.x; drag.y=p.y;
+  drag.dx=0; drag.dy=0; drag.moved=0;
+  if(r&&r.o&&r.o.repeat){ fired=r.id; sfx('tick'); }
+  else if(r) sfx('tick');
+  e.preventDefault();
+}
+function onMove(e){
+  if(!pointer.down) return;
+  const p=ptPos(e);
+  drag.dx=p.x-drag.x; drag.dy=p.y-drag.y;
+  drag.moved+=Math.abs(drag.dx)+Math.abs(drag.dy);
+  drag.x=p.x; drag.y=p.y;
+  pointer.x=p.x; pointer.y=p.y;
+  e.preventDefault();
+}
+function onUp(e){
+  const p=ptPos(e);
+  lastUp.x=p.x; lastUp.y=p.y;
+  const r=hitAt(p.x,p.y);
+  if(r && r.id===pressId && drag.moved<14 && !(r.o&&r.o.repeat)) { fired=r.id; sfx('press'); }
+  pointer.down=false; pressId=null; pressRepeat=false;
+  drag.active=false; drag.dx=0; drag.dy=0;
+  e.preventDefault();
+}
+window.addEventListener('touchstart',onDown,{passive:false});
+window.addEventListener('touchmove',onMove,{passive:false});
+window.addEventListener('touchend',onUp,{passive:false});
+window.addEventListener('touchcancel',onUp,{passive:false});
+window.addEventListener('mousedown',onDown,{passive:false});
+window.addEventListener('mousemove',onMove,{passive:false});
+window.addEventListener('mouseup',onUp,{passive:false});
+window.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* Hold-to-repeat on the stepper keys: a bearing is entered one degree at a
+   time until the operator leans on it. */
+function inputStep(dt){
+  if(pressId!==null){
+    pressT+=dt;
+    if(pressRepeat&&pressT>0.34){
+      repeatT+=dt;
+      const iv=pressT>1.6?0.028:(pressT>0.9?0.055:0.10);
+      if(repeatT>=iv){ repeatT=0; fired=pressId; sfx('tick',0.4); }
+    }
+  }
+}
+
+/* ---------------------------------------------------------- panel widgets */
+
+/* A key. It reports three things without being read: whether it exists,
+   whether it can be pressed, and whether it is being pressed. */
+function key(x,y,w,h,id,label,col,enabled,note,sz){
+  const on=enabled!==false;
+  const pressed=held(id)&&on;
+  const c=col||C.CHASSIS;
+  rect(x,y,w,h,c,on?(pressed?B.HI:B.MID):B.DIM,pressed?1.6:1);
+  if(pressed){ rect(x+2.5,y+2.5,w-5,h-5,c,B.MID,1); }
+  const s=sz||LY.t1;
+  const ty=y+h/2-s*(note?1.05:0.5);
+  textC(x+w/2,ty,s,label,on?(pressed?C.READOUT:c):c,on?(pressed?B.HI:B.HI):B.DIM,1);
+  if(note) textC(x+w/2,ty+s*1.55,LY.t0,note,C.LABEL,on?B.MID:B.DIM,1);
+  if(on) hit(x,y,w,h,id);
+  else if(!on){ /* struck through: the key exists, and it is unavailable */
+    line(x+3,y+h-3,x+w-3,y+3,c,B.DIM,1);
+  }
+  return on;
+}
+function keyRepeat(x,y,w,h,id,label,col,enabled,sz){
+  const on=enabled!==false;
+  const pressed=held(id)&&on;
+  const c=col||C.CHASSIS;
+  rect(x,y,w,h,c,on?(pressed?B.HI:B.MID):B.DIM,pressed?1.6:1);
+  const s=sz||LY.t2;
+  textC(x+w/2,y+h/2-s*0.5,s,label,on?(pressed?C.READOUT:c):c,on?B.HI:B.DIM,1);
+  if(on) hit(x,y,w,h,id,{repeat:true});
+  return on;
+}
+
+/* A framed block with a name burnt into its top rule. Every box on this
+   console says what it is; an unlabelled frame is decoration. */
+function panel(x,y,w,h,title,col,a){
+  const c=col||C.CHASSIS, al=a===undefined?B.MID:a;
+  const s=LY.t0;
+  const tw=title?textW(title,s)+s*0.8:0;
+  const L=bucket(c,1,al);
+  pushSeg(L,x,y,x+w,y); pushSeg(L,x+w,y,x+w,y+h);
+  pushSeg(L,x+w,y+h,x,y+h); pushSeg(L,x,y+h,x,y);
+  if(title){
+    /* The title sits in a notch cut out of the frame, as on a real fascia. */
+    const tx=x+s*0.9;
+    const K=bucket('#000',3.2,1);
+    pushSeg(K,tx-s*0.4,y,tx+tw-s*0.4,y);
+    text(tx,y-s*0.5,s,title,c,B.HI,1);
+  }
+}
+
+/* A horizontal bar gauge with a marked limit. Reads: value, range, and
+   whether the value is where it should be. */
+function bar(x,y,w,h,frac,col,label,vtext){
+  rect(x,y,w,h,C.CHASSIS,B.DIM,1);
+  const f=clamp(frac,0,1);
+  const n=Math.max(1,Math.round(w/4.6));
+  const L=bucket(col,1,B.HI);
+  const filled=Math.round(n*f);
+  for(let i=0;i<filled;i++){
+    const px=x+1.5+i*(w-3)/n;
+    pushSeg(L,px,y+1.8,px,y+h-1.8);
+  }
+  if(label) text(x,y-LY.t0*1.25,LY.t0,label,C.LABEL,B.MID,1);
+  if(vtext) textR(x+w,y-LY.t0*1.25,LY.t0,vtext,col,B.HI,1);
+}
+
+
+/* ==========================================================================
+   AUDIO — everything is synthesised. There are no samples in this file.
+   ========================================================================== */
+
+let AC=null, MASTER=null, BED=null, noiseBuf=null, glottalWave=null;
+
+function audioKick(){
+  if(AC){ if(AC.state==='suspended') AC.resume(); return; }
+  const Ctor=window.AudioContext||window.webkitAudioContext;
+  if(!Ctor) return;
+  try{ AC=new Ctor(); }catch(e){ AC=null; return; }
+  buildAudio();
+}
+
+function makeNoise(sec){
+  const n=Math.floor(AC.sampleRate*sec);
+  const b=AC.createBuffer(1,n,AC.sampleRate);
+  const d=b.getChannelData(0);
+  const r=rng(0xA17E);
+  for(let i=0;i<n;i++) d[i]=r()*2-1;
+  return b;
+}
+function noiseSrc(){ const s=AC.createBufferSource(); s.buffer=noiseBuf; s.loop=true; return s; }
+
+/* A glottal pulse is not a sawtooth: the harmonic roll-off is steeper and the
+   phase relationship is what makes a formant synthesiser sound like a throat
+   rather than a buzzer. */
+function buildGlottal(){
+  const N=40, re=new Float32Array(N), im=new Float32Array(N);
+  for(let n=1;n<N;n++){ im[n]=1/(n*n)*Math.sin(n*0.55); re[n]=1/(n*n)*(1-Math.cos(n*0.55))*0.7; }
+  glottalWave=AC.createPeriodicWave(re,im,{disableNormalization:false});
+}
+
+function buildAudio(){
+  MASTER=AC.createGain(); MASTER.gain.value=0.9; MASTER.connect(AC.destination);
+  noiseBuf=makeNoise(2.0);
+  buildGlottal();
+
+  /* The bed. It runs from power-on and is never touched again except to be
+     taken away. */
+  const g=AC.createGain(); g.gain.value=0.0; g.connect(MASTER);
+  const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=210; lp.Q.value=0.7; lp.connect(g);
+
+  const o1=AC.createOscillator(); o1.type='sawtooth'; o1.frequency.value=48.5;
+  const g1=AC.createGain(); g1.gain.value=0.30; o1.connect(g1); g1.connect(lp); o1.start();
+  const o2=AC.createOscillator(); o2.type='sine'; o2.frequency.value=97.3;
+  const g2=AC.createGain(); g2.gain.value=0.10; o2.connect(g2); g2.connect(g); o2.start();
+  const o3=AC.createOscillator(); o3.type='square'; o3.frequency.value=120.0;
+  const g3=AC.createGain(); g3.gain.value=0.012; o3.connect(g3); g3.connect(g); o3.start();
+
+  /* Air handling: filtered noise with a slow cycle, because a hull with air in
+     it is a hull with a fan in it. */
+  const ns=noiseSrc();
+  const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=340; bp.Q.value=0.6;
+  const ng=AC.createGain(); ng.gain.value=0.055;
+  ns.connect(bp); bp.connect(ng); ng.connect(g); ns.start();
+  const lfo=AC.createOscillator(); lfo.type='sine'; lfo.frequency.value=0.043;
+  const lg=AC.createGain(); lg.gain.value=0.022; lfo.connect(lg); lg.connect(ng.gain); lfo.start();
+
+  BED={gain:g, air:ng, lp:lp};
+  g.gain.setTargetAtTime(0.20, AC.currentTime, 1.6);
+}
+
+/* The absence of the bed is the loudest event the console can produce, so it
+   is only ever used for the two things that deserve it. */
+function bedSet(level,tc){
+  if(!BED) return;
+  BED.gain.gain.cancelScheduledValues(AC.currentTime);
+  BED.gain.gain.setTargetAtTime(level, AC.currentTime, tc===undefined?0.05:tc);
+}
+
+function env(node,t0,a,d,peak){
+  node.gain.cancelScheduledValues(t0);
+  node.gain.setValueAtTime(0.0001,t0);
+  node.gain.exponentialRampToValueAtTime(Math.max(0.0002,peak),t0+a);
+  node.gain.exponentialRampToValueAtTime(0.0001,t0+a+d);
+}
+
+function sfx(kind,vol){
+  if(!AC||!MASTER) return;
+  const t=AC.currentTime, v=(vol===undefined?1:vol);
+  const g=AC.createGain(); g.connect(MASTER);
+  if(kind==='tick'){
+    const o=AC.createOscillator(); o.type='square'; o.frequency.setValueAtTime(2100,t);
+    o.connect(g); env(g,t,0.001,0.022,0.05*v); o.start(t); o.stop(t+0.05);
+  } else if(kind==='press'){
+    const o=AC.createOscillator(); o.type='square'; o.frequency.setValueAtTime(880,t);
+    o.frequency.setValueAtTime(1320,t+0.018);
+    o.connect(g); env(g,t,0.002,0.05,0.07*v); o.start(t); o.stop(t+0.09);
+  } else if(kind==='deny'){
+    const o=AC.createOscillator(); o.type='square'; o.frequency.setValueAtTime(180,t);
+    o.frequency.setValueAtTime(120,t+0.07);
+    o.connect(g); env(g,t,0.003,0.16,0.10*v); o.start(t); o.stop(t+0.2);
+  } else if(kind==='alarm'){
+    const o=AC.createOscillator(); o.type='square'; o.frequency.setValueAtTime(740,t);
+    o.frequency.setValueAtTime(560,t+0.12);
+    const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=900; f.Q.value=3;
+    o.connect(f); f.connect(g); env(g,t,0.004,0.30,0.13*v); o.start(t); o.stop(t+0.36);
+  } else if(kind==='caution'){
+    const o=AC.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(420,t);
+    o.connect(g); env(g,t,0.004,0.22,0.09*v); o.start(t); o.stop(t+0.28);
+  } else if(kind==='burn'){
+    const ns=noiseSrc(); const f=AC.createBiquadFilter(); f.type='lowpass';
+    f.frequency.setValueAtTime(120,t); f.frequency.exponentialRampToValueAtTime(1800,t+0.9);
+    f.frequency.exponentialRampToValueAtTime(90,t+3.4); f.Q.value=1.4;
+    ns.connect(f); f.connect(g);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.30*v,t+0.7);
+    g.gain.setValueAtTime(0.30*v,t+2.2);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+3.6);
+    ns.start(t); ns.stop(t+3.7);
+  } else if(kind==='impact'){
+    const ns=noiseSrc(); const f=AC.createBiquadFilter(); f.type='bandpass';
+    f.frequency.setValueAtTime(220,t); f.Q.value=1.1;
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(90,t);
+    o.frequency.exponentialRampToValueAtTime(38,t+0.5);
+    ns.connect(f); f.connect(g); o.connect(g);
+    env(g,t,0.004,0.55,0.36*v); ns.start(t); ns.stop(t+0.7); o.start(t); o.stop(t+0.7);
+  } else if(kind==='sweep'){
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(1500,t);
+    o.connect(g); env(g,t,0.001,0.03,0.022*v); o.start(t); o.stop(t+0.06);
+  } else if(kind==='contact'){
+    const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(1900,t);
+    o.connect(g); env(g,t,0.001,0.10,0.06*v); o.start(t); o.stop(t+0.14);
+  } else if(kind==='xmit'){
+    const o=AC.createOscillator(); o.type='sawtooth'; o.frequency.setValueAtTime(300,t);
+    o.frequency.linearRampToValueAtTime(2400,t+0.55);
+    const f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1400; f.Q.value=1.6;
+    o.connect(f); f.connect(g); env(g,t,0.01,0.6,0.075*v); o.start(t); o.stop(t+0.66);
+  }
+}
+
+/* ------------------------------------------------- parallel formant voice */
+
+/* Formant centres for a male tract. The whole point of the SC-01 topology is
+   that these are STEPPED at phoneme boundaries and never interpolated, which
+   is why the machine sounds like it is assembling words out of parts. */
+const PHON={
+/*        F1   F2   F3   voiced dur(ms) kind                                */
+  'IY':[ 270,2290,3010, 1, 130,'v'], 'IH':[ 390,1990,2550, 1, 100,'v'],
+  'EH':[ 530,1840,2480, 1, 115,'v'], 'AE':[ 660,1720,2410, 1, 140,'v'],
+  'AA':[ 730,1090,2440, 1, 150,'v'], 'AO':[ 570, 840,2410, 1, 140,'v'],
+  'UH':[ 440,1020,2240, 1, 100,'v'], 'UW':[ 300, 870,2240, 1, 135,'v'],
+  'AH':[ 640,1190,2390, 1, 100,'v'], 'ER':[ 490,1350,1690, 1, 140,'v'],
+  'AX':[ 500,1400,2400, 1,  70,'v'],
+  'M' :[ 250,1100,2200, 1,  85,'n'], 'N' :[ 250,1700,2600, 1,  80,'n'],
+  'NG':[ 250,2300,2750, 1,  90,'n'],
+  'L' :[ 380, 880,2575, 1,  85,'v'], 'R' :[ 310,1060,1380, 1,  90,'v'],
+  'W' :[ 300, 610,2200, 1,  75,'v'], 'Y' :[ 270,2290,3010, 1,  70,'v'],
+  'B' :[ 350, 900,2200, 1,  55,'s'], 'D' :[ 350,1600,2600, 1,  55,'s'],
+  'G' :[ 300,1900,2400, 1,  55,'s'],
+  'P' :[ 350, 900,2200, 0,  70,'s'], 'T' :[ 350,1700,2600, 0,  70,'s'],
+  'K' :[ 300,1900,2400, 0,  75,'s'],
+  'F' :[ 400,1300,2400, 0,  95,'f'], 'V' :[ 400,1300,2400, 1,  80,'f'],
+  'TH':[ 400,1700,2700, 0,  95,'f'], 'DH':[ 400,1700,2700, 1,  70,'f'],
+  'S' :[ 400,1700,5200, 0, 110,'f'], 'Z' :[ 400,1700,4600, 1,  90,'f'],
+  'SH':[ 400,1900,2600, 0, 115,'f'], 'ZH':[ 400,1900,2600, 1,  90,'f'],
+  'HH':[ 500,1400,2400, 0,  70,'f'],
+  '_' :[ 400,1400,2400, 0,  95,'q']    /* silence; also the drop-out glyph   */
+};
+/* Diphthongs are two stepped targets, exactly as the SC-01 built them. */
+const DIPH={'EY':['EH','IY'],'AY':['AA','IY'],'OY':['AO','IY'],'OW':['AO','UW'],'AW':['AA','UW'],'JH':['D','ZH'],'CH':['T','SH']};
+
+/* An ordered letter-to-sound ruleset. Context symbols:
+   ' ' word boundary, '#' one or more vowels, ':' zero or more consonants,
+   '^' exactly one consonant, '+' a front vowel, '&' a sibilant.            */
+const LTS={
+ 'A':[[' ','A',' ','AX'],[' ','ARE',' ','AA R'],[' ','AR','O','AX R'],['','AR','#','EH R'],
+      ['^','AS','#','EY S'],['','A','WA','AX'],['','AW','','AO'],[' :','ANY','','EH N IY'],
+      ['','A','^+#','EY'],['#:','ALLY',' ','AX L IY'],[' ','AL','#','AX L'],['','AGAIN','','AX G EH N'],
+      ['#:','AG','E','IH JH'],['','A','^+:#','AE'],['','A','^%','EY'],[':','A','^+','EY'],
+      ['','ARR','','AX R'],['','AR',' ','AA R'],['','AR','','AA R'],['','AIR','','EH R'],
+      ['','AI','','EY'],['','AY','','EY'],['','AU','','AO'],['#:','AL',' ','AX L'],
+      ['#:','ALS',' ','AX L Z'],['','ALK','','AO K'],['','AL','^','AO L'],[' :','ABLE','','EY B AX L'],
+      ['#','ABLE','','AX B AX L'],['','ANG','+','EY N JH'],['','A','','AE']],
+ 'B':[[' ','BE','^#','B IH'],[' ','BEING','','B IY IH NG'],[' ','BOTH',' ','B OW TH'],
+      [' ','BUS','#','B IH Z'],['','BUIL','','B IH L'],['','B','B',''],['','B','','B']],
+ 'C':[[' ','CH','^','K'],['^E','CH','','K'],['','CH','','CH'],[' S','CI','#','S AY'],
+      ['','CI','A','SH'],['','CI','O','SH'],['','CI','EN','SH'],['','CITY','','S IH T IY'],
+      ['','C','+','S'],['','CK','','K'],['','COM','%','K AH M'],['','C','','K']],
+ 'D':[['#:','DED',' ','D IH D'],['.E','D',' ','D'],['#:^E','D',' ','T'],[' ','DE','^#','D IH'],
+      [' ','DO',' ','D UW'],[' ','DOES','','D AH Z'],[' ','DOING','','D UW IH NG'],
+      [' ','DOW','','D AW'],['','DU','A','JH UW'],['','D','D',''],['','D','','D']],
+ 'E':[['#:','E',' ',''],['\'','E',' ',''],[' :','E',' ','IY'],['#','ED',' ','D'],
+      ['#:','E','D ',''],['','EV','ER','EH V'],['','E','^%','IY'],['','ERI','#','IY R IY'],
+      ['','ERI','','EH R IH'],['#:^','ER','#','ER'],['','ER','#','EH R'],['','ER','','ER'],
+      [' ','EVEN','','IY V EH N'],['#:','E','W',''],['','EW','','Y UW'],['','E','O','IY'],
+      ['#:&','ES',' ','IH Z'],['#:','E','S ',''],['#:','ELY',' ','L IY'],['#:','EMENT','','M EH N T'],
+      ['','EFUL','','F UH L'],['','EE','','IY'],['','EARN','','ER N'],[' ','EAR','^','ER'],
+      ['','EAD','','EH D'],['#:','EA',' ','IY AX'],['','EA','SU','EH'],['','EA','','IY'],
+      ['','EIGH','','EY'],['','EI','','IY'],[' ','EYE','','AY'],['','EY','','IY'],
+      ['','EU','','Y UW'],['','E','','EH']],
+ 'F':[['','FUL','','F UH L'],['','F','F',''],['','F','','F']],
+ 'G':[['','GIV','','G IH V'],[' ','G','I^','G'],['','GE','T','G EH'],['SU','GGES','','G JH EH S'],
+      ['','GG','','G'],[' B#','G','','G'],['','G','+','JH'],['','GREAT','','G R EY T'],
+      ['#','GH','',''],['','G','','G']],
+ 'H':[[' ','HAV','','HH AE V'],[' ','HERE','','HH IY R'],[' ','HOUR','','AW ER'],
+      ['','HOW','','HH AW'],['','H','#','HH'],['','H','','']],
+ 'I':[[' ','IN','','IH N'],[' ','I',' ','AY'],['','IN','D','AY N D'],['','IER','','IY ER'],
+      ['#:R','IED',' ','IY D'],['','IED',' ','AY D'],['','IEN','','IY EH N'],
+      ['','IE','T','AY EH'],[' :','I','%','AY'],['','I','%','IY'],['','IE','','IY'],
+      ['','I','^+:#','IH'],['','IR','#','AY R'],['','IZ','%','AY Z'],['','IS','%','AY Z'],
+      ['#:^','I','^%','IH'],['','I','D%','AY'],['','I','^+','IH'],['','IGH','','AY'],
+      ['','ILD','','AY L D'],['','IGN',' ','AY N'],['','IGN','^','AY N'],['','IQUE','','IY K'],
+      ['','I','','IH']],
+ 'J':[['','J','','JH']],
+ 'K':[[' ','K','N',''],['','K','','K']],
+ 'L':[['','LO','C#','L OW'],['L','L',''],['#:^','L','%','AX L'],['','LEAD','','L IY D'],['','L','','L']],
+ 'M':[['','MOV','','M UW V'],['','M','M',''],['','M','','M']],
+ 'N':[['E','NG','+','N JH'],['','NG','R','NG G'],['','NG','#','NG G'],['','NGL','%','NG G AX L'],
+      ['','NG','','NG'],['','NK','','NG K'],[' ','NOW',' ','N AW'],['','N','N',''],['','N','','N']],
+ 'O':[['','OF',' ','AX V'],['','OROUGH','','ER OW'],['#:','OR',' ','ER'],['#:','ORS',' ','ER Z'],
+      ['','OR','','AO R'],[' ','ONE','','W AH N'],['','OW','','OW'],[' ','OVER','','OW V ER'],
+      ['','OV','','AH V'],['','O','^%','OW'],['','O','^EN','OW'],['','O','^I#','OW'],
+      ['','OL','D','OW L'],['','OUGHT','','AO T'],['','OUGH','','AH F'],[' ','OU','','AW'],
+      ['H','OU','S#','AW'],['','OUS','','AX S'],['','OUR','','AO R'],['','OULD','','UH D'],
+      ['^','OU','^L','AH'],['','OUP','','UW P'],['','OU','','AW'],['','OY','','OY'],
+      ['','OING','','OW IH NG'],['','OI','','OY'],['','OOR','','AO R'],['','OOK','','UH K'],
+      ['','OOD','','UH D'],['','OO','','UW'],['','O','E','OW'],['','O',' ','OW'],
+      ['','OA','','OW'],[' ','ONLY','','OW N L IY'],[' ','ONCE','','W AH N S'],
+      ['','ON\'T','','OW N T'],['C','O','N','AA'],['','O','NG','AO'],[' :^','O','N','AH'],
+      ['I','ON','','AX N'],['#:','ON',' ','AX N'],['#^','ON','','AX N'],['','O','ST ','OW'],
+      ['','OF','^','AO F'],['','OTHER','','AH DH ER'],['','OSS',' ','AO S'],
+      ['#:^','OM','','AH M'],['','O','','AA']],
+ 'P':[['','PH','','F'],['','PEOP','','P IY P'],['','POW','','P AW'],['','PUT',' ','P UH T'],
+      ['','P','P',''],['','P','','P']],
+ 'Q':[['','QUAR','','K W AO R'],['','QU','','K W'],['','Q','','K']],
+ 'R':[[' ','RE','^#','R IY'],['','R','R',''],['','R','','R']],
+ 'S':[['','SH','','SH'],['#','SION','','ZH AX N'],['','SOME','','S AH M'],['#','SUR','#','ZH ER'],
+      ['','SUR','#','SH ER'],['#','SU','#','ZH UW'],['#','SSU','#','SH UW'],['#','SED',' ','Z D'],
+      ['#','S','#','Z'],['','SAID','','S EH D'],['^','SION','','SH AX N'],['','S','S',''],
+      ['.','S',' ','Z'],['#:.E','S',' ','Z'],['#:^##','S',' ','Z'],['#:^#','S',' ','S'],
+      ['U','S',' ','S'],[' :#','S',' ','Z'],['','SCH','','S K'],['','S','C+',''],
+      ['#','SM','','Z M'],['#','SN','\'','Z AX N'],['','S','','S']],
+ 'T':[[' ','THE',' ','DH AX'],['','TO',' ','T UW'],['','THAT',' ','DH AE T'],
+      [' ','THIS',' ','DH IH S'],[' ','THEY','','DH EY'],[' ','THERE','','DH EH R'],
+      ['','THER','','DH ER'],['','THEIR','','DH EH R'],[' ','THAN',' ','DH AE N'],
+      [' ','THEM',' ','DH EH M'],['','THESE',' ','DH IY Z'],[' ','THEN','','DH EH N'],
+      ['','THROUGH','','TH R UW'],['','THOSE','','DH OW Z'],['','THOUGH',' ','DH OW'],
+      [' ','THUS','','DH AH S'],['','TH','','TH'],['#:','TED',' ','T IH D'],
+      ['S','TI','#N','CH'],['','TI','O','SH'],['','TI','A','SH'],['','TIEN','','SH AX N'],
+      ['','TUR','#','CH ER'],['','TU','A','CH UW'],[' ','TWO','','T UW'],['','T','T',''],['','T','','T']],
+ 'U':[[' ','UN','+','Y UW N'],[' ','UN','','AH N'],[' ','UPON','','AX P AO N'],
+      ['T','UR','#','UH R'],['S','UR','#','UH R'],['R','UR','#','UH R'],['D','UR','#','UH R'],
+      ['L','UR','#','UH R'],['Z','UR','#','UH R'],['N','UR','#','UH R'],['J','UR','#','UH R'],
+      ['TH','UR','#','UH R'],['CH','UR','#','UH R'],['SH','UR','#','UH R'],
+      ['','UR','#','Y UH R'],['','UR','','ER'],['','U','^ ','AH'],['','U','^^','AH'],
+      ['','UY','','AY'],[' G','U','#',''],['G','U','%',''],['G','U','#','W'],
+      ['#N','U','','Y UW'],['T','U','','UW'],['S','U','','UW'],['R','U','','UW'],
+      ['D','U','','UW'],['L','U','','UW'],['Z','U','','UW'],['N','U','','UW'],
+      ['J','U','','UW'],['TH','U','','UW'],['CH','U','','UW'],['SH','U','','UW'],
+      ['','U','','Y UW']],
+ 'V':[['','VIEW','','V Y UW'],['','V','','V']],
+ 'W':[[' ','WERE','','W ER'],['','WA','SH','W AA'],['','WA','ST','W EY'],['','WA','S','W AA'],
+      ['','WA','T','W AA'],['','WHERE','','WH EH R'],['','WHAT','','WH AA T'],
+      ['','WHOL','','HH OW L'],['','WHO','','HH UW'],['','WH','','WH'],['','WAR','','W AO R'],
+      ['','WOR','^','W ER'],['','WR','','R'],['','W','','W']],
+ 'X':[[' ','X','','Z'],['','X','','K S']],
+ 'Y':[['','YOUNG','','Y AH NG'],[' ','YOU','','Y UW'],[' ','YES','','Y EH S'],
+      [' ','Y','','Y'],['#:^','Y',' ','IY'],['#:^','Y','I','IY'],[' :','Y',' ','AY'],
+      [' :','Y','#','AY'],[' :','Y','^+:#','IH'],[' :','Y','^#','AY'],['','Y','','IH']],
+ 'Z':[['','Z','Z',''],['','Z','','Z']],
+ '0':[['','0','','Z IY R OW']],'1':[['','1','','W AH N']],'2':[['','2','','T UW']],
+ '3':[['','3','','TH R IY']],'4':[['','4','','F AO R']],'5':[['','5','','F AY V']],
+ '6':[['','6','','S IH K S']],'7':[['','7','','S EH V AX N']],'8':[['','8','','EY T']],
+ '9':[['','9','','N AY N']],
+ '-':[['','-','','']],'.':[['','.','','_']],',':[['',',','','_']],'\'':[['','\'','','']],
+ ' ':[['',' ','','_']]
+};
+const VOWELS='AEIOUY', SIBILANTS=['S','C','G','Z','X','J','CH','SH'], VOICEDC='BDVGJLMNRWZ';
+function isV(c){ return VOWELS.indexOf(c)>=0; }
+function isC(c){ return c>='A'&&c<='Z'&&!isV(c); }
+
+function matchLeft(pat,s,i){
+  let p=pat.length-1, k=i-1;
+  while(p>=0){
+    const c=pat[p];
+    if(c===' '){ if(!(k<0||s[k]===' ')) return false; if(k>=0&&s[k]===' ')k--; p--; }
+    else if(c==='#'){ if(k<0||!isV(s[k])) return false; while(k>=0&&isV(s[k]))k--; p--; }
+    else if(c===':'){ while(k>=0&&isC(s[k]))k--; p--; }
+    else if(c==='^'){ if(k<0||!isC(s[k])) return false; k--; p--; }
+    else if(c==='.'){ if(k<0||VOICEDC.indexOf(s[k])<0) return false; k--; p--; }
+    else if(c==='+'){ if(k<0||'EIY'.indexOf(s[k])<0) return false; k--; p--; }
+    else { if(k<0||s[k]!==c) return false; k--; p--; }
+  }
+  return true;
+}
+function matchRight(pat,s,i){
+  let p=0, k=i;
+  while(p<pat.length){
+    const c=pat[p];
+    if(c===' '){ if(!(k>=s.length||s[k]===' ')) return false; p++; if(k<s.length&&s[k]===' ')k++; }
+    else if(c==='#'){ if(k>=s.length||!isV(s[k])) return false; while(k<s.length&&isV(s[k]))k++; p++; }
+    else if(c===':'){ while(k<s.length&&isC(s[k]))k++; p++; }
+    else if(c==='^'){ if(k>=s.length||!isC(s[k])) return false; k++; p++; }
+    else if(c==='+'){ if(k>=s.length||'EIY'.indexOf(s[k])<0) return false; k++; p++; }
+    else if(c==='&'){
+      if(k<s.length&&'SCGZXJ'.indexOf(s[k])>=0){k++;p++;}
+      else if(k+1<s.length&&(s.substr(k,2)==='CH'||s.substr(k,2)==='SH')){k+=2;p++;}
+      else return false;
+    }
+    else if(c==='%'){
+      const r=s.substr(k);
+      let m=0;
+      if(/^ING/.test(r))m=3; else if(/^ELY/.test(r))m=3; else if(/^ED/.test(r))m=2;
+      else if(/^ES/.test(r))m=2; else if(/^ER/.test(r))m=2; else if(/^E/.test(r))m=1;
+      if(!m) return false; k+=m; p++;
+    }
+    else if(c==='.'){ if(k>=s.length||VOICEDC.indexOf(s[k])<0) return false; k++; p++; }
+    else { if(k>=s.length||s[k]!==c) return false; k++; p++; }
+  }
+  return true;
+}
+
+/* Letter-to-sound. It is wrong on plenty of English, which is honest: a 1979
+   phoneme box was wrong on plenty of English too. */
+function toPhonemes(txt){
+  const s=' '+txt.toUpperCase().replace(/[^A-Z0-9'.,\- ]/g,' ').replace(/\s+/g,' ').trim()+' ';
+  const out=[];
+  let i=0;
+  let guard=0;
+  while(i<s.length && guard++<4000){
+    const ch=s[i];
+    const rules=LTS[ch];
+    if(!rules){ i++; continue; }
+    let done=false;
+    for(let r=0;r<rules.length;r++){
+      const R=rules[r], f=R[1];
+      if(s.substr(i,f.length)!==f) continue;
+      if(!matchLeft(R[0],s,i)) continue;
+      if(!matchRight(R[2],s,i+f.length)) continue;
+      const ph=R[3];
+      if(ph) { const parts=ph.split(' '); for(let q=0;q<parts.length;q++) if(parts[q]) out.push(parts[q]); }
+      i+=f.length; done=true; break;
+    }
+    if(!done) i++;
+  }
+  /* Expand diphthongs and affricates into their stepped targets. */
+  const fin=[];
+  for(let k=0;k<out.length;k++){
+    const p=out[k];
+    if(DIPH[p]){ fin.push(DIPH[p][0],DIPH[p][1]); }
+    else if(p==='WH'){ fin.push('HH','W'); }
+    else if(PHON[p]) fin.push(p);
+  }
+  return fin;
+}
+
+/* The reader. Three parallel bandpasses fed by a glottal buzz and a hiss;
+   nothing glides. */
+function speak(segments, opts){
+  if(!AC||!MASTER) return 0;
+  opts=opts||{};
+  const t0=AC.currentTime+0.05;
+  const out=AC.createGain(); out.gain.value=(opts.vol===undefined?0.55:opts.vol); out.connect(MASTER);
+
+  const buzz=AC.createOscillator(); buzz.setPeriodicWave(glottalWave);
+  const bg=AC.createGain(); bg.gain.value=0; buzz.connect(bg);
+  const hiss=noiseSrc(); const hg=AC.createGain(); hg.gain.value=0; hiss.connect(hg);
+
+  const F=[], FG=[];
+  const AMP=[1.0,0.62,0.34];
+  for(let k=0;k<3;k++){
+    const f=AC.createBiquadFilter(); f.type='bandpass';
+    f.frequency.value=500; f.Q.value=[7,9,11][k];
+    const g=AC.createGain(); g.gain.value=AMP[k];
+    bg.connect(f); hg.connect(f); f.connect(g); g.connect(out);
+    F.push(f); FG.push(g);
+  }
+  const f0base=opts.f0||118;
+  let t=t0, total=0;
+  /* Count the speakable phonemes first so the declination lands on the last
+     one whether or not the middle of the sentence was comprehensible. */
+  let np=0;
+  for(let i=0;i<segments.length;i++) np+=(segments[i].ph?segments[i].ph.length:0);
+  let idx=0;
+  for(let i=0;i<segments.length;i++){
+    const seg=segments[i];
+    if(seg.mute){
+      /* An undecoded word: the reader has no phonemes for it and stops. The
+         gap is the readout — the operator hears exactly what they cannot read. */
+      bg.gain.setValueAtTime(0,t); hg.gain.setValueAtTime(0,t);
+      t+=seg.dur||0.30; total+=seg.dur||0.30;
+      continue;
+    }
+    if(!seg.ph) continue;
+    for(let j=0;j<seg.ph.length;j++){
+      const p=PHON[seg.ph[j]]; if(!p) continue;
+      const dur=p[4]/1000*(opts.rate||1);
+      const decl=1-0.22*(idx/Math.max(1,np-1));
+      buzz.frequency.setValueAtTime(f0base*decl,t);
+      F[0].frequency.setValueAtTime(p[0],t);
+      F[1].frequency.setValueAtTime(p[1],t);
+      F[2].frequency.setValueAtTime(p[2],t);
+      const kind=p[5];
+      if(kind==='q'){ bg.gain.setValueAtTime(0,t); hg.gain.setValueAtTime(0,t); }
+      else if(kind==='s'){
+        /* Stops: silence, then a burst. Without the closure they smear. */
+        bg.gain.setValueAtTime(0,t); hg.gain.setValueAtTime(0,t);
+        const tb=t+dur*0.55;
+        hg.gain.setValueAtTime(p[3]?0.22:0.42,tb);
+        bg.gain.setValueAtTime(p[3]?0.30:0,tb);
+        bg.gain.setValueAtTime(0,t+dur); hg.gain.setValueAtTime(0,t+dur);
+      }
+      else if(kind==='f'){
+        hg.gain.setValueAtTime(0.40,t);
+        bg.gain.setValueAtTime(p[3]?0.32:0,t);
+      }
+      else if(kind==='n'){ bg.gain.setValueAtTime(0.55,t); hg.gain.setValueAtTime(0,t); }
+      else { bg.gain.setValueAtTime(0.95,t); hg.gain.setValueAtTime(0.02,t); }
+      t+=dur; total+=dur; idx++;
+    }
+  }
+  bg.gain.setValueAtTime(0,t); hg.gain.setValueAtTime(0,t);
+  buzz.start(t0); hiss.start(t0);
+  buzz.stop(t+0.12); hiss.stop(t+0.12);
+  out.gain.setValueAtTime(out.gain.value,t); out.gain.linearRampToValueAtTime(0,t+0.1);
+  return total;
+}
+
+/* ------------------------------------------- one physics per speaking race */
+
+/* The differences below are mechanisms, not timbres: a stridulating file, a
+   struck bar, a bladder under ring modulation, a bank of quantised
+   oscillators. Nothing here shares a signal path with anything else. */
+function voiceStridulate(dur,seedR,pitch){
+  if(!AC) return;
+  const t0=AC.currentTime+0.03;
+  const out=AC.createGain(); out.gain.value=0.16; out.connect(MASTER);
+  const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=3400; bp.Q.value=6;
+  const bp2=AC.createBiquadFilter(); bp2.type='bandpass'; bp2.frequency.value=5200; bp2.Q.value=9;
+  bp.connect(out); bp2.connect(out);
+  const src=AC.createOscillator(); src.type='sawtooth';
+  const g=AC.createGain(); g.gain.value=0; src.connect(g); g.connect(bp); g.connect(bp2);
+  let t=t0;
+  while(t<t0+dur){
+    /* Each pulse is one pass of the file over the scraper. */
+    const rate=90+seedR()*160;
+    const n=4+((seedR()*9)|0);
+    src.frequency.setValueAtTime(rate,t);
+    bp.frequency.setValueAtTime(2600+seedR()*2600,t);
+    for(let i=0;i<n;i++){
+      const tt=t+i*0.014;
+      g.gain.setValueAtTime(0.9,tt);
+      g.gain.setValueAtTime(0.0,tt+0.008);
+    }
+    t+=n*0.014+0.02+seedR()*0.10;
+  }
+  g.gain.setValueAtTime(0,t);
+  src.start(t0); src.stop(t+0.1);
+}
+function voiceBar(dur,seedR,pitch){
+  if(!AC) return;
+  const t0=AC.currentTime+0.03;
+  const out=AC.createGain(); out.gain.value=0.10; out.connect(MASTER);
+  /* Free-bar modes. They are not harmonic, and that is the whole character. */
+  const modes=[1,2.756,5.404,8.933,13.34,18.64];
+  let t=t0;
+  while(t<t0+dur){
+    const f=(pitch||150)*(0.8+seedR()*0.5);
+    const decay=0.24+seedR()*0.5;
+    for(let m=0;m<modes.length;m++){
+      const o=AC.createOscillator(); o.type='sine'; o.frequency.value=f*modes[m];
+      const g=AC.createGain(); g.gain.value=0; o.connect(g); g.connect(out);
+      const amp=0.55/(1+m*1.25);
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(amp,t+0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+decay*(1-m*0.11));
+      o.start(t); o.stop(t+decay+0.05);
+    }
+    t+=0.10+seedR()*0.20;
+  }
+}
+function voiceBladder(dur,seedR,pitch){
+  if(!AC) return;
+  const t0=AC.currentTime+0.03;
+  const out=AC.createGain(); out.gain.value=0.16; out.connect(MASTER);
+  const car=AC.createOscillator(); car.type='sine'; car.frequency.value=pitch||96;
+  const mod=AC.createOscillator(); mod.type='sine'; mod.frequency.value=(pitch||96)*1.61;
+  /* True ring modulation: the modulator drives the gain of a zero-biased VCA,
+     so the carrier vanishes and only the sidebands survive. */
+  const ring=AC.createGain(); ring.gain.value=0;
+  mod.connect(ring.gain); car.connect(ring);
+  const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900; lp.Q.value=8;
+  const amp=AC.createGain(); amp.gain.value=0;
+  ring.connect(lp); lp.connect(amp); amp.connect(out);
+  let t=t0;
+  while(t<t0+dur){
+    const seg=0.12+seedR()*0.34;
+    const p=(pitch||96)*(0.6+seedR()*0.9);
+    car.frequency.setValueAtTime(p,t);
+    mod.frequency.setValueAtTime(p*(1.1+seedR()*1.4),t);
+    lp.frequency.setValueAtTime(400+seedR()*1600,t);
+    amp.gain.setValueAtTime(0.0001,t);
+    amp.gain.exponentialRampToValueAtTime(0.9,t+seg*0.25);
+    amp.gain.exponentialRampToValueAtTime(0.0001,t+seg);
+    t+=seg+0.02;
+  }
+  car.start(t0); mod.start(t0); car.stop(t+0.1); mod.stop(t+0.1);
+}
+function voiceBank(dur,seedR,pitch){
+  if(!AC) return;
+  const t0=AC.currentTime+0.03;
+  const out=AC.createGain(); out.gain.value=0.075; out.connect(MASTER);
+  const N=6, oscs=[], gains=[];
+  const grid=(pitch||55);
+  for(let i=0;i<N;i++){
+    const o=AC.createOscillator(); o.type=(i&1)?'square':'sawtooth';
+    const g=AC.createGain(); g.gain.value=0;
+    o.connect(g); g.connect(out); o.start(t0); oscs.push(o); gains.push(g);
+  }
+  let t=t0;
+  const step=0.055;
+  while(t<t0+dur){
+    for(let i=0;i<N;i++){
+      /* Everything snaps to the grid: no value between two steps exists. */
+      const k=1+((seedR()*11)|0);
+      oscs[i].frequency.setValueAtTime(grid*k*(i+1)*0.5,t);
+      gains[i].gain.setValueAtTime(seedR()<0.55?0.30/(i*0.6+1):0,t);
+    }
+    t+=step;
+  }
+  for(let i=0;i<N;i++){ gains[i].gain.setValueAtTime(0,t); oscs[i].stop(t+0.08); }
+}
+const VOICE_FN={strid:voiceStridulate,bar:voiceBar,bladder:voiceBladder,bank:voiceBank};
+
+/* ==========================================================================
+   SCRIPT AND LANGUAGE
+   ========================================================================== */
+
+/* Each culture writes with a different mechanism, so each script is generated
+   by a different stroke grammar rather than by restyling one alphabet. The
+   forms are deterministic from the console's seed: the operator can write them
+   down and they will be the same tomorrow. */
+function makeScript(kind,count,seed){
+  const r=rng(seed), glyphs=[];
+  for(let g=0;g<count;g++){
+    const polys=[];
+    if(kind==='angular'){
+      /* Cut with a mandible against a hard surface: straight, few, and always
+         meeting at a lattice point. */
+      const xs=[0,2,4], ys=[0,2,4,6];
+      const n=2+((r()*3)|0);
+      let cx=xs[(r()*3)|0], cy=ys[(r()*4)|0];
+      const pts=[cx,cy];
+      for(let i=0;i<n;i++){
+        let nx,ny,guard=0;
+        do{ nx=xs[(r()*3)|0]; ny=ys[(r()*4)|0]; guard++; }while((nx===cx&&ny===cy)&&guard<8);
+        pts.push(nx,ny); cx=nx; cy=ny;
+      }
+      polys.push(pts);
+      if(r()<0.45){ const bx=xs[(r()*3)|0]; polys.push([bx,0,bx,6]); }
+    } else if(kind==='arc'){
+      /* Drawn by a limb that pivots: everything is a segment of a circle. */
+      const n=1+((r()*2)|0);
+      for(let i=0;i<=n;i++){
+        const cx=1+r()*2, cy=1.5+r()*3, rad=1+r()*2;
+        const a0=r()*TAU, a1=a0+(0.8+r()*3.0)*(r()<0.5?1:-1);
+        const steps=6;
+        const pts=[];
+        for(let s=0;s<=steps;s++){
+          const t=a0+(a1-a0)*s/steps;
+          pts.push(clamp(cx+Math.cos(t)*rad,0,4),clamp(cy+Math.sin(t)*rad*1.3,0,6));
+        }
+        polys.push(pts);
+      }
+    } else if(kind==='bardot'){
+      /* A spine with markers set against it — written by pressure, so the
+         information is in where the marks are, not in the line. */
+      const vertical=r()<0.7;
+      if(vertical){ const bx=1+((r()*3)|0); polys.push([bx,0,bx,6]); }
+      else { const by=1+((r()*5)|0); polys.push([0,by,4,by]); }
+      const n=1+((r()*4)|0);
+      for(let i=0;i<n;i++){
+        const px=(r()*5)|0, py=(r()*7)|0;
+        if(r()<0.55) polys.push([px,py,px+(r()<0.5?1:-1),py]);
+        else polys.push([px,py,px,py+(r()<0.5?1:-1)]);
+      }
+    } else {
+      /* Etched by a machine that only moves along two axes. */
+      let cx=(r()*5)|0, cy=(r()*7)|0;
+      const pts=[cx,cy];
+      const n=3+((r()*4)|0);
+      let horiz=r()<0.5;
+      for(let i=0;i<n;i++){
+        if(horiz){ cx=clamp(cx+(r()<0.5?-2:2)-((r()*2)|0),0,4); }
+        else { cy=clamp(cy+(r()<0.5?-3:3)-((r()*2)|0),0,6); }
+        pts.push(cx,cy); horiz=!horiz;
+      }
+      polys.push(pts);
+    }
+    glyphs.push(polys);
+  }
+  return glyphs;
+}
+
+/* Alien text is written by glyph index, not by character: there is no
+   transliteration and the console never invents one. */
+function alienText(x,y,size,ids,glyphs,col,a,w){
+  const s=size/6, adv=size*TRACK;
+  const L=bucket(col,w||1,a===undefined?B.MID:a);
+  for(let i=0;i<ids.length;i++){
+    const g=glyphs[ids[i]%glyphs.length];
+    const ox=x+i*adv;
+    for(let p=0;p<g.length;p++){
+      const pts=g[p];
+      for(let q=0;q+3<pts.length;q+=2)
+        pushSeg(L, ox+pts[q]*s, y+pts[q+1]*s, ox+pts[q+2]*s, y+pts[q+3]*s);
+    }
+  }
+  return ids.length*adv;
+}
+
+/* The concepts every culture has a word for. The English column is a gloss the
+   console prints once it can read the word; it is not what was said. */
+const CONCEPT=['WE','YOU','THIS','NOT','GIVE','COME','GO','STAR','PATH','FAR',
+  'NEAR','TIME','BEFORE','AFTER','DEAD','LIVE','AIR','SHIP','NAME','ASK',
+  'YES','NO','DANGER','QUIET','MANY','ONE','ALL','NONE','MAKE','BREAK',
+  'HEAR','SPEAK','SEE','HIDE','OWE','GUEST','HOST','LAW','WRONG','TRUE',
+  'PLACE','SELF','OTHER','LIGHT','DARK','COLD','SMALL','GREAT','OPEN','SHUT',
+  'IN','SOUND','FOR','MORE','WELL','NOW','TOO','WHY'];
+const CN={}; for(let i=0;i<CONCEPT.length;i++) CN[CONCEPT[i]]=i;
+const STOP=-1;    /* the end of an utterance; drawn, never spoken             */
+
+/* ==========================================================================
+   THE CULTURES
+   Each was here first. Each owes the operator nothing. What they hand over is
+   navigation, and it is handed over, never found and never taken.
+   ========================================================================== */
+
+const CULTURES=[
+  {
+    id:0, code:'AX-1173', cls:'STRIDULATORY', host:'WOLF 1061',
+    script:'angular', voice:'strid', pitch:150, glyphN:34, wordMin:2, wordMax:4, ease:0.07,
+    gift:'PARALLAX REDUCTION', giftKey:'parallax',
+    giftNote:'SUBTRACTS OWN POSITION VECTOR FROM CATALOGUE BEARING',
+    form:'BOARDING FORM 11-C / UNSOLICITED APPROACH'
+  },
+  {
+    id:1, code:'BN-0440', cls:'PERCUSSIVE', host:'GLIESE 832',
+    script:'arc', voice:'bar', pitch:210, glyphN:26, wordMin:2, wordMax:3, ease:0.11,
+    gift:'RANGE SOLUTION', giftKey:'range',
+    giftNote:'RESOLVES BURN MAGNITUDE TO THREE PLACES',
+    form:'BOARDING FORM 11-C / UNSOLICITED APPROACH'
+  },
+  {
+    id:2, code:'CV-2201', cls:'MODULATED', host:'GLIESE 667 C',
+    script:'bardot', voice:'bladder', pitch:96, glyphN:18, wordMin:1, wordMax:3, ease:0.18,
+    gift:'EPOCH CORRECTION', giftKey:'epoch',
+    giftNote:'CORRECTS CATALOGUE FOR PROPER MOTION SINCE EPOCH',
+    form:'BOARDING FORM 11-C / UNSOLICITED APPROACH'
+  },
+  {
+    id:3, code:'DL-0002', cls:'QUANTISED', host:'TRAPPIST-1',
+    script:'ortho', voice:'bank', pitch:55, glyphN:11, wordMin:1, wordMax:2, ease:0.30,
+    gift:'CLOSURE', giftKey:'closure',
+    giftNote:'DRIVES RESIDUAL BEARING ERROR BELOW INSTRUMENT NOISE',
+    form:'BOARDING FORM 11-C / UNSOLICITED APPROACH'
+  }
+];
+
+/* The exchanges. `w` is what a reply costs in standing; the panel prints it
+   before the operator commits, because a console that let you send an insult
+   blind would be a badly designed console. */
+const N=CN;
+const DIALOGUE=[
+ [ /* AX-1173 — stridulatory. Territorial, procedural, and entirely uninterested
+      in whether the operator survives the conversation. */
+  {them:[N.WE,N.HEAR,N.YOU,N.COME,STOP,N.YOU,N.NOT,N.ASK,STOP],
+   replies:[
+    {t:[N.WE,N.ASK,STOP], w:+2, tag:'DEFER', note:'ASKS LEAVE AFTER THE FACT'},
+    {t:[N.WE,N.COME,N.FAR,STOP], w:0, tag:'STATE', note:'STATES FACT ONLY'},
+    {t:[N.THIS,N.PLACE,N.OPEN,STOP], w:-4, tag:'CLAIM', note:'ASSERTS A RIGHT OF PASSAGE'}]},
+  {them:[N.THIS,N.PLACE,N.NOT,N.OPEN,STOP,N.WE,N.MAKE,N.LAW,N.BEFORE,N.YOU,N.LIVE,STOP],
+   replies:[
+    {t:[N.WE,N.HEAR,N.LAW,STOP], w:+2, tag:'DEFER', note:'ACCEPTS JURISDICTION'},
+    {t:[N.WE,N.ASK,N.PATH,STOP], w:+1, tag:'ASK', note:'REQUESTS TRANSIT'},
+    {t:[N.WE,N.NOT,N.HEAR,N.LAW,STOP], w:-6, tag:'REFUSE', note:'DENIES JURISDICTION'}]},
+  {them:[N.YOU,N.SHIP,N.SMALL,STOP,N.YOU,N.AIR,N.SMALL,STOP,N.WE,N.SEE,N.YOU,N.DEAD,N.AFTER,N.TIME,STOP],
+   replies:[
+    {t:[N.YES,STOP], w:+1, tag:'AGREE', note:'CONCEDES THE OBSERVATION'},
+    {t:[N.WE,N.ASK,N.AIR,STOP], w:-2, tag:'BEG', note:'ASKS FOR CONSUMABLES'},
+    {t:[N.WE,N.NOT,N.DEAD,STOP], w:-3, tag:'CLAIM', note:'CONTRADICTS THE HOST'}]},
+  {them:[N.WE,N.GIVE,N.PATH,STOP,N.YOU,N.OWE,STOP,N.GO,STOP],
+   replies:[
+    {t:[N.WE,N.OWE,STOP], w:+3, tag:'ACCEPT', note:'ACKNOWLEDGES THE DEBT'},
+    {t:[N.WE,N.GO,STOP], w:0, tag:'STATE', note:'LEAVES WITHOUT ANSWERING'},
+    {t:[N.WE,N.NOT,N.OWE,STOP], w:-8, tag:'REFUSE', note:'REFUSES THE DEBT'}]}
+ ],
+ [ /* BN-0440 — percussive. Speaks in struck intervals; measures everything,
+      including the operator. */
+  {them:[N.ONE,N.SHIP,STOP,N.ONE,N.LIVE,N.IN,STOP],
+   replies:[
+    {t:[N.YES,N.ONE,STOP], w:+1, tag:'STATE', note:'CONFIRMS THE COUNT'},
+    {t:[N.WE,N.MANY,STOP], w:-5, tag:'LIE', note:'MISREPORTS THE COMPLEMENT'},
+    {t:[N.WE,N.ASK,N.NAME,STOP], w:0, tag:'ASK', note:'ASKS FOR A DESIGNATION'}]},
+  {them:[N.WE,N.MAKE,N.SOUND,STOP,N.SOUND,N.TRUE,STOP,N.YOU,N.SPEAK,N.WRONG,STOP],
+   replies:[
+    {t:[N.WE,N.SPEAK,N.SMALL,STOP], w:+3, tag:'DEFER', note:'ADMITS POOR COMMAND'},
+    {t:[N.WE,N.HEAR,N.NOT,N.ALL,STOP], w:+2, tag:'DEFER', note:'ADMITS POOR HEARING'},
+    {t:[N.YOU,N.SPEAK,N.WRONG,STOP], w:-7, tag:'INSULT', note:'RETURNS THE CHARGE'}]},
+  {them:[N.STAR,N.MANY,STOP,N.PATH,N.MANY,STOP,N.YOU,N.SEE,N.ONE,N.PATH,N.NOT,N.ALL,STOP],
+   replies:[
+    {t:[N.WE,N.ASK,N.SEE,N.ALL,STOP], w:0, tag:'ASK', note:'ASKS TO BE TAUGHT'},
+    {t:[N.WE,N.SEE,N.SMALL,STOP], w:+2, tag:'DEFER', note:'ADMITS THE LIMIT'},
+    {t:[N.WE,N.SEE,N.ALL,STOP], w:-6, tag:'CLAIM', note:'CLAIMS EQUAL SIGHT'}]},
+  {them:[N.WE,N.GIVE,N.THIS,STOP,N.NOT,N.FOR,N.YOU,STOP,N.FOR,N.OTHER,N.AFTER,N.YOU,STOP],
+   replies:[
+    {t:[N.WE,N.HEAR,STOP], w:+3, tag:'ACCEPT', note:'ACCEPTS WITHOUT CLAIMING'},
+    {t:[N.WE,N.OWE,STOP], w:+2, tag:'ACCEPT', note:'ACKNOWLEDGES THE DEBT'},
+    {t:[N.THIS,N.FOR,N.WE,STOP], w:-8, tag:'CLAIM', note:'CLAIMS THE GIFT'}]}
+ ],
+ [ /* CV-2201 — modulated. A gas bladder under ring modulation; slow, and it
+      does not distinguish between a question and an intrusion. */
+  {them:[N.DARK,STOP,N.LIGHT,STOP,N.YOU,STOP],
+   replies:[
+    {t:[N.WE,STOP], w:+1, tag:'STATE', note:'ANSWERS IN KIND'},
+    {t:[N.WE,N.SEE,N.YOU,STOP], w:0, tag:'STATE', note:'REPORTS THE SIGHTING'},
+    {t:[N.WE,N.ASK,N.NAME,STOP], w:-3, tag:'ASK', note:'ASKS A NAME UNBIDDEN'}]},
+  {them:[N.WE,N.LIVE,N.IN,N.DARK,STOP,N.LIGHT,N.BREAK,N.WE,STOP],
+   replies:[
+    {t:[N.WE,N.SHUT,N.LIGHT,STOP], w:+4, tag:'DEFER', note:'DOUSES THE FLOODS'},
+    {t:[N.WE,N.NOT,N.SEE,N.WELL,STOP], w:0, tag:'STATE', note:'STATES A DIFFICULTY'},
+    {t:[N.WE,N.MAKE,N.LIGHT,STOP], w:-7, tag:'CLAIM', note:'KEEPS THE FLOODS LIT'}]},
+  {them:[N.TIME,N.GREAT,STOP,N.WE,N.BEFORE,N.STAR,STOP,N.YOU,N.AFTER,N.ALL,STOP],
+   replies:[
+    {t:[N.YES,STOP], w:+2, tag:'AGREE', note:'CONCEDES PRECEDENCE'},
+    {t:[N.WE,N.ASK,N.HEAR,N.MORE,STOP], w:+1, tag:'ASK', note:'ASKS TO BE TOLD'},
+    {t:[N.WE,N.BEFORE,N.TOO,STOP], w:-6, tag:'CLAIM', note:'CLAIMS EQUAL AGE'}]},
+  {them:[N.WE,N.GIVE,N.TIME,STOP,N.STAR,N.GO,STOP,N.PATH,N.GO,STOP,N.NOW,N.YOU,N.SEE,STOP],
+   replies:[
+    {t:[N.WE,N.HEAR,STOP], w:+3, tag:'ACCEPT', note:'ACCEPTS QUIETLY'},
+    {t:[N.WE,N.OWE,N.YOU,STOP], w:+2, tag:'ACCEPT', note:'ACKNOWLEDGES THE DEBT'},
+    {t:[N.GIVE,N.MORE,STOP], w:-9, tag:'DEMAND', note:'DEMANDS A SECOND GIFT'}]}
+ ],
+ [ /* DL-0002 — quantised. Whatever made it is not here. It answers anyway, in
+      eleven signs, and it has answered before. */
+  {them:[N.WE,N.HEAR,STOP],
+   replies:[
+    {t:[N.WE,N.SPEAK,STOP], w:0, tag:'STATE', note:'OPENS THE CHANNEL'},
+    {t:[N.WE,N.ASK,STOP], w:+1, tag:'ASK', note:'ASKS BEFORE SPEAKING'},
+    {t:[N.YOU,N.GIVE,STOP], w:-5, tag:'DEMAND', note:'OPENS WITH A DEMAND'}]},
+  {them:[N.HOST,N.NOT,N.LIVE,STOP,N.WE,N.SPEAK,N.FOR,N.HOST,STOP],
+   replies:[
+    {t:[N.WE,N.HEAR,STOP], w:+2, tag:'ACCEPT', note:'ACCEPTS THE PROXY'},
+    {t:[N.HOST,N.DEAD,STOP], w:0, tag:'STATE', note:'STATES THE OBVIOUS'},
+    {t:[N.YOU,N.NOT,N.HOST,STOP], w:-6, tag:'REFUSE', note:'REJECTS THE PROXY'}]},
+  {them:[N.MANY,N.COME,N.BEFORE,N.YOU,STOP,N.ALL,N.GO,STOP,N.NONE,N.COME,N.AFTER,STOP],
+   replies:[
+    {t:[N.WE,N.HEAR,STOP], w:+2, tag:'ACCEPT', note:'ACCEPTS THE ACCOUNT'},
+    {t:[N.WE,N.ASK,N.WHY,STOP], w:0, tag:'ASK', note:'ASKS THE REASON'},
+    {t:[N.WE,N.NOT,N.GO,STOP], w:-4, tag:'CLAIM', note:'CLAIMS AN EXCEPTION'}]},
+  {them:[N.WE,N.GIVE,N.ALL,N.PATH,STOP,N.HOST,N.MAKE,N.THIS,N.BEFORE,N.HOST,N.DEAD,STOP,N.GO,STOP],
+   replies:[
+    {t:[N.WE,N.OWE,N.HOST,STOP], w:+4, tag:'ACCEPT', note:'CREDITS THE ABSENT HOST'},
+    {t:[N.WE,N.HEAR,STOP], w:+2, tag:'ACCEPT', note:'ACCEPTS QUIETLY'},
+    {t:[N.WE,N.GO,STOP], w:0, tag:'STATE', note:'LEAVES WITHOUT ANSWERING'}]}
+ ]
+];
+/* Words are built once, from the culture's own seed. Glyph frequency is then
+   COUNTED off the corpus the culture actually transmits — the operator learns
+   the signs in the order the signs are used, not in an order anybody chose. */
+function buildLanguage(cu,seed){
+  const r=rng(seed);
+  cu.glyphs=makeScript(cu.script,cu.glyphN,seed^0x5bf03635);
+  const D=DIALOGUE[cu.id];
+
+  /* Count how often each concept is actually transmitted, before any sign is
+     assigned to it. A writing system is not arbitrary: the words a culture
+     says constantly are the words built from its commonest marks, and that is
+     what makes learning one in frequency order possible at all. */
+  const cfreq=new Array(CONCEPT.length).fill(0);
+  for(let n=0;n<D.length;n++){
+    const add=(toks,mult)=>{ for(let i=0;i<toks.length;i++) if(toks[i]!==STOP) cfreq[toks[i]]+=mult; };
+    add(D[n].them,3);
+    for(let q=0;q<D[n].replies.length;q++) add(D[n].replies[q].t,1);
+  }
+  const rank=cfreq.map((f,i)=>[f,i]).sort((a,b)=>b[0]-a[0]||a[1]-b[1]).map(p=>p[1]);
+  let usedCount=0;
+  for(let i=0;i<cfreq.length;i++) if(cfreq[i]>0) usedCount++;
+
+  cu.words=new Array(CONCEPT.length);
+  const taken={};
+  for(let rk=0;rk<rank.length;rk++){
+    const c=rank[rk];
+    /* The pool of signs a word may be spelt from widens as the word gets
+       rarer, so the commonest words are spelt entirely in the commonest
+       signs and become readable first. */
+    const frac=usedCount?Math.min(1,rk/Math.max(1,usedCount-1)):1;
+    let pool=clamp(Math.round(2+frac*(cu.glyphN-2)),2,cu.glyphN);
+    if(cfreq[c]===0) pool=cu.glyphN;
+    let w=null;
+    for(let attempt=0;attempt<40;attempt++){
+      const len=cu.wordMin+((r()*(cu.wordMax-cu.wordMin+1))|0);
+      const cand=[];
+      for(let i=0;i<len;i++) cand.push((r()*pool)|0);
+      const key=cand.join(',');
+      if(!taken[key]){ taken[key]=1; w=cand; break; }
+      /* Collision: widen the pool rather than emit a homograph. */
+      pool=Math.min(cu.glyphN,pool+1);
+    }
+    if(!w){ w=[rk%cu.glyphN,(rk*7+1)%cu.glyphN]; }
+    cu.words[c]=w;
+  }
+
+  /* Now count what the signs themselves do across the corpus. This is the
+     order the operator will learn them in, and it is counted, not chosen. */
+  const freq=new Array(cu.glyphN).fill(0);
+  for(let n=0;n<D.length;n++){
+    const add=(toks,mult)=>{ for(let i=0;i<toks.length;i++){ const t=toks[i]; if(t===STOP) continue;
+      const w=cu.words[t]; if(!w) continue; for(let k=0;k<w.length;k++) freq[w[k]]+=mult; } };
+    add(D[n].them,3);
+    for(let q=0;q<D[n].replies.length;q++) add(D[n].replies[q].t,1);
+  }
+  cu.freqOrder=freq.map((f,i)=>[f,i]).sort((a,b)=>b[0]-a[0]||a[1]-b[1]).map(p=>p[1]);
+  cu.freq=freq;
+  cu.known=0;                    /* how many signs, in that order, are read   */
+  cu.standing=0;
+  cu.node=0;
+  cu.gifted=false;
+  cu.refused=false;
+  cu.contacted=false;
+  return cu;
+}
+function knownSet(cu){
+  const s={};
+  for(let i=0;i<cu.known&&i<cu.freqOrder.length;i++) s[cu.freqOrder[i]]=1;
+  return s;
+}
+function wordKnown(cu,concept,ks){
+  const w=cu.words[concept];
+  if(!w) return false;
+  for(let i=0;i<w.length;i++) if(!ks[w[i]]) return false;
+  return true;
+}
+/* Comprehension is counted signs, and the console reports it as such. */
+function comprehension(cu){ return cu.known/cu.glyphN; }
+function canPhrase(cu,toks){
+  const ks=knownSet(cu);
+  for(let i=0;i<toks.length;i++){ if(toks[i]===STOP) continue; if(!wordKnown(cu,toks[i],ks)) return false; }
+  return true;
+}
+/* How many distinct signs the operator is short of being able to say this.
+   A reply that cannot be sent should say how far off it is, not merely that
+   it is off. */
+function missingSigns(cu,toks){
+  const ks=knownSet(cu), need={};
+  for(let i=0;i<toks.length;i++){
+    const t=toks[i];
+    if(t===STOP) continue;
+    const w=cu.words[t];
+    if(!w) continue;
+    for(let k=0;k<w.length;k++) if(!ks[w[k]]) need[w[k]]=1;
+  }
+  return Object.keys(need).length;
+}
+
+/* ==========================================================================
+   BODIES
+   Lathed surfaces, not drawings. A spine of control radii runs down the
+   midline and a per-race cross-section departs from circular wherever the
+   anatomy does. The mesh is cut away over the eyes and the mouth so that the
+   features have black to sit on. Nothing has an arm.
+   ========================================================================== */
+
+function rot(v,axis,ang){
+  /* Rodrigues. The limbs need to turn a frame, not just a point. */
+  const c=Math.cos(ang), s=Math.sin(ang);
+  const d=vdot(axis,v);
+  return {
+    x:v.x*c + (axis.y*v.z-axis.z*v.y)*s + axis.x*d*(1-c),
+    y:v.y*c + (axis.z*v.x-axis.x*v.z)*s + axis.y*d*(1-c),
+    z:v.z*c + (axis.x*v.y-axis.y*v.x)*s + axis.z*d*(1-c)
+  };
+}
+
+/* Cross-sections. Each returns a radial multiplier for an angle around the
+   midline; a race whose anatomy is circular would return 1 and none do. */
+const XSEC={
+  /* Chitin: a dorsal keel and a flat ventral plate. */
+  keel:function(th,u){ return 1+0.15*Math.cos(3*th)+0.13*Math.max(0,Math.cos(th))-0.07*Math.max(0,-Math.cos(th)); },
+  /* Calcite bell: five lobes, because the thing rings in five modes. */
+  lobed:function(th,u){ return 1+0.15*Math.cos(5*th)+0.05*Math.cos(2*th); },
+  /* A bladder under pressure: near-circular, flattened where it is held. */
+  bladder:function(th,u){ return 1+0.13*Math.cos(2*th+u*1.4)-0.09*Math.max(0,Math.cos(th+1.2)); },
+  /* Machined: a superellipse, so every silhouette has corners in it. */
+  box:function(th,u){
+    const n=5, c=Math.abs(Math.cos(th)), s=Math.abs(Math.sin(th));
+    return 0.86/Math.pow(Math.pow(c,n)+Math.pow(s,n),1/n);
+  }
+};
+
+const RACES=[
+  { /* AX-1173. Head bulb, hard neck, thorax, tapering abdomen. The keel runs
+       the whole length because the animal is built around it. */
+    xsec:'keel', ni:22, nj:14, aspect:0.80, len:3.30, bow:0.34,
+    spine:[0.30,0.44,0.51,0.52,0.46,0.33,0.21,0.19,0.23,0.40,
+           0.56,0.62,0.60,0.53,0.45,0.37,0.29,0.22,0.15,0.10,0.06,0.03],
+    apertures:[{u0:0.05,u1:0.19,v0:0.09,v1:0.25},{u0:0.05,u1:0.19,v0:0.75,v1:0.91},
+               {u0:0.00,u1:0.08,v0:0.42,v1:0.58}],
+    eyes:[{u:0.115,v:0.17,r:0.26,seg:6},{u:0.115,v:0.83,r:0.26,seg:6}],
+    mouth:{u:0.035,v:0.5,w:0.34,kind:'mandible'},
+    limbs:{n:4, from:0.50, len:2.10, seg:5, amp:0.55, lag:0.85, precess:0.30,
+           spread:1.30, taper:0.50, sharp:true},
+    antennae:{n:2, from:0.06, len:1.60, seg:9, amp:0.34, lag:1.5, precess:1.1, spread:0.5}
+  },
+  { /* BN-0440. A calcite bell on a stalk, with a crown of thin arms. It rings
+       in five modes and its cross-section has five lobes for the same reason. */
+    xsec:'lobed', ni:20, nj:16, aspect:1.0, len:2.80, bow:0.10,
+    spine:[0.09,0.30,0.50,0.68,0.82,0.91,0.96,0.95,0.88,0.78,
+           0.66,0.54,0.43,0.34,0.27,0.21,0.16,0.12,0.08,0.05],
+    apertures:[{u0:0.12,u1:0.26,v0:0.05,v1:0.19},{u0:0.12,u1:0.26,v0:0.55,v1:0.69},
+               {u0:0.02,u1:0.12,v0:0.28,v1:0.42}],
+    eyes:[{u:0.19,v:0.12,r:0.24,seg:12},{u:0.19,v:0.62,r:0.24,seg:12}],
+    mouth:{u:0.07,v:0.35,w:0.26,kind:'slit'},
+    limbs:{n:9, from:0.90, len:2.40, seg:9, amp:0.32, lag:0.55, precess:0.55,
+           spread:1.10, taper:0.30},
+    antennae:null
+  },
+  { /* CV-2201. A gas bladder that holds itself up, trailing feeding tentacles.
+       Three eyes, none of them paired, none of them where a face would be. */
+    xsec:'bladder', ni:20, nj:16, aspect:0.95, len:2.30, bow:0.06,
+    spine:[0.26,0.54,0.74,0.87,0.94,0.98,0.97,0.93,0.86,0.77,
+           0.67,0.56,0.46,0.37,0.29,0.23,0.17,0.13,0.09,0.06],
+    apertures:[{u0:0.15,u1:0.29,v0:0.03,v1:0.16},{u0:0.15,u1:0.29,v0:0.42,v1:0.55},
+               {u0:0.30,u1:0.44,v0:0.22,v1:0.35},{u0:0.02,u1:0.13,v0:0.68,v1:0.82}],
+    eyes:[{u:0.22,v:0.09,r:0.20,seg:16},{u:0.22,v:0.48,r:0.20,seg:16},
+          {u:0.37,v:0.28,r:0.17,seg:16}],
+    mouth:{u:0.075,v:0.75,w:0.24,kind:'slit'},
+    limbs:{n:11, from:0.76, len:3.10, seg:12, amp:0.26, lag:1.35, precess:0.42,
+           spread:1.15, taper:0.22},
+    antennae:null
+  },
+  { /* DL-0002. Machined. Whatever built it is not here, and it has been
+       answering on their behalf for a long time. */
+    xsec:'box', ni:16, nj:16, aspect:1.0, len:2.20, bow:0.0,
+    spine:[0.30,0.72,0.86,0.86,0.86,0.62,0.70,0.92,0.92,0.80,0.62,0.50,0.44,0.40,0.30,0.16],
+    apertures:[{u0:0.03,u1:0.17,v0:0.40,v1:0.60}],
+    eyes:[{u:0.10,v:0.50,r:0.42,seg:8,iris:true}],
+    mouth:null,
+    limbs:{n:6, from:0.52, len:1.55, seg:4, amp:0.42, lag:0.5, precess:0.16,
+           spread:1.5, taper:0.62, sharp:true, prismatic:true},
+    antennae:null
+  }
+];
+
+function inAperture(ap,u,v){
+  for(let i=0;i<ap.length;i++){
+    const a=ap[i];
+    if(u>=a.u0&&u<=a.u1&&v>=a.v0&&v<=a.v1) return true;
+  }
+  return false;
+}
+
+/* One camera, hand-rolled. The console has no 3-D library and no need of one. */
+function makeCam(cx,cy,scale,yaw,pitch,dist){
+  const cy1=Math.cos(yaw), sy=Math.sin(yaw), cp=Math.cos(pitch), sp=Math.sin(pitch);
+  return {cx:cx,cy:cy,s:scale,cy1:cy1,sy:sy,cp:cp,sp:sp,d:dist};
+}
+function project(p,cam,out){
+  let x=p.x*cam.cy1 - p.z*cam.sy;
+  let z=p.x*cam.sy + p.z*cam.cy1;
+  let y=p.y*cam.cp - z*cam.sp;
+  z=p.y*cam.sp + z*cam.cp;
+  const zz=z+cam.d;
+  if(zz<0.15){ out.ok=false; return out; }
+  const k=cam.s/zz;
+  out.x=cam.cx+x*k; out.y=cam.cy-y*k; out.z=zz; out.ok=true;
+  return out;
+}
+
+/* Limbs are chains that bend in their own frame. The bend plane precesses and
+   the oscillation lags further down the chain, so the motion arrives at the
+   tip late — which is the only reason any of this reads as alive. */
+function limbChain(root,dir0,up0,t,cfg,phase,scale){
+  const pts=[root];
+  let d=vnorm(dir0), up=vnorm(up0);
+  let p=root;
+  let right=vnorm({x:d.y*up.z-d.z*up.y, y:d.z*up.x-d.x*up.z, z:d.x*up.y-d.y*up.x});
+  for(let k=0;k<cfg.seg;k++){
+    const plane=phase*1.7+t*cfg.precess+k*0.45;
+    const axis=vnorm(vadd(vmul(right,Math.cos(plane)),vmul(up,Math.sin(plane))));
+    let bend=cfg.amp*Math.sin(t*2.1-k*cfg.lag+phase);
+    if(cfg.sharp){
+      /* A jointed limb does not curve: it holds an angle and then changes it. */
+      bend=cfg.amp*(k===1?1.5:(k===3?-1.2:0.35))*(0.55+0.45*Math.sin(t*1.5-k*cfg.lag+phase));
+    }
+    d=vnorm(rot(d,axis,bend));
+    up=vnorm(rot(up,axis,bend));
+    right=vnorm({x:d.y*up.z-d.z*up.y, y:d.z*up.x-d.x*up.z, z:d.x*up.y-d.y*up.x});
+    const seglen=cfg.len*scale/cfg.seg*(1-cfg.taper*k/cfg.seg);
+    p=vadd(p,vmul(d,seglen));
+    pts.push(p);
+  }
+  return pts;
+}
+
+const _pp={x:0,y:0,z:0,ok:false}, _pq={x:0,y:0,z:0,ok:false};
+function drawAlien(raceIdx,cx,cy,size,t,col,agitation){
+  const R=RACES[raceIdx%RACES.length];
+  const xf=XSEC[R.xsec];
+  const NI=R.ni, NJ=R.nj;
+  const cam=makeCam(cx,cy,size*2.05,0.55+Math.sin(t*0.13)*0.30, -0.16+Math.sin(t*0.09)*0.10, 4.6);
+  const breathe=1+0.045*Math.sin(t*(0.9+agitation*2.2));
+  const scale=size/110;
+
+  /* Build one ring at a time and stroke it against the previous ring, so the
+     surface exists as geometry and never as a filled shape. */
+  let prev=null, prevOK=null;
+  const cur=new Array(NJ), curOK=new Array(NJ);
+  for(let i=0;i<NI;i++){
+    const u=i/(NI-1);
+    const sx=(u-0.5)*R.len;
+    const bowY=-R.bow*Math.sin(u*Math.PI);
+    const rad=R.spine[i]*breathe;
+    for(let j=0;j<NJ;j++){
+      const v=j/NJ, th=v*TAU;
+      const rr=rad*xf(th,u);
+      const p={x:sx, y:bowY+Math.sin(th)*rr*R.aspect, z:Math.cos(th)*rr};
+      const o={x:0,y:0,z:0,ok:false};
+      project(p,cam,o);
+      cur[j]=o;
+      curOK[j]=o.ok && !inAperture(R.apertures,u,v);
+    }
+    /* Latitudinal: the ring itself. */
+    for(let j=0;j<NJ;j++){
+      const k=(j+1)%NJ;
+      if(!curOK[j]||!curOK[k]) continue;
+      const z=(cur[j].z+cur[k].z)*0.5;
+      /* Depth is reported as brightness. There is no other depth here. */
+      const b=clamp(1.35-(z-cam.d+1.2)*0.62,0.10,1)*B.HI;
+      line(cur[j].x,cur[j].y,cur[k].x,cur[k].y,col,b*0.85,1);
+    }
+    /* Longitudinal: every second one carries the surface at this size. */
+    if(prev){
+      for(let j=0;j<NJ;j+=2){
+        if(!curOK[j]||!prevOK[j]) continue;
+        const z=(cur[j].z+prev[j].z)*0.5;
+        const b=clamp(1.35-(z-cam.d+1.2)*0.62,0.10,1)*B.HI;
+        line(prev[j].x,prev[j].y,cur[j].x,cur[j].y,col,b*0.6,1);
+      }
+    }
+    prev=cur.slice(); prevOK=curOK.slice();
+  }
+
+  /* Features, drawn into the holes cut for them. */
+  for(let e=0;e<R.eyes.length;e++){
+    const E=R.eyes[e];
+    const sx=(E.u-0.5)*R.len, th=E.v*TAU;
+    const rad=R.spine[Math.min(R.spine.length-1,Math.round(E.u*(NI-1)))]*breathe;
+    const rr=rad*xf(th,E.u);
+    const c={x:sx, y:-R.bow*Math.sin(E.u*Math.PI)+Math.sin(th)*rr*R.aspect, z:Math.cos(th)*rr};
+    project(c,cam,_pp);
+    if(!_pp.ok) continue;
+    const pr=E.r*cam.s/_pp.z;
+    if(_pp.z>cam.d+0.05) continue;           /* an eye on the far side is not seen */
+    if(E.iris){
+      /* The machine's aperture reports its own state: it irises with agitation. */
+      const ir=pr*(0.30+0.45*(1-agitation)+0.06*Math.sin(t*1.7));
+      circle(_pp.x,_pp.y,pr,col,B.HI,1.3,E.seg);
+      circle(_pp.x,_pp.y,ir,C.READOUT,B.HI,1,E.seg);
+      for(let k=0;k<E.seg;k++){
+        const a=k/E.seg*TAU+t*0.2;
+        line(_pp.x+Math.cos(a)*ir,_pp.y+Math.sin(a)*ir,_pp.x+Math.cos(a)*pr,_pp.y+Math.sin(a)*pr,col,B.MID,1);
+      }
+    } else {
+      circle(_pp.x,_pp.y,pr,col,B.HI,1.2,E.seg);
+      circle(_pp.x,_pp.y,pr*0.62,col,B.MID,1,E.seg);
+      /* The pupil moves. It is the only part of any of them that looks back. */
+      const gx=Math.sin(t*0.7+e)*pr*0.24, gy=Math.cos(t*0.53+e*2)*pr*0.20;
+      circle(_pp.x+gx,_pp.y+gy,pr*0.22,C.READOUT,B.HI,1,6);
+    }
+  }
+  if(R.mouth){
+    const M=R.mouth;
+    const sx=(M.u-0.5)*R.len, th=M.v*TAU;
+    const rad=R.spine[Math.min(R.spine.length-1,Math.round(M.u*(NI-1)))]*breathe;
+    const rr=rad*xf(th,M.u);
+    const c={x:sx,y:-R.bow*Math.sin(M.u*Math.PI)+Math.sin(th)*rr*R.aspect,z:Math.cos(th)*rr};
+    project(c,cam,_pp);
+    if(_pp.ok&&_pp.z<=cam.d+0.1){
+      const w=M.w*cam.s/_pp.z;
+      const gape=(0.25+0.75*agitation)*(0.5+0.5*Math.sin(t*3.1));
+      if(M.kind==='mandible'){
+        for(let s=-1;s<=1;s+=2){
+          const a=s*(0.30+gape*0.55);
+          polyline([_pp.x,_pp.y,
+                    _pp.x+Math.cos(a)*w*0.9,_pp.y+Math.sin(a)*w*0.9,
+                    _pp.x+Math.cos(a*0.3)*w*1.35,_pp.y+Math.sin(a*0.3)*w*1.35],col,B.HI,1.3);
+        }
+      } else {
+        const h=w*0.10+w*0.42*gape;
+        polyline([_pp.x-w*0.55,_pp.y, _pp.x-w*0.2,_pp.y-h, _pp.x+w*0.2,_pp.y-h, _pp.x+w*0.55,_pp.y,
+                  _pp.x+w*0.2,_pp.y+h, _pp.x-w*0.2,_pp.y+h],col,B.HI,1.2,true);
+      }
+    }
+  }
+
+  /* Limbs. */
+  const Lc=R.limbs;
+  if(Lc) for(let l=0;l<Lc.n;l++){
+    const frac=l/Lc.n;
+    const th=frac*TAU+0.3;
+    const sx=(Lc.from-0.5)*R.len;
+    const rad=R.spine[Math.min(R.spine.length-1,Math.round(Lc.from*(NI-1)))]*breathe;
+    const rr=rad*xf(th,Lc.from);
+    const root={x:sx,y:-R.bow*Math.sin(Lc.from*Math.PI)+Math.sin(th)*rr*R.aspect,z:Math.cos(th)*rr};
+    const outward=vnorm({x:-0.35,y:Math.sin(th)*Lc.spread,z:Math.cos(th)*Lc.spread});
+    const up={x:1,y:0,z:0};
+    const pts=limbChain(root,outward,up,t*(1+agitation*1.6),Lc,l*2.399,1);
+    let px=null;
+    for(let k=0;k<pts.length;k++){
+      project(pts[k],cam,_pq);
+      if(!_pq.ok){ px=null; continue; }
+      const b=clamp(1.35-(_pq.z-cam.d+1.2)*0.62,0.12,1);
+      if(px) line(px.x,px.y,_pq.x,_pq.y,col,b*B.HI,Math.max(0.8,1.9-k*0.22));
+      if(Lc.prismatic && k>0 && k<pts.length-1){
+        /* An armature has hardware at its joints. */
+        const s=Math.max(1.5,7*cam.s/_pq.z/40);
+        rect(_pq.x-s,_pq.y-s,s*2,s*2,col,b*B.MID,1);
+      }
+      px={x:_pq.x,y:_pq.y};
+    }
+  }
+  const A=R.antennae;
+  if(A) for(let l=0;l<A.n;l++){
+    const th=(l?1:-1)*0.55;
+    const sx=(A.from-0.5)*R.len;
+    const rad=R.spine[Math.min(R.spine.length-1,Math.round(A.from*(NI-1)))]*breathe;
+    const root={x:sx,y:Math.sin(th)*rad,z:Math.cos(th)*rad};
+    const pts=limbChain(root,vnorm({x:-1,y:Math.sin(th),z:Math.cos(th)*0.4}),{x:0,y:1,z:0},
+                        t*(1+agitation*2.2),A,l*1.7,1);
+    let px=null;
+    for(let k=0;k<pts.length;k++){
+      project(pts[k],cam,_pq);
+      if(!_pq.ok){ px=null; continue; }
+      if(px) line(px.x,px.y,_pq.x,_pq.y,col,B.MID*(1-k/pts.length*0.6),1);
+      px={x:_pq.x,y:_pq.y};
+    }
+  }
+}
+
+/* ==========================================================================
+   THE WORLD
+   ========================================================================== */
+
+/* Catalogue: name, right ascension and declination at J2000 in degrees,
+   distance in light years, spectral type, confirmed planets, visual magnitude.
+   Everything the chart draws is computed from these six columns. */
+const CAT_SRC=[
+  ['PROXIMA CENTAURI',217.4288,-62.6794,4.247,'M5.5Ve',3,11.13],['ALPHA CENTAURI A',219.9021,-60.8339,4.344,'G2V',0,-0.01],['ALPHA CENTAURI B',219.8963,-60.8375,4.344,'K1V',0,1.33],['BARNARDS STAR',269.4521,4.6933,5.963,'M4V',4,9.51],
+  ['WOLF 359',164.1204,7.0147,7.856,'M6V',0,13.51],['LALANDE 21185',165.8342,35.97,8.304,'M2V',2,7.52],['SIRIUS A',101.2871,-16.7161,8.6,'A1V',0,-1.46],['SIRIUS B',101.2875,-16.7183,8.6,'DA2',0,8.44],
+  ['LUYTEN 726-8 A',24.7558,-17.9508,8.73,'M5.5V',0,12.7],['UV CETI',24.7567,-17.9503,8.73,'M6V',0,13.2],['ROSS 154',282.4558,-23.8361,9.706,'M3.5V',0,10.44],['ROSS 248',355.4792,44.1775,10.306,'M6V',0,12.29],
+  ['EPSILON ERIDANI',53.2325,-9.4583,10.475,'K2V',1,3.73],['LACAILLE 9352',346.4667,-35.8531,10.724,'M0.5V',2,7.34],['ROSS 128',176.935,0.8044,11.007,'M4V',1,11.13],['EZ AQUARII',339.6404,-15.2992,11.1,'M5V',0,13.3],
+  ['61 CYGNI A',316.7246,38.7494,11.404,'K5V',0,5.21],['61 CYGNI B',316.7304,38.7419,11.404,'K7V',0,6.05],['PROCYON A',114.8254,5.225,11.46,'F5IV-V',0,0.34],['STRUVE 2398 A',280.6946,59.6303,11.491,'M3V',0,8.94],
+  ['STRUVE 2398 B',280.6954,59.6269,11.491,'M3.5V',0,9.7],['GROOMBRIDGE 34 A',4.5954,44.0231,11.62,'M1.5V',2,8.08],['GROOMBRIDGE 34 B',4.6063,44.0272,11.62,'M3.5V',0,11.04],['DX CANCRI',127.4558,26.7761,11.68,'M6.5V',0,14.81],
+  ['EPSILON INDI',330.8404,-56.7861,11.867,'K5V',1,4.69],['TAU CETI',26.0171,-15.9375,11.912,'G8V',4,3.5],['GJ 1061',53.9988,-44.5128,11.984,'M5.5V',3,13.03],['YZ CETI',18.1275,-16.9989,12.122,'M4.5V',3,12.07],
+  ['LUYTENS STAR',111.8521,5.2258,12.348,'M3.5V',2,9.86],['TEEGARDENS STAR',43.2537,16.8814,12.497,'M7V',3,15.13],['KAPTEYNS STAR',77.9191,-45.0184,12.83,'sdM1',0,8.85],['LACAILLE 8760',319.3136,-38.8674,12.95,'M0V',0,6.67],
+  ['KRUGER 60 A',336.9982,57.695,13.08,'M3V',0,9.79],['KRUGER 60 B',336.9991,57.6972,13.08,'M4V',0,11.4],['ROSS 614 A',97.3475,-2.814,13.42,'M4.5V',0,11.15],['WOLF 1061',247.5752,-12.6626,14.05,'M3.5V',3,10.07],
+  ['VAN MAANENS STAR',12.2912,5.3886,14.07,'DZ8',0,12.37],['GLIESE 1',1.3518,-37.3574,14.18,'M2V',0,8.57],['TZ ARIETIS',30.054,13.0519,14.6,'M4.5V',1,12.3],['GLIESE 687',264.1079,68.3391,14.84,'M3.5V',2,9.15],
+  ['GJ 674',262.1664,-46.8952,14.85,'M3V',1,9.38],['GJ 876',343.3197,-14.2637,15.24,'M4V',4,10.19],['LHS 288',161.0885,-61.2098,15.76,'M5V',0,13.92],['GJ 1002',1.68,-7.5381,15.81,'M5.5V',2,13.84],
+  ['GLIESE 412 A',166.3691,43.5268,16,'M1V',0,8.68],['AD LEONIS',154.9012,19.87,16.19,'M3.5V',0,9.32],['GLIESE 832',323.3916,-49.009,16.2,'M2V',1,8.66],['GLIESE 682',264.2653,-44.3192,16.3,'M3.5V',0,10.94],
+  ['40 ERIDANI A',63.818,-7.6529,16.34,'K0.5V',0,4.43],['EV LACERTAE',341.7072,44.334,16.48,'M3.5V',0,10.26],['70 OPHIUCHI A',271.3637,2.4834,16.68,'K0V',0,4.03],['ALTAIR',297.6958,8.8683,16.73,'A7V',0,0.76],
+  ['GJ 526',206.4324,14.8915,17.7,'M1.5V',0,8.46],['GJ 251',103.704,33.2682,18.22,'M3.0Ve',1,10.11],['GJ 205',82.8641,-3.6772,18.6,'M1.5V',0,7.93],['GJ 229 A',92.6442,-21.8646,18.79,'M1V',2,8.12],
+  ['SIGMA DRACONIS',293.09,69.6612,18.8,'K0V',0,4.67],['GJ 570 A',224.3667,-21.4155,19.2,'K4V',0,5.72],['GJ 693',266.6426,-57.319,19.21,'M3.5V',0,10.75],['ETA CASSIOPEIAE A',12.2762,57.8152,19.32,'G0V',0,3.44],
+  ['36 OPHIUCHI B',258.8374,-26.6028,19.4,'K1V',0,5.11],['36 OPHIUCHI A',258.8366,-26.6017,19.41,'K2V',0,5.08],['HD 191408',302.7997,-36.1012,19.61,'K2.5V',0,5.32],['82 ERIDANI',49.9819,-43.0698,19.7,'G6V',3,4.26],
+  ['DELTA PAVONIS',302.1817,-66.1821,19.89,'G8IV',0,3.56],['GLIESE 581',229.8618,-7.7223,20.55,'M3V',3,10.57],['HD 219134',348.3207,57.1684,21.34,'K3V',6,5.57],['XI BOOTIS A',222.8474,19.1005,22.03,'G8Ve',0,4.7],
+  ['GLIESE 667 C',259.7382,-34.9898,23.62,'M1.5V',2,10.2],['BETA HYDRI',6.4378,-77.2542,24.33,'G2IV',0,2.8],['TW PISCIS AUSTRINI',344.1002,-31.5656,24.8,'K5Vp',0,6.48],['107 PISCIUM',25.624,20.2685,24.8,'K1V',0,5.24],
+  ['MU CASSIOPEIAE',17.0679,54.9202,25.03,'G5Vp',0,5.17],['VEGA',279.2347,38.7837,25.04,'A0Va',0,0.03],['FOMALHAUT',344.4127,-29.6222,25.13,'A3V',0,1.16],['GJ 673',261.4385,2.1114,25.16,'K7V',0,7.49],
+  ['GLIESE 436',175.5462,26.7066,31.88,'M2.5V',1,10.67],['POLLUX',116.329,28.0262,33.78,'K0III',1,1.14],['ARCTURUS',213.9153,19.1824,36.7,'K1.5III',0,-0.05],['TRAPPIST-1',346.6224,-5.0414,40.66,'M8V',7,18.8],
+  ['55 CANCRI A',133.1492,28.3308,41.05,'K0IV-V',5,5.95],['HD 40307',88.5177,-60.0235,42.18,'K2.5V',4,7.17],['CAPELLA A',79.1723,45.998,42.9,'K0III',0,0.08],['UPSILON ANDROMEDAE A',24.1993,41.4055,44,'F8V',3,4.09],
+  ['ALPHA OPHIUCHI',263.7336,12.56,48.6,'A5III',0,2.08],['LHS 1140',11.2472,-15.2715,48.8,'M4.5V',2,14.18],['51 PEGASI',344.3666,20.7688,50.64,'G2IV',1,5.49],['MU ARAE',266.0363,-51.8341,50.89,'G3IV-V',4,5.15],
+  ['CASTOR A',113.6494,31.8883,51,'A1V',0,1.93],['HD 189733',300.1821,22.7109,64.5,'K1.5V',1,7.68],['ALDEBARAN',68.9802,16.5093,65.3,'K5III',0,0.86],['REGULUS',152.093,11.9672,79.3,'B8IVn',0,1.4],
+  ['ALGOL A',47.0422,40.9556,90,'B8V',0,2.12],['TOI-700',97.0957,-65.5786,101.61,'M2V',4,13.1],['K2-18',172.5605,7.5884,124.3,'M2.8V',2,13.5],['HD 10180',24.4732,-60.5115,127.1,'G1V',6,7.33],
+  ['ACHERNAR',24.4285,-57.2368,139,'B3Vpe',0,0.46],['GAMMA DRACONIS',269.1515,51.4889,154.3,'K5III',0,2.23],['HD 209458',330.7949,18.8843,157,'G0V',1,7.65],['SPICA',201.2982,-11.1613,250,'B1III-IV',0,1.04],
+  ['BELLATRIX',81.2828,6.3497,250,'B2III',0,1.64],['BETA CRUCIS',191.9305,-59.6887,280,'B0.5III',0,1.25],['MIRA A',34.8366,-2.9776,300,'M7IIIe',0,3],['CANOPUS',95.988,-52.6957,310,'A9II',0,-0.74],
+  ['ALPHA CRUCIS',186.6498,-63.0991,321,'B0.5IV',0,1.33],['POLARIS',37.9545,89.2641,446.5,'F7Ib',0,1.98],['ALPHA PERSEI',51.0807,49.8612,510,'F5Ib',0,1.79],['BETELGEUSE',88.7929,7.4071,548,'M1-2Ia-ab',0,0.5],
+  ['ANTARES',247.3519,-26.432,550,'M1.5Iab-Ib',0,1.06],['GAMMA CASSIOPEIAE',14.1771,60.7167,550,'B0.5IVe',0,2.39],['KEPLER-186',298.6527,43.955,579,'M1V',5,15.29],['RIGEL',78.6345,-8.2016,860,'B8Ia',0,0.13],
+  ['WASP-12',97.6367,29.6723,1347,'G0V',1,11.56],['KEPLER-452',296.0037,44.2775,1810,'G2V',1,13.43],['ALNILAM',84.0534,-1.2019,2000,'B0Ia',0,1.69],['KEPLER-90',284.4335,49.3052,2836,'G0V',8,14],
+  ['DENEB',310.358,45.2803,2615,'A2Ia',0,1.25]
+];
+
+const STARS=[];
+function buildCatalogue(){
+  for(let i=0;i<CAT_SRC.length;i++){
+    const c=CAT_SRC[i];
+    const a=c[1]*D2R, d=c[2]*D2R, r=c[3];
+    /* Equatorial spherical to equatorial Cartesian. Sol is the origin, which
+       is exactly the problem the operator is going to have. */
+    const s={
+      name:c[0], ra:c[1], dec:c[2], dist:r, spec:c[4], planets:c[5], vmag:c[6],
+      x:r*Math.cos(d)*Math.cos(a), y:r*Math.sin(d), z:r*Math.cos(d)*Math.sin(a),
+      idx:i, visited:false, surveyed:false
+    };
+    s.cls=(c[4]||'?')[0].toUpperCase();
+    /* Luminosity class drives the drawn body size and the well depth. */
+    s.giant=/I{1,3}(?![VX])|IV/.test(c[4]||'') && !/V$/.test(c[4]||'');
+    STARS.push(s);
+  }
+  SOL.x=0; SOL.y=0; SOL.z=0;
+}
+const SOL={name:'SOL',x:0,y:0,z:0,dist:0,spec:'G2V',planets:8,cls:'G',ra:0,dec:0,vmag:-26.7,idx:-1,visited:true,surveyed:true,giant:false};
+function starAt(p,tol){
+  let best=null,bd=tol===undefined?0.30:tol;
+  const ds=vlen(p);
+  if(ds<bd){ best=SOL; bd=ds; }
+  for(let i=0;i<STARS.length;i++){
+    const d=vdist(p,STARS[i]);
+    if(d<bd){ bd=d; best=STARS[i]; }
+  }
+  return best?{star:best,d:bd}:null;
+}
+
+/* Approximate main-sequence properties from the spectral letter. The console
+   labels these ESTIMATED wherever it uses them, because that is what they are. */
+const SPEC_T={O:38000,B:19000,A:8600,F:6600,G:5600,K:4400,M:3100,D:9000,L:1900,T:1100,C:3000,W:60000,S:3000};
+function starLum(s){
+  const t=SPEC_T[s.cls]||4000;
+  let L=Math.pow(t/5772,4)*Math.pow(t/5772,1.2);
+  if(s.giant) L*=Math.pow(10, s.cls==='M'?3.4:2.6);
+  if(s.cls==='D') L=0.002;
+  return L;
+}
+function starRad(s){
+  if(s.cls==='D') return 0.013;
+  const t=SPEC_T[s.cls]||4000;
+  let R=Math.pow(t/5772,1.1);
+  if(s.giant) R*=Math.pow(10, s.cls==='M'?1.9:1.2);
+  return R;
+}
+
+/* Real orbital elements where they are known. Semi-major axis in AU, period in
+   days, radius in Earth radii where measured, and whether it sits in the
+   conservative habitable zone. Systems not listed here are drawn from the
+   seed and the console says so on the plate. */
+const REAL_SYSTEMS={
+/* Semi-major axis in AU, orbital period in days, radius in Earth radii where
+   it has been measured, and whether the body falls in the conservative
+   habitable zone. m is the primary mass in solar masses, L its luminosity. */
+'TRAPPIST-1':{m:0.0898,L:0.000553,p:[['TRAPPIST-1 B',0.01154,1.5109,1.116,0],['TRAPPIST-1 C',0.01580,2.4218,1.097,0],['TRAPPIST-1 D',0.02227,4.0496,0.788,0],['TRAPPIST-1 E',0.02925,6.1010,0.920,1],['TRAPPIST-1 F',0.03849,9.2075,1.045,1],['TRAPPIST-1 G',0.04683,12.352,1.129,1],['TRAPPIST-1 H',0.06189,18.773,0.755,0]]},
+'PROXIMA CENTAURI':{m:0.122,L:0.00155,p:[['PROXIMA D',0.02885,5.122,0.81,0],['PROXIMA B',0.04857,11.186,1.07,1],['PROXIMA C',1.489,1928,0,0]]},
+'GLIESE 667 C':{m:0.327,L:0.0137,p:[['GJ 667 C B',0.0505,7.200,0,0],['GJ 667 C C',0.1250,28.140,0,1]]},
+'GJ 876':{m:0.37,L:0.0122,p:[['GJ 876 D',0.0208,1.938,0,0],['GJ 876 C',0.1296,30.088,0,0],['GJ 876 B',0.2083,61.117,0,0],['GJ 876 E',0.3343,124.26,0,0]]},
+'GLIESE 581':{m:0.31,L:0.0132,p:[['GJ 581 E',0.0285,3.149,0,0],['GJ 581 B',0.0406,5.369,0,0],['GJ 581 C',0.0721,12.914,0,0]]},
+'TAU CETI':{m:0.783,L:0.52,p:[['TAU CETI G',0.133,20.00,0,0],['TAU CETI H',0.243,49.41,0,0],['TAU CETI E',0.538,162.9,0,0],['TAU CETI F',1.334,636.1,0,1]]},
+'EPSILON ERIDANI':{m:0.82,L:0.34,p:[['EPS ERI B',3.480,2688,0,0]]},
+'55 CANCRI A':{m:0.905,L:0.582,p:[['55 CNC E',0.01544,0.7365,1.875,0],['55 CNC B',0.1134,14.652,0,0],['55 CNC C',0.2373,44.40,0,0],['55 CNC F',0.7708,259.8,0,1],['55 CNC D',5.957,5574,0,0]]},
+'UPSILON ANDROMEDAE A':{m:1.27,L:3.57,p:[['UPS AND B',0.059,4.617,0,0],['UPS AND C',0.861,241.3,0,0],['UPS AND D',2.550,1276,0,0],['UPS AND E',5.246,3848,0,0]]},
+'HD 219134':{m:0.81,L:0.28,p:[['HD 219134 B',0.03876,3.093,1.602,0],['HD 219134 C',0.0653,6.765,1.511,0],['HD 219134 F',0.1463,22.717,0,0],['HD 219134 D',0.2370,46.86,0,0],['HD 219134 G',0.3753,94.2,0,0],['HD 219134 H',3.110,2247,0,0]]},
+'LHS 1140':{m:0.179,L:0.00381,p:[['LHS 1140 C',0.02675,3.7778,1.272,0],['LHS 1140 B',0.0957,24.737,1.730,1]]},
+'TOI-700':{m:0.416,L:0.0233,p:[['TOI-700 B',0.0637,9.977,0.91,0],['TOI-700 C',0.0929,16.051,2.63,0],['TOI-700 D',0.1633,37.426,1.07,1],['TOI-700 E',0.1340,27.810,0.95,1]]},
+'K2-18':{m:0.495,L:0.0234,p:[['K2-18 C',0.0670,8.962,0,0],['K2-18 B',0.1591,32.940,2.61,1]]},
+'GJ 1061':{m:0.125,L:0.00164,p:[['GJ 1061 B',0.021,3.204,0,0],['GJ 1061 C',0.035,6.689,0,1],['GJ 1061 D',0.054,13.031,0,1]]},
+'TEEGARDENS STAR':{m:0.093,L:0.00073,p:[['TEEGARDEN B',0.0252,4.910,0,1],['TEEGARDEN C',0.0443,11.409,0,1],['TEEGARDEN D',0.0791,26.13,0,0]]},
+'ROSS 128':{m:0.168,L:0.00362,p:[['ROSS 128 B',0.0496,9.866,0,0]]},
+'YZ CETI':{m:0.130,L:0.00176,p:[['YZ CETI B',0.01634,1.9686,0,0],['YZ CETI C',0.02156,3.060,0,0],['YZ CETI D',0.02851,4.6564,0,0]]},
+'LACAILLE 9352':{m:0.489,L:0.0339,p:[['GJ 887 B',0.068,9.262,0,0],['GJ 887 C',0.120,21.789,0,0]]},
+'WOLF 1061':{m:0.294,L:0.0091,p:[['WOLF 1061 B',0.0375,4.887,0,0],['WOLF 1061 C',0.0890,17.870,0,1],['WOLF 1061 D',0.4700,217.2,0,0]]},
+'HD 10180':{m:1.06,L:1.49,p:[['HD 10180 C',0.0641,5.760,0,0],['HD 10180 D',0.1286,16.357,0,0],['HD 10180 E',0.2699,49.75,0,0],['HD 10180 F',0.4929,122.7,0,0],['HD 10180 G',1.427,604.7,0,0],['HD 10180 H',3.400,2205,0,0]]},
+'KEPLER-90':{m:1.20,L:1.20,p:[['KEPLER-90 B',0.074,7.008,0,0],['KEPLER-90 C',0.089,8.719,0,0],['KEPLER-90 I',0.107,14.449,0,0],['KEPLER-90 D',0.320,59.737,0,0],['KEPLER-90 E',0.420,91.939,0,0],['KEPLER-90 F',0.480,124.91,0,0],['KEPLER-90 G',0.710,210.60,0,0],['KEPLER-90 H',1.010,331.60,0,0]]},
+'BARNARDS STAR':{m:0.161,L:0.0035,p:[['BARNARD D',0.0188,2.3402,0,0],['BARNARD B',0.0229,3.1533,0,0],['BARNARD C',0.0274,4.1240,0,0],['BARNARD E',0.0381,6.7390,0,0]]},
+'61 VIRGINIS':{m:0.94,L:0.82,p:[['61 VIR B',0.0502,4.215,0,0],['61 VIR C',0.2175,38.021,0,0],['61 VIR D',0.4760,123.0,0,0]]},
+'HD 40307':{m:0.77,L:0.23,p:[['HD 40307 B',0.0470,4.312,0,0],['HD 40307 C',0.0799,9.620,0,0],['HD 40307 D',0.1321,20.420,0,0],['HD 40307 G',0.6000,197.8,0,1]]},
+'GLIESE 832':{m:0.45,L:0.026,p:[['GJ 832 B',3.560,3660,0,0]]},
+'GLIESE 436':{m:0.445,L:0.025,p:[['GJ 436 B',0.0287,2.6439,4.19,0]]},
+'51 PEGASI':{m:1.11,L:1.36,p:[['51 PEG B',0.0527,4.2308,0,0]]},
+'HD 189733':{m:0.80,L:0.30,p:[['HD 189733 B',0.0313,2.2186,12.6,0]]},
+'HD 209458':{m:1.12,L:1.62,p:[['HD 209458 B',0.0475,3.5247,15.5,0]]}
+};
+
+/* ------------------------------------------------------------ the hazards */
+
+/* Debris streams, meteor swarms and drifting hulks, seeded onto routes that
+   join real stars. A capsule is a segment and a radius; the corridor test is
+   an honest line integral of the chord that falls inside it. */
+const HAZ=[];
+const HAZ_KIND=[
+  {name:'DEBRIS STREAM', dens:[3,10],  rad:[0.10,0.34], len:[1.5,5.0]},
+  {name:'METEOR SWARM',  dens:[7,22],  rad:[0.06,0.18], len:[0.6,2.4]},
+  {name:'DRIFTING HULK', dens:[16,46], rad:[0.02,0.07], len:[0.05,0.40]}
+];
+function buildHazards(seed){
+  HAZ.length=0;
+  const r=rng(seed^0x2f8a71c3);
+  /* Only routes anyone actually flies. A stream of debris exists because
+     something shed it, and nothing sheds anything eight hundred light years
+     out where no lighter has ever been sent. */
+  const routable=[];
+  for(let i=0;i<STARS.length;i++) if(STARS[i].dist<34) routable.push(STARS[i]);
+  if(routable.length<2) return;
+  const n=110;
+  for(let i=0;i<n;i++){
+    const ia=(r()*routable.length)|0;
+    let ib=(r()*routable.length)|0;
+    if(ib===ia) ib=(ib+1)%routable.length;
+    const A=routable[ia], Bs=routable[ib];
+    const dir=vnorm(vsub(Bs,A));
+    const total=vdist(A,Bs);
+    if(total<0.5) continue;
+    const K=HAZ_KIND[(r()*HAZ_KIND.length)|0];
+    const len=Math.min(total*0.7, lerp(K.len[0],K.len[1],r()));
+    const t0=r()*(total-len);
+    const a=vadd(A,vmul(dir,t0));
+    const b=vadd(A,vmul(dir,t0+len));
+    HAZ.push({
+      a:a, b:b, r:lerp(K.rad[0],K.rad[1],r()), dens:lerp(K.dens[0],K.dens[1],r()),
+      kind:K.name, found:false, id:i
+    });
+  }
+}
+function segPointDist2(p,a,b){
+  const abx=b.x-a.x, aby=b.y-a.y, abz=b.z-a.z;
+  const apx=p.x-a.x, apy=p.y-a.y, apz=p.z-a.z;
+  const L2=abx*abx+aby*aby+abz*abz;
+  let t=L2>0?(apx*abx+apy*aby+apz*abz)/L2:0;
+  t=t<0?0:(t>1?1:t);
+  const dx=apx-abx*t, dy=apy-aby*t, dz=apz-abz*t;
+  return dx*dx+dy*dy+dz*dz;
+}
+/* The corridor integral. Sampling rather than solving the quartic: the sample
+   count is fixed, so the answer is the same every time the same jump is
+   flown, and the operator can be told what it was. */
+const CORRIDOR_SAMPLES=128;
+function corridor(p0,p1,onlyFound){
+  const total=vdist(p0,p1);
+  if(total<1e-6) return {dmg:0, hits:[]};
+  const ds=total/CORRIDOR_SAMPLES;
+  const hits=[];
+  let dmg=0;
+  for(let h=0;h<HAZ.length;h++){
+    const H=HAZ[h];
+    if(onlyFound&&!H.found) continue;
+    const r2=H.r*H.r;
+    let chord=0;
+    for(let s=0;s<CORRIDOR_SAMPLES;s++){
+      const t=(s+0.5)/CORRIDOR_SAMPLES;
+      const p={x:lerp(p0.x,p1.x,t), y:lerp(p0.y,p1.y,t), z:lerp(p0.z,p1.z,t)};
+      if(segPointDist2(p,H.a,H.b)<r2) chord+=ds;
+    }
+    if(chord>0){ const d=chord*H.dens; dmg+=d; hits.push({h:H,chord:chord,dmg:d}); }
+  }
+  return {dmg:dmg, hits:hits};
+}
+
+/* ---------------------------------------------------------- the astrogator */
+
+/* The vehicle goes exactly where bearing, elevation and range point. The whole
+   of the difficulty is that the catalogue is referenced to the origin and the
+   operator is not at the origin any more. */
+function catalogueSolution(target){
+  const be=vecToBE(target);
+  return {bearing:be.bearing, elev:be.elev, range:vlen(target)};
+}
+function trueSolution(from,target){
+  const d=vsub(target,from);
+  const be=vecToBE(d);
+  return {bearing:be.bearing, elev:be.elev, range:vlen(d)};
+}
+/* What the computer will hand you, given what it has been taught. It can
+   always fly a course; the reductions decide how tightly. */
+function computerSolution(G,target){
+  const s=G.red.parallax?trueSolution(G.pos,target):catalogueSolution(target);
+  const e=solverError(G);
+  const r=rng(hashStr(target.name+'|'+G.jumps+'|'+G.seed));
+  return {
+    bearing:(s.bearing+(r()*2-1)*e.ang+360)%360,
+    elev:clamp(s.elev+(r()*2-1)*e.ang,-90,90),
+    range:Math.max(0.05,s.range*(1+(r()*2-1)*e.rng))
+  };
+}
+/* The residual the computer cannot remove. Every reduction shrinks it; the
+   hull noise floor means it never reaches zero. */
+function solverError(G){
+  /* Un-taught, the machine is good enough to put the vehicle in a system's
+     outer debris and no better. Each reduction tightens it; the hull noise
+     floor means it never reaches zero. */
+  let ang=0.90, rng_=0.020;
+  if(G.red.parallax){ ang=0.45; rng_=0.012; }
+  if(G.red.range){ rng_*=0.28; }
+  if(G.red.epoch){ ang*=0.34; }
+  if(G.red.closure){ ang*=0.30; rng_*=0.45; }
+  const hull=1+(1-G.hull/100)*2.2;
+  return {ang:ang*hull, rng:rng_*hull};
+}
+/* The uncertainty the console can honestly draw around its own answer. */
+function solverSigma(G,range){
+  const e=solverError(G);
+  return Math.max(0.004, range*Math.sin(e.ang*D2R)*0.62 + range*e.rng*0.62);
+}
+
+function arrivalPoint(G){
+  return vadd(G.pos, vmul(beToVec(G.bearing,G.elev), G.range));
+}
+
+/* Grading the miss. It is a curve, not a wall: there is always a worse and a
+   better outcome and the operator is told which one they got and by how much. */
+const ARRIVE_CLEAN=0.05, ARRIVE_HALO=0.38, ARRIVE_ADRIFT=2.2;
+function gradeArrival(p,target){
+  const d=vdist(p,target);
+  if(d<=ARRIVE_CLEAN) return {grade:'CLEAN', d:d};
+  if(d<=ARRIVE_HALO)  return {grade:'HALO',  d:d};
+  if(d<=ARRIVE_ADRIFT) return {grade:'ADRIFT', d:d};
+  return {grade:'LOST', d:d};
+}
+
+/* ==========================================================================
+   THE VEHICLE AND THE RUN
+   ========================================================================== */
+
+const INSURANCE_LIMIT=25.0;    /* light years. Clause 9(b). Read it or do not */
+
+const G={
+  seed:0, seedHex:'', rnd:null,
+  pos:v3(0,0,0),
+  hull:100, o2:1800, o2max:1800, fuel:64, fuelmax:120, power:100,
+  t:0,                          /* mission hours elapsed                     */
+  bearing:0, elev:0, range:1,
+  target:null,                  /* the star the operator has selected        */
+  mode:'CHART', sub:null,
+  red:{parallax:false, range:false, epoch:false, closure:false},
+  jumps:0, broadcasts:0, voided:false, maxRange:0,
+  here:null, adrift:false,
+  depth:0.25,
+  log:[], news:[],
+  dead:null, deadWhy:'', ending:null,
+  yaw:0.6, pitch:0.30, zoom:1,
+  sweep:0,
+  order:null,
+  screen:'BOOT',
+  shake:0,
+  comms:null
+};
+
+/* One hail is a bearing and a bearing is a line, not a place. Several hails
+   from several places intersect. `conf` is how much of the operator's actual
+   position the accumulated bearings have given away; it is never displayed,
+   because the thing does not file reports. The transmission counter on the
+   status strip is the only honest gauge of it the operator gets. */
+const HUNT={
+  active:false, pos:v3(0,0,0), fix:v3(0,0,0), speed:0.090, conf:0,
+  detected:false, lastSeen:-1, bearingKnown:null
+};
+
+function say(line,col){
+  /* A console that prints the same fault six times has told the operator one
+     thing and cost them five lines. */
+  if(G.news.length && G.news[0].t===line){ G.news[0].n++; return; }
+  G.news.unshift({t:line,c:col||C.READOUT,n:1});
+  if(G.news.length>7) G.news.pop();
+}
+function newsLine(e){ return e.n>1?(e.t+' ('+e.n+')'):e.t; }
+function logEvent(kind,text){
+  G.log.push({t:G.t, kind:kind, text:text, p:{x:G.pos.x,y:G.pos.y,z:G.pos.z}});
+  if(G.log.length>200) G.log.shift();
+}
+
+function newRun(seed){
+  G.seed=seed>>>0;
+  G.seedHex=('00000000'+G.seed.toString(16).toUpperCase()).slice(-8);
+  G.rnd=rng(G.seed);
+  buildCatalogue();
+  buildHazards(G.seed);
+  for(let i=0;i<CULTURES.length;i++){
+    buildLanguage(CULTURES[i], G.seed ^ (0x9e3779b1*(i+1)));
+    CULTURES[i].starIdx=STARS.findIndex(s=>s.name===CULTURES[i].host);
+  }
+  /* Well depth: the point past which the approach starts taking the hull. It
+     is a property of the system, and the console can only estimate it. */
+  const wells=STARS.concat([SOL]);
+  for(let i=0;i<wells.length;i++){
+    const r=rng(hashStr(wells[i].name+'|well|'+G.seed));
+    wells[i].onset=0.30+r()*0.34;
+    wells[i].onsetBias=(r()*2-1)*0.13;
+    wells[i].yieldK=0.8+r()*0.7;
+  }
+  SOL._sys=null;
+  /* The standing order. It is a form, and it was filled in by somebody who
+     has never been here. */
+  const cand=STARS.filter(s=>s.dist>13&&s.dist<24);
+  const pick=cand.length?cand[(G.rnd()*cand.length)|0]:STARS[0];
+  G.order={
+    star:pick, docket:'MC-44/'+pad0((G.seed%9000)+1000,4)+'-R',
+    surveyed:false, delivered:false,
+    consignee:'BOARD OF TRADE, REGISTRY '+pad0((G.seed>>>7)%9000+1000,4)
+  };
+  G.pos=v3(0,0,0); G.hull=100; G.o2=G.o2max; G.fuel=64; G.power=100; G.t=0;
+  G.jumps=0; G.broadcasts=0; G.voided=false; G.maxRange=0;
+  G.target=null; G.here=SOL; G.adrift=false; G.dead=null; G.ending=null;
+  G.log=[]; G.news=[]; G.red={parallax:false,range:false,epoch:false,closure:false};
+  G.bearing=0; G.elev=0; G.range=1; G.depth=0.25;
+  HUNT.active=false; HUNT.detected=false; HUNT.bearingKnown=null; HUNT.conf=0;
+  logEvent('ORDER','STANDING ORDER '+G.order.docket+' ACCEPTED');
+}
+
+/* --------------------------------------------------------------- the burn */
+
+function executeBurn(){
+  if(G.range>G.fuel){ say('INSUFFICIENT REACTION MASS',C.ALARM); sfx('deny'); return; }
+  const from={x:G.pos.x,y:G.pos.y,z:G.pos.z};
+  const to=arrivalPoint(G);
+  /* Everything in the corridor is in the sum, found or not. */
+  const cor=corridor(from,to,false);
+  const hours=G.range*12;
+  G.fuel-=G.range;
+  G.jumps++;
+  G.pos=to;
+  advanceTime(hours);
+  const dist=vlen(G.pos);
+  G.maxRange=Math.max(G.maxRange,dist);
+  if(dist>INSURANCE_LIMIT && !G.voided){
+    G.voided=true;
+    say('INSURANCE VOID / CLAUSE 9(B)',C.ALARM);
+    logEvent('CLAUSE','POLICY VOIDED AT '+fmt(dist,2)+' LY FROM ORIGIN');
+    sfx('alarm');
+  }
+  if(cor.dmg>0){
+    G.hull-=cor.dmg;
+    G.shake=Math.min(1,cor.dmg/14);
+    sfx('impact',Math.min(1,cor.dmg/16));
+    for(let i=0;i<cor.hits.length;i++){
+      const H=cor.hits[i];
+      /* You have now found it. This is not the recommended method. */
+      if(!H.h.found){ H.h.found=true; logEvent('HAZARD','FOUND BY CONTACT: '+H.h.kind); }
+    }
+    say('CORRIDOR CONTACT / HULL -'+fmt(cor.dmg,1),C.ALARM);
+    logEvent('DAMAGE','CORRIDOR '+fmt(cor.dmg,1)+' OVER '+cor.hits.length+' BODIES');
+  }
+  let near=starAt(G.pos, ARRIVE_ADRIFT);
+  /* At a close binary the companion can be nearer to the arrival point than
+     the component that was aimed at. The operator selected one of them, and
+     being in the system means being at the one they selected. */
+  if(G.target){
+    const dt=vdist(G.pos,G.target);
+    if(dt<=ARRIVE_HALO && (!near||dt<=near.d+0.05)) near={star:G.target,d:dt};
+  }
+  G.here=null; G.adrift=true;
+  const grade=near?gradeArrival(G.pos,near.star):{grade:'LOST',d:Infinity};
+  if(grade.grade==='CLEAN'||grade.grade==='HALO'){
+    G.here=near.star; G.adrift=false; near.star.visited=true;
+    if(grade.grade==='HALO'){
+      /* Through the halo: the outer debris of the system is real and it is in
+         the way, and the console says so afterwards rather than before. */
+      const halo=(near.d-ARRIVE_CLEAN)/(ARRIVE_HALO-ARRIVE_CLEAN);
+      const dm=2+halo*17;
+      G.hull-=dm;
+      G.shake=Math.max(G.shake,halo);
+      sfx('impact',halo);
+      say('ARRIVED THROUGH SYSTEM HALO / HULL -'+fmt(dm,1),C.CAUTION);
+      logEvent('ARRIVAL','HALO ENTRY AT '+near.star.name+' MISS '+fmt(near.d,3)+' LY');
+    } else {
+      say('ARRIVAL CLEAN / '+near.star.name,C.NOMINAL);
+      logEvent('ARRIVAL','CLEAN AT '+near.star.name+' MISS '+fmt(near.d,3)+' LY');
+    }
+    G.target=null;
+  } else if(grade.grade==='ADRIFT'){
+    say('NO PRIMARY / ADRIFT '+fmt(near.d,2)+' LY FROM '+near.star.name,C.CAUTION);
+    logEvent('ARRIVAL','ADRIFT '+fmt(near.d,2)+' LY SHORT OF '+near.star.name);
+    G.here=null; G.adrift=true;
+  } else {
+    say('NO PRIMARY WITHIN INSTRUMENT RANGE',C.ALARM);
+    logEvent('ARRIVAL','ADRIFT, NO PRIMARY WITHIN '+fmt(ARRIVE_ADRIFT,1)+' LY');
+    G.here=null; G.adrift=true;
+    sfx('alarm');
+  }
+  if(G.here===SOL && G.order.surveyed && !G.order.delivered){
+    G.order.delivered=true;
+    endRun('DISCHARGED');
+  }
+  G.mode=G.here?'FIELD':'CHART';
+  G.sweep=0;
+  checkVitals();
+}
+
+/* ------------------------------------------------------------ the approach */
+
+/* One dial. Yield rises all the way down and never stops rising; damage starts
+   at a floor the console can only estimate, and the estimate has a bias in it
+   that the operator cannot measure and the console does not know about. */
+function approachYield(s,d){ return s.yieldK*(0.10+d*d*3.1); }
+function approachDamage(s,d){
+  if(d<=s.onset) return 0;
+  const x=(d-s.onset)/(1-s.onset+1e-6);
+  return Math.pow(x,1.7)*46;
+}
+function approachOnsetEstimate(s){
+  /* Better instruments narrow the band. They never remove the bias. */
+  const w=0.16 - (G.red.epoch?0.05:0) - (G.red.closure?0.05:0);
+  return {mid:clamp(s.onset+s.onsetBias,0.05,0.95), half:Math.max(0.03,w)};
+}
+function executeApproach(){
+  const s=G.here;
+  if(!s){ sfx('deny'); return; }
+  const d=G.depth;
+  const hours=9+d*46;
+  advanceTime(hours);
+  const y=approachYield(s,d);
+  const gotFuel=Math.min(G.fuelmax-G.fuel, y*11);
+  const gotO2=y*150;
+  G.fuel+=gotFuel;
+  G.o2=Math.min(G.o2max,G.o2+gotO2);
+  const dm=approachDamage(s,d);
+  if(dm>0){
+    G.hull-=dm; G.shake=Math.min(1,dm/20); sfx('impact',Math.min(1,dm/22));
+    say('WELL DEPTH EXCEEDED / HULL -'+fmt(dm,1),C.ALARM);
+  } else {
+    say('SCOOP NOMINAL',C.NOMINAL);
+  }
+  logEvent('APPROACH',s.name+' DEPTH '+fmt(d,2)+' MASS +'+fmt(gotFuel,1)+' GAS +'+fmt(gotO2,0)+' HULL -'+fmt(dm,1));
+  s.surveyed=true;
+  if(s===G.order.star && !G.order.surveyed){
+    G.order.surveyed=true;
+    say('SURVEY LODGED / ORDER '+G.order.docket,C.NOMINAL);
+    logEvent('ORDER','SURVEY LODGED AT '+s.name);
+  }
+  checkVitals();
+}
+
+/* ------------------------------------------------------------ the survey */
+
+function executeSurvey(){
+  const cost=18;
+  if(G.power<cost){ say('INSUFFICIENT BUS POWER',C.CAUTION); sfx('deny'); return; }
+  G.power-=cost;
+  advanceTime(6);
+  let found=0;
+  const REACH=5.0;
+  for(let i=0;i<HAZ.length;i++){
+    const H=HAZ[i];
+    if(H.found) continue;
+    if(Math.sqrt(segPointDist2(G.pos,H.a,H.b))<REACH){ H.found=true; found++; }
+  }
+  say(found?('SWEEP RETURNS '+found+' BODIES'):'SWEEP RETURNS NOTHING', found?C.CAUTION:C.NOMINAL);
+  logEvent('SURVEY','PASSIVE SWEEP RADIUS '+fmt(REACH,1)+' LY / '+found+' BODIES');
+  sfx('sweep');
+  checkVitals();
+}
+
+/* ------------------------------------------------------- what listens back */
+
+/* Nothing hunts the operator until the operator broadcasts. Every hail is a
+   bearing, and the bearing is to wherever the vehicle was when it sent. */
+const XMIT_HOURS=5;
+function broadcast(reason){
+  G.broadcasts++;
+  sfx('xmit');
+  /* Sending, waiting and being answered takes hours, and every one of those
+     hours is spent sitting on the bearing that was just radiated. */
+  advanceTime(XMIT_HOURS);
+  const first=!HUNT.active;
+  if(first){
+    HUNT.active=true;
+    HUNT.conf=0;
+    const r=rng(G.seed^0x7a3b91d5);
+    const dir=vnorm({x:r()*2-1,y:(r()*2-1)*0.5,z:r()*2-1});
+    HUNT.pos=vadd(G.pos,vmul(dir,11+r()*7));
+  }
+  HUNT.fix={x:G.pos.x,y:G.pos.y,z:G.pos.z};
+  HUNT.conf=clamp(HUNT.conf+0.085,0,1);
+  logEvent('TRANSMIT',reason+' / BEARING RADIATED FROM '+
+    fmt(G.pos.x,2)+' '+fmt(G.pos.y,2)+' '+fmt(G.pos.z,2));
+  checkVitals();
+}
+
+function huntStep(hours){
+  if(!HUNT.active||G.dead||!isFinite(HUNT.pos.x)) return;
+  /* A bearing ages. Hours of silence are worth as much as distance, and they
+     are the only thing the operator can spend that costs no consumable. */
+  HUNT.conf=Math.max(0,HUNT.conf-hours/1100);
+  /* Early on it can only walk down the last bearing it was given. As the
+     bearings pile up it stops needing them and comes to where the operator
+     actually is. */
+  const c=HUNT.conf;
+  const aim={x:lerp(HUNT.fix.x,G.pos.x,c), y:lerp(HUNT.fix.y,G.pos.y,c), z:lerp(HUNT.fix.z,G.pos.z,c)};
+  const to=vsub(aim,HUNT.pos);
+  const d=vlen(to);
+  const step=HUNT.speed*(0.55+1.50*c)*hours;
+  if(d>step){
+    HUNT.pos=vadd(HUNT.pos,vmul(vnorm(to),step));
+  } else {
+    HUNT.pos={x:aim.x,y:aim.y,z:aim.z};
+  }
+  if(vdist(HUNT.pos,G.pos)<0.22) die('INTERCEPTED');
+}
+
+/* ------------------------------------------------------------- the vitals */
+
+function checkVitals(){
+  if(G.dead) return;
+  /* A reading that is not a number is not a small reading. Trap it here rather
+     than let it propagate through the vehicle silently. */
+  if(!isFinite(G.hull)||!isFinite(G.o2)||!isFinite(G.fuel)||!isFinite(G.t)){
+    G.hull=0; die('INSTRUMENT FAILURE'); return;
+  }
+  if(G.hull<=0){ G.hull=0; die('HULL FAILURE'); return; }
+  if(G.o2<=0){ G.o2=0; die('ATMOSPHERE EXHAUSTED'); return; }
+}
+function die(why){
+  if(G.dead) return;
+  G.dead=G.t; G.deadWhy=why;
+  G.screen='DEAD';
+  logEvent('END',why);
+  bedSet(0,0.03);
+  sfx('alarm',1.4);
+}
+function endRun(kind){
+  if(G.ending) return;
+  G.ending=kind;
+  G.screen='END';
+  logEvent('END',kind);
+}
+
+/* Mission time passes in exactly one place. A burn that costs two hundred
+   hours has to cost the operator everything two hundred hours costs, including
+   two hundred hours of whatever is following the transmissions. */
+function advanceTime(hours){
+  if(hours<=0||!isFinite(hours)) return;
+  G.t+=hours;
+  G.o2-=hours;
+  /* The reactor makes less when the hull is open. */
+  G.power=Math.min(100, G.power + hours*(0.62*(0.35+0.65*Math.max(0,G.hull)/100)));
+  huntStep(hours);
+  if(G.o2<=0&&!G.dead){ G.o2=0; die('ATMOSPHERE EXHAUSTED'); }
+}
+
+/* The bed is the reactor and the air handling, so it reports them. A hull
+   that has been opened makes less power and the hum drops with it; an air
+   supply running out thins the handler note. The operator hears the vehicle
+   getting worse before any gauge has said so. */
+function bedTrack(){
+  if(!BED||!AC||G.dead) return;
+  const hull=clamp(G.hull/100,0,1), air=clamp(G.o2/G.o2max,0,1);
+  BED.gain.gain.setTargetAtTime(0.20*(0.45+0.55*hull), AC.currentTime, 1.2);
+  BED.lp.frequency.setTargetAtTime(150+120*hull, AC.currentTime, 1.5);
+  BED.air.gain.setTargetAtTime(0.055*(0.25+0.75*air), AC.currentTime, 2.0);
+}
+
+/* Continuous time. It is slow, and it never stops, and the operator can feel
+   it in the air supply while they are deciding what to do. */
+const HOURS_PER_SECOND=0.42;
+let bedT=0;
+function simStep(dt){
+  if(G.dead||G.ending) return;
+  advanceTime(dt*HOURS_PER_SECOND);
+  if(G.hull<=0){ G.hull=0; die('HULL FAILURE'); }
+  bedT+=dt;
+  if(bedT>0.75){ bedT=0; bedTrack(); }
+}
+
+/* ==========================================================================
+   INSTRUMENT ONE — THE GALAXY CHART
+   For deciding where to go. It is referenced to the origin, and so is the
+   catalogue, and the operator is not at the origin.
+   ========================================================================== */
+
+const ZOOMS=[4,9,20,45,110];
+let zoomIdx=2;
+const _cp={x:0,y:0,z:0,ok:false};
+function chartCam(){
+  const R=ZOOMS[zoomIdx];
+  const s=Math.min(LY.inst.w,LY.inst.h)*0.44;
+  return {R:R, cam:makeCam(LY.instCx,LY.instCy,s*2.6,G.yaw,G.pitch,2.6), scale:s/R};
+}
+/* Chart space is centred on the vehicle: what the operator needs to fly is
+   always a displacement from HERE, and the plot says so by construction. */
+function chartProject(p,CC,out){
+  const q={x:(p.x-G.pos.x)/CC.R, y:(p.y-G.pos.y)/CC.R, z:(p.z-G.pos.z)/CC.R};
+  return project(q,CC.cam,out);
+}
+
+let chartHits=[];
+function drawChart(dt){
+  const IN=LY.inst;
+  panel(IN.x,IN.y,IN.w,IN.h,fit('GALAXY CHART / EQUATORIAL J2000',LY.t0,IN.w-16),C.CHASSIS,B.MID);
+  const CC=chartCam();
+  chartHits=[];
+
+  /* The equatorial plane, drawn as range rings about the ORIGIN — the frame
+     the catalogue is written in, so the operator can see their own offset. */
+  const rings=[5,10,15,20,25,50,100];
+  for(let i=0;i<rings.length;i++){
+    const rr=rings[i];
+    if(rr>CC.R*2.4) continue;
+    const isLimit=(rr===25);
+    const col=isLimit?C.CAUTION:C.CHASSIS;
+    const a=isLimit?B.MID:B.DIM;
+    let px=null;
+    const seg=isLimit?44:30;
+    for(let k=0;k<=seg;k++){
+      const th=k/seg*TAU;
+      const p={x:Math.cos(th)*rr, y:0, z:Math.sin(th)*rr};
+      chartProject(p,CC,_cp);
+      if(_cp.ok&&px) line(px.x,px.y,_cp.x,_cp.y,col,a,isLimit?1.2:1);
+      px=_cp.ok?{x:_cp.x,y:_cp.y}:null;
+    }
+    if(isLimit){
+      chartProject({x:rr,y:0,z:0},CC,_cp);
+      const lbl='25 LY / CLAUSE 9(B)';
+      if(_cp.ok&&_cp.y>IN.y+LY.t0*3&&_cp.y<IN.y+IN.h-LY.t0)
+        text(clamp(_cp.x+4,IN.x+4,IN.x+IN.w-textW(lbl,LY.t0)-4),_cp.y-LY.t0*1.6,LY.t0,lbl,C.CAUTION,B.MID,1);
+    }
+  }
+  /* The origin itself. Everything in the catalogue is measured from this. */
+  chartProject(SOL,CC,_cp);
+  if(_cp.ok){
+    circle(_cp.x,_cp.y,4,C.READOUT,B.HI,1,8);
+    cross(_cp.x,_cp.y,7,C.READOUT,B.MID,1);
+    text(_cp.x+9,_cp.y-LY.t0*0.5,LY.t0,'SOL / ORIGIN',C.READOUT,B.MID,1);
+  }
+
+  /* The vernier is an inset instrument bolted over the plate. Whatever it
+     covers is not drawn, because it is not visible. */
+  let VR=null;
+  if(G.target){
+    const vs0=Math.min(IN.w*0.42,IN.h*0.34,132);
+    VR={x:IN.x+IN.w-vs0-6, y:IN.y+LY.t0*2.4, w:vs0, h:vs0};
+  }
+  const underVernier=function(x,y){
+    return VR && x>VR.x-3 && x<VR.x+VR.w+3 && y>VR.y-LY.t0 && y<VR.y+VR.h+3;
+  };
+
+  /* Stars. Brightness reports distance from the vehicle, size reports class. */
+  const shown=[];
+  for(let i=0;i<STARS.length;i++){
+    const s=STARS[i];
+    const dv=vdist(s,G.pos);
+    if(dv>CC.R*2.6) continue;
+    chartProject(s,CC,_cp);
+    if(!_cp.ok) continue;
+    if(_cp.x<IN.x+3||_cp.x>IN.x+IN.w-3||_cp.y<IN.y+3||_cp.y>IN.y+IN.h-3) continue;
+    if(underVernier(_cp.x,_cp.y)) continue;
+    const near=clamp(1-dv/(CC.R*1.6),0.12,1);
+    const sel=(G.target===s);
+    const col=sel?C.READOUT:(s.visited?C.NOMINAL:C.CHASSIS);
+    const r=s.giant?3.4:(s.cls==='M'||s.cls==='D'?1.6:2.4);
+    cross(_cp.x,_cp.y,r+1.4,col,near*(sel?B.HI:B.MID),sel?1.5:1);
+    if(s.planets>0){
+      /* A system with confirmed planets is worth the extra ink. */
+      circle(_cp.x,_cp.y,r+3.2,col,near*B.DIM,1,8);
+    }
+    shown.push({s:s,x:_cp.x,y:_cp.y,d:dv,near:near});
+    chartHits.push({x:_cp.x-14,y:_cp.y-14,w:28,h:28,s:s,d:dv});
+  }
+  /* Label what is close, what is selected, and what is under standing order.
+     Everything else stays a mark, because a chart full of names is unreadable. */
+  shown.sort((a,b)=>a.d-b.d);
+  let labels=0;
+  const placed=[];
+  const maxLabels=Math.max(5,Math.min(9,Math.floor(IN.h/54)));
+  for(let i=0;i<shown.length&&labels<maxLabels;i++){
+    const S=shown[i];
+    const must=(G.target===S.s)||(S.s===G.order.star);
+    if(!must && i>maxLabels-1) continue;
+    const cu=CULTURES.find(c=>c.starIdx===S.s.idx&&c.contacted);
+    const col=(S.s===G.order.star)?C.CAUTION:(cu?C.CONTACT:C.LABEL);
+    /* Binary components project to the same pixel. The second name steps down
+       until it has clear space, and gives up if it never finds any. */
+    const lw=textW(S.s.name,LY.t0), lh=LY.t0*1.4;
+    let lx=S.x+6, ly2=S.y+2, ok=false;
+    for(let g=0;g<6;g++){
+      let clash=false;
+      for(let q=0;q<placed.length;q++){
+        const P=placed[q];
+        if(lx<P.x+P.w&&lx+lw>P.x&&ly2<P.y+lh&&ly2+lh>P.y){ clash=true; break; }
+      }
+      if(!clash && ly2+lh<IN.y+IN.h-LY.t0*3 && lx+lw<IN.x+IN.w-4
+         && !underVernier(lx,ly2) && !underVernier(lx+lw,ly2+lh)){ ok=true; break; }
+      ly2+=lh;
+    }
+    if(!ok) continue;
+    placed.push({x:lx,y:ly2,w:lw,h:lh});
+    text(lx,ly2,LY.t0,S.s.name,col,S.near*B.MID,1);
+    labels++;
+  }
+
+  /* Hazards that have been found. One that has not been found is not drawn,
+     is still in the corridor, and is still in the damage sum. */
+  const hzL=bucket(C.CAUTION,1.2,B.MID), hzC=bucket(C.CAUTION,1,B.DIM);
+  for(let i=0;i<HAZ.length;i++){
+    const H=HAZ[i];
+    if(!H.found) continue;
+    chartProject(H.a,CC,_cp);
+    if(!_cp.ok) continue;
+    const ax=_cp.x, ay=_cp.y;
+    chartProject(H.b,CC,_cp);
+    if(!_cp.ok) continue;
+    const bx=_cp.x, by=_cp.y;
+    if(Math.max(ax,bx)<IN.x||Math.min(ax,bx)>IN.x+IN.w||
+       Math.max(ay,by)<IN.y||Math.min(ay,by)>IN.y+IN.h) continue;
+    pushSeg(hzL,ax,ay,bx,by);
+    /* A caliper at each end rather than a ring: it reports the same radius,
+       reads better at chart scale, and costs three strokes instead of twenty. */
+    const pr=Math.max(2.5,H.r*CC.scale);
+    let dx=bx-ax, dy=by-ay;
+    const dl=Math.hypot(dx,dy)||1;
+    const nx=-dy/dl*pr, ny=dx/dl*pr;
+    pushSeg(hzC,ax-nx,ay-ny,ax+nx,ay+ny);
+    pushSeg(hzC,bx-nx,by-ny,bx+nx,by+ny);
+  }
+
+  /* The vehicle. */
+  chartProject(G.pos,CC,_cp);
+  const sx=_cp.ok?_cp.x:LY.instCx, sy=_cp.ok?_cp.y:LY.instCy;
+  diamond(sx,sy,5,C.NOMINAL,B.HI,1.4);
+  circle(sx,sy,9,C.NOMINAL,B.DIM,1,12);
+
+  /* The projected arrival: where the numbers currently dialled will actually
+     put the vehicle. This is the whole instrument. */
+  const ap=arrivalPoint(G);
+  chartProject(ap,CC,_cp);
+  if(_cp.ok){
+    const ax=_cp.x, ay=_cp.y;
+    line(sx,sy,ax,ay,C.CHASSIS,B.MID,1);
+    /* Dashes along the flown line so its length reads as a length. */
+    const n=Math.max(2,Math.min(18,Math.round(G.range*1.2)));
+    for(let k=1;k<n;k++){
+      const t=k/n;
+      const px=lerp(sx,ax,t), py=lerp(sy,ay,t);
+      cross(px,py,1.6,C.CHASSIS,B.DIM,1);
+    }
+    diamond(ax,ay,6,C.READOUT,B.HI,1.4);
+    const sig=solverSigma(G,G.range)*CC.scale;
+    circle(ax,ay,Math.max(3,sig),C.READOUT,B.DIM,1,16);
+    if(G.target){
+      chartProject(G.target,CC,_cp);
+      if(_cp.ok){
+        /* The residual, drawn as a line between where you are going and where
+           you meant to go. Its length is the miss. */
+        const miss=vdist(ap,G.target);
+        const col=miss<=ARRIVE_CLEAN?C.NOMINAL:(miss<=ARRIVE_HALO?C.CAUTION:C.ALARM);
+        line(ax,ay,_cp.x,_cp.y,col,B.HI,1.3);
+        rect(_cp.x-7,_cp.y-7,14,14,col,B.HI,1.2);
+      }
+    }
+  }
+
+  /* The bearing to whatever answered. It is never identified. */
+  if(HUNT.active&&HUNT.bearingKnown){
+    const d=vnorm(HUNT.bearingKnown);
+    const far=vadd(G.pos,vmul(d,CC.R*2.2));
+    chartProject(far,CC,_cp);
+    if(_cp.ok){
+      const age=clamp(1-(G.t-HUNT.lastSeen)/400,0.12,1);
+      line(sx,sy,_cp.x,_cp.y,C.CONTACT,age*B.MID,1);
+      text(_cp.x+4,_cp.y,LY.t0,'UNRESOLVED',C.CONTACT,age*B.MID,1);
+    }
+  }
+
+  /* The vernier. A second plot of the same geometry at a magnification the
+     main chart cannot give, so the operator can null the residual by eye. It
+     performs no arithmetic the solver is not allowed to do — it only draws
+     what is already on the chart, larger. */
+  if(G.target){
+    const vs=VR.w, vx=VR.x, vy=VR.y;
+    const off=vdist(ap,G.target);
+    const SCALES=[0.12,0.4,1.2,4,12,40,120];
+    let full=SCALES[SCALES.length-1];
+    for(let i=0;i<SCALES.length;i++){ if(off*2.4<SCALES[i]||i===SCALES.length-1){ full=SCALES[i]; break; } }
+    const k=vs/full;
+    panel(vx,vy,vs,vs,'VERNIER',C.CHASSIS,B.MID);
+    const vcx=vx+vs/2, vcy=vy+vs/2;
+    /* The two thresholds the arrival will actually be graded against. */
+    if(ARRIVE_CLEAN*k>1.5) circle(vcx,vcy,ARRIVE_CLEAN*k,C.NOMINAL,B.MID,1,20);
+    if(ARRIVE_HALO*k>1.5&&ARRIVE_HALO*k<vs) circle(vcx,vcy,ARRIVE_HALO*k,C.CAUTION,B.MID,1,24);
+    cross(vcx,vcy,5,C.READOUT,B.HI,1.2);
+    rect(vcx-4,vcy-4,8,8,C.READOUT,B.MID,1);
+    /* The projected arrival, rotated by the same yaw and pitch as the chart,
+       so the depth ambiguity is still there and still has to be flown out. */
+    const d=vsub(ap,G.target);
+    const q={x:d.x,y:d.y,z:d.z};
+    let rx=q.x*Math.cos(G.yaw)-q.z*Math.sin(G.yaw);
+    let rz=q.x*Math.sin(G.yaw)+q.z*Math.cos(G.yaw);
+    let ry=q.y*Math.cos(G.pitch)-rz*Math.sin(G.pitch);
+    const px2=clamp(vcx+rx*k,vx+3,vx+vs-3), py2=clamp(vcy-ry*k,vy+3,vy+vs-3);
+    const gc=off<=ARRIVE_CLEAN?C.NOMINAL:(off<=ARRIVE_HALO?C.CAUTION:C.ALARM);
+    line(vcx,vcy,px2,py2,gc,B.HI,1.2);
+    diamond(px2,py2,5,gc,B.HI,1.4);
+    textC(vcx,vy+vs-LY.t0*1.5,LY.t0,fmt(full,2)+' LY FULL',C.LABEL,B.MID,1);
+  }
+
+  /* Chart furniture that reports the chart's own state. */
+  const t0=LY.t0;
+  text(IN.x+6,IN.y+t0*1.3,t0,'RANGE '+pad(ZOOMS[zoomIdx],3)+' LY',C.LABEL,B.MID,1);
+  text(IN.x+6,IN.y+IN.h-t0*1.6,t0,'YAW '+pad(((G.yaw*R2D)%360+360)%360,5,1)+
+       '  PIT '+pad(G.pitch*R2D,5,1),C.LABEL,B.MID,1);
+  hit(IN.x,IN.y,IN.w,IN.h,'chartarea');
+}
+
+/* ==========================================================================
+   INSTRUMENT TWO — THE NEAR FIELD
+   For what happens once the vehicle has arrived somewhere.
+   ========================================================================== */
+
+/* Planets. Real elements where they are known; otherwise derived from the seed
+   and labelled as derived, because a console that presented a guess as a
+   measurement would be the most dangerous instrument on the vehicle. */
+function systemOf(s){
+  if(s._sys) return s._sys;
+  const real=REAL_SYSTEMS[s.name];
+  const out={real:!!real, planets:[], mass:1, lum:starLum(s)};
+  if(real){
+    out.mass=real.m||1; out.lum=real.L||out.lum;
+    for(let i=0;i<real.p.length;i++){
+      const p=real.p[i];
+      out.planets.push({name:p[0], a:p[1], per:p[2], rad:p[3]||0, hz:!!p[4], real:true});
+    }
+  } else if(s.planets>0){
+    const r=rng(hashStr(s.name+'|sys'));
+    for(let i=0;i<s.planets;i++){
+      const a=0.04*Math.pow(2.1,i)*(0.7+r()*0.9);
+      const per=365.25*Math.sqrt(a*a*a/Math.max(0.08,out.mass));
+      out.planets.push({name:s.name+' '+'BCDEFGHI'[i], a:a, per:per, rad:0, hz:false, real:false});
+    }
+  }
+  s._sys=out;
+  return out;
+}
+
+function drawField(dt){
+  const IN=LY.inst;
+  const s=G.here;
+  panel(IN.x,IN.y,IN.w,IN.h, s?('NEAR FIELD / '+s.name):'NEAR FIELD / NO PRIMARY',C.CHASSIS,B.MID);
+  const cx=LY.instCx, cy=LY.instCy;
+  const plateR=Math.min(IN.w,IN.h)*0.42;
+
+  /* The plate. Range rings and a sweep, and the sweep is the only thing that
+     puts a contact on it. */
+  for(let i=1;i<=4;i++) circle(cx,cy,plateR*i/4,C.CHASSIS,i===4?B.MID:B.DIM,1,30);
+  for(let k=0;k<12;k++){
+    const a=k/12*TAU;
+    line(cx+Math.cos(a)*plateR*0.96,cy+Math.sin(a)*plateR*0.96,
+         cx+Math.cos(a)*plateR,cy+Math.sin(a)*plateR,C.CHASSIS,B.MID,1);
+  }
+  G.sweep+=dt*0.75;
+  if(G.sweep>TAU){ G.sweep-=TAU; }
+  const sa=G.sweep;
+  line(cx,cy,cx+Math.cos(sa)*plateR,cy+Math.sin(sa)*plateR,C.NOMINAL,B.MID,1);
+  /* A short trailing arc, which is the persistence of the plate, not a shadow. */
+  arc(cx,cy,plateR*0.99,sa-0.5,sa,C.NOMINAL,B.DIM,1);
+
+  if(!s){
+    textC(cx,cy-LY.t2,LY.t2,'NO PRIMARY',C.ALARM,B.HI,1.4);
+    const near=starAt(G.pos,60);
+    if(near) textC(cx,cy+LY.t1*0.6,LY.t1,'NEAREST '+near.star.name+' '+fmt(near.d,3)+' LY',C.CAUTION,B.MID,1);
+    textC(cx,cy+LY.t1*2.4,LY.t0,'ADRIFT / RE-SOLVE ON THE CHART',C.LABEL,B.MID,1);
+  } else {
+    const sys=systemOf(s);
+    let maxA=0.2;
+    for(let i=0;i<sys.planets.length;i++) maxA=Math.max(maxA,sys.planets[i].a);
+    const auScale=plateR*0.86/maxA;
+
+    /* The primary, drawn as a body: a limb, limb ticks, and nothing implied
+       about its surface that the console has not measured. */
+    const br=Math.max(5,Math.min(plateR*0.20, 6+Math.log10(Math.max(0.002,starRad(s)))*7));
+    const lum=clamp(0.35+Math.log10(Math.max(1e-4,sys.lum))*0.16,0.25,1);
+    circle(cx,cy,br,C.READOUT,lum,1.5,26);
+    for(let k=0;k<16;k++){
+      const a=k/16*TAU;
+      line(cx+Math.cos(a)*br,cy+Math.sin(a)*br,cx+Math.cos(a)*(br+3),cy+Math.sin(a)*(br+3),C.READOUT,lum*0.7,1);
+    }
+    /* The habitable zone, as a band, because that is how it is known. */
+    const hz0=Math.sqrt(sys.lum/1.10), hz1=Math.sqrt(sys.lum/0.53);
+    if(hz1*auScale<plateR*1.1&&hz0*auScale>br+3){
+      circle(cx,cy,hz0*auScale,C.NOMINAL,B.DIM,1,28);
+      circle(cx,cy,hz1*auScale,C.NOMINAL,B.DIM,1,28);
+    }
+
+    /* Orbits, on the elements the archive actually has. */
+    const days=G.t/24;
+    const pLabels=[];
+    for(let i=0;i<sys.planets.length;i++){
+      const P=sys.planets[i];
+      const rr=P.a*auScale;
+      if(rr>plateR*1.15) continue;
+      const col=P.real?C.CHASSIS:C.CAUTION;
+      circle(cx,cy,rr,col,P.real?B.DIM:B.DIM*0.8,1,Math.max(14,Math.min(30,rr*0.4|0)));
+      const th=(days/P.per)*TAU + i*1.7;
+      const px=cx+Math.cos(th)*rr, py=cy+Math.sin(th)*rr*0.96;
+      diamond(px,py,P.hz?4:3,P.hz?C.NOMINAL:C.READOUT,B.HI,1.2);
+      if(sys.planets.length<=8 && rr>br+8){
+        /* Set outboard along the radius, and only where nothing is already
+           written: an unreadable caption is worse than no caption. */
+        const lw=textW(P.name,LY.t0), lh=LY.t0*1.35;
+        const ox=clamp(Math.cos(th)>=0?px+6:px-6-lw, IN.x+4, IN.x+IN.w-lw-4);
+        const oy=clamp(py-LY.t0*0.5+Math.sin(th)*5, IN.y+LY.t0*2, IN.y+IN.h-LY.t0*2);
+        let clash=false;
+        for(let q=0;q<pLabels.length;q++){
+          const Q=pLabels[q];
+          if(ox<Q.x+Q.w&&ox+lw>Q.x&&oy<Q.y+lh&&oy+lh>Q.y){ clash=true; break; }
+        }
+        if(!clash){ pLabels.push({x:ox,y:oy,w:lw}); text(ox,oy,LY.t0,P.name,C.LABEL,B.MID,1); }
+      }
+    }
+    if(!sys.real&&sys.planets.length)
+      text(IN.x+6,IN.y+IN.h-LY.t0*2.6,LY.t0,'ELEMENTS DERIVED / NOT SURVEYED',C.CAUTION,B.MID,1);
+
+    /* The emission. Passive: hearing it costs nothing and gives nothing away. */
+    const cu=CULTURES.find(c=>c.starIdx===s.idx);
+    if(cu){
+      const ea=1.05+Math.sin(G.t*0.01)*0.4;
+      const er=plateR*0.63;
+      const ex=cx+Math.cos(ea)*er, ey=cy+Math.sin(ea)*er;
+      const swept=Math.abs(((sa-ea+Math.PI*3)%TAU)-Math.PI)<0.5;
+      const a=swept?B.HI:B.MID;
+      circle(ex,ey,5,C.CONTACT,a,1.3,10);
+      cross(ex,ey,8,C.CONTACT,a*0.7,1);
+      const el='EMISSION / '+cu.cls, elw=textW(el,LY.t0);
+      text(clamp(ex+9,IN.x+4,IN.x+IN.w-elw-4),ey-LY.t0*0.5,LY.t0,el,C.CONTACT,a,1);
+    }
+  }
+
+  /* Whatever is coming. The plate says nothing about it until the sweep finds
+     it, and then it says only a range and a bearing. */
+  if(HUNT.active){
+    const rel=vsub(HUNT.pos,G.pos);
+    const d=vlen(rel);
+    if(d<3.0){
+      const be=vecToBE(rel);
+      const ha=be.bearing*D2R;
+      const swept=Math.abs(((sa-ha+Math.PI*3)%TAU)-Math.PI)<0.42;
+      if(swept){
+        HUNT.detected=true; HUNT.lastSeen=G.t;
+        HUNT.bearingKnown={x:rel.x,y:rel.y,z:rel.z};
+        if(G.contactPing!==Math.floor(G.t)){ G.contactPing=Math.floor(G.t); sfx('contact'); }
+      }
+      const age=clamp(1-(G.t-HUNT.lastSeen)/60,0,1);
+      if(age>0){
+        const rr=clamp(d/3.0,0.05,1)*plateR;
+        const hx=cx+Math.cos(ha)*rr, hy=cy+Math.sin(ha)*rr;
+        rect(hx-5,hy-5,10,10,C.CONTACT,age*B.HI,1.4);
+        cross(hx,hy,10,C.CONTACT,age*B.MID,1);
+        text(hx+8,hy+LY.t0,LY.t0,'---- / '+fmt(d,2)+' LY',C.CONTACT,age*B.HI,1);
+      }
+    }
+  }
+  hit(IN.x,IN.y,IN.w,IN.h,'fieldarea');
+}
+
+/* ==========================================================================
+   COMMS
+   The operator is the visitor. Every culture here was here first.
+   ========================================================================== */
+
+/* How much of a culture's writing one transmission resolves. The furthest
+   culture gives up the largest fraction of itself per message and the nearest
+   the smallest, so the first thing the operator meets is the last thing they
+   can read. */
+function learnFrom(cu){
+  const rate=Math.max(1,Math.round(cu.glyphN*cu.ease))+(cu.standing>=4?1:0);
+  const before=cu.known;
+  cu.known=Math.min(cu.glyphN,cu.known+rate);
+  return cu.known-before;
+}
+function utteranceSegments(cu,toks){
+  const ks=knownSet(cu), segs=[];
+  for(let i=0;i<toks.length;i++){
+    const t=toks[i];
+    if(t===STOP){ segs.push({ph:['_']}); continue; }
+    if(wordKnown(cu,t,ks)) segs.push({ph:toPhonemes(CONCEPT[t])});
+    else segs.push({mute:true, dur:cu.words[t].length*0.16});
+  }
+  return segs;
+}
+function utteranceDuration(cu,toks){
+  let d=0;
+  const segs=utteranceSegments(cu,toks);
+  for(let i=0;i<segs.length;i++){
+    if(segs[i].mute||!segs[i].ph) d+=segs[i].dur||0.2;
+    else for(let j=0;j<segs[i].ph.length;j++){ const p=PHON[segs[i].ph[j]]; if(p) d+=p[4]/1000; }
+  }
+  return d;
+}
+/* Both channels at once: their own mechanism carries the whole utterance, and
+   the reader carries only the part that has been decoded. Where the reader has
+   nothing, it stops, and the operator hears the hole in their comprehension. */
+function utter(cu,toks){
+  const dur=Math.max(0.6,utteranceDuration(cu,toks));
+  VOICE_FN[cu.voice](dur,rng(hashStr(toks.join(',')+cu.code)),cu.pitch);
+  speak(utteranceSegments(cu,toks),{vol:0.5,f0:110});
+  G.comms.speakUntil=performance.now()/1000+dur;
+}
+
+function openComms(cu){
+  G.comms={cu:cu, phase:'HAILING', sel:-1, t:0, speakUntil:0, learned:0, msg:null, gift:false};
+  G.sub='COMMS';
+}
+function commsHail(){
+  const cu=G.comms.cu;
+  broadcast('HAIL TO '+cu.code);
+  cu.contacted=true;
+  const node=DIALOGUE[cu.id][Math.min(cu.node,DIALOGUE[cu.id].length-1)];
+  G.comms.learned=learnFrom(cu);
+  G.comms.msg=node.them;
+  G.comms.phase='THEM';
+  utter(cu,node.them);
+  logEvent('COMMS',cu.code+' RESPONDED / '+cu.known+' OF '+cu.glyphN+' SIGNS READ');
+}
+/* Asking them to repeat themselves is the only way out of a sentence the
+   operator cannot yet answer. It costs a broadcast, and it costs a little of
+   their patience, which is the whole shape of this game in one key. */
+function commsRepeat(){
+  const cu=G.comms.cu;
+  broadcast('REPEAT REQUEST TO '+cu.code);
+  G.comms.learned=learnFrom(cu);
+  utter(cu,G.comms.msg);
+  logEvent('COMMS','REPEAT REQUESTED / '+cu.known+' OF '+cu.glyphN+' SIGNS READ');
+}
+
+function commsSend(idx){
+  const cu=G.comms.cu;
+  const D=DIALOGUE[cu.id];
+  const node=D[Math.min(cu.node,D.length-1)];
+  const rep=node.replies[idx];
+  if(!canPhrase(cu,rep.t)){ sfx('deny'); say('REPLY CANNOT BE PHRASED',C.CAUTION); return; }
+  broadcast('REPLY TO '+cu.code);
+  cu.standing+=rep.w;
+  logEvent('COMMS','SENT ['+rep.tag+'] STANDING '+(cu.standing>=0?'+':'')+cu.standing);
+  if(cu.standing<=-10){
+    cu.refused=true;
+    G.comms.phase='REFUSED';
+    say(cu.code+' HAS STOPPED ANSWERING',C.ALARM);
+    logEvent('COMMS',cu.code+' CEASED TRANSMISSION');
+    return;
+  }
+  cu.node++;
+  if(cu.node>=D.length){
+    if(cu.standing>=4&&!cu.gifted){
+      cu.gifted=true;
+      G.red[cu.giftKey]=true;
+      G.comms.phase='GIFT';
+      G.comms.gift=true;
+      say('REDUCTION RECEIVED / '+cu.gift,C.NOMINAL);
+      logEvent('GIFT',cu.code+' GAVE '+cu.gift);
+      sfx('contact',1.4);
+    } else if(!cu.gifted){
+      G.comms.phase='WITHHELD';
+      say(cu.code+' GAVE NOTHING',C.CAUTION);
+      logEvent('COMMS',cu.code+' WITHHELD / STANDING '+cu.standing);
+    } else {
+      G.comms.phase='DONE';
+    }
+    cu.node=D.length-1;
+    return;
+  }
+  const next=D[cu.node];
+  G.comms.learned=learnFrom(cu);
+  G.comms.msg=next.them;
+  G.comms.phase='THEM';
+  utter(cu,next.them);
+}
+
+/* An utterance drawn honestly: what has been decoded is set in roman and what
+   has not stays in the sender's own script, in the middle of the sentence. */
+function drawUtterance(x,y,wid,size,cu,toks,dim){
+  const ks=knownSet(cu);
+  let cx=x, cy=y, lines=1;
+  const adv=size*TRACK;
+  for(let i=0;i<toks.length;i++){
+    const t=toks[i];
+    if(t===STOP){
+      text(cx,cy,size,'.',C.READOUT,B.MID,1);
+      cx+=adv*1.6;
+      if(i<toks.length-1&&cx>x+wid*0.55){ cx=x; cy+=size*1.9; lines++; }
+      continue;
+    }
+    const known=wordKnown(cu,t,ks);
+    const w=known?CONCEPT[t]:cu.words[t];
+    const ww=(known?w.length:w.length)*adv;
+    if(cx+ww>x+wid){ cx=x; cy+=size*1.9; lines++; }
+    if(known) text(cx,cy,size,CONCEPT[t],C.READOUT,dim?B.MID:B.HI,1);
+    else alienText(cx,cy,size,cu.words[t],cu.glyphs,C.CONTACT,dim?B.MID:B.HI,1);
+    cx+=ww+adv;
+  }
+  return cy+size*1.9-y;
+}
+
+function drawComms(dt){
+  const IN=LY.inst;
+  const cu=G.comms.cu;
+  const CM=G.comms;
+  CM.t+=dt;
+  panel(IN.x,IN.y,IN.w,IN.h,'COMMS / REGISTRY '+cu.code,C.CONTACT,B.MID);
+  const px=IN.x+7, pw=IN.w-14;
+  let y=IN.y+9;
+  const t0=LY.t0, t1=LY.t1;
+
+  leader(px,y,pw,t0,'SIGNAL CLASS',cu.cls,C.LABEL,C.CONTACT); y+=LY.lh0;
+  leader(px,y,pw,t0,'SIGNS READ',cu.known+' OF '+cu.glyphN+'  '+pad(comprehension(cu)*100,5,1)+' PCT'); y+=LY.lh0;
+  leader(px,y,pw,t0,'STANDING',(cu.standing>=0?'+':'')+cu.standing,C.LABEL,
+    cu.standing<0?C.ALARM:(cu.standing>=4?C.NOMINAL:C.CAUTION)); y+=LY.lh0;
+
+  /* Comprehension as a counted bar: one cell per sign, filled in the order the
+     signs are actually used. */
+  const cellW=Math.min(9,(pw-2)/cu.glyphN);
+  const KN=bucket(C.NOMINAL,1.6,B.HI), UN=bucket(C.CHASSIS,1,B.DIM);
+  for(let i=0;i<cu.glyphN;i++){
+    const L2=i<cu.known?KN:UN, xx=px+i*cellW;
+    pushSeg(L2,xx,y,xx,y+6);
+  }
+  line(px,y+8,px+cu.glyphN*cellW,y+8,C.CHASSIS,B.DIM,1);
+  y+=15;
+
+  /* The transmission is set at the foot of the panel and the body gets
+     everything between: the operator spends the exchange looking at it. */
+  const textBlock=Math.min(IN.h*0.34, LY.t1*2.0*5+LY.lh0*2);
+  const bodyTop=y, bodyBot=IN.y+IN.h-textBlock-6;
+  const bodyH=Math.max(70,bodyBot-bodyTop);
+  const agit=clamp(0.15+(cu.standing<0?-cu.standing*0.06:0)+(CM.speakUntil>performance.now()/1000?0.5:0),0,1);
+  drawAlien(cu.id, IN.x+IN.w*0.5, bodyTop+bodyH*0.5, bodyH*0.40, CM.t, C.CONTACT, agit);
+  y=bodyBot;
+
+  line(px,y,px+pw,y,C.CONTACT,B.DIM,1); y+=8;
+
+  if(CM.phase==='HAILING'){
+    text(px,y,t1,'CHANNEL OPEN. NOTHING SENT.',C.CAUTION,B.HI,1); y+=t1*2.2;
+    text(px,y,t0,'A HAIL IS A BEARING. IT WILL BE HEARD BY',C.CAUTION,B.MID,1); y+=LY.lh0;
+    text(px,y,t0,'WHOEVER IS LISTENING, NOT ONLY BY THEM.',C.CAUTION,B.MID,1);
+  } else if(CM.phase==='REFUSED'){
+    text(px,y,t1,'NO CARRIER.',C.ALARM,B.HI,1); y+=t1*2.2;
+    text(px,y,t0,'THEY WERE HERE FIRST AND THEY ARE DONE.',C.ALARM,B.MID,1);
+  } else if(CM.phase==='GIFT'){
+    text(px,y,t1,'REDUCTION RECEIVED',C.NOMINAL,B.HI,1); y+=t1*2.2;
+    text(px,y,t0,cu.gift,C.NOMINAL,B.HI,1); y+=LY.lh0;
+    text(px,y,t0,cu.giftNote,C.LABEL,B.MID,1); y+=LY.lh0*1.4;
+    text(px,y,t0,'GIVEN. NOT TAKEN. NOT EARNED.',C.LABEL,B.MID,1);
+  } else if(CM.phase==='WITHHELD'){
+    text(px,y,t1,'EXCHANGE CLOSED',C.CAUTION,B.HI,1); y+=t1*2.2;
+    text(px,y,t0,'THEY OWED NOTHING AND GAVE ACCORDINGLY.',C.CAUTION,B.MID,1); y+=LY.lh0;
+    text(px,y,t0,'HAIL AGAIN TO KEEP LISTENING.',C.LABEL,B.MID,1);
+  } else if(CM.phase==='DONE'){
+    text(px,y,t1,'NOTHING FURTHER',C.LABEL,B.HI,1); y+=t1*2.2;
+    text(px,y,t0,'HAIL AGAIN ONLY IF THE SIGNS ARE WORTH IT.',C.LABEL,B.MID,1);
+  } else if(CM.msg){
+    if(CM.learned>0){
+      text(px,y,t0,'+'+CM.learned+' SIGN'+(CM.learned>1?'S':'')+' RESOLVED FROM THIS TRANSMISSION',C.NOMINAL,B.MID,1);
+      y+=LY.lh0*1.3;
+    }
+    y+=drawUtterance(px,y,pw,t1,cu,CM.msg,false);
+  }
+  hit(IN.x,IN.y,IN.w,IN.h,'commsarea');
+}
+
+/* ==========================================================================
+   THE FASCIA
+   ========================================================================== */
+
+function drawStatus(){
+  const S=LY.status;
+  panel(S.x,S.y,S.w,S.h,fit('MC-44 CASSANDRA / OPERATOR 1 OF 1',LY.t0,S.w-16),C.CHASSIS,B.MID);
+  const px=S.x+6, pw=S.w-12, t0=LY.t0;
+  let y=S.y+8;
+
+  const days=G.t/24;
+  text(px,y,t0,'SEED '+G.seedHex,C.LABEL,B.MID,1);
+  textC(S.x+S.w*0.5,y,t0,'T+'+pad0(G.t,5)+' H',C.READOUT,B.HI,1);
+  textR(px+pw,y,t0,G.voided?'POLICY VOID':'POLICY ACTIVE',G.voided?C.ALARM:C.NOMINAL,B.HI,1);
+  y+=LY.lh0+2;
+
+  /* Two gauges to a row only where a row is wide enough for both labels and
+     both readouts; otherwise one to a row. A gauge whose label has been
+     trodden on is not a gauge. */
+  const twoCol=pw>=300;
+  const half=twoCol?(pw-8)/2:pw;
+  const hullC=G.hull>60?C.NOMINAL:(G.hull>25?C.CAUTION:C.ALARM);
+  const o2C=G.o2>600?C.NOMINAL:(G.o2>200?C.CAUTION:C.ALARM);
+  const fuelC=G.fuel>25?C.NOMINAL:(G.fuel>8?C.CAUTION:C.ALARM);
+  const gauges=[
+    [G.hull/100,hullC,'HULL',pad(G.hull,5,1)+' PCT'],
+    [G.o2/G.o2max,o2C,'ATM',pad0(G.o2,4)+' H'],
+    [G.fuel/G.fuelmax,fuelC,'MASS',pad(G.fuel,5,1)+' LY'],
+    [G.power/100,C.CHASSIS,'BUS',pad(G.power,5,1)+' PCT']
+  ];
+  for(let i=0;i<gauges.length;i++){
+    const gcol=twoCol?(i%2):0;
+    const gx2=px+gcol*(half+8);
+    bar(gx2,y+t0*1.3,half,8,gauges[i][0],gauges[i][1],gauges[i][2],gauges[i][3]);
+    if(!twoCol||gcol===1) y+=t0*1.3+8+LY.lh0;
+  }
+  y-=2;
+
+  const r=vlen(G.pos);
+  text(px,y,t0,'X'+pad(G.pos.x,8,2)+' Y'+pad(G.pos.y,8,2)+' Z'+pad(G.pos.z,8,2),C.READOUT,B.MID,1);
+  y+=LY.lh0-1;
+  const rc=r>INSURANCE_LIMIT?C.ALARM:(r>INSURANCE_LIMIT*0.85?C.CAUTION:C.NOMINAL);
+  text(px,y,t0,'R'+pad(r,8,3)+' LY',rc,B.HI,1);
+  textR(px+pw,y,t0,'XMIT '+pad0(G.broadcasts,2)+'  JUMPS '+pad0(G.jumps,2),
+    G.broadcasts?C.CONTACT:C.LABEL,B.MID,1);
+
+  /* The most recent thing the console has to say, and what it said before. */
+  if(!LY.portrait){
+    y+=LY.lh0+4;
+    line(S.x+4,y,S.x+S.w-4,y,C.CHASSIS,B.DIM,1); y+=6;
+    for(let i=0;i<G.news.length&&y<S.y+S.h-LY.lh0;i++){
+      text(px,y,t0,fit(newsLine(G.news[i]),t0,pw),G.news[i].c,i?B.DIM:B.HI,1);
+      y+=LY.lh0;
+    }
+    y+=6;
+    if(y<S.y+S.h-LY.lh0*8){
+      line(S.x+4,y,S.x+S.w-4,y,C.CHASSIS,B.DIM,1); y+=6;
+      text(px,y,t0,'STANDING ORDER '+G.order.docket,C.LABEL,B.MID,1); y+=LY.lh0;
+      leader(px,y,pw,t0,'PROCEED TO',G.order.star.name); y+=LY.lh0;
+      leader(px,y,pw,t0,'LODGE SURVEY',G.order.surveyed?'DONE':'PENDING',C.LABEL,
+        G.order.surveyed?C.NOMINAL:C.CAUTION); y+=LY.lh0;
+      leader(px,y,pw,t0,'RETURN TO SOL',G.order.delivered?'DONE':'PENDING',C.LABEL,C.CAUTION); y+=LY.lh0;
+      y+=4;
+      const R=G.red;
+      text(px,y,t0,'REDUCTIONS HELD',C.LABEL,B.MID,1); y+=LY.lh0;
+      const rl=[['PARALLAX',R.parallax],['RANGE',R.range],['EPOCH',R.epoch],['CLOSURE',R.closure]];
+      for(let i=0;i<rl.length&&y<S.y+S.h-LY.lh0;i++){
+        leader(px,y,pw,t0,rl[i][0],rl[i][1]?'HELD':'-----',C.LABEL,rl[i][1]?C.NOMINAL:C.CHASSIS,
+          rl[i][1]?B.HI:B.DIM);
+        y+=LY.lh0;
+      }
+      if(y<S.y+S.h-LY.lh0*4){
+        y+=6;
+        line(S.x+4,y,S.x+S.w-4,y,C.CHASSIS,B.DIM,1); y+=6;
+        text(px,y,t0,'LOG',C.LABEL,B.MID,1);
+        textR(px+pw,y,t0,G.log.length+' ENTRIES',C.LABEL,B.DIM,1);
+        y+=LY.lh0;
+        const room=Math.floor((S.y+S.h-LY.lh0-y)/LY.lh0);
+        const start=Math.max(0,G.log.length-room);
+        for(let i=start;i<G.log.length;i++){
+          const e=G.log[i];
+          const c=e.kind==='TRANSMIT'?C.CONTACT:(e.kind==='DAMAGE'||e.kind==='END'?C.ALARM:
+                  (e.kind==='GIFT'?C.NOMINAL:C.CHASSIS));
+          text(px,y,t0,fit('T+'+pad0(e.t,5)+' '+e.text,t0,pw),c,B.MID,1);
+          y+=LY.lh0;
+        }
+      }
+    }
+  }
+}
+
+/* In portrait the news line lives just under the instrument, where the thumb
+   is not covering it. */
+function drawNews(){
+  if(LY.portrait){
+    if(G.news.length){
+      const n=G.news[0];
+      text(LY.ctrl.x+2,LY.newsY,LY.t0,fit(newsLine(n),LY.t0,LY.ctrl.w-4),n.c,B.HI,1);
+    }
+    return;
+  }
+  /* Landscape leaves a strip under the instrument. The console fills it with
+     what it has most recently had to say, oldest at the bottom. */
+  if(LY.newsH<LY.lh0*2) return;
+  const x=LY.inst.x, w=LY.inst.w;
+  panel(x,LY.newsY,w,LY.newsH,'CONSOLE',C.CHASSIS,B.DIM);
+  let y=LY.newsY+LY.t0*1.4;
+  for(let i=0;i<G.news.length&&y<LY.newsY+LY.newsH-LY.t0;i++){
+    text(x+6,y,LY.t0,fit(newsLine(G.news[i]),LY.t0,w-12),G.news[i].c,i?B.DIM:B.HI,1);
+    y+=LY.lh0;
+  }
+}
+
+/* --------------------------------------------------------------- controls */
+
+const STEPS=[10,1,0.1,0.01];
+let stepIdx=1;
+function stepper(x,y,w,h,label,value,unit,idBase,col,fmtd){
+  const bw=Math.max(48,h*1.15);
+  keyRepeat(x,y,bw,h,idBase+'-',"-",col,true,LY.t2);
+  keyRepeat(x+w-bw,y,bw,h,idBase+'+',"+",col,true,LY.t2);
+  const iw=w-bw*2-6;
+  rect(x+bw+3,y,iw,h,C.CHASSIS,B.DIM,1);
+  text(x+bw+8,y+Math.max(3,h*0.10),LY.t0,label,C.LABEL,B.MID,1);
+  const vs=clamp(Math.min(LY.t3,h*0.40,iw/(fmtd.length*TRACK)-1),LY.t1,LY.t3*1.6);
+  textR(x+w-bw-9,y+h-vs*1.02-LY.t0*1.35,vs,fmtd,C.READOUT,B.HI,1.3);
+  textR(x+w-bw-9,y+h-LY.t0*1.25,LY.t0,unit,C.LABEL,B.MID,1);
+}
+
+/* Where a control stack should start in a block taller than it needs. The
+   hand rests at the bottom of a console, so that is where the keys go. */
+function stackTop(K,needed){ return K.y+Math.max(0,K.h-needed); }
+
+function drawChartControls(){
+  const K=LY.ctrl;
+  const px=K.x, pw=K.w;
+  const t0=LY.t0;
+  const gap0=4, rows0=5;
+  const hdrGuess=LY.lh0*3+10;
+  const availAll=K.h-hdrGuess;
+  const keyH0=clamp((Math.min(availAll,LY.portrait?availAll:K.w*1.35)-gap0*(rows0-1))/rows0,30,64);
+  let y=stackTop(K,hdrGuess+keyH0*rows0+gap0*(rows0-1));
+
+  /* What is selected, and what the catalogue says about it. The catalogue is
+     referenced to the origin; the console never pretends otherwise. */
+  const tg=G.target;
+  const twoLineSol=tg&&(textW('CAT 000.0'+String.fromCharCode(176)+' -00.0'+String.fromCharCode(176)+' 00.000',t0)*2+22>=pw);
+  const hdrH=LY.lh0*(twoLineSol?3:2)+6;
+  rect(px,y,pw,hdrH,C.CHASSIS,B.DIM,1);
+  if(tg){
+    text(px+5,y+4,t0,'TARGET '+tg.name,C.READOUT,B.HI,1);
+    textR(px+pw-5,y+4,t0,tg.spec+'  '+tg.planets+'P',C.LABEL,B.MID,1);
+    const cs=catalogueSolution(tg), ts=trueSolution(G.pos,tg);
+    const DEG=String.fromCharCode(176);
+    const catS='CAT '+pad(cs.bearing,5,1)+DEG+pad(cs.elev,6,1)+DEG+pad(cs.range,7,3);
+    /* The catalogue solution is always shown. The one referenced to HERE is
+       shown only once somebody has taught the machine to form it. */
+    const hereS=G.red.parallax
+      ? 'HERE '+pad(ts.bearing,5,1)+DEG+pad(ts.elev,6,1)+DEG+pad(ts.range,7,3)
+      : 'HERE ---.- ----.- ------';
+    text(px+5,y+4+LY.lh0,t0,catS,C.LABEL,B.MID,1);
+    if(textW(catS,t0)+textW(hereS,t0)+22<pw)
+      textR(px+pw-5,y+4+LY.lh0,t0,hereS,G.red.parallax?C.NOMINAL:C.CHASSIS,G.red.parallax?B.HI:B.DIM,1);
+    else
+      text(px+5,y+4+LY.lh0*2,t0,hereS,G.red.parallax?C.NOMINAL:C.CHASSIS,G.red.parallax?B.HI:B.DIM,1);
+  } else {
+    text(px+5,y+4,t0,'NO TARGET SELECTED',C.CAUTION,B.MID,1);
+    text(px+5,y+4+LY.lh0,t0,'TAP A STAR ON THE CHART',C.LABEL,B.DIM,1);
+  }
+  y+=hdrH+4;
+
+  const gap=gap0, keyH=keyH0;
+  stepper(px,y,pw,keyH,'BEARING',G.bearing,'DEG TRUE','bear',C.CHASSIS,pad(G.bearing,6,2)); y+=keyH+gap;
+  stepper(px,y,pw,keyH,'ELEVATION',G.elev,'DEG','elev',C.CHASSIS,pad(G.elev,6,2)); y+=keyH+gap;
+  stepper(px,y,pw,keyH,'RANGE',G.range,'LIGHT YEARS','rng',C.CHASSIS,pad(G.range,6,3)); y+=keyH+gap;
+
+  const bw=(pw-gap*2)/3;
+  key(px,y,bw,keyH,'step','STEP',C.CHASSIS,true,fmt(STEPS[stepIdx],2));
+  key(px+bw+gap,y,bw,keyH,'compute','COMPUTE',C.CHASSIS,!!G.target,
+      G.red.parallax?'REDUCED':'CATALOGUE');
+  key(px+(bw+gap)*2,y,bw,keyH,'survey','SURVEY',C.CHASSIS,G.power>=18,'18 PCT BUS');
+  y+=keyH+gap;
+
+  /* The corridor, from what has been found. What has not been found is not in
+     this number and is still in the corridor. */
+  const ap=arrivalPoint(G);
+  const known=corridor(G.pos,ap,true);
+  const bw2=(pw-gap)/2;
+  const canBurn=G.range<=G.fuel&&G.range>0.001;
+  key(px,y,bw2,keyH,'burn','BURN',canBurn?C.ALARM:C.CHASSIS,canBurn,
+      known.dmg>0?('CORRIDOR -'+fmt(known.dmg,1)):'CORRIDOR CLEAR*');
+  key(px+bw2+gap,y,bw2,keyH,'tofield','NEAR FIELD',C.CHASSIS,true,
+      G.here?G.here.name:'NO PRIMARY');
+}
+
+function drawFieldControls(){
+  const K=LY.ctrl;
+  const px=K.x, pw=K.w, t0=LY.t0, gap=4;
+  const availAll=K.h-(LY.lh0*2+10);
+  const keyH0=clamp((Math.min(availAll,LY.portrait?availAll:K.w*1.5)-64)/2.7,32,72);
+  const gh0=clamp(Math.min(availAll,LY.portrait?availAll:K.w*1.5)-keyH0*2-gap*2-LY.lh0-t0*1.5-6,
+                  22,Math.max(26,keyH0*1.5));
+  let y=stackTop(K,(LY.lh0*2+10)+t0*1.5+gh0+LY.lh0+2+keyH0*2+gap*2);
+  const s=G.here;
+  const cu=s?CULTURES.find(c=>c.starIdx===s.idx):null;
+
+  rect(px,y,pw,LY.lh0*2+6,C.CHASSIS,B.DIM,1);
+  if(s){
+    const sys=systemOf(s);
+    const nm='PRIMARY '+s.name, cls=s.spec+'  '+fmt(s.dist,2)+' LY';
+    text(px+5,y+4,t0,fit(nm,t0,pw-10),C.READOUT,B.HI,1);
+    if(textW(nm,t0)+textW(cls,t0)+16<pw) textR(px+pw-5,y+4,t0,cls,C.LABEL,B.MID,1);
+    text(px+5,y+4+LY.lh0,t0,(textW(nm,t0)+textW(cls,t0)+16<pw?'':cls+'   ')+
+      'R '+fmt(starRad(s),3)+' SOL   L '+(sys.lum<10?fmt(sys.lum,3):fmt(sys.lum,0))+
+      ' SOL   '+sys.planets.length+' BODIES',C.LABEL,B.MID,1);
+  } else {
+    text(px+5,y+4,t0,'NO PRIMARY / ADRIFT',C.ALARM,B.HI,1);
+    text(px+5,y+4+LY.lh0,t0,'RETURN TO THE CHART AND RE-SOLVE',C.LABEL,B.DIM,1);
+  }
+  y+=LY.lh0*2+10;
+
+  /* Whatever the keys do not need goes to the well gauge, which is the only
+     instrument on this screen the operator actually flies. */
+  const keyH=keyH0, gh=gh0;
+  const gx=px, gw=pw;
+  y+=LY.t0*1.5;
+
+  /* The well. One dial. Yield rises all the way down; the damage floor is an
+     estimate with a band on it and the band is the honest part. */
+  rect(gx,y,gw,gh,C.CHASSIS,B.MID,1);
+  const est=s?approachOnsetEstimate(s):{mid:0.5,half:0.2};
+  const b0=clamp(est.mid-est.half,0,1), b1=clamp(est.mid+est.half,0,1);
+  const L=bucket(C.CAUTION,1,B.MID);
+  for(let px2=gx+2+b0*(gw-4); px2<gx+2+b1*(gw-4); px2+=4.6) pushSeg(L,px2,y+2,px2,y+gh-2);
+  const fx=gx+2+G.depth*(gw-4);
+  const dmgNow=s?approachDamage(s,G.depth):0;
+  line(fx,y-3,fx,y+gh+3,dmgNow>0?C.ALARM:C.READOUT,B.HI,1.6);
+  const n=Math.max(1,Math.round((gw-4)/4.6));
+  const F=bucket(dmgNow>0?C.ALARM:C.NOMINAL,1,B.HI);
+  for(let i=0;i<n*G.depth;i++) pushSeg(F,gx+2+i*(gw-4)/n,y+gh*0.35,gx+2+i*(gw-4)/n,y+gh-3);
+  text(gx+3,y-t0*1.3,t0,'APPROACH DEPTH',C.LABEL,B.MID,1);
+  textR(gx+gw-3,y-t0*1.3,t0,pad(G.depth*100,5,1)+' PCT OF WELL',C.READOUT,B.HI,1);
+  y+=gh+3;
+  text(gx+3,y,t0,'DAMAGE ONSET EST '+fmt(est.mid,2)+' '+String.fromCharCode(177)+' '+fmt(est.half,2),C.CAUTION,B.MID,1);
+  textR(gx+gw-3,y,t0,'YIELD '+fmt(s?approachYield(s,G.depth):0,2),C.NOMINAL,B.HI,1);
+  y+=LY.lh0+2;
+
+  const bw=(pw-gap)/2;
+  keyRepeat(px,y,bw,keyH,'depth-','SHALLOWER',C.CHASSIS,!!s,LY.t1);
+  keyRepeat(px+bw+gap,y,bw,keyH,'depth+','DEEPER',C.CHASSIS,!!s,LY.t1);
+  y+=keyH+gap;
+
+  const bw3=(pw-gap*2)/3;
+  key(px,y,bw3,keyH,'approach','APPROACH',C.CAUTION,!!s,
+      dmgNow>0?('EST -'+fmt(dmgNow,1)+' HULL'):'NO DAMAGE EST');
+  key(px+bw3+gap,y,bw3,keyH,'hail','HAIL',C.CONTACT,!!cu&&!cu.refused,
+      cu?(cu.refused?'NO CARRIER':'RADIATES A BEARING'):'NO EMISSION');
+  key(px+(bw3+gap)*2,y,bw3,keyH,'tochart','CHART',C.CHASSIS,true,'ASTROGATION');
+}
+
+function drawCommsControls(){
+  const K=LY.ctrl;
+  const px=K.x, pw=K.w, t0=LY.t0, gap=4;
+  let y=K.y;
+  const cu=G.comms.cu, CM=G.comms;
+  const D=DIALOGUE[cu.id];
+  const node=D[Math.min(cu.node,D.length-1)];
+  const keyH=Math.max(30,(K.h-LY.lh0*2)/4-gap);
+
+  if(CM.phase==='HAILING'||CM.phase==='GIFT'||CM.phase==='WITHHELD'||CM.phase==='DONE'||CM.phase==='REFUSED'){
+    const canHail=!cu.refused;
+    key(px,y,pw,keyH*1.2,'dohail',CM.phase==='HAILING'?'TRANSMIT HAIL':'HAIL AGAIN',
+        C.CONTACT,canHail, canHail?'BROADCAST NUMBER '+pad0(G.broadcasts+1,2):'THEY HAVE STOPPED');
+    y+=keyH*1.2+gap;
+    key(px,y,pw,keyH,'closecomms','CLOSE CHANNEL',C.CHASSIS,true,'PASSIVE / SILENT');
+    return;
+  }
+
+  /* Replies. The panel marks what each one costs BEFORE it is sent, and it
+     strikes out the ones the operator does not have the signs to phrase. */
+  text(px,y,t0,'REPLY / EVERY REPLY IS ALSO A BEARING',C.CAUTION,B.MID,1);
+  y+=LY.lh0+1;
+  for(let i=0;i<node.replies.length;i++){
+    const rep=node.replies[i];
+    const ok=canPhrase(cu,rep.t);
+    const costC=rep.w<0?C.ALARM:(rep.w>0?C.NOMINAL:C.LABEL);
+    const h=keyH;
+    const pressed=held('reply'+i)&&ok;
+    rect(px,y,pw,h,ok?(pressed?C.READOUT:C.CHASSIS):C.CHASSIS,ok?(pressed?B.HI:B.MID):B.DIM,pressed?1.5:1);
+    /* The reply in their script, with the glosses the operator can read. */
+    let cx2=px+5;
+    const ks=knownSet(cu);
+    for(let k=0;k<rep.t.length;k++){
+      const t=rep.t[k];
+      if(t===STOP){ cx2+=t0*TRACK*1.2; continue; }
+      if(wordKnown(cu,t,ks)) cx2+=text(cx2,y+4,t0,CONCEPT[t],C.READOUT,ok?B.HI:B.DIM,1)+t0*TRACK;
+      else cx2+=alienText(cx2,y+4,t0,cu.words[t],cu.glyphs,C.CONTACT,ok?B.MID:B.DIM,1)+t0*TRACK;
+    }
+    text(px+5,y+4+LY.lh0,t0,'['+rep.tag+'] '+rep.note,C.LABEL,ok?B.MID:B.DIM,1);
+    textR(px+pw-5,y+4,t0,(rep.w>0?'+':'')+rep.w+' STANDING',costC,ok?B.HI:B.DIM,1);
+    if(ok) hit(px,y,pw,h,'reply'+i);
+    else {
+      /* Struck through the words themselves, not across the whole control:
+         it is the sentence that cannot be said, not the key that is broken. */
+      line(px+5,y+4+t0*0.55,Math.min(cx2,px+pw-5),y+4+t0*0.55,C.CAUTION,B.MID,1);
+      const miss=missingSigns(cu,rep.t);
+      textR(px+pw-5,y+4+LY.lh0,t0,miss+' SIGN'+(miss===1?'':'S')+' SHORT',C.CAUTION,B.MID,1);
+    }
+    y+=h+gap;
+  }
+  const bh=Math.max(26,K.y+K.h-y);
+  const half=(pw-gap)/2;
+  key(px,y,half,bh,'repeat','ASK AGAIN',C.CONTACT,true,'ANOTHER BEARING / +SIGNS');
+  key(px+half+gap,y,half,bh,'closecomms','CLOSE',C.CHASSIS,true,'PASSIVE / SILENT');
+}
+
+/* ==========================================================================
+   THE PAPERWORK
+   ========================================================================== */
+
+let bootT=0;
+function drawBoot(dt){
+  bootT+=dt;
+  const w=LY.w, h=LY.h, p=LY.pad;
+  const x=p+2, wid=w-p*2-4;
+  let y=Math.max(14,h*0.045);
+  const t0=LY.t0, t1=LY.t1, t2=LY.t2;
+
+  panel(x,y,wid,h-y-Math.max(70,h*0.13),'REGISTRY DOCUMENT / DO NOT DETACH',C.CHASSIS,B.MID);
+  const px=x+8, pw=wid-16;
+  y+=12;
+
+  textC(x+wid/2,y,t2,'COMMERCIAL LIGHTER MC-44',C.READOUT,B.HI,1.4); y+=t2*1.9;
+  textC(x+wid/2,y,t1,'CASSANDRA',C.READOUT,B.HI,1.2); y+=t1*2.4;
+  line(px,y,px+pw,y,C.CHASSIS,B.MID,1); y+=8;
+
+  leader(px,y,pw,t0,'DOCKET',G.order.docket); y+=LY.lh0;
+  leader(px,y,pw,t0,'CONSIGNEE',G.order.consignee); y+=LY.lh0;
+  leader(px,y,pw,t0,'COMPLEMENT','1 OF 1'); y+=LY.lh0;
+  leader(px,y,pw,t0,'ATMOSPHERE',pad0(G.o2max,4)+' H NOMINAL'); y+=LY.lh0;
+  leader(px,y,pw,t0,'REACTION MASS',fmt(G.fuel,1)+' LY EQUIVALENT'); y+=LY.lh0;
+  leader(px,y,pw,t0,'CHART SEED',G.seedHex); y+=LY.lh0*1.5;
+
+  line(px,y,px+pw,y,C.CHASSIS,B.MID,1); y+=8;
+  text(px,y,t1,'STANDING ORDER',C.LABEL,B.HI,1); y+=t1*2.0;
+  text(px,y,t0,'1. PROCEED TO '+G.order.star.name,C.READOUT,B.HI,1); y+=LY.lh0;
+  text(px,y,t0,'   '+G.order.star.spec+'  '+fmt(G.order.star.dist,2)+' LY  '+
+    G.order.star.planets+' CONFIRMED BODIES',C.LABEL,B.MID,1); y+=LY.lh0;
+  text(px,y,t0,'2. LODGE A SURVEY OF THE PRIMARY',C.READOUT,B.HI,1); y+=LY.lh0;
+  text(px,y,t0,'3. RETURN TO SOL AND PRESENT THIS DOCKET',C.READOUT,B.HI,1); y+=LY.lh0*1.5;
+
+  line(px,y,px+pw,y,C.CHASSIS,B.MID,1); y+=8;
+  text(px,y,t1,'CLAUSE 9(B)',C.CAUTION,B.HI,1); y+=t1*2.0;
+  text(px,y,t0,'COVER IS VOID BEYOND 25 LIGHT YEARS OF THE',C.CAUTION,B.MID,1); y+=LY.lh0;
+  text(px,y,t0,'ORIGIN. THE VEHICLE MAY BE TAKEN BEYOND THAT',C.CAUTION,B.MID,1); y+=LY.lh0;
+  text(px,y,t0,'DISTANCE. IT WILL NOT BE RECOVERED FROM IT.',C.CAUTION,B.MID,1); y+=LY.lh0*1.6;
+
+  text(px,y,t0,'THE CATALOGUE IS REFERENCED TO THE ORIGIN.',C.LABEL,B.MID,1); y+=LY.lh0;
+  text(px,y,t0,'THE VEHICLE WILL NOT BE.',C.LABEL,B.HI,1); y+=LY.lh0;
+
+  const bh=Math.max(52,h*0.085);
+  const by=h-bh-Math.max(14,h*0.028);
+  const pulse=0.55+0.45*Math.sin(bootT*2.4);
+  key(x,by,wid,bh,'poweron','POWER ON',C.NOMINAL,true,'ALL CONSUMABLES ARE FINITE',LY.t2);
+  rect(x-2,by-2,wid+4,bh+4,C.NOMINAL,B.DIM*pulse,1);
+}
+
+function drawDead(dt){
+  const w=LY.w,h=LY.h,p=LY.pad;
+  const x=p+2, wid=w-p*2-4;
+  let y=Math.max(14,h*0.05);
+  const t0=LY.t0,t1=LY.t1,t2=LY.t2;
+  panel(x,y,wid,h-y-Math.max(56,h*0.10),'CASUALTY REPORT / FORM 4-K',C.ALARM,B.MID);
+  const px=x+8, pw=wid-16;
+  y+=12;
+  textC(x+wid/2,y,t2,G.deadWhy,C.ALARM,B.HI,1.5); y+=t2*2.4;
+  line(px,y,px+pw,y,C.ALARM,B.MID,1); y+=8;
+  leader(px,y,pw,t0,'MISSION TIME',pad0(G.t,5)+' H'); y+=LY.lh0;
+  leader(px,y,pw,t0,'JUMPS FLOWN',String(G.jumps)); y+=LY.lh0;
+  leader(px,y,pw,t0,'TRANSMISSIONS',String(G.broadcasts),C.LABEL,G.broadcasts?C.CONTACT:C.READOUT); y+=LY.lh0;
+  leader(px,y,pw,t0,'FURTHEST FROM ORIGIN',fmt(G.maxRange,2)+' LY'); y+=LY.lh0;
+  leader(px,y,pw,t0,'POLICY',G.voided?'VOID / CLAUSE 9(B)':'ACTIVE',C.LABEL,G.voided?C.ALARM:C.NOMINAL); y+=LY.lh0;
+  leader(px,y,pw,t0,'SEED',G.seedHex); y+=LY.lh0*1.5;
+
+  line(px,y,px+pw,y,C.ALARM,B.MID,1); y+=8;
+  text(px,y,t1,'LOG EXTRACT',C.LABEL,B.HI,1); y+=t1*2.0;
+  /* Every transmission, with the time and the place it was radiated from. It
+     was always in the log. It was legible the whole time. */
+  const rows=G.log.filter(function(e){ return e.kind==='TRANSMIT'||e.kind==='END'||e.kind==='GIFT'||e.kind==='CLAUSE'; });
+  const maxRows=Math.max(3,Math.floor((h-y-Math.max(70,h*0.14))/LY.lh0));
+  const start=Math.max(0,rows.length-maxRows);
+  if(!rows.length){ text(px,y,t0,'NO TRANSMISSIONS RECORDED.',C.NOMINAL,B.MID,1); y+=LY.lh0; }
+  for(let i=start;i<rows.length;i++){
+    const e=rows[i];
+    const c=e.kind==='TRANSMIT'?C.CONTACT:(e.kind==='END'?C.ALARM:C.LABEL);
+    text(px,y,t0,fit('T+'+pad0(e.t,5)+' '+e.text,t0,pw),c,B.MID,1);
+    y+=LY.lh0;
+  }
+  const bh=Math.max(46,h*0.075);
+  key(x,h-bh-Math.max(12,h*0.024),wid,bh,'again','NEW DOCKET',C.CHASSIS,true,'A DIFFERENT SEED / THE SAME CLAUSE',LY.t2);
+}
+
+function drawEnd(dt){
+  const w=LY.w,h=LY.h,p=LY.pad;
+  const x=p+2, wid=w-p*2-4;
+  let y=Math.max(16,h*0.06);
+  const t0=LY.t0,t1=LY.t1,t2=LY.t2;
+  panel(x,y,wid,h-y-Math.max(56,h*0.10),'SETTLEMENT / FORM 2-A',C.NOMINAL,B.MID);
+  const px=x+8, pw=wid-16;
+  y+=14;
+  textC(x+wid/2,y,t2,'ORDER DISCHARGED',C.NOMINAL,B.HI,1.5); y+=t2*2.6;
+  leader(px,y,pw,t0,'DOCKET',G.order.docket); y+=LY.lh0;
+  leader(px,y,pw,t0,'MISSION TIME',pad0(G.t,5)+' H'); y+=LY.lh0;
+  leader(px,y,pw,t0,'HULL REMAINING',fmt(G.hull,1)+' PCT'); y+=LY.lh0;
+  leader(px,y,pw,t0,'ATMOSPHERE REMAINING',pad0(G.o2,4)+' H'); y+=LY.lh0;
+  leader(px,y,pw,t0,'TRANSMISSIONS',String(G.broadcasts),C.LABEL,G.broadcasts?C.CONTACT:C.READOUT); y+=LY.lh0;
+  leader(px,y,pw,t0,'FURTHEST FROM ORIGIN',fmt(G.maxRange,2)+' LY'); y+=LY.lh0*1.5;
+  line(px,y,px+pw,y,C.NOMINAL,B.MID,1); y+=8;
+  if(G.voided){
+    text(px,y,t1,'SETTLEMENT WITHHELD',C.ALARM,B.HI,1); y+=t1*2.0;
+    text(px,y,t0,'THE VEHICLE PASSED 25 LIGHT YEARS FROM THE',C.CAUTION,B.MID,1); y+=LY.lh0;
+    text(px,y,t0,'ORIGIN. UNDER CLAUSE 9(B) NO SUM IS DUE.',C.CAUTION,B.MID,1); y+=LY.lh0;
+    text(px,y,t0,'THE OPERATOR RETURNED ANYWAY.',C.READOUT,B.HI,1); y+=LY.lh0*1.6;
+  } else {
+    text(px,y,t1,'SETTLEMENT PAYABLE',C.NOMINAL,B.HI,1); y+=t1*2.0;
+    text(px,y,t0,'COVER HELD THROUGHOUT. NO CLAUSE INVOKED.',C.NOMINAL,B.MID,1); y+=LY.lh0*1.6;
+  }
+  let gifts=0;
+  for(let i=0;i<CULTURES.length;i++) if(CULTURES[i].gifted) gifts++;
+  text(px,y,t0,'REDUCTIONS RECEIVED: '+gifts+' OF '+CULTURES.length,C.LABEL,B.MID,1); y+=LY.lh0;
+  for(let i=0;i<CULTURES.length;i++){
+    const cu=CULTURES[i];
+    if(!cu.contacted) continue;
+    text(px,y,t0,cu.code+'  '+cu.known+'/'+cu.glyphN+' SIGNS  '+
+      (cu.gifted?('GAVE '+cu.gift):(cu.refused?'CEASED':'GAVE NOTHING')),
+      cu.gifted?C.NOMINAL:C.CAUTION,B.MID,1);
+    y+=LY.lh0;
+  }
+  const bh=Math.max(46,h*0.075);
+  key(x,h-bh-Math.max(12,h*0.024),wid,bh,'again','NEW DOCKET',C.CHASSIS,true,'A DIFFERENT SEED',LY.t2);
+}
+
+/* ==========================================================================
+   ACTIONS
+   ========================================================================== */
+
+function applyStep(field,dir){
+  const s=STEPS[stepIdx]*dir;
+  if(field==='bear'){ G.bearing=(G.bearing+s+360)%360; }
+  else if(field==='elev'){ G.elev=clamp(G.elev+s,-90,90); }
+  else if(field==='rng'){ G.range=clamp(G.range+s,0,240); }
+}
+function handleInput(){
+  if(G.screen==='BOOT'){ if(consume('poweron')){ G.screen='RUN'; audioKick(); sfx('press'); } return; }
+  if(G.screen==='DEAD'||G.screen==='END'){
+    if(consume('again')){ newRun((Math.floor(performance.now()*1000)^(G.seed*2654435761))>>>0); G.screen='BOOT'; bedSet(0.20,1.2); sfx('press'); }
+    return;
+  }
+  if(consume('bear-')) applyStep('bear',-1);
+  if(consume('bear+')) applyStep('bear',1);
+  if(consume('elev-')) applyStep('elev',-1);
+  if(consume('elev+')) applyStep('elev',1);
+  if(consume('rng-')) applyStep('rng',-1);
+  if(consume('rng+')) applyStep('rng',1);
+  if(consume('step')) stepIdx=(stepIdx+1)%STEPS.length;
+  if(consume('compute')&&G.target){
+    const s=computerSolution(G,G.target);
+    G.bearing=s.bearing; G.elev=s.elev; G.range=s.range;
+    say(G.red.parallax?'SOLUTION REDUCED TO PRESENT POSITION':'SOLUTION IS CATALOGUE / ORIGIN REFERENCED',
+        G.red.parallax?C.NOMINAL:C.CAUTION);
+  }
+  if(consume('survey')) executeSurvey();
+  if(consume('burn')){ sfx('burn'); executeBurn(); }
+  if(consume('tofield')){ G.mode='FIELD'; G.sub=null; }
+  if(consume('tochart')){ G.mode='CHART'; G.sub=null; }
+  if(consume('zoomin')){ zoomIdx=Math.max(0,zoomIdx-1); }
+  if(consume('zoomout')){ zoomIdx=Math.min(ZOOMS.length-1,zoomIdx+1); }
+  if(consume('depth-')) G.depth=clamp(G.depth-0.01,0,1);
+  if(consume('depth+')) G.depth=clamp(G.depth+0.01,0,1);
+  if(consume('approach')) executeApproach();
+  if(consume('hail')){
+    const cu=G.here?CULTURES.find(c=>c.starIdx===G.here.idx):null;
+    if(cu&&!cu.refused) openComms(cu);
+  }
+  if(consume('dohail')) commsHail();
+  if(consume('repeat')) commsRepeat();
+  if(consume('closecomms')){ G.sub=null; G.comms=null; }
+  for(let i=0;i<4;i++) if(consume('reply'+i)) commsSend(i);
+  if(consume('chartarea')){
+    /* Tapping the chart picks a target: the nearest mark to the thumb, with a
+       generous radius, because the thumb is not a stylus. */
+    let best=null,bd=26;
+    for(let i=0;i<chartHits.length;i++){
+      const c=chartHits[i];
+      const d=Math.hypot(lastUp.x-(c.x+c.w/2), lastUp.y-(c.y+c.h/2));
+      if(d<bd){ bd=d; best=c; }
+    }
+    if(best){
+      G.target=best.s;
+      say('TARGET '+best.s.name+' / '+fmt(vdist(best.s,G.pos),3)+' LY FROM HERE',C.READOUT);
+      sfx('press');
+    }
+  }
+}
+
+function dragStep(dt){
+  if(!pointer.down) return;
+  if(G.screen!=='RUN') return;
+  if(pressId==='chartarea'&&G.mode==='CHART'&&!G.sub){
+    G.yaw-=drag.dx*0.008;
+    G.pitch=clamp(G.pitch+drag.dy*0.008,-1.45,1.45);
+    drag.dx=0; drag.dy=0;
+  }
+}
+
+/* ==========================================================================
+   THE LOOP
+   ========================================================================== */
+
+const frameRnd=rng(0xC0FFEE);
+let last=0, started=false;
+function frame(now){
+  requestAnimationFrame(frame);
+  if(!last) last=now;
+  let ms=now-last;
+  const dt=Math.min(0.05,ms/1000);
+  last=now;
+
+  sizeDisplay();
+  beginFrame();
+  HITS=[];
+
+  inputStep(dt);
+  dragStep(dt);
+  handleInput();
+
+  if(G.screen==='RUN'){
+    simStep(dt);
+    G.shake=Math.max(0,G.shake-dt*1.4);
+    /* The picture is the hull report. One fault term drives the jitter, the
+       tear and the grain, so a cracked vehicle looks like one. */
+    setFault(clamp((1-G.hull/100)*0.85 + G.shake*0.7, 0, 1.25));
+    drawStatus();
+    if(G.sub==='COMMS'&&G.comms){ drawComms(dt); drawCommsControls(); }
+    else if(G.mode==='CHART'){ drawChart(dt); drawChartControls(); }
+    else { drawField(dt); drawFieldControls(); }
+    drawNews();
+    /* Chart range keys live on the instrument, not in the thumb block, so the
+       hand never covers the thing it is scaling. */
+    if(G.mode==='CHART'&&!G.sub){
+      const s=Math.max(24,LY.t2*2.2);
+      key(LY.inst.x+LY.inst.w-s*2-8,LY.inst.y+LY.inst.h-s-5,s,s,'zoomin','-',C.CHASSIS,zoomIdx>0,null,LY.t2);
+      key(LY.inst.x+LY.inst.w-s-5,LY.inst.y+LY.inst.h-s-5,s,s,'zoomout','+',C.CHASSIS,zoomIdx<ZOOMS.length-1,null,LY.t2);
+    }
+  } else if(G.screen==='BOOT'){
+    setFault(0.06);
+    drawBoot(dt);
+  } else if(G.screen==='DEAD'){
+    setFault(clamp(0.55+Math.sin(now*0.0013)*0.35,0,1.2));
+    drawDead(dt);
+  } else {
+    setFault(0.05);
+    drawEnd(dt);
+  }
+
+  endFrame(dt,frameRnd);
+  perfStep(dt,ms);
+  fired=null;
+}
+
+window.addEventListener('resize',function(){ sizeDisplay(true); });
+window.addEventListener('orientationchange',function(){ setTimeout(function(){sizeDisplay(true);},120); });
+
+newRun((0x5f3a91c7)>>>0);
+sizeDisplay(true);
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>
