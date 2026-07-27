@@ -171,3 +171,11 @@ at the smallest possible scale. A flawless resting shape means every departure
 from it carries information: pulled, morphed, or talking. Speech is a real
 geometric wave radiating from the focal point, not a shader trick painted on
 top, so you can see it is speaking from across the room with the sound off.
+
+**The ground stopped being a suggestion.** — §5 "the physics is real". The floor
+contact only constrained the body's centre, so a landing squash pushed its own
+underside through the ground and a melt sank into it. Both are the kind of
+detail that decides whether a viewer reads the scene as simulated or as
+animated, and getting it wrong undoes the argument the routine exists to make.
+Now every vertex is constrained against the plane, with friction, so a puddle
+grips a surface it is resting on.

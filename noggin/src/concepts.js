@@ -23,8 +23,10 @@
     square: { kind: 'box', hx: 0.85, hy: 0.85, hz: 0.024, color: [0.78, 0.88, 1.0] },
     cube: { kind: 'box', hx: 0.72, hy: 0.72, hz: 0.72, color: [0.68, 0.83, 1.0] },
     seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] },
-    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, color: [0.42, 0.62, 0.92] },
-    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, color: [0.72, 0.82, 1.0] }
+    /* Slow: a melt that snaps is not a melt. */
+    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, morphDur: 1.8, color: [0.42, 0.62, 0.92] },
+    /* Slower still, so the plume has time to rise before it opens out. */
+    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, morphDur: 2.1, color: [0.72, 0.82, 1.0] }
   };
 
   C.LESSONS = {

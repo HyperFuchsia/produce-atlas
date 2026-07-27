@@ -79,6 +79,7 @@ uniform mat4 uViewProj;
 uniform mat4 uLightVP;
 uniform float uTime;
 uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
+uniform float uBoil;     /* 0..1, spikes while it is changing state */
 uniform float uVoice;    /* 0..1, rises while it is speaking */
 uniform vec3 uFocusDir;  /* world direction its attention is on */
 
@@ -101,11 +102,23 @@ void main() {
      shell along its own normal so the cloud churns rather than sitting there
      being a lumpy ball. The solver never sees this, so picking and the camera
      fit still work against the shape underneath. */
-  if (uGas > 0.001) {
+  if (uGas > 0.001 || uBoil > 0.001) {
     float n = sin(p.x * 2.6 + uTime * 1.7)
             * sin(p.y * 2.2 - uTime * 1.3)
             * sin(p.z * 2.9 + uTime * 1.9);
-    p += normalize(aNor) * n * 0.34 * uGas;
+    /* Boiling seethes harder and faster than settled vapour does. */
+    float fast = sin(p.x * 4.1 - uTime * 5.6)
+               * sin(p.y * 3.6 + uTime * 4.9)
+               * sin(p.z * 4.4 - uTime * 6.2);
+    p += normalize(aNor) * (n * 0.34 * uGas + fast * 0.22 * uBoil);
+
+    /* A puddle inflating into a ball is a balloon, not evaporation. While it
+       is boiling the mass is drawn upward into a plume and pinched inward, so
+       it leaves the ground before it opens out. */
+    if (uBoil > 0.001) {
+      p.y += uBoil * (0.95 + 0.55 * p.y);
+      p.xz *= 1.0 - 0.32 * uBoil;
+    }
   }
 
   vec3 nrm = normalize(aNor);

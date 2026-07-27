@@ -565,6 +565,7 @@
        thicken toward the silhouette on its own. */
     const gas = state.gas || 0;
     gl.uniform1f(pr.u.uGas, gas);
+    gl.uniform1f(pr.u.uBoil, state.boil || 0);
     gl.uniform1f(pr.u.uInert, state.inert || 0);
     if (gas > 0.01) {
       gl.enable(gl.BLEND);
@@ -580,6 +581,7 @@
     /* Props share this program, and the billow in the vertex shader is not
        material-gated, so it has to be switched off before they are drawn. */
     gl.uniform1f(pr.u.uGas, 0);
+    gl.uniform1f(pr.u.uBoil, 0);
 
     this.drawProps(state.props, pr);
     this.drawProps(state.attached, pr);

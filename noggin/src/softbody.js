@@ -116,6 +116,10 @@
     this.grabs = [new GrabSlot(this.headCount), new GrabSlot(this.headCount)];
     this.grabbing = false;
 
+    /* The ground, when there is one. */
+    this.floor = null;
+    this.floorDeepest = 0;
+
     /* Scratch for the geodesic flood. */
     this._heap = new Heap();
     this._dist = new Float32Array(this.headCount);
@@ -207,6 +211,76 @@
     /* _applyLimits also re-derives `disp` from `pos`, which is what keeps the
        two in step after the grab has moved vertices kinematically. */
     this._applyLimits();
+    /* The floor goes last, so nothing after it can push a vertex back under.
+       The keep-out in particular pushes outward from the centre, which for
+       anything resting on the ground is partly downward. */
+    if (this.floor) this._applyFloor(dt);
+  };
+
+  /* Where the ground is, in terms the solver can use.
+
+     The solver works in the body's own space and the floor is a world plane,
+     so the caller hands over the row of the model matrix that produces world
+     Y — `g`, whose length is the model's scale — together with the height of
+     the floor relative to the body's origin. Pass null to switch it off. */
+  Softbody.prototype.setFloor = function (g, offset, mu) {
+    if (!g) { this.floor = null; return; }
+    const gg = g[0] * g[0] + g[1] * g[1] + g[2] * g[2];
+    if (gg < 1e-9) { this.floor = null; return; }
+    this.floor = { g0: g[0], g1: g[1], g2: g[2], inv: 1 / gg, offset: offset, mu: mu };
+    this.floorDeepest = 0;
+  };
+
+  /* A hard floor, per vertex. Constraining only the body's centre is what
+     let a landing squash push its own underside through the ground, and let
+     a melt sink into it: the shape that has to stay above the plane is the
+     deformed one, not the nominal one. */
+  Softbody.prototype._applyFloor = function (dt) {
+    const f = this.floor;
+    const pos = this.pos, vel = this.vel, disp = this.disp, rest = this.rest;
+    const g0 = f.g0, g1 = f.g1, g2 = f.g2, inv = f.inv, offset = f.offset;
+    /* Friction as a rate, so the result does not depend on the substep size. */
+    const keep = Math.exp(-f.mu * dt);
+    let deepest = 0;
+
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const h = g0 * pos[i3] + g1 * pos[i3 + 1] + g2 * pos[i3 + 2];
+      const d = offset - h;                 /* positive means below the floor */
+      if (d <= 0) continue;
+      if (d > deepest) deepest = d;
+
+      /* Straight back up, the shortest way to the plane. */
+      const k = d * inv;
+      pos[i3] += g0 * k; pos[i3 + 1] += g1 * k; pos[i3 + 2] += g2 * k;
+
+      /* Take the downward velocity out — it has been spent on the ground —
+         then bleed the sideways part, without which a puddle skates about on
+         a surface it should be gripping. */
+      const vn = (g0 * vel[i3] + g1 * vel[i3 + 1] + g2 * vel[i3 + 2]) * inv;
+      if (vn < 0) {
+        vel[i3] -= g0 * vn; vel[i3 + 1] -= g1 * vn; vel[i3 + 2] -= g2 * vn;
+      }
+      vel[i3] *= keep; vel[i3 + 1] *= keep; vel[i3 + 2] *= keep;
+
+      disp[i3] = pos[i3] - rest[i3];
+      disp[i3 + 1] = pos[i3 + 1] - rest[i3 + 1];
+      disp[i3 + 2] = pos[i3 + 2] - rest[i3 + 2];
+    }
+    if (deepest > this.floorDeepest) this.floorDeepest = deepest;
+  };
+
+  /* How far the deformed body currently reaches below the plane. */
+  Softbody.prototype.lowestAlong = function (g, useRest) {
+    const a = useRest ? this.rest : this.pos;
+    const g0 = g[0], g1 = g[1], g2 = g[2];
+    let low = Infinity;
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const h = g0 * a[i3] + g1 * a[i3 + 1] + g2 * a[i3 + 2];
+      if (h < low) low = h;
+    }
+    return low;
   };
 
   Softbody.prototype._applyGrab = function (slot, dt) {

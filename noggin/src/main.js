@@ -153,6 +153,9 @@
     this.inert = 0;
     this.poolColor = BEING.pool.slice();
     this.spin = 0;
+    this.driftX = 0; this.driftY = 0; this.driftZ = 0;
+    this.boil = 0;
+    this.boilT = 0;
     this.stageBias = 0;
     this.shake = 0;
 
@@ -260,7 +263,7 @@
     this.morph.from = new Float32Array(this.body.rest);
     this.morph.to = target;
     this.morph.t = 0;
-    this.morph.dur = 1.35;
+    this.morph.dur = (entry && entry.morphDur) || 1.35;
     this.morph.target = entry ? 1 : 0;
     this.morph.form = entry;
 
@@ -384,6 +387,7 @@
     } else if (name === 'liquid') {
       this.audio.slosh();
     } else if (name === 'gas') {
+      this.boilT = 0;
       this.audio.hiss();
     }
   };
@@ -392,7 +396,7 @@
     const p = MATTER[this.phase] || MATTER.free;
 
     this.freeze += (p.freeze - this.freeze) * Math.min(1, dt * 4);
-    this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 2.2 : 3.0));
+    this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 1.1 : 3.0));
     this.inert += (p.inert - this.inert) * Math.min(1, dt * 3.5);
     /* It lights the table under it because it is luminous. Once it is not,
        the light under it has to go out too. */
@@ -401,6 +405,16 @@
     this.poolColor[1] = BEING.pool[1] * lit;
     this.poolColor[2] = BEING.pool[2] * lit;
 
+    /* Boiling off is its own envelope: a spike as the state changes, decaying
+       once it is vapour. It drives the plume in the vertex stage and holds the
+       rise back until the mass has actually started to seethe. */
+    if (this.phase === 'gas') {
+      this.boilT += dt;
+      this.boil = Math.min(1, this.boilT / 0.40) * Math.exp(-Math.max(0, this.boilT - 0.40) * 0.85);
+    } else {
+      this.boil = Math.max(0, this.boil - dt * 2.5);
+    }
+
     if (p.fall) {
       if (this.fallDelay > 0) {
         this.fallDelay -= dt;
@@ -408,16 +422,16 @@
         this.fallV -= GRAVITY * dt;
         this.fallY += this.fallV * dt;
       }
-      const floorY = this.renderer.floorY + this.restLow;
-      if (this.fallY <= floorY) {
-        const speed = -this.fallV;
-        this.fallY = floorY;
-        this.fallV = 0;
-        if (!this.landed) {
-          this.landed = true;
-          if (speed > 1.2) this.onLand(speed);
-        }
-      }
+      /* Where it comes to rest is settled against the ground itself, in
+         resolveFloorContact, once the model matrix for this frame exists. */
+    } else if (this.phase === 'gas') {
+      /* Evaporation accelerates. It sits and seethes before it lifts, so the
+         rate ramps in rather than the whole thing easing off the floor the
+         instant it is called a gas. */
+      const rate = 0.25 + 2.4 * M.smoothstep(0.25, 1.5, this.boilT);
+      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * rate);
+      this.fallV = 0;
+      this.landed = false;
     } else {
       /* Nothing holding it down: it drifts back to where it lives. */
       this.fallY += (p.rise - this.fallY) * Math.min(1, dt * 1.6);
@@ -430,6 +444,44 @@
     const wantBias = Math.min(0, this.fallY) * 0.62;
     this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
     if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
+  };
+
+  /* Settle the body against the ground, and hand the solver a floor.
+
+     Two separate jobs. Where the body comes to rest is decided by its nominal
+     shape, so a wobble does not jog the whole thing up and down. What must
+     never pass through the plane is the *deformed* shape, and that is the
+     solver's constraint — which is the bit that was missing: constraining only
+     the centre let a landing squash push its own underside through the floor,
+     and let a melt sink straight into it. */
+  App.prototype.resolveFloorContact = function () {
+    const p = MATTER[this.phase] || MATTER.free;
+    const m = this.model;
+    /* The row of the model that produces world Y. Its length is the scale. */
+    const g = [m[1], m[5], m[9]];
+    const floorY = this.renderer.floorY;
+
+    if (p.fall) {
+      const need = floorY - this.body.lowestAlong(g, true) - m[13];
+      if (need > 0) {
+        this.fallY += need;
+        const speed = -this.fallV;
+        this.fallV = 0;
+        if (!this.landed) {
+          this.landed = true;
+          if (speed > 1.2) this.onLand(speed);
+        }
+        this.composeModel();
+      } else if (need < -0.01) {
+        this.landed = false;
+      }
+    }
+
+    /* The constraint itself stays on whatever the phase, so pulling it down
+       into the ground by hand squashes it against the floor rather than
+       posting it through. A liquid grips; a rock slides a little. */
+    const mu = this.phase === 'liquid' ? 5.5 : (this.phase === 'solid' ? 3.0 : 1.6);
+    this.body.setFloor(g, floorY - this.model[13], mu);
   };
 
   /* The squash is what carries the weight. A body this stiff barely deforms
@@ -1146,17 +1198,23 @@
     }
 
     px *= alive; py *= alive; pz *= alive;
-    py += this.fallY;
 
-    M.set3(this.headPos, px, py, pz);
+    /* Kept apart from the fall, so settling against the ground can move the
+       body without the drift having to be recomputed. */
+    this.driftX = px; this.driftY = py; this.driftZ = pz;
 
     /* A sphere has no visible front, so attention is not shown by turning —
        the shader paints a focal point wherever it is looking. This rotation
        only drifts the iridescent film so the surface never looks frozen, and
        it stops when the film does. */
     this.spin += dt * 0.06 * alive;
-    M.compose(this.model, px, py, pz, this.spin, Math.sin(this.spin * 1.5) * 0.2,
-      1 + this.voice * 0.012);
+    this.composeModel();
+  };
+
+  App.prototype.composeModel = function () {
+    M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
+    M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
+      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.voice * 0.012);
     M.invert(this.invModel, this.model);
   };
 
@@ -1216,23 +1274,18 @@
     }
   };
 
-  App.prototype.frame = function (now) {
-    const self = this;
-    requestAnimationFrame(function (t) { self.frame(t); });
-    if (this.contextLost) return;
-
-    const prev = this.lastTime || now;
-    let dt = (now - prev) / 1000;
-    this.lastTime = now;
-    if (dt > 0.1) dt = 0.1;
-    if (dt <= 0) dt = 1 / 240;
-    const frameStart = performance.now();
+  /* Everything that happens in a frame except drawing it. Kept as one method
+     so there is exactly one copy of the order these run in — a second copy
+     living in a test harness drifts, and then the harness quietly stops
+     exercising whatever was added last. */
+  App.prototype.stepFrame = function (dt) {
     this.time += dt;
 
     this.updateCamera(dt);
     this.updateAttention(dt);
     this.updateMatter(dt);
     this.updateModel(dt);
+    this.resolveFloorContact();
     this.updatePlay(dt);
     this.updateHelper(dt);
     this.updateTrimmings(dt);
@@ -1248,6 +1301,21 @@
 
     this.chat.update(dt);
     this.updateProps(dt);
+  };
+
+  App.prototype.frame = function (now) {
+    const self = this;
+    requestAnimationFrame(function (t) { self.frame(t); });
+    if (this.contextLost) return;
+
+    const prev = this.lastTime || now;
+    let dt = (now - prev) / 1000;
+    this.lastTime = now;
+    if (dt > 0.1) dt = 0.1;
+    if (dt <= 0) dt = 1 / 240;
+    const frameStart = performance.now();
+
+    this.stepFrame(dt);
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);
 
     this.renderer.render({
@@ -1270,6 +1338,7 @@
       morph: this.morph.amount,
       formColor: this.formColor,
       gas: this.gas,
+      boil: this.boil,
       inert: this.inert,
       poolPos: this.headPos,
       poolColor: this.poolColor,

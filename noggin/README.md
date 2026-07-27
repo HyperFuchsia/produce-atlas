@@ -135,6 +135,19 @@ Each state is a different physical object, not a costume:
 | **liquid** | a wide domed puddle with an uneven rim | slack and heavily coupled, so the wobble travels | wet, still glistening |
 | **gas** | a lumpy cloud, twice its own size | loose | additive, mottled, thinning to nothing at the edge — no silhouette |
 
+**The ground is solid.** Every vertex is constrained against the floor plane in
+world space, not just the body's centre — which is the difference between a
+landing that flattens against the ground and one that posts its own underside
+through it, and between a melt that spreads on the floor and one that sinks
+into it. Contacting vertices lose their downward velocity and bleed their
+sideways velocity, so a puddle grips where a rock slides. Drag the being down
+into the floor by hand and it squashes against it.
+
+**Boiling off is a plume, not a balloon.** A flat puddle inflating into a
+sphere is the wrong gesture entirely, so while it is changing state the mass is
+drawn upward and pinched inward, seething at a higher frequency than settled
+vapour does, and only opens out once it has left the ground.
+
 The line after the drop is not on a timer. It waits on the body: the script
 holds until the being actually lands, so the joke keeps its timing however long
 the fall takes.

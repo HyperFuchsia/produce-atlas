@@ -1377,6 +1377,10 @@
     this.grabs = [new GrabSlot(this.headCount), new GrabSlot(this.headCount)];
     this.grabbing = false;
 
+    /* The ground, when there is one. */
+    this.floor = null;
+    this.floorDeepest = 0;
+
     /* Scratch for the geodesic flood. */
     this._heap = new Heap();
     this._dist = new Float32Array(this.headCount);
@@ -1468,6 +1472,76 @@
     /* _applyLimits also re-derives `disp` from `pos`, which is what keeps the
        two in step after the grab has moved vertices kinematically. */
     this._applyLimits();
+    /* The floor goes last, so nothing after it can push a vertex back under.
+       The keep-out in particular pushes outward from the centre, which for
+       anything resting on the ground is partly downward. */
+    if (this.floor) this._applyFloor(dt);
+  };
+
+  /* Where the ground is, in terms the solver can use.
+
+     The solver works in the body's own space and the floor is a world plane,
+     so the caller hands over the row of the model matrix that produces world
+     Y — `g`, whose length is the model's scale — together with the height of
+     the floor relative to the body's origin. Pass null to switch it off. */
+  Softbody.prototype.setFloor = function (g, offset, mu) {
+    if (!g) { this.floor = null; return; }
+    const gg = g[0] * g[0] + g[1] * g[1] + g[2] * g[2];
+    if (gg < 1e-9) { this.floor = null; return; }
+    this.floor = { g0: g[0], g1: g[1], g2: g[2], inv: 1 / gg, offset: offset, mu: mu };
+    this.floorDeepest = 0;
+  };
+
+  /* A hard floor, per vertex. Constraining only the body's centre is what
+     let a landing squash push its own underside through the ground, and let
+     a melt sink into it: the shape that has to stay above the plane is the
+     deformed one, not the nominal one. */
+  Softbody.prototype._applyFloor = function (dt) {
+    const f = this.floor;
+    const pos = this.pos, vel = this.vel, disp = this.disp, rest = this.rest;
+    const g0 = f.g0, g1 = f.g1, g2 = f.g2, inv = f.inv, offset = f.offset;
+    /* Friction as a rate, so the result does not depend on the substep size. */
+    const keep = Math.exp(-f.mu * dt);
+    let deepest = 0;
+
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const h = g0 * pos[i3] + g1 * pos[i3 + 1] + g2 * pos[i3 + 2];
+      const d = offset - h;                 /* positive means below the floor */
+      if (d <= 0) continue;
+      if (d > deepest) deepest = d;
+
+      /* Straight back up, the shortest way to the plane. */
+      const k = d * inv;
+      pos[i3] += g0 * k; pos[i3 + 1] += g1 * k; pos[i3 + 2] += g2 * k;
+
+      /* Take the downward velocity out — it has been spent on the ground —
+         then bleed the sideways part, without which a puddle skates about on
+         a surface it should be gripping. */
+      const vn = (g0 * vel[i3] + g1 * vel[i3 + 1] + g2 * vel[i3 + 2]) * inv;
+      if (vn < 0) {
+        vel[i3] -= g0 * vn; vel[i3 + 1] -= g1 * vn; vel[i3 + 2] -= g2 * vn;
+      }
+      vel[i3] *= keep; vel[i3 + 1] *= keep; vel[i3 + 2] *= keep;
+
+      disp[i3] = pos[i3] - rest[i3];
+      disp[i3 + 1] = pos[i3 + 1] - rest[i3 + 1];
+      disp[i3 + 2] = pos[i3 + 2] - rest[i3 + 2];
+    }
+    if (deepest > this.floorDeepest) this.floorDeepest = deepest;
+  };
+
+  /* How far the deformed body currently reaches below the plane. */
+  Softbody.prototype.lowestAlong = function (g, useRest) {
+    const a = useRest ? this.rest : this.pos;
+    const g0 = g[0], g1 = g[1], g2 = g[2];
+    let low = Infinity;
+    for (let i = 0; i < this.headCount; i++) {
+      const i3 = i * 3;
+      const h = g0 * a[i3] + g1 * a[i3 + 1] + g2 * a[i3 + 2];
+      if (h < low) low = h;
+    }
+    return low;
   };
 
   Softbody.prototype._applyGrab = function (slot, dt) {
@@ -2676,8 +2750,10 @@
     square: { kind: 'box', hx: 0.85, hy: 0.85, hz: 0.024, color: [0.78, 0.88, 1.0] },
     cube: { kind: 'box', hx: 0.72, hy: 0.72, hz: 0.72, color: [0.68, 0.83, 1.0] },
     seed: { kind: 'point', size: 0.10, color: [0.95, 0.97, 1.0] },
-    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, color: [0.42, 0.62, 0.92] },
-    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, color: [0.72, 0.82, 1.0] }
+    /* Slow: a melt that snaps is not a melt. */
+    puddle: { kind: 'puddle', radius: 1.62, dome: 0.30, base: 0.085, morphDur: 1.8, color: [0.42, 0.62, 0.92] },
+    /* Slower still, so the plume has time to rise before it opens out. */
+    cloud: { kind: 'cloud', radius: 1.72, wobble: 0.28, morphDur: 2.1, color: [0.72, 0.82, 1.0] }
   };
 
   C.LESSONS = {
@@ -3447,6 +3523,7 @@ uniform mat4 uViewProj;
 uniform mat4 uLightVP;
 uniform float uTime;
 uniform float uGas;      /* 0 = a surface, 1 = a cloud of itself */
+uniform float uBoil;     /* 0..1, spikes while it is changing state */
 uniform float uVoice;    /* 0..1, rises while it is speaking */
 uniform vec3 uFocusDir;  /* world direction its attention is on */
 
@@ -3469,11 +3546,23 @@ void main() {
      shell along its own normal so the cloud churns rather than sitting there
      being a lumpy ball. The solver never sees this, so picking and the camera
      fit still work against the shape underneath. */
-  if (uGas > 0.001) {
+  if (uGas > 0.001 || uBoil > 0.001) {
     float n = sin(p.x * 2.6 + uTime * 1.7)
             * sin(p.y * 2.2 - uTime * 1.3)
             * sin(p.z * 2.9 + uTime * 1.9);
-    p += normalize(aNor) * n * 0.34 * uGas;
+    /* Boiling seethes harder and faster than settled vapour does. */
+    float fast = sin(p.x * 4.1 - uTime * 5.6)
+               * sin(p.y * 3.6 + uTime * 4.9)
+               * sin(p.z * 4.4 - uTime * 6.2);
+    p += normalize(aNor) * (n * 0.34 * uGas + fast * 0.22 * uBoil);
+
+    /* A puddle inflating into a ball is a balloon, not evaporation. While it
+       is boiling the mass is drawn upward into a plume and pinched inward, so
+       it leaves the ground before it opens out. */
+    if (uBoil > 0.001) {
+      p.y += uBoil * (0.95 + 0.55 * p.y);
+      p.xz *= 1.0 - 0.32 * uBoil;
+    }
   }
 
   vec3 nrm = normalize(aNor);
@@ -4450,6 +4539,7 @@ void main() {
        thicken toward the silhouette on its own. */
     const gas = state.gas || 0;
     gl.uniform1f(pr.u.uGas, gas);
+    gl.uniform1f(pr.u.uBoil, state.boil || 0);
     gl.uniform1f(pr.u.uInert, state.inert || 0);
     if (gas > 0.01) {
       gl.enable(gl.BLEND);
@@ -4465,6 +4555,7 @@ void main() {
     /* Props share this program, and the billow in the vertex shader is not
        material-gated, so it has to be switched off before they are drawn. */
     gl.uniform1f(pr.u.uGas, 0);
+    gl.uniform1f(pr.u.uBoil, 0);
 
     this.drawProps(state.props, pr);
     this.drawProps(state.attached, pr);
@@ -4942,6 +5033,9 @@ void main() {
     this.inert = 0;
     this.poolColor = BEING.pool.slice();
     this.spin = 0;
+    this.driftX = 0; this.driftY = 0; this.driftZ = 0;
+    this.boil = 0;
+    this.boilT = 0;
     this.stageBias = 0;
     this.shake = 0;
 
@@ -5049,7 +5143,7 @@ void main() {
     this.morph.from = new Float32Array(this.body.rest);
     this.morph.to = target;
     this.morph.t = 0;
-    this.morph.dur = 1.35;
+    this.morph.dur = (entry && entry.morphDur) || 1.35;
     this.morph.target = entry ? 1 : 0;
     this.morph.form = entry;
 
@@ -5173,6 +5267,7 @@ void main() {
     } else if (name === 'liquid') {
       this.audio.slosh();
     } else if (name === 'gas') {
+      this.boilT = 0;
       this.audio.hiss();
     }
   };
@@ -5181,7 +5276,7 @@ void main() {
     const p = MATTER[this.phase] || MATTER.free;
 
     this.freeze += (p.freeze - this.freeze) * Math.min(1, dt * 4);
-    this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 2.2 : 3.0));
+    this.gas += (p.gas - this.gas) * Math.min(1, dt * (p.gas > this.gas ? 1.1 : 3.0));
     this.inert += (p.inert - this.inert) * Math.min(1, dt * 3.5);
     /* It lights the table under it because it is luminous. Once it is not,
        the light under it has to go out too. */
@@ -5190,6 +5285,16 @@ void main() {
     this.poolColor[1] = BEING.pool[1] * lit;
     this.poolColor[2] = BEING.pool[2] * lit;
 
+    /* Boiling off is its own envelope: a spike as the state changes, decaying
+       once it is vapour. It drives the plume in the vertex stage and holds the
+       rise back until the mass has actually started to seethe. */
+    if (this.phase === 'gas') {
+      this.boilT += dt;
+      this.boil = Math.min(1, this.boilT / 0.40) * Math.exp(-Math.max(0, this.boilT - 0.40) * 0.85);
+    } else {
+      this.boil = Math.max(0, this.boil - dt * 2.5);
+    }
+
     if (p.fall) {
       if (this.fallDelay > 0) {
         this.fallDelay -= dt;
@@ -5197,16 +5302,16 @@ void main() {
         this.fallV -= GRAVITY * dt;
         this.fallY += this.fallV * dt;
       }
-      const floorY = this.renderer.floorY + this.restLow;
-      if (this.fallY <= floorY) {
-        const speed = -this.fallV;
-        this.fallY = floorY;
-        this.fallV = 0;
-        if (!this.landed) {
-          this.landed = true;
-          if (speed > 1.2) this.onLand(speed);
-        }
-      }
+      /* Where it comes to rest is settled against the ground itself, in
+         resolveFloorContact, once the model matrix for this frame exists. */
+    } else if (this.phase === 'gas') {
+      /* Evaporation accelerates. It sits and seethes before it lifts, so the
+         rate ramps in rather than the whole thing easing off the floor the
+         instant it is called a gas. */
+      const rate = 0.25 + 2.4 * M.smoothstep(0.25, 1.5, this.boilT);
+      this.fallY += (p.rise - this.fallY) * Math.min(1, dt * rate);
+      this.fallV = 0;
+      this.landed = false;
     } else {
       /* Nothing holding it down: it drifts back to where it lives. */
       this.fallY += (p.rise - this.fallY) * Math.min(1, dt * 1.6);
@@ -5219,6 +5324,44 @@ void main() {
     const wantBias = Math.min(0, this.fallY) * 0.62;
     this.stageBias += (wantBias - this.stageBias) * Math.min(1, dt * 2.2);
     if (this.shake > 0.0001) this.shake *= Math.pow(0.015, dt);
+  };
+
+  /* Settle the body against the ground, and hand the solver a floor.
+
+     Two separate jobs. Where the body comes to rest is decided by its nominal
+     shape, so a wobble does not jog the whole thing up and down. What must
+     never pass through the plane is the *deformed* shape, and that is the
+     solver's constraint — which is the bit that was missing: constraining only
+     the centre let a landing squash push its own underside through the floor,
+     and let a melt sink straight into it. */
+  App.prototype.resolveFloorContact = function () {
+    const p = MATTER[this.phase] || MATTER.free;
+    const m = this.model;
+    /* The row of the model that produces world Y. Its length is the scale. */
+    const g = [m[1], m[5], m[9]];
+    const floorY = this.renderer.floorY;
+
+    if (p.fall) {
+      const need = floorY - this.body.lowestAlong(g, true) - m[13];
+      if (need > 0) {
+        this.fallY += need;
+        const speed = -this.fallV;
+        this.fallV = 0;
+        if (!this.landed) {
+          this.landed = true;
+          if (speed > 1.2) this.onLand(speed);
+        }
+        this.composeModel();
+      } else if (need < -0.01) {
+        this.landed = false;
+      }
+    }
+
+    /* The constraint itself stays on whatever the phase, so pulling it down
+       into the ground by hand squashes it against the floor rather than
+       posting it through. A liquid grips; a rock slides a little. */
+    const mu = this.phase === 'liquid' ? 5.5 : (this.phase === 'solid' ? 3.0 : 1.6);
+    this.body.setFloor(g, floorY - this.model[13], mu);
   };
 
   /* The squash is what carries the weight. A body this stiff barely deforms
@@ -5935,17 +6078,23 @@ void main() {
     }
 
     px *= alive; py *= alive; pz *= alive;
-    py += this.fallY;
 
-    M.set3(this.headPos, px, py, pz);
+    /* Kept apart from the fall, so settling against the ground can move the
+       body without the drift having to be recomputed. */
+    this.driftX = px; this.driftY = py; this.driftZ = pz;
 
     /* A sphere has no visible front, so attention is not shown by turning —
        the shader paints a focal point wherever it is looking. This rotation
        only drifts the iridescent film so the surface never looks frozen, and
        it stops when the film does. */
     this.spin += dt * 0.06 * alive;
-    M.compose(this.model, px, py, pz, this.spin, Math.sin(this.spin * 1.5) * 0.2,
-      1 + this.voice * 0.012);
+    this.composeModel();
+  };
+
+  App.prototype.composeModel = function () {
+    M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
+    M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
+      this.spin, Math.sin(this.spin * 1.5) * 0.2, 1 + this.voice * 0.012);
     M.invert(this.invModel, this.model);
   };
 
@@ -6005,23 +6154,18 @@ void main() {
     }
   };
 
-  App.prototype.frame = function (now) {
-    const self = this;
-    requestAnimationFrame(function (t) { self.frame(t); });
-    if (this.contextLost) return;
-
-    const prev = this.lastTime || now;
-    let dt = (now - prev) / 1000;
-    this.lastTime = now;
-    if (dt > 0.1) dt = 0.1;
-    if (dt <= 0) dt = 1 / 240;
-    const frameStart = performance.now();
+  /* Everything that happens in a frame except drawing it. Kept as one method
+     so there is exactly one copy of the order these run in — a second copy
+     living in a test harness drifts, and then the harness quietly stops
+     exercising whatever was added last. */
+  App.prototype.stepFrame = function (dt) {
     this.time += dt;
 
     this.updateCamera(dt);
     this.updateAttention(dt);
     this.updateMatter(dt);
     this.updateModel(dt);
+    this.resolveFloorContact();
     this.updatePlay(dt);
     this.updateHelper(dt);
     this.updateTrimmings(dt);
@@ -6037,6 +6181,21 @@ void main() {
 
     this.chat.update(dt);
     this.updateProps(dt);
+  };
+
+  App.prototype.frame = function (now) {
+    const self = this;
+    requestAnimationFrame(function (t) { self.frame(t); });
+    if (this.contextLost) return;
+
+    const prev = this.lastTime || now;
+    let dt = (now - prev) / 1000;
+    this.lastTime = now;
+    if (dt > 0.1) dt = 0.1;
+    if (dt <= 0) dt = 1 / 240;
+    const frameStart = performance.now();
+
+    this.stepFrame(dt);
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);
 
     this.renderer.render({
@@ -6059,6 +6218,7 @@ void main() {
       morph: this.morph.amount,
       formColor: this.formColor,
       gas: this.gas,
+      boil: this.boil,
       inert: this.inert,
       poolPos: this.headPos,
       poolColor: this.poolColor,
