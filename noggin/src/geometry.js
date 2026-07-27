@@ -12,7 +12,9 @@
     SCLERA: 1,
     IRIS: 2,
     HAIR: 3,
-    GLINT: 4
+    GLINT: 4,
+    SHELL: 5,
+    HALO: 6
   };
   G.MAT = MAT;
 
@@ -359,6 +361,70 @@
 
   /* Builds the full stretchable specimen. Returns typed arrays ready for
      upload plus the topology the soft-body solver needs. */
+  /* The being: a near-spherical iridescent shell. It has no face, so all of
+     its expression comes from the soft-body deformation, its drift, and the
+     focal point the shader paints wherever it is looking. The slight lobing
+     keeps it off a perfect primitive — a flawless sphere reads as untouched
+     default geometry. */
+  G.buildOrb = function (subdiv) {
+    const sphere = G.icosphere(subdiv);
+    const n = sphere.positions.length / 3;
+    const R = 1.15;
+    const rest = new Float32Array(n * 3);
+
+    for (let i = 0; i < n; i++) {
+      const x = sphere.positions[i * 3];
+      const y = sphere.positions[i * 3 + 1];
+      const z = sphere.positions[i * 3 + 2];
+      const lobe = 1
+        + 0.030 * Math.sin(y * 3.1 + 0.6)
+        + 0.022 * Math.sin(x * 2.4 - 1.2)
+        + 0.018 * Math.sin(z * 2.9 + 2.1);
+      const r = R * lobe;
+      rest[i * 3] = x * r;
+      rest[i * 3 + 1] = y * r * 1.03;
+      rest[i * 3 + 2] = z * r;
+    }
+
+    const colors = new Float32Array(n * 3);
+    const mats = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = 0.42; colors[i * 3 + 1] = 0.62; colors[i * 3 + 2] = 0.95;
+      mats[i] = MAT.SHELL;
+    }
+
+    return {
+      rest: rest,
+      restNormals: G.computeNormals(rest, sphere.indices, n),
+      colors: colors,
+      mats: mats,
+      indices: sphere.indices,
+      headCount: n,
+      total: n,
+      adjacency: G.buildAdjacency(sphere.indices, n),
+      headIndices: sphere.indices,
+      /* Nothing is skinned to it — the shell is the whole being. */
+      binding: { k: 4, idx: new Int32Array(0), w: new Float32Array(0) }
+    };
+  };
+
+  /* A halo ring. Rendered as a prop with its own transform so it can turn
+     independently of the shell. */
+  G.buildHalo = function (radius, tube) {
+    const t = G.torus(radius, tube, 96, 8);
+    const n = t.positions.length / 3;
+    const colors = new Float32Array(n * 3);
+    const mats = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = 0.72; colors[i * 3 + 1] = 0.86; colors[i * 3 + 2] = 1.0;
+      mats[i] = MAT.HALO;
+    }
+    return {
+      positions: t.positions, normals: t.normals, colors: colors, mats: mats,
+      indices: t.indices, heightUnits: tube * 2, radiusUnits: radius, topUnits: tube
+    };
+  };
+
   G.buildCharacter = function (subdiv) {
     const b = new Builder();
     const sphere = G.icosphere(subdiv);

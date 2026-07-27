@@ -1,8 +1,9 @@
 # Produce Atlas
 
-A floating head you can talk to. Name a food plant and he brings a real one into
-the room **at its true size**, then tells you far more about it than you asked
-for. You can also grab his face and pull it around, because he is made of rubber.
+A luminous being you can talk to. Name a food plant and it conjures a real one
+into the room **at its true size**, then tells you far more about it than you
+asked for. You can also reach in and pull at it — it is not as solid as it
+looks.
 
 Written from scratch in WebGL2 with **no dependencies and no toolchain**. Open
 either file and it runs — nothing to install, no server required.
@@ -28,7 +29,7 @@ Then ask follow-ups — he holds the subject, so you don't have to keep naming i
 
 | Ask | You get |
 | --- | --- |
-| `how big is it?` | dimensions in cm, measured against his head |
+| `how big is it?` | dimensions in cm, measured against the being |
 | `where is it from?` | origin and wild ancestor |
 | `what family is it in?` | family and binomial |
 | `is it a fruit?` | what it actually is, botanically |
@@ -37,14 +38,14 @@ Then ask follow-ups — he holds the subject, so you don't have to keep naming i
 | `help` | every specimen he holds |
 | `clear` | sends it away |
 
-Drag on his face to stretch it, drag the background to orbit, wheel or pinch to
-zoom.
+Drag on it to pull the shell around, drag the background to orbit, wheel or
+pinch to zoom.
 
 ## Scale
 
-**One world unit is 10 cm**, and his head is about 24 cm across. Everything
+**One world unit is 10 cm**, and the being is about 23 cm across. Everything
 inherits that: a 1.5 cm coffee cherry really is a speck beside him, a 34 cm
-watermelon really is bigger than his whole head, and the floor is ruled at one
+watermelon really is wider than the being itself, and the floor is ruled at one
 line per 10 cm. The camera pulls back on its own to fit whatever arrives, and
 each specimen is captioned with its real dimension.
 
@@ -70,7 +71,7 @@ cluster — enough vocabulary to make an apple, a banana, a carrot, a bunch of
 grapes and a pineapple recognisable from one small data table. They render
 through the same shader as the head and cast the same shadows.
 
-**The head** is a soft body. Each vertex is sprung back to its rest position,
+**The being** is a soft body. Each vertex is sprung back to its rest position,
 with a Laplacian coupling term diffusing displacement across the one-ring
 neighbourhood:
 
@@ -87,21 +88,23 @@ euclidean, so pulling the nose doesn't drag a lip that merely sits close in
 space. A soft displacement ceiling and a keep-out sphere at the core stop the
 face folding through the skull.
 
-Eyes, ears, brows and the hair curl aren't part of the simulated topology —
-they're skinned to the displacement field, so their normals are built once and
-never recomputed.
+**Its appearance** is a thin-film interference shell over a lit core. Film
+thickness varies with view angle and drifts across the surface, so the hue
+sweeps the way an oil film does — light through the middle, spectrum gathering
+at the rim — wrapped in two halo rings turning on crossed axes.
 
-**The head itself** is an icosphere displaced by anisotropic gaussian features
-(nose, brow ridge, cheeks, chin, eye sockets, lips, jaw taper), with the detail
-that geometry reads too softly — lips, nose tip, ear cartilage, cheek flush —
-carried in vertex colour.
+It has no face, so **a bright focal point on the shell carries all of the
+looking**. It slides to whatever has its attention: the specimen, your
+viewpoint when you type, or somewhere across the room when the stage is empty.
+Speech travels outward from that point as concentric rings, and pulling on the
+shell stresses it into a glow along the strain.
 
 **Rendering** is shadow depth → HDR scene → half-res bloom → ACES tonemap. The
 scene target is sized independently of the canvas, and a controller trades
 internal resolution to hold a 120 Hz budget. There is deliberately no readout;
 it just stays smooth.
 
-**Sound** is synthesised at runtime — no audio assets. His voice is a blip per
+**Sound** is synthesised at runtime — no audio assets. Its voice is a blip per
 few characters, pitched off the character being typed, and the release of a
 stretch is a pitch sweep with a wobble on top.
 
@@ -126,7 +129,7 @@ index.html        markup, styling
 play.html         generated single-file bundle
 build.js          zero-dependency bundler
 src/math.js       vec3 / mat4 / PRNG
-src/geometry.js   icosphere, adjacency, head sculpt, skin binding
+src/geometry.js   icosphere, adjacency, the being's shell and halo rings
 src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts

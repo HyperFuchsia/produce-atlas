@@ -568,7 +568,9 @@
     SCLERA: 1,
     IRIS: 2,
     HAIR: 3,
-    GLINT: 4
+    GLINT: 4,
+    SHELL: 5,
+    HALO: 6
   };
   G.MAT = MAT;
 
@@ -915,6 +917,70 @@
 
   /* Builds the full stretchable specimen. Returns typed arrays ready for
      upload plus the topology the soft-body solver needs. */
+  /* The being: a near-spherical iridescent shell. It has no face, so all of
+     its expression comes from the soft-body deformation, its drift, and the
+     focal point the shader paints wherever it is looking. The slight lobing
+     keeps it off a perfect primitive — a flawless sphere reads as untouched
+     default geometry. */
+  G.buildOrb = function (subdiv) {
+    const sphere = G.icosphere(subdiv);
+    const n = sphere.positions.length / 3;
+    const R = 1.15;
+    const rest = new Float32Array(n * 3);
+
+    for (let i = 0; i < n; i++) {
+      const x = sphere.positions[i * 3];
+      const y = sphere.positions[i * 3 + 1];
+      const z = sphere.positions[i * 3 + 2];
+      const lobe = 1
+        + 0.030 * Math.sin(y * 3.1 + 0.6)
+        + 0.022 * Math.sin(x * 2.4 - 1.2)
+        + 0.018 * Math.sin(z * 2.9 + 2.1);
+      const r = R * lobe;
+      rest[i * 3] = x * r;
+      rest[i * 3 + 1] = y * r * 1.03;
+      rest[i * 3 + 2] = z * r;
+    }
+
+    const colors = new Float32Array(n * 3);
+    const mats = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = 0.42; colors[i * 3 + 1] = 0.62; colors[i * 3 + 2] = 0.95;
+      mats[i] = MAT.SHELL;
+    }
+
+    return {
+      rest: rest,
+      restNormals: G.computeNormals(rest, sphere.indices, n),
+      colors: colors,
+      mats: mats,
+      indices: sphere.indices,
+      headCount: n,
+      total: n,
+      adjacency: G.buildAdjacency(sphere.indices, n),
+      headIndices: sphere.indices,
+      /* Nothing is skinned to it — the shell is the whole being. */
+      binding: { k: 4, idx: new Int32Array(0), w: new Float32Array(0) }
+    };
+  };
+
+  /* A halo ring. Rendered as a prop with its own transform so it can turn
+     independently of the shell. */
+  G.buildHalo = function (radius, tube) {
+    const t = G.torus(radius, tube, 96, 8);
+    const n = t.positions.length / 3;
+    const colors = new Float32Array(n * 3);
+    const mats = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      colors[i * 3] = 0.72; colors[i * 3 + 1] = 0.86; colors[i * 3 + 2] = 1.0;
+      mats[i] = MAT.HALO;
+    }
+    return {
+      positions: t.positions, normals: t.normals, colors: colors, mats: mats,
+      indices: t.indices, heightUnits: tube * 2, radiusUnits: radius, topUnits: tube
+    };
+  };
+
   G.buildCharacter = function (subdiv) {
     const b = new Builder();
     const sphere = G.icosphere(subdiv);
@@ -2312,8 +2378,8 @@
   const P = NG.P;
   const M = NG.M;
 
-  /* His head is about this wide, which is the yardstick for every comparison. */
-  const HEAD_CM = 24;
+  /* It is about this wide, which is the yardstick for every comparison. */
+  const SELF_CM = 23;
 
   const ASPECTS = [
     { id: 'size', words: ['how big', 'how large', 'how small', 'how tall', 'how wide', 'size', 'scale', 'dimensions', 'measure', 'cm', 'centimet', 'inches'] },
@@ -2366,14 +2432,14 @@
   Brain.prototype._sizeLine = function (e) {
     const long = e.lengthCm || e.sizeCm;
     const wide = e.widthCm || e.sizeCm;
-    const ratio = wide / HEAD_CM;
+    const ratio = wide / SELF_CM;
     let cmp;
-    if (ratio < 0.12) cmp = 'you could lose it in my eyebrow';
-    else if (ratio < 0.3) cmp = 'about a quarter the width of my head';
-    else if (ratio < 0.45) cmp = 'roughly a third of my head';
-    else if (ratio < 0.7) cmp = 'over half the width of my head';
-    else if (ratio < 1.1) cmp = 'about as wide as my whole head, which is upsetting';
-    else cmp = 'wider than my entire head. Look at it. LOOK at it';
+    if (ratio < 0.12) cmp = 'a mote next to me';
+    else if (ratio < 0.3) cmp = 'about a quarter of my width';
+    else if (ratio < 0.45) cmp = 'roughly a third of me';
+    else if (ratio < 0.7) cmp = 'over half my width';
+    else if (ratio < 1.1) cmp = 'as wide across as I am, which is upsetting';
+    else cmp = 'wider than I am. Look at it. LOOK at it';
     const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
     return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp +
       '. And that is exactly how big it is in here. I do not do decorative sizes.';
@@ -2513,7 +2579,7 @@
   Brain.prototype.greeting = function () {
     return ['Hey. How is it going?',
       'Name any food plant and I will bring a real one in at its actual size. Try "let\'s talk about an apple", or say "help" and I will list everything I have.',
-      'You can also grab my face and pull it around. Most people do that first. I have made peace with it.'];
+      'You can also reach in and pull at me. I am not as solid as I look. Most people try that first. I have made peace with it.'];
   };
 
   NG.Brain = Brain;
@@ -2771,6 +2837,10 @@ uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
 uniform float uHighlightAmount;
+uniform vec3 uFocusDir;      /* world direction it is attending to */
+uniform vec3 uFocusColor;
+uniform vec3 uCoreColor;
+uniform float uVoice;        /* 0..1, rises while it is speaking */
 
 out vec4 oColor;
 ${COMMON}
@@ -2808,6 +2878,58 @@ void main() {
   vec3 V = normalize(uEye - vWPos);
   vec3 L = normalize(uLightDir);
   float m = vMat;
+
+  float ndvAll = clamp(dot(N, V), 0.0, 1.0);
+
+  // Halo rings: emissive filament, brightest edge-on.
+  if (m > 5.5) {
+    float edge = pow(1.0 - ndvAll, 1.4);
+    oColor = vec4(vCol * (0.5 + 2.6 * edge) * (0.8 + 0.4 * uVoice), 1.0);
+    return;
+  }
+
+  // The being itself: a thin-film shell over a lit core.
+  if (m > 4.5) {
+    float st2 = clamp(vStretch * 0.9, 0.0, 1.0);
+
+    // Thin-film interference. Film thickness varies with view angle and drifts
+    // slowly over the surface, so the hue sweeps the way an oil film does.
+    float f = pow(1.0 - ndvAll, 1.5);
+    float flow = sin(vWPos.y * 2.7 + uTime * 0.35)
+               + sin(vWPos.x * 2.1 - uTime * 0.27)
+               + sin(vWPos.z * 2.4 + uTime * 0.31);
+    float phase = f * 2.6 + flow * 0.11 + uTime * 0.05 + st2 * 0.5;
+    vec3 iri = 0.5 + 0.5 * cos(6.28318 * (phase + vec3(0.0, 0.33, 0.67)));
+
+    // Lit core showing through the middle, iridescence gathering at the rim.
+    vec3 col = uCoreColor * (0.09 + 0.30 * ndvAll);
+    /* Pearl, not tie-dye: light through the middle, spectrum gathering
+       outward. The film reaches full saturation well before the silhouette so
+       the bands stay visible across the body. */
+    vec3 film = mix(vec3(0.88, 0.92, 1.0), iri, clamp(f * 1.15, 0.0, 1.0));
+    col += film * (0.17 + 1.40 * f);
+
+    // A crisp specular keeps it reading as a surface, not a fog.
+    col += uLightColor * ggx(N, V, L, 0.12) * 0.5;
+
+    // The focal point: with no face, this is the only thing that can show
+    // where its attention is, so it carries all of the looking.
+    float focus = pow(max(dot(N, normalize(uFocusDir)), 0.0), 13.0);
+    col += uFocusColor * focus * (1.5 + 0.8 * uVoice);
+
+    // Speech travels outward from the focal point as concentric rings.
+    if (uVoice > 0.001) {
+      float band = dot(N, normalize(uFocusDir));
+      float wave = 0.5 + 0.5 * sin(band * 17.0 - uTime * 7.5);
+      col += iri * wave * uVoice * 0.30;
+    }
+
+    // Pulled hard, the shell stresses and glows along the strain.
+    col += vec3(0.55, 0.80, 1.15) * pow(st2, 1.8) * 1.1;
+
+    oColor = vec4(col, 1.0);
+    return;
+  }
 
   // Pure emissive material for the eye glints.
   if (m > 3.5) {
@@ -2891,6 +3013,7 @@ in vec3 vWPos;
 in vec4 vLPos;
 uniform vec3 uEye;
 uniform vec3 uGridColor, uFloorColor;
+uniform vec3 uPoolPos, uPoolColor;
 uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
@@ -2922,7 +3045,11 @@ void main() {
 
   float g = gridMask(vWPos.xz, 1.0);
   vec3 col = uFloorColor + uGridColor * g;
-  col *= mix(0.18, 1.0, sh);
+  /* A luminous body should light the table under it, and a hard black
+     shadow under something emissive reads as a contradiction. */
+  col *= mix(0.45, 1.0, sh);
+  float pd = length(vWPos.xz - uPoolPos.xz);
+  col += uPoolColor * exp(-pd * pd * 0.16);
   col *= fade;
 
   oColor = vec4(col, 1.0);
@@ -3517,6 +3644,8 @@ void main() {
       gl.uniform3fv(pr.u.uGridColor, state.floor.grid);
       gl.uniform3fv(pr.u.uFloorColor, state.floor.base);
       gl.uniform1f(pr.u.uTime, state.time);
+      gl.uniform3fv(pr.u.uPoolPos, state.poolPos);
+      gl.uniform3fv(pr.u.uPoolColor, state.poolColor);
       gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
@@ -3545,6 +3674,10 @@ void main() {
     gl.uniform3fv(pr.u.uStretchGlow, L.stretchGlow);
     gl.uniform1f(pr.u.uTime, state.time);
     gl.uniform1f(pr.u.uHighlightAmount, state.highlight);
+    gl.uniform3fv(pr.u.uFocusDir, state.focusDir);
+    gl.uniform3fv(pr.u.uFocusColor, state.being.focus);
+    gl.uniform3fv(pr.u.uCoreColor, state.being.core);
+    gl.uniform1f(pr.u.uVoice, state.voice);
     gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
@@ -3552,6 +3685,7 @@ void main() {
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     this.drawProps(state.props, pr);
+    this.drawProps(state.halos, pr);
 
     if (this.samples > 0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fb.ms);
@@ -3814,9 +3948,9 @@ void main() {
 /* ===== src/main.js ===== */
 /* Produce Atlas — application shell.
 
-   One job: keep a floating head on stage, let you pull its face around, and
-   put whatever specimen you ask for next to it at true scale. Everything is
-   driven from the conversation column; there is no other UI. */
+   One job: keep the being on stage, let you pull at it, and put whatever
+   specimen you ask for next to it at true scale. Everything is driven from
+   the conversation column; there is no other UI. */
 (function (NG) {
   'use strict';
 
@@ -3851,6 +3985,14 @@ void main() {
     bottom: [0.014, 0.017, 0.015],
     glowColor: [0.14, 0.15, 0.12],
     glow: 1.0
+  };
+
+  /* The being. Core is what glows through the middle, focus is the bright
+     point that shows where its attention is. */
+  const BEING = {
+    core: [0.52, 0.68, 1.00],
+    focus: [0.95, 0.98, 1.0],
+    pool: [0.035, 0.058, 0.10]
   };
 
   const FLOOR = {
@@ -3906,6 +4048,9 @@ void main() {
     this.headPos = [0, 0, 0];
     this.lean = 0;
     this.leanDir = [0, 0, 0];
+    this.voice = 0;
+    this.focusDir = [0, 0, 1];
+    this.halos = [];
     this.rand = M.rng((Date.now() & 0x7fffffff) || 11);
 
     this.pointers = new Map();
@@ -3927,15 +4072,16 @@ void main() {
     /* When you type, he stops whatever he was looking at and looks at you. */
     this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
-    this.buildMesh(5);
+    this.buildBeing(5);
+    this.buildHalos();
     this.renderer.setShadowSize(1024);
     this.resize();
     this.bindEvents();
     this.buildChips();
   }
 
-  App.prototype.buildMesh = function (subdiv) {
-    this.mesh = NG.G.buildCharacter(subdiv);
+  App.prototype.buildBeing = function (subdiv) {
+    this.mesh = NG.G.buildOrb(subdiv);
     this.body = new NG.Softbody(this.mesh);
     this.renderer.setMesh(this.mesh);
   };
@@ -4236,6 +4382,31 @@ void main() {
     }
   };
 
+  /* Two thin rings on crossed axes, turning at different rates. They read as
+     structure around the being without implying a face or a front. */
+  App.prototype.buildHalos = function () {
+    const specs = [
+      { r: 1.58, tube: 0.012, tilt: 0.34, spin: 0.13 },
+      { r: 1.92, tube: 0.008, tilt: -1.15, spin: -0.09 }
+    ];
+    for (let i = 0; i < specs.length; i++) {
+      const sp = specs[i];
+      this.halos.push({
+        handle: this.renderer.createProp(NG.G.buildHalo(sp.r, sp.tube)),
+        matrix: M.m4(), tilt: sp.tilt, spin: sp.spin, phase: i * 1.7
+      });
+    }
+  };
+
+  App.prototype.updateHalos = function () {
+    for (let i = 0; i < this.halos.length; i++) {
+      const h = this.halos[i];
+      /* Ride the body so the rings stay centred on it as it drifts. */
+      M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
+        h.phase + this.time * h.spin, h.tilt, 1);
+    }
+  };
+
   /* ---- attention ----------------------------------------------------------- */
 
   App.prototype.lookAt = function (point, hold) {
@@ -4283,6 +4454,13 @@ void main() {
     this.gaze[2] += (this.gazeTarget[2] - this.gaze[2]) * k;
 
     this.lean = Math.max(0, this.lean - dt * 0.6);
+
+    /* Where the focal point sits on the shell. */
+    M.norm3(this.focusDir, M.sub3(this.focusDir, this.gaze, this.headPos));
+
+    /* Voice envelope: rises while it is speaking, falls when it stops. */
+    const want = this.chat.busy() ? 1 : 0;
+    this.voice += (want - this.voice) * Math.min(1, dt * (want ? 6 : 2.2));
   };
 
   /* ---- frame --------------------------------------------------------------- */
@@ -4345,17 +4523,11 @@ void main() {
 
     M.set3(this.headPos, px, py, pz);
 
-    /* Face the thing he is looking at. His face points down local +Z, and
-       M.compose builds Ry * Rx, so local +Z lands on (sy*cx, -sx, cy*cx). */
-    const dx = this.gaze[0] - px, dy = this.gaze[1] - py, dz = this.gaze[2] - pz;
-    const len = Math.hypot(dx, dy, dz) || 1;
-    /* Turn only part of the way. A full turn puts him in profile and hides the
-       face doing the looking, which loses the whole point; a partial turn
-       reads as glancing over while his eyes stay visible. */
-    const ry = M.clamp(Math.atan2(dx / len, dz / len), -1.2, 1.2) * 0.6;
-    const rx = M.clamp(Math.asin(M.clamp(-dy / len, -1, 1)), -0.6, 0.6) * 0.7;
-
-    M.compose(this.model, px, py, pz, ry, rx, 1);
+    /* A sphere has no visible front, so attention is not shown by turning —
+       the shader paints a focal point wherever it is looking. This rotation
+       only drifts the iridescent film so the surface never looks frozen. */
+    M.compose(this.model, px, py, pz, this.time * 0.06, Math.sin(this.time * 0.09) * 0.2,
+      1 + this.voice * 0.012);
     M.invert(this.invModel, this.model);
   };
 
@@ -4431,6 +4603,7 @@ void main() {
     this.updateCamera(dt);
     this.updateAttention(dt);
     this.updateModel();
+    this.updateHalos();
     this.updateLight();
     this.trackGrabVelocity(dt);
     this.stepPhysics(dt);
@@ -4455,9 +4628,15 @@ void main() {
       floor: FLOOR,
       showFloor: true,
       props: this.props,
+      halos: this.halos,
+      being: BEING,
+      focusDir: this.focusDir,
+      voice: this.voice,
+      poolPos: this.headPos,
+      poolColor: BEING.pool,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),
-      bloom: 0.34,
-      bloomThreshold: 1.25,
+      bloom: 0.50,
+      bloomThreshold: 1.10,
       bloomPasses: 2,
       exposure: 1.02,
       vignette: 0.62,

@@ -14,8 +14,8 @@
   const P = NG.P;
   const M = NG.M;
 
-  /* His head is about this wide, which is the yardstick for every comparison. */
-  const HEAD_CM = 24;
+  /* It is about this wide, which is the yardstick for every comparison. */
+  const SELF_CM = 23;
 
   const ASPECTS = [
     { id: 'size', words: ['how big', 'how large', 'how small', 'how tall', 'how wide', 'size', 'scale', 'dimensions', 'measure', 'cm', 'centimet', 'inches'] },
@@ -68,14 +68,14 @@
   Brain.prototype._sizeLine = function (e) {
     const long = e.lengthCm || e.sizeCm;
     const wide = e.widthCm || e.sizeCm;
-    const ratio = wide / HEAD_CM;
+    const ratio = wide / SELF_CM;
     let cmp;
-    if (ratio < 0.12) cmp = 'you could lose it in my eyebrow';
-    else if (ratio < 0.3) cmp = 'about a quarter the width of my head';
-    else if (ratio < 0.45) cmp = 'roughly a third of my head';
-    else if (ratio < 0.7) cmp = 'over half the width of my head';
-    else if (ratio < 1.1) cmp = 'about as wide as my whole head, which is upsetting';
-    else cmp = 'wider than my entire head. Look at it. LOOK at it';
+    if (ratio < 0.12) cmp = 'a mote next to me';
+    else if (ratio < 0.3) cmp = 'about a quarter of my width';
+    else if (ratio < 0.45) cmp = 'roughly a third of me';
+    else if (ratio < 0.7) cmp = 'over half my width';
+    else if (ratio < 1.1) cmp = 'as wide across as I am, which is upsetting';
+    else cmp = 'wider than I am. Look at it. LOOK at it';
     const fmt = function (v) { return (Math.round(v * 10) / 10) + ''; };
     return fmt(long) + ' cm long and ' + fmt(wide) + ' cm across — ' + cmp +
       '. And that is exactly how big it is in here. I do not do decorative sizes.';
@@ -215,7 +215,7 @@
   Brain.prototype.greeting = function () {
     return ['Hey. How is it going?',
       'Name any food plant and I will bring a real one in at its actual size. Try "let\'s talk about an apple", or say "help" and I will list everything I have.',
-      'You can also grab my face and pull it around. Most people do that first. I have made peace with it.'];
+      'You can also reach in and pull at me. I am not as solid as I look. Most people try that first. I have made peace with it.'];
   };
 
   NG.Brain = Brain;

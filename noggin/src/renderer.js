@@ -511,6 +511,8 @@
       gl.uniform3fv(pr.u.uGridColor, state.floor.grid);
       gl.uniform3fv(pr.u.uFloorColor, state.floor.base);
       gl.uniform1f(pr.u.uTime, state.time);
+      gl.uniform3fv(pr.u.uPoolPos, state.poolPos);
+      gl.uniform3fv(pr.u.uPoolColor, state.poolColor);
       gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
@@ -539,6 +541,10 @@
     gl.uniform3fv(pr.u.uStretchGlow, L.stretchGlow);
     gl.uniform1f(pr.u.uTime, state.time);
     gl.uniform1f(pr.u.uHighlightAmount, state.highlight);
+    gl.uniform3fv(pr.u.uFocusDir, state.focusDir);
+    gl.uniform3fv(pr.u.uFocusColor, state.being.focus);
+    gl.uniform3fv(pr.u.uCoreColor, state.being.core);
+    gl.uniform1f(pr.u.uVoice, state.voice);
     gl.uniform2f(pr.u.uShadowTexel, 1 / this.shadowSize, 1 / this.shadowSize);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.tex.shadow);
@@ -546,6 +552,7 @@
     gl.bindVertexArray(this.meshVAOs[this.dynIndex]);
     gl.drawElements(gl.TRIANGLES, this.indexCount, gl.UNSIGNED_INT, 0);
     this.drawProps(state.props, pr);
+    this.drawProps(state.halos, pr);
 
     if (this.samples > 0) {
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, this.fb.ms);

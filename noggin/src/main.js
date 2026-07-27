@@ -1,8 +1,8 @@
 /* Produce Atlas — application shell.
 
-   One job: keep a floating head on stage, let you pull its face around, and
-   put whatever specimen you ask for next to it at true scale. Everything is
-   driven from the conversation column; there is no other UI. */
+   One job: keep the being on stage, let you pull at it, and put whatever
+   specimen you ask for next to it at true scale. Everything is driven from
+   the conversation column; there is no other UI. */
 (function (NG) {
   'use strict';
 
@@ -37,6 +37,14 @@
     bottom: [0.014, 0.017, 0.015],
     glowColor: [0.14, 0.15, 0.12],
     glow: 1.0
+  };
+
+  /* The being. Core is what glows through the middle, focus is the bright
+     point that shows where its attention is. */
+  const BEING = {
+    core: [0.52, 0.68, 1.00],
+    focus: [0.95, 0.98, 1.0],
+    pool: [0.035, 0.058, 0.10]
   };
 
   const FLOOR = {
@@ -92,6 +100,9 @@
     this.headPos = [0, 0, 0];
     this.lean = 0;
     this.leanDir = [0, 0, 0];
+    this.voice = 0;
+    this.focusDir = [0, 0, 1];
+    this.halos = [];
     this.rand = M.rng((Date.now() & 0x7fffffff) || 11);
 
     this.pointers = new Map();
@@ -113,15 +124,16 @@
     /* When you type, he stops whatever he was looking at and looks at you. */
     this.chat.onSend = function () { self.lookAtViewer(3.0); };
 
-    this.buildMesh(5);
+    this.buildBeing(5);
+    this.buildHalos();
     this.renderer.setShadowSize(1024);
     this.resize();
     this.bindEvents();
     this.buildChips();
   }
 
-  App.prototype.buildMesh = function (subdiv) {
-    this.mesh = NG.G.buildCharacter(subdiv);
+  App.prototype.buildBeing = function (subdiv) {
+    this.mesh = NG.G.buildOrb(subdiv);
     this.body = new NG.Softbody(this.mesh);
     this.renderer.setMesh(this.mesh);
   };
@@ -422,6 +434,31 @@
     }
   };
 
+  /* Two thin rings on crossed axes, turning at different rates. They read as
+     structure around the being without implying a face or a front. */
+  App.prototype.buildHalos = function () {
+    const specs = [
+      { r: 1.58, tube: 0.012, tilt: 0.34, spin: 0.13 },
+      { r: 1.92, tube: 0.008, tilt: -1.15, spin: -0.09 }
+    ];
+    for (let i = 0; i < specs.length; i++) {
+      const sp = specs[i];
+      this.halos.push({
+        handle: this.renderer.createProp(NG.G.buildHalo(sp.r, sp.tube)),
+        matrix: M.m4(), tilt: sp.tilt, spin: sp.spin, phase: i * 1.7
+      });
+    }
+  };
+
+  App.prototype.updateHalos = function () {
+    for (let i = 0; i < this.halos.length; i++) {
+      const h = this.halos[i];
+      /* Ride the body so the rings stay centred on it as it drifts. */
+      M.compose(h.matrix, this.headPos[0], this.headPos[1], this.headPos[2],
+        h.phase + this.time * h.spin, h.tilt, 1);
+    }
+  };
+
   /* ---- attention ----------------------------------------------------------- */
 
   App.prototype.lookAt = function (point, hold) {
@@ -469,6 +506,13 @@
     this.gaze[2] += (this.gazeTarget[2] - this.gaze[2]) * k;
 
     this.lean = Math.max(0, this.lean - dt * 0.6);
+
+    /* Where the focal point sits on the shell. */
+    M.norm3(this.focusDir, M.sub3(this.focusDir, this.gaze, this.headPos));
+
+    /* Voice envelope: rises while it is speaking, falls when it stops. */
+    const want = this.chat.busy() ? 1 : 0;
+    this.voice += (want - this.voice) * Math.min(1, dt * (want ? 6 : 2.2));
   };
 
   /* ---- frame --------------------------------------------------------------- */
@@ -531,17 +575,11 @@
 
     M.set3(this.headPos, px, py, pz);
 
-    /* Face the thing he is looking at. His face points down local +Z, and
-       M.compose builds Ry * Rx, so local +Z lands on (sy*cx, -sx, cy*cx). */
-    const dx = this.gaze[0] - px, dy = this.gaze[1] - py, dz = this.gaze[2] - pz;
-    const len = Math.hypot(dx, dy, dz) || 1;
-    /* Turn only part of the way. A full turn puts him in profile and hides the
-       face doing the looking, which loses the whole point; a partial turn
-       reads as glancing over while his eyes stay visible. */
-    const ry = M.clamp(Math.atan2(dx / len, dz / len), -1.2, 1.2) * 0.6;
-    const rx = M.clamp(Math.asin(M.clamp(-dy / len, -1, 1)), -0.6, 0.6) * 0.7;
-
-    M.compose(this.model, px, py, pz, ry, rx, 1);
+    /* A sphere has no visible front, so attention is not shown by turning —
+       the shader paints a focal point wherever it is looking. This rotation
+       only drifts the iridescent film so the surface never looks frozen. */
+    M.compose(this.model, px, py, pz, this.time * 0.06, Math.sin(this.time * 0.09) * 0.2,
+      1 + this.voice * 0.012);
     M.invert(this.invModel, this.model);
   };
 
@@ -617,6 +655,7 @@
     this.updateCamera(dt);
     this.updateAttention(dt);
     this.updateModel();
+    this.updateHalos();
     this.updateLight();
     this.trackGrabVelocity(dt);
     this.stepPhysics(dt);
@@ -641,9 +680,15 @@
       floor: FLOOR,
       showFloor: true,
       props: this.props,
+      halos: this.halos,
+      being: BEING,
+      focusDir: this.focusDir,
+      voice: this.voice,
+      poolPos: this.headPos,
+      poolColor: BEING.pool,
       highlight: Math.min(1, this.body.maxDisplacement * 0.4),
-      bloom: 0.34,
-      bloomThreshold: 1.25,
+      bloom: 0.50,
+      bloomThreshold: 1.10,
       bloomPasses: 2,
       exposure: 1.02,
       vignette: 0.62,

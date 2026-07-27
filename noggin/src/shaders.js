@@ -117,6 +117,10 @@ uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
 uniform float uHighlightAmount;
+uniform vec3 uFocusDir;      /* world direction it is attending to */
+uniform vec3 uFocusColor;
+uniform vec3 uCoreColor;
+uniform float uVoice;        /* 0..1, rises while it is speaking */
 
 out vec4 oColor;
 ${COMMON}
@@ -154,6 +158,58 @@ void main() {
   vec3 V = normalize(uEye - vWPos);
   vec3 L = normalize(uLightDir);
   float m = vMat;
+
+  float ndvAll = clamp(dot(N, V), 0.0, 1.0);
+
+  // Halo rings: emissive filament, brightest edge-on.
+  if (m > 5.5) {
+    float edge = pow(1.0 - ndvAll, 1.4);
+    oColor = vec4(vCol * (0.5 + 2.6 * edge) * (0.8 + 0.4 * uVoice), 1.0);
+    return;
+  }
+
+  // The being itself: a thin-film shell over a lit core.
+  if (m > 4.5) {
+    float st2 = clamp(vStretch * 0.9, 0.0, 1.0);
+
+    // Thin-film interference. Film thickness varies with view angle and drifts
+    // slowly over the surface, so the hue sweeps the way an oil film does.
+    float f = pow(1.0 - ndvAll, 1.5);
+    float flow = sin(vWPos.y * 2.7 + uTime * 0.35)
+               + sin(vWPos.x * 2.1 - uTime * 0.27)
+               + sin(vWPos.z * 2.4 + uTime * 0.31);
+    float phase = f * 2.6 + flow * 0.11 + uTime * 0.05 + st2 * 0.5;
+    vec3 iri = 0.5 + 0.5 * cos(6.28318 * (phase + vec3(0.0, 0.33, 0.67)));
+
+    // Lit core showing through the middle, iridescence gathering at the rim.
+    vec3 col = uCoreColor * (0.09 + 0.30 * ndvAll);
+    /* Pearl, not tie-dye: light through the middle, spectrum gathering
+       outward. The film reaches full saturation well before the silhouette so
+       the bands stay visible across the body. */
+    vec3 film = mix(vec3(0.88, 0.92, 1.0), iri, clamp(f * 1.15, 0.0, 1.0));
+    col += film * (0.17 + 1.40 * f);
+
+    // A crisp specular keeps it reading as a surface, not a fog.
+    col += uLightColor * ggx(N, V, L, 0.12) * 0.5;
+
+    // The focal point: with no face, this is the only thing that can show
+    // where its attention is, so it carries all of the looking.
+    float focus = pow(max(dot(N, normalize(uFocusDir)), 0.0), 13.0);
+    col += uFocusColor * focus * (1.5 + 0.8 * uVoice);
+
+    // Speech travels outward from the focal point as concentric rings.
+    if (uVoice > 0.001) {
+      float band = dot(N, normalize(uFocusDir));
+      float wave = 0.5 + 0.5 * sin(band * 17.0 - uTime * 7.5);
+      col += iri * wave * uVoice * 0.30;
+    }
+
+    // Pulled hard, the shell stresses and glows along the strain.
+    col += vec3(0.55, 0.80, 1.15) * pow(st2, 1.8) * 1.1;
+
+    oColor = vec4(col, 1.0);
+    return;
+  }
 
   // Pure emissive material for the eye glints.
   if (m > 3.5) {
@@ -237,6 +293,7 @@ in vec3 vWPos;
 in vec4 vLPos;
 uniform vec3 uEye;
 uniform vec3 uGridColor, uFloorColor;
+uniform vec3 uPoolPos, uPoolColor;
 uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
@@ -268,7 +325,11 @@ void main() {
 
   float g = gridMask(vWPos.xz, 1.0);
   vec3 col = uFloorColor + uGridColor * g;
-  col *= mix(0.18, 1.0, sh);
+  /* A luminous body should light the table under it, and a hard black
+     shadow under something emissive reads as a contradiction. */
+  col *= mix(0.45, 1.0, sh);
+  float pd = length(vWPos.xz - uPoolPos.xz);
+  col += uPoolColor * exp(-pd * pd * 0.16);
   col *= fade;
 
   oColor = vec4(col, 1.0);
