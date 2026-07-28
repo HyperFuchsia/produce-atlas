@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>car3d — procedural three.js car</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0b0d10; overflow: hidden;
+    font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; color: #e8eaee; }
+  canvas { display: block; }
+  #ui { position: fixed; top: 14px; left: 14px; padding: 14px 16px; border-radius: 12px;
+    background: rgba(16,19,24,.82); backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,.09); min-width: 208px; }
+  #ui h1 { margin: 0 0 10px; font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+  label { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 7px 0; }
+  select, input[type=range] { width: 118px; }
+  select { background: #1b1f26; color: inherit; border: 1px solid rgba(255,255,255,.14);
+    border-radius: 6px; padding: 3px 6px; }
+  .swatches { display: flex; gap: 6px; margin-top: 4px; }
+  .swatches button { width: 22px; height: 22px; border-radius: 50%; border: 1px solid rgba(255,255,255,.25);
+    cursor: pointer; padding: 0; }
+  #hint { position: fixed; bottom: 14px; left: 14px; opacity: .5; }
+</style>
+</head>
+<body>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.185.1/build/three.module.js" } }
+</script>
+
+<div id="ui">
+  <h1>car3d</h1>
+  <label>Body <select id="preset"><option value="gt">GT</option><option value="suv">SUV</option><option value="hatch">Hatch</option></select></label>
+  <label>Wheels <select id="rim"><option value="split5">Split 5</option><option value="mesh">Mesh</option></select></label>
+  <label>Quality <select id="quality"><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+  <label>Speed <input id="speed" type="range" min="0" max="30" step="0.5" value="0"></label>
+  <label>Steering <input id="steer" type="range" min="-35" max="35" step="1" value="0"></label>
+  <label>Lights <input id="lights" type="checkbox"></label>
+  <div class="swatches" id="swatches"></div>
+</div>
+<div id="hint">drag to orbit · scroll to zoom</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { createCar, createStudioScene } from './car3d.js';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const { scene } = createStudioScene(renderer, { background: 0x0b0d10, floorRoughness: 0.30 });
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 200);
+
+let car = null;
+function build() {
+  if (car) car.dispose();
+  car = createCar({
+    preset: preset.value,
+    rimStyle: rim.value,
+    quality: quality.value,
+    bodyColor: current,
+  });
+  scene.add(car.group);
+  car.setLights(lights.checked);
+}
+
+// --- minimal orbit control (no extra dependency) -------------------------
+let yaw = 0.72, pitch = 0.21, dist = 9.4, dragging = false, px = 0, py = 0;
+addEventListener('pointerdown', (e) => { dragging = true; px = e.clientX; py = e.clientY; });
+addEventListener('pointerup', () => { dragging = false; });
+addEventListener('pointermove', (e) => {
+  if (!dragging) return;
+  yaw -= (e.clientX - px) * 0.006;
+  pitch = Math.max(-0.05, Math.min(1.15, pitch + (e.clientY - py) * 0.004));
+  px = e.clientX; py = e.clientY;
+});
+addEventListener('wheel', (e) => {
+  dist = Math.max(3.6, Math.min(22, dist * (1 + Math.sign(e.deltaY) * 0.08)));
+}, { passive: true });
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// --- UI ------------------------------------------------------------------
+const COLOURS = ['#16305c', '#8d1116', '#0e0f12', '#c9ccd1', '#1d4a3c', '#c2701a', '#5b2c6f'];
+let current = COLOURS[0];
+for (const c of COLOURS) {
+  const b = document.createElement('button');
+  b.style.background = c;
+  b.onclick = () => { current = c; car.setPaintColor(c); };
+  swatches.append(b);
+}
+for (const el of [preset, rim, quality]) el.onchange = build;
+lights.onchange = () => car.setLights(lights.checked);
+steer.oninput = () => car.setSteering(steer.value * Math.PI / 180);
+
+build();
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(0.05, clock.getDelta());
+  const v = Number(speed.value);
+  car.update(dt, v);
+  camera.position.set(
+    Math.sin(yaw) * Math.cos(pitch) * dist,
+    Math.max(0.35, Math.sin(pitch) * dist + 0.55),
+    Math.cos(yaw) * Math.cos(pitch) * dist
+  );
+  camera.lookAt(0, 0.62, 0);
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>
