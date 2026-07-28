@@ -406,6 +406,29 @@ lipPaintWidth     48.0   human range 45-68   ok
 bizygomatic      151.0   human range 125-155 ok
 ```
 
+**The hair is its own volume, not the skull with a coat of paint.** The first
+version offset the head surface by a constant, which gives a slightly larger
+head — a swimming cap. A picked afro holds a round silhouette that is nearly
+independent of the skull inside it, so the shell aims at a *sphere of its own*,
+fitted to stand `hairMm` off the crown, and dives inside the head at the
+hairline so the transition is hidden.
+
+Four things had to be true, and each was wrong first:
+
+- **Coils are discrete clumps, not smooth undulation** — so the displacement
+  is cellular noise (distance to the nearest of one point per grid cell),
+  rounded with a smoothstep. Left linear it built a cone on every clump and
+  the head grew spines.
+- **Clumps have to break the outline**, which needs vertices small enough to
+  hold them: subdiv 6, about 2.4 mm apart, for clumps around 8 mm.
+- **Displace along the surface normal, not the ray from the head's centre.**
+  Where the shell is steep the radial direction runs nearly *along* it, so
+  clumps stretched into streaks and the face wore a slicked collar.
+- **The underside of the hair is the darkest part of it.** Occlusion is baked
+  from how far each vertex's normal points away from the head; without it the
+  wall between the hairline and the outside of the mass lit up as a fan of
+  pale spokes.
+
 Two further things are colour rather than shape, and both are markers of the
 caricature tradition rather than of any face: **lip contrast on darker skin is
 low**, so the lips here are defined by the edge of the vermilion and barely at

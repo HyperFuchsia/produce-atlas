@@ -477,62 +477,194 @@
     };
   }
 
-  /* Hair as one closed shell rather than a heap of blobs. Its radius is the
-     head's plus a thickness that goes *negative* over the face, so the shell
-     is simply buried inside the head there and the hairline is wherever it
-     surfaces. One silhouette, no intersecting spheres to catch the light at
-     their seams, and the edge can be as soft as the smoothstep that makes it.
+  /* Cheap cellular noise: distance to the nearest of one feature point per
+     grid cell. Two decorrelated fracts of one hash place the point, so a
+     sample costs 27 hashes rather than 81.
 
-     A cropped afro is close to uniform thickness, which is why this works at
-     all: the shape is the head, offset. */
+     Value noise cannot do hair. Hair is not smooth undulation, it is a field
+     of discrete rounded clumps packed against each other, and that is exactly
+     what the distance to a scattered point set looks like. */
+  function hash3(i, j, k) {
+    let h = (i * 374761393 + j * 668265263 + k * 1274126177) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+  }
+  function worley(x, y, z) {
+    const ix = Math.floor(x), iy = Math.floor(y), iz = Math.floor(z);
+    let best = 9;
+    for (let a = -1; a <= 1; a++) {
+      for (let b = -1; b <= 1; b++) {
+        for (let c = -1; c <= 1; c++) {
+          const gx = ix + a, gy = iy + b, gz = iz + c;
+          const h = hash3(gx, gy, gz);
+          const px = gx + h;
+          const py = gy + (h * 57.31) % 1;
+          const pz = gz + (h * 131.77) % 1;
+          const ux = px - x, uy = py - y, uz = pz - z;
+          const d = ux * ux + uy * uy + uz * uz;
+          if (d < best) best = d;
+        }
+      }
+    }
+    return Math.sqrt(best);
+  }
+  /* 1 at the middle of a clump, 0 in the gap between clumps. */
+  function clump(x, y, z) {
+    const t = M.clamp(1 - worley(x, y, z) / 0.62, 0, 1);
+    /* Rounded, not conical. The distance to a point falls off linearly, so
+       used raw it builds a cone on every feature and the head grows spines. */
+    return t * t * (3 - 2 * t);
+  }
+
+  /* Hair as one closed shell rather than a heap of blobs: no intersecting
+     spheres to catch the light along their seams, and the edge can be as soft
+     as the function that makes it. Over the face the shell's radius drops
+     below the head's, so it is simply buried there and the hairline is
+     wherever it surfaces.
+
+     What it is *not* is the head plus a constant thickness. That was the
+     first version and it is why it read as a swimming cap: offsetting an egg
+     gives a slightly larger egg, and an afro is not the shape of the skull
+     underneath it. A picked afro is close to its own sphere — the hair stands
+     out from the scalp by however much it has grown and then holds a round
+     silhouette almost independent of the head inside it. So the shell aims at
+     a sphere of its own, fitted to stand `hairMm` off the crown, and blends
+     to the scalp at the hairline where the hair is genuinely short. */
   function hairShell(spec) {
     const f = spec.face || {};
-    const thick = (f.hairCm === undefined ? 5.4 : f.hairCm) * P.cm(1);
-    /* Subdivided one further than the fruit hulls, because this shell is the
-       whole silhouette from most angles and at subdiv 4 its outline was
-       visibly a polygon. */
-    const unit = G.icosphere(5);
+    const cm = P.cm(1);
+    const stand = (f.hairMm === undefined ? 55 : f.hairMm) * 0.1;    /* cm */
+
+    /* Fit the sphere: it must reach `stand` above the crown and a little less
+       than that out at the sides, because an afro is taller than it is wide. */
+    const topY = HH + stand;
+    const sideR = HW + stand * 0.90;
+    const cy = (topY * topY - sideR * sideR) / (2 * topY);
+    const Rs = topY - cy;
+    const cz = -0.6;                    /* sits a little back off the face */
+    const C = [0, cy * cm, cz * cm], Rw = Rs * cm;
+    const CC = C[0] * C[0] + C[1] * C[1] + C[2] * C[2] - Rw * Rw;
+
+    /* At subdiv 6 the vertices are about 2.4 mm apart on this shell, which is
+       what lets an 8 mm clump exist at all — and the clumps breaking the
+       outline is most of the difference between hair and a helmet. */
+    const unit = G.icosphere(6);
     const n = unit.positions.length / 3;
     const pos = new Float32Array(n * 3);
+    const col = new Float32Array(n * 3);
+    const lift = new Float32Array(n);
+    const base = f.hairColor || [0.011, 0.008, 0.007];
     const s = [0, 0, 0];
 
     for (let i = 0; i < n; i++) {
       const dx = unit.positions[i * 3], dy = unit.positions[i * 3 + 1],
         dz = unit.positions[i * 3 + 2];
       FACE.onSphere(s, spec, dx, dy, dz, null);
+      const headR = Math.hypot(s[0], s[1], s[2]);
 
-      /* The hairline: high across the forehead, dropping past the temples and
-         further still down the nape. One curve, because it is one curve — but
-         it has to be a *tight* one. Given a soft transition the hair crept
-         down over the temples and the face ended up peering out of a hole. */
-      /* 7.7 cm up at the forehead, 2 cm at the temple, down to the nape at
-         the back. One straight line in dz, which is all a hairline is. Given
-         a flat one it came forward past the ears and the whole thing read as
-         a hood with a face in it. */
-      const line = (2.0 + 5.7 * dz) / HH;
-      const k = M.smoothstep(0, 1, M.clamp((dy - line) / 0.15 + 0.5, 0, 1));
+      /* Where the sphere is, along this ray. */
+      const b = C[0] * dx + C[1] * dy + C[2] * dz;
+      const disc = b * b - CC;
+      const afroR = disc > 0 ? b + Math.sqrt(disc) : headR;
 
-      /* Tight coils read as a field of small round clumps, not as a smooth
-         cap. Sine products are enough at this scale and cost nothing. */
-      const coil = Math.sin(dx * 8.7) * Math.sin(dy * 9.9 + 1.7) * Math.sin(dz * 9.1);
-      const t = M.lerp(-0.9 * thick - 0.02, thick * (1 + 0.13 * coil), k);
+      /* The hairline: 7.7 cm up at the forehead, dropping past the temples
+         and further down the nape. Plus two things a straight line does not
+         have — the temples recede, and no hairline anywhere is a smooth
+         curve, so it is roughened by the same noise that makes the clumps. */
+      const temple = M.smoothstep(0.45, 0.95, Math.abs(dx)) * Math.max(0, dz);
+      /* Barely any wobble on the *line* itself. Moving the hairline is a very
+         blunt instrument: in the transition band a few millimetres of shift
+         swings the surface most of the way from scalp to dome, so noise on
+         the line came out as radial tongues — a mane of spokes round the
+         face. The edge gets broken by the clumps instead, below. */
+      const wob = (clump(dx * 17.0, dy * 17.0, dz * 17.0) - 0.5) * 0.10;
+      const line = (2.0 + 5.4 * dz + 0.7 * temple + wob) / HH;
+      /* Nearly a step. The shell has to climb four and a half centimetres
+         from the scalp to the dome, and *any* band wide enough to see that
+         climb happen reads as a smooth funnel round the face — a collar,
+         which is the one thing this cannot be. Done over three millimetres
+         of head height it is a cliff instead, and almost all of the cliff is
+         inside the head where nobody can see it. What is left outside is a
+         crisp hairline with clumps already on it. */
+      const k = M.smoothstep(0, 1, M.clamp((dy - line) / 0.030 + 0.5, 0, 1));
 
-      const outward = M.norm3([0, 0, 0], s);
-      pos[i * 3] = s[0] + outward[0] * t;
-      pos[i * 3 + 1] = s[1] + outward[1] * t;
-      pos[i * 3 + 2] = s[2] + outward[2] * t;
+      /* Tight coils: a dense field of small round clumps, with a coarser
+         lumpiness under them so the mass is not evenly stippled. Both ride on
+         `k`, so the hairline stays smooth while the crown is textured. */
+      const px = dx * afroR, py = dy * afroR, pz = dz * afroR;
+      const fine = clump(px * 15.0, py * 15.0, pz * 15.0);
+      const coarse = clump(px * 6.4 + 11, py * 6.4 + 5, pz * 6.4 - 7);
+      /* In centimetres, then converted once. Written without that conversion
+         the first time, which put a four *centimetre* spike on every clump
+         and turned the head into a sea urchin. */
+      const bumpCm = ((fine - 0.5) * 0.115 + (coarse - 0.5) * 0.065) * stand;
+
+      /* The clumps come in well before the hair reaches full depth, so the
+         hairline is textured rather than a clean curve. Tied to `k` directly
+         they faded out exactly where the edge is, which is the one place the
+         eye looks for them. */
+      const tex = M.clamp(k * 3.2, 0, 1);
+      const r = headR + Math.pow(k, 1.35) * Math.max(0, afroR - headR)
+        - (1 - k) * (0.9 * stand * cm + 0.02);
+
+      pos[i * 3] = dx * r; pos[i * 3 + 1] = dy * r; pos[i * 3 + 2] = dz * r;
+      lift[i] = tex * bumpCm * cm;
+
+      /* Hair is dark, but not evenly dark. What reads is the shadow packed
+         into the gaps between the clumps — occlusion baked where the surface
+         is already low, which costs nothing and is most of what stops a dark
+         mass looking like moulded rubber. Hair this dark also wants a
+         *narrow* range: opened up, the clump tops went grey and the whole
+         mass read as steel wool. */
+      const lit = 0.48 + 0.38 * M.clamp(fine * 0.70 + coarse * 0.45, 0, 1);
+      col[i * 3] = base[0] * lit;
+      col[i * 3 + 1] = base[1] * lit;
+      col[i * 3 + 2] = base[2] * lit;
     }
-    return { positions: pos, indices: unit.indices };
+
+    /* Second pass: push the clumps out along the surface's own normal rather
+       than along the ray from the middle of the head.
+
+       This is the difference between coils and a comb-over. Where the shell
+       is steep — the band just above the hairline, where it climbs from the
+       scalp to the full depth of the hair — a radial displacement runs almost
+       *along* the surface instead of out of it, so the clumps there stretched
+       into streaks and the face wore a slicked collar. Along the normal they
+       are clumps everywhere, which is what they are. */
+    const nrm = G.computeNormals(pos, unit.indices, n);
+    for (let i = 0; i < n; i++) {
+      const t = lift[i];
+      if (t !== 0) {
+        pos[i * 3] += nrm[i * 3] * t;
+        pos[i * 3 + 1] += nrm[i * 3 + 1] * t;
+        pos[i * 3 + 2] += nrm[i * 3 + 2] * t;
+      }
+
+      /* Occlusion, from the surface's own orientation. The hair stands off
+         the head, so the wall between the hairline and the outside of the
+         mass faces sideways and down — it is the underside of the afro, and
+         in life it is the darkest part of it, buried under everything above.
+         Lit as though it faced outward it came out as a fan of pale spokes
+         radiating from the face, which was the last thing here that looked
+         like a wig rather than like hair. */
+      const dx = unit.positions[i * 3], dy = unit.positions[i * 3 + 1],
+        dz = unit.positions[i * 3 + 2];
+      const facing = nrm[i * 3] * dx + nrm[i * 3 + 1] * dy + nrm[i * 3 + 2] * dz;
+      const occ = 0.16 + 0.84 * M.clamp(facing, 0, 1);
+      col[i * 3] *= occ; col[i * 3 + 1] *= occ; col[i * 3 + 2] *= occ;
+    }
+    return { positions: pos, indices: unit.indices, colors: col };
   }
 
   /* Everything attached, in the same local frame as the head. */
   FACE.mesh = function (spec) {
     const parts = { pos: [], col: [], mat: [], idx: [] };
-    const add = function (positions, indices, colour, matId) {
+    const add = function (positions, indices, colour, matId, perVertex) {
       const base = parts.pos.length / 3;
       for (let i = 0; i < positions.length; i++) parts.pos.push(positions[i]);
       for (let i = 0; i < positions.length / 3; i++) {
-        parts.col.push(colour[0], colour[1], colour[2]);
+        if (perVertex) parts.col.push(perVertex[i * 3], perVertex[i * 3 + 1], perVertex[i * 3 + 2]);
+        else parts.col.push(colour[0], colour[1], colour[2]);
         parts.mat.push(matId);
       }
       for (let i = 0; i < indices.length; i++) parts.idx.push(indices[i] + base);
@@ -618,7 +750,7 @@
 
     /* --- hair --- */
     const shell = hairShell(spec);
-    add(shell.positions, shell.indices, hair, MAT.HAIR);
+    add(shell.positions, shell.indices, hair, MAT.HAIR, shell.colors);
 
     const positions = new Float32Array(parts.pos);
     const indices = new Uint32Array(parts.idx);
@@ -684,7 +816,7 @@
         chinProjection: 6,
 
         jawDrop: 0.30,
-        hairCm: 3.9,
+        hairMm: 46,
         hairColor: [0.011, 0.008, 0.007],
         /* Lip colour contrast on darker skin is *low*. High-contrast lips are
            the single most recognisable marker of the caricature tradition
