@@ -70,11 +70,30 @@
 
   function Brain() {
     this.subject = null;
+    /* What the body has on right now, as reported by the scene.
+
+       The subject is what we are *talking about*, and it outlives a change of
+       shape — you can still ask about pineapples after it has stopped being
+       one. This is a different fact: what is actually on. The two come apart
+       every time something other than a name moves the body — a lesson that
+       turns it into a cube, "be yourself again", abandoning a routine halfway
+       — and when they do, naming a thing you are not currently wearing has to
+       work. Deciding that from the subject alone meant naming a thing twice
+       with anything at all in between did nothing at all. */
+    this.wearing = null;
+    this.metFace = false;      /* it only makes its speech about itself once */
     this.factCursor = {};
     this.introduced = false;   /* the menu of options is worth saying once */
     this.rand = M.rng((Date.now() & 0x7fffffff) || 3);
     this.turns = 0;
   }
+
+  /* The scene reports back what it turned into, whoever asked for it — a
+     typed name, a lesson step, or nothing at all. */
+  Brain.prototype.wore = function (entry) {
+    this.wearing = entry || null;
+    if (entry && entry.kind === 'face') this.metFace = true;
+  };
 
   Brain.prototype._pick = function (list) {
     return list[Math.floor(this.rand() * list.length) % list.length];
@@ -189,7 +208,7 @@
        does while wearing the thing, not instead of showing you. */
     if (entry) {
       const aspect = this._detectAspect(text);
-      const fresh = entry !== this.subject;
+      const fresh = entry !== this.wearing;
       this.subject = entry;
 
       /* Unless you specifically want it standing next to itself. */
@@ -206,6 +225,19 @@
            is the one thing it can turn into that makes the point the sphere
            cannot make about itself: that the sphere is a choice. */
         if (entry.kind === 'face') {
+          /* It explains itself the first time and never again. Coming back to
+             a face you have already met should feel like putting a coat on,
+             not like being introduced to somebody. */
+          if (this.metFace) {
+            return {
+              lines: [this._pick([
+                'Back on. Give me a second.',
+                'Sure. One face, coming up.',
+                'Right — this one again. Hold on.'
+              ])],
+              morph: entry
+            };
+          }
           lines.push('Sure. Hold on, this one takes a moment.');
           lines.push('There. Same body — every vertex of it. I did not put a '
             + 'face on, I *became* one.');

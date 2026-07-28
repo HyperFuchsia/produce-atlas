@@ -155,10 +155,13 @@
        moving on its own after the morph has finished. */
     this.face = null;
     this.hands = null;
+    /* Whether he has ever had them out. Once he has, every face after this
+       one comes with them. */
+    this.handsEarned = false;
     this._trimTmp = M.m4();
     /* Half a second under the floor and he takes the camera off you. */
     this.fourthWall = { phase: 'off', t: 0, under: 0, cool: 0, blend: 0,
-      hand: 1, yaw: 0, pitch: 0, toPitch: 0.14 };
+      hand: 1, yaw: 0, pitch: 0, toPitch: 0.14, strikes: 0 };
     /* He is watching the input box for one word. */
     this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
       heat: 0, palm: 0, look: 0, at: { spin: 0, tilt: 0 } };
@@ -329,6 +332,12 @@
 
     this._applyBody();
     this._setTrimmings(entry);
+    /* Tell it what it just turned into. Every route into a new shape comes
+       through here — a name you typed, a step in a lesson, a routine you
+       abandoned — so this is the one place that knows, and it is the only
+       thing that can honestly answer "am I already this?" next time you type
+       a name. */
+    this.brain.wore(entry);
 
     /* A shove so the change is felt, not just seen. Melting is the exception:
        a boing on the way to becoming a puddle undoes the whole gag. */
@@ -362,17 +371,30 @@
 
     /* A face arrives with no hands. They are not decoration and they are not
        always there — they exist for exactly one purpose, and turning up is
-       most of the effect. See updateFourthWall. */
+       most of the effect. See updateFourthWall.
+
+       The first time. After that they are his: he got them out, and going off
+       to be a car for a minute is not putting them away again. What resets
+       here is the scene that might have been half-played — where he was
+       looking, what he was reaching for — and nothing else. He remembers
+       being told you off, he remembers turning his palms round, and he
+       remembers how many times you have asked about them. Wiping all of that
+       on every change of shape made it a trick that fires and rewinds; keeping
+       it makes it a thing that happened. */
     const c = this.caught;
-    c.phase = 'off'; c.count = 0; c.armed = true; c.cool = 0;
-    c.heat = 0; c.palm = 0; c.look = 0;
-    this.chat.hint(null);
+    c.phase = 'off'; c.armed = true; c.cool = 0; c.look = 0;
     const w = this.fourthWall;
-    w.strikes = 0;
     w.phase = 'off';
     w.blend = 0;
     w.under = 0;
     w.cool = entry.kind === 'face' ? 1.5 : 0;
+    if (entry.kind === 'face') {
+      if (this.handsEarned) this._spawnHands(entry);
+      this.chat.hint(c.count >= FED_UP_AT ? SICK_OF_IT : null);
+    } else {
+      /* A pineapple has no hands to be asked about. */
+      this.chat.hint(null);
+    }
   };
 
   /* Built the moment they are first wanted rather than arriving with the
@@ -386,6 +408,7 @@
      behind it. */
   App.prototype._spawnHands = function (entry) {
     if (this.hands) return;
+    this.handsEarned = true;
     const hands = [];
     for (let s = 0; s < 2; s++) {
       const side = s === 0 ? -1 : 1;
@@ -568,6 +591,10 @@
     ['We are still doing this.']
   ];
 
+  /* Where he gives up and takes the suggestion line off you. */
+  const FED_UP_AT = 4;
+  const SICK_OF_IT = 'Stop asking about my hands!';
+
   App.prototype.noticeHands = function (text) {
     const c = this.caught;
     const has = /hand/i.test(String(text || ''));
@@ -603,7 +630,7 @@
        sits there greyed out in the empty box, which is the one bit of the
        interface that speaks before you have done anything — so it is the only
        way he gets to keep saying it while you are not typing. */
-    if (c.count >= 4) this.chat.hint('Stop asking about my hands!');
+    if (c.count >= FED_UP_AT) this.chat.hint(SICK_OF_IT);
   };
 
   /* Where he is looking, as a spin and a tilt that will point his front at a
