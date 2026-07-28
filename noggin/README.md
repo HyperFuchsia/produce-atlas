@@ -429,12 +429,21 @@ been told twice expects to be picked up.
 Only when he is wearing the face. A pineapple cannot do this, and the harness
 checks that it doesn't try.
 
-**The hands are an event, not set dressing.** A face arrives with none. They
-are built the moment they are wanted and thrown away the moment he lets go —
-a pair of hands floating beside a head the whole time is scenery, and a pair of
-hands that were not there a second ago is something happening. They are their
-own props rather than part of the head's trimming, because they have to move
-independently of it.
+**The hands are earned, and then they stay.** A face arrives with none — a
+pair floating beside a head from the start is scenery, and nobody notices
+scenery. They are built the first time he needs them, which is the third time
+you go under the floor, and from then on they are simply part of him for as
+long as he is wearing that face: they drift at his sides and beat on the words
+he leans on. Putting them away after each grab made them a special effect that
+fires and resets. Leaving them means the third strike permanently changes what
+he looks like, and everything he says afterwards has hands behind it.
+
+They gesture on `chat.emphasis` — the same spike on stressed words the sphere's
+swell already rides. One number that already existed, and it is the difference
+between a face with hands near it and a face that is talking to you.
+
+They are their own props rather than part of the head's trimming, because they
+have to move independently of it.
 
 They are built from adult-male measurements like everything else: 189 mm wrist
 to middle fingertip, 107 mm of that palm, 89 mm across the knuckles, fingers of

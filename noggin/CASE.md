@@ -316,8 +316,13 @@ first time they wander somewhere is a bouncer, not a person, and the argument
 being made here is that there is a person in the room. Two warnings, then he
 stops asking — which is also the only structure under which the hands land as
 a surprise, because nobody who has been told twice expects to be picked up.
-The hands do not exist until that moment and are thrown away afterwards: a
-pair of hands floating beside a head the whole time is scenery. It is also the only place here where anything
+The hands do not exist until that moment — a pair floating beside a head from
+the start is scenery, and nobody notices scenery — and once they are out they
+stay out. That last part matters more than it sounds: it means the third
+strike permanently changes what he looks like. You did that. Everything he
+says for the rest of the session has hands behind it, and they are there
+because of something you chose to keep doing after being asked twice not to.
+Consequence that persists is a thing a text box cannot offer at all. It is also the only place here where anything
 addresses the camera directly, and it is deliberately the only place, because
 the trick works once and stops working the third time.
 

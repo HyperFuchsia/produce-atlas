@@ -7295,10 +7295,15 @@ void main() {
     w.cool = entry.kind === 'face' ? 1.5 : 0;
   };
 
-  /* Built the moment they are wanted and thrown away afterwards, rather than
-     hanging around the whole time a face is on. A pair of hands floating
-     beside a head is set dressing; a pair of hands that were not there a
-     second ago is an event. */
+  /* Built the moment they are first wanted rather than arriving with the
+     face. A pair of hands floating beside a head from the start is set
+     dressing; a pair that were not there a second ago is an event.
+
+     Once they are out they stay out, for the rest of the time he is wearing
+     the face. Putting them away after each grab made them a special effect
+     that fires and resets; leaving them means the third strike permanently
+     changes what he looks like, and everything he says afterwards has hands
+     behind it. */
   App.prototype._spawnHands = function (entry) {
     if (this.hands) return;
     const hands = [];
@@ -7443,8 +7448,11 @@ void main() {
       w.phase = 'off';
       w.under = 0;
       w.cool = 3.0;
-      /* And the hands go away again. */
-      this._dismissHands();
+      /* And the hands stay. He got them out; he is not putting them away
+         while you are still the sort of person who does that. From here they
+         drift beside him and beat on the words he leans on, which is what
+         hands do when somebody is talking — and having earned them makes
+         them read as his rather than as scenery that was always there. */
     }
   };
 
