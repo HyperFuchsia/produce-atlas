@@ -406,6 +406,22 @@ lipPaintWidth     48.0   human range 45-68   ok
 bizygomatic      151.0   human range 125-155 ok
 ```
 
+**Go under the floor and he takes the camera off you.** Orbit far enough down
+and you drop through the ground, and underneath a scene there is nothing — the
+floor is one-sided, the room has no basement, and what you get is a view of the
+back of everything. Every 3-D thing has this problem and nearly all of them
+solve it by quietly refusing to let you, which is honest and says nothing.
+
+He has hands now, so he solves it himself. Half a second under the floor and
+the camera stops dead; then he reaches out, takes hold of the lens, and lifts
+you back above the ground while telling you off for it. It is the one moment
+here where he acknowledges there is a camera at all — worth spending, because
+the whole premise is that you are in the room with him rather than looking at a
+picture of him.
+
+Only when he is wearing the face. A pineapple cannot do this, and the harness
+checks that it doesn't try.
+
 **It has hands, and they talk with it.** Two more props, their own this time
 rather than part of the head's trimming, because they have to move
 independently of it — a pair of hands welded to a skull is a hat stand. They

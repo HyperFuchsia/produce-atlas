@@ -301,6 +301,26 @@ perfect and leave the wax off and you have a bag of glass beads. Most of the
 recognisability of a fruit lives on its surface, and this is now three for
 three — pineapple, apple, grape.
 
+**He takes the camera off you.** — §4.3, between-turn interaction, and the
+furthest it has gone. Orbit under the floor and there is nothing there; every
+3-D scene has this hole and nearly all of them handle it by clamping the
+camera so you cannot find it. That is the correct engineering answer and it
+communicates nothing.
+
+Because he has hands, there is a better one available: half a second under the
+floor and he reaches out, takes the lens, and lifts you back up while telling
+you off. The bug is not hidden, it is *acknowledged by the character* — which
+converts the one moment where the illusion would break into the one moment he
+admits you are in the room. It is also the only place here where anything
+addresses the camera directly, and it is deliberately the only place, because
+the trick works once and stops working the third time.
+
+Worth logging against §5, defensibility, rather than as a gag. A chat product
+cannot have this. It needs a body with hands, a camera whose position is part
+of the simulation, and something that already knows how to speak — and the
+cost of building it, given all three, was one state machine and an afternoon.
+That is what an interaction moat looks like from the inside.
+
 **The face is measured, and there is a test that says so.** — §6, and the most
 important entry in this log. The first version of the face had knobs called
 `noseWide: 1.28` and `lipFull: 1.35`. Numbers with no unit and no source, which

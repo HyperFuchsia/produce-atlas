@@ -7084,6 +7084,9 @@ void main() {
     this.face = null;
     this.hands = null;
     this._trimTmp = M.m4();
+    /* Half a second under the floor and he takes the camera off you. */
+    this.fourthWall = { phase: 'off', t: 0, under: 0, cool: 0, blend: 0,
+      hand: 1, yaw: 0, pitch: 0, toPitch: 0.14 };
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -7308,10 +7311,116 @@ void main() {
      beat on the stresses. It costs one number that already exists, and it is
      the difference between a face with hands near it and a face that is
      talking to you. */
+  /* ---- the fourth wall ------------------------------------------------- */
+
+  /* Orbit far enough down and you go through the floor, and underneath a
+     scene there is nothing — the floor is one-sided, the room has no
+     basement, and what you get is a view of the back of everything. Every
+     3-D thing has this problem and almost all of them solve it by quietly
+     refusing to let you, which is honest but says nothing.
+
+     He has hands now, so he can solve it himself. Half a second under the
+     floor and the camera stops dead; then he reaches out, takes hold of it,
+     and lifts you back up while telling you off. It is the only moment here
+     where he acknowledges that there is a camera at all — which is worth
+     spending, because the whole premise is that you are in the room with him
+     rather than looking at a picture of him.
+
+     Only when he is wearing the face. A pineapple cannot do this. */
+  const WALL = { grab: 0.55, hold: 0.30, pull: 1.15, let_go: 0.65 };
+
+  App.prototype.updateFourthWall = function (dt) {
+    const w = this.fourthWall;
+    const live = !!this.hands && this.morph.t >= 1;
+
+    if (w.cool > 0) w.cool -= dt;
+    if (!live) { w.phase = 'off'; w.blend = 0; w.under = 0; return; }
+
+    if (w.phase === 'off') {
+      w.blend = Math.max(0, w.blend - dt * 3);
+      const below = this.eye[1] < this.renderer.floorY;
+      w.under = below ? w.under + dt : 0;
+      if (w.under > 0.5 && w.cool <= 0) {
+        w.phase = 'grab';
+        w.t = 0;
+        w.yaw = this.camera.yaw;
+        w.pitch = this.camera.pitch;
+        /* Whichever hand is on the side the camera has swung round to. */
+        w.hand = Math.sin(this.camera.yaw) >= 0 ? 1 : 0;
+        /* Where it has to lift you to: clear of the floor, and looking
+           slightly down at him again rather than straight along the ground. */
+        const clear = (this.renderer.floorY + 0.75 - this.target[1]) / Math.max(this.camera.dist, 0.5);
+        w.toPitch = Math.max(0.14, Math.asin(M.clamp(clear, -1, 1)) + 0.16);
+      }
+      return;
+    }
+
+    w.t += dt;
+    /* Whatever else happens, the camera is his now. */
+    this.camera.yaw = w.yaw;
+
+    if (w.phase === 'grab') {
+      w.blend = M.smoothstep(0, 1, Math.min(1, w.t / WALL.grab));
+      this.camera.pitch = w.pitch;
+      if (w.t >= WALL.grab) {
+        w.phase = 'hold'; w.t = 0;
+        this.shake = 0.10;
+        this.audio.boing(0.2);
+        this.chat.say([
+          'Hey. Hey — up here.',
+          'Do not go under there, man. There is nothing under there. I never built a downstairs.'
+        ]);
+      }
+      return;
+    }
+
+    if (w.phase === 'hold') {
+      w.blend = 1;
+      this.camera.pitch = w.pitch;
+      if (w.t >= WALL.hold) { w.phase = 'pull'; w.t = 0; }
+      return;
+    }
+
+    if (w.phase === 'pull') {
+      w.blend = 1;
+      const e = M.smoothstep(0, 1, Math.min(1, w.t / WALL.pull));
+      this.camera.pitch = w.pitch + (w.toPitch - w.pitch) * e;
+      if (w.t >= WALL.pull) { w.phase = 'let_go'; w.t = 0; }
+      return;
+    }
+
+    /* let_go: he releases and drifts back, and the camera is yours again. */
+    w.blend = 1 - M.smoothstep(0, 1, Math.min(1, w.t / WALL.let_go));
+    if (w.t >= WALL.let_go) { w.phase = 'off'; w.under = 0; w.cool = 3.0; }
+  };
+
+  /* Where the grabbing hand has to be: just off the lens, palm toward you. */
+  App.prototype._wallHandPose = function (h) {
+    const w = this.fourthWall;
+    const fwd = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.target, this.eye));
+    /* Far enough back that you see a hand rather than four sausages entering
+       from the top of the frame. */
+    const world = M.addScaled3([0, 0, 0], this.eye, fwd, 3.6);
+    const local = M.transformPoint([0, 0, 0], this.invModel, world);
+
+    /* Face the palm at the camera. The mesh's palm normal is -Z, and the
+       local matrix applies Ry then Rx, so the two angles fall straight out. */
+    const at = M.transformPoint([0, 0, 0], this.invModel, this.eye);
+    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], at, local));
+    const rx = Math.asin(M.clamp(d[1], -1, 1));
+    const ry = Math.atan2(-d[0], -d[2]);
+    /* A little wobble while he has hold of it, so it reads as a grip and not
+       as a bracket. */
+    const j = w.phase === 'pull' ? Math.sin(this.time * 26) * 0.020 : 0;
+    return { x: local[0], y: local[1] + j, z: local[2], yaw: ry + j * 0.5, pitch: rx };
+  };
+
   App.prototype.updateHands = function (dt) {
     if (!this.hands) return;
     const t = this.time;
     const emph = this.chat.emphasis;
+    const w = this.fourthWall;
+    const wall = w.blend > 0.001 ? this._wallHandPose() : null;
 
     for (let i = 0; i < this.hands.length; i++) {
       const h = this.hands[i];
@@ -7330,9 +7439,26 @@ void main() {
       const z = 0.55 + Math.sin(t * 0.53 + p) * 0.05 + h.lift * 0.16;
 
       /* Turned palm-inward, and opening a little as it gestures. */
-      const yaw = h.side * (-0.62 + h.lift * 0.34) + sway * 0.35;
-      const pitch = -0.30 + bob * 0.9 - h.lift * 0.45;
-      M.compose(h.local, x, y, z, yaw, pitch, 1);
+      let yaw = h.side * (-0.62 + h.lift * 0.34) + sway * 0.35;
+      let pitch = -0.30 + bob * 0.9 - h.lift * 0.45;
+      let px = x, py = y, pz = z;
+
+      /* Unless it is currently holding the camera. Blended rather than
+         switched, so the reach out and the drift back are the same motion
+         played forwards and then backwards. */
+      if (wall && i === w.hand) {
+        const b = w.blend;
+        px += (wall.x - px) * b;
+        py += (wall.y - py) * b;
+        pz += (wall.z - pz) * b;
+        /* Angles go the short way round, or the hand spins on its way out. */
+        let dy = (wall.yaw - yaw) % (Math.PI * 2);
+        if (dy > Math.PI) dy -= Math.PI * 2;
+        if (dy < -Math.PI) dy += Math.PI * 2;
+        yaw += dy * b;
+        pitch += (wall.pitch - pitch) * b;
+      }
+      M.compose(h.local, px, py, pz, yaw, pitch, 1);
     }
   };
 
@@ -8578,6 +8704,7 @@ void main() {
     this.resolveFloorContact();
     this.updatePlay(dt);
     this.updateHelper(dt);
+    this.updateFourthWall(dt);
     this.updateHands(dt);
     this.updateTrimmings(dt);
     this.updateLight();
