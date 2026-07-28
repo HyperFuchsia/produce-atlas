@@ -34,11 +34,14 @@
        RoomEnvironment/PMREM setup), ACES tone mapping, and shadows enabled.
     3. API returned by createRealisticCar(options):
          group      THREE.Group      — the whole car (origin at ground, +X = nose)
-         wheels     THREE.Group[]    — [FL, FR, RL, RR]; rotate .children[…] or
-                                       spin each group around its local Z axis
+         wheels     THREE.Group[]    — [FL, FR, RL, RR] wrapper groups (FL = front
+                                       left = -Z side). Set wheel.rotation.z to
+                                       spin; all four spin the same direction.
          setPaint(hexOrColor)        — repaint the body live
          materials  {paint, glass, chrome, trim, ...} — shared materials
        options: { paint, accent, plateText, interior } — all optional.
+       Note: the license-plate texture needs a browser `document`; in DOM-less
+       environments (Node, workers) the plate is skipped automatically.
     4. Dimensions are real-world meters (car ≈ 4.62 m long). Scale the group
        if your world uses other units.
 
@@ -86,7 +89,6 @@ function createRealisticCar(options = {}) {
     accent: options.accent ?? '#101114',      // splitter / skirts / diffuser
     plateText: options.plateText ?? 'ATLAS',
     interior: options.interior ?? true,
-    ...options,
   };
 
   // ── Key dimensions (meters). +X = nose, +Y = up, +Z = driver side. ──
@@ -94,8 +96,8 @@ function createRealisticCar(options = {}) {
   const X_FRONT = L / 2;          // +2.31
   const TIRE_R = 0.32, TIRE_W = 0.25, HUB_Y = 0.32;
   const T_FRONT_AXLE = 0.1926, T_REAR_AXLE = 0.7987;   // param positions
-  const ARCH_R_F = 0.37, ARCH_R_R = 0.39;              // wheel-arch radii
-  const TRACK_HALF = 0.82;
+  const ARCH_R_F = 0.355, ARCH_R_R = 0.365;            // snug wheel-arch radii
+  const TRACK_HALF = 0.78;                             // tires tucked inside fenders
 
   const xAt = (t) => X_FRONT - L * t;   // t: 0 = front bumper → 1 = rear
 
@@ -120,12 +122,12 @@ function createRealisticCar(options = {}) {
 
   // Height of the painted body's top surface at the centreline (hood → deck)
   const topY = track([
-    [0, 0.585], [0.045, 0.665], [0.11, 0.723], [0.19, 0.772], [0.30, 0.812],
+    [0, 0.585], [0.045, 0.665], [0.11, 0.723], [0.19, 0.79], [0.30, 0.812],
     [0.42, 0.850], [0.55, 0.873], [0.72, 0.895], [0.88, 0.918], [0.96, 0.922], [1, 0.89],
   ]);
   // Half-width of the body before plan-view end rounding
   const baseHalfW = track([
-    [0, 0.835], [0.19, 0.905], [0.45, 0.95], [0.62, 0.95], [0.80, 0.93], [1, 0.845],
+    [0, 0.835], [0.19, 0.92], [0.45, 0.95], [0.62, 0.95], [0.80, 0.93], [1, 0.845],
   ]);
   // Bottom edge of the body side (rocker), before wheel arches
   const sillBase = track([
@@ -154,7 +156,7 @@ function createRealisticCar(options = {}) {
   // Subtle fender flare over the arches
   const flareAt = (t) => {
     const g = (ta) => Math.exp(-((t - ta) ** 2) / (2 * 0.05 ** 2));
-    return 1 + 0.022 * (g(T_FRONT_AXLE) + g(T_REAR_AXLE));
+    return 1 + 0.055 * (g(T_FRONT_AXLE) + g(T_REAR_AXLE));
   };
 
   // One side of the body cross-section at t, top-centre → bottom (w, y) pairs
@@ -193,9 +195,11 @@ function createRealisticCar(options = {}) {
   // Glass canopy (windshield → roof → fastback) spans t ∈ [0.42, 0.90],
   // leaving a painted decklid between the rear glass and the ducktail.
   const CANOPY_T0 = 0.42, CANOPY_T1 = 0.90;
+  // Near-linear rise 0.42→0.56 = a straight ~33° windshield plane (no fold),
+  // short flat roof, then a steady fastback drop into the deck.
   const roofY = track([
-    [0.42, 0.858], [0.46, 0.98], [0.52, 1.175], [0.58, 1.26], [0.64, 1.275],
-    [0.72, 1.19], [0.80, 1.07], [0.86, 0.985], [0.90, 0.932],
+    [0.42, 0.815], [0.49, 1.035], [0.56, 1.245], [0.62, 1.27], [0.68, 1.265],
+    [0.76, 1.17], [0.83, 1.05], [0.88, 0.975], [0.90, 0.932],
   ]);
   const canopyEdgeY = (t) => topY(t) - 0.072;
   // Windshield base narrower than the body (A-pillars sit inboard of fenders)
@@ -213,9 +217,9 @@ function createRealisticCar(options = {}) {
     const pts = [];
     for (let i = 0; i <= 12; i++) {
       const a = (i / 12) * Math.PI / 2;
-      const yFrac = Math.pow(Math.cos(a), 0.55);
+      const yFrac = Math.pow(Math.cos(a), 0.48);   // flatter roof plane
       pts.push(new THREE.Vector2(
-        We * Math.pow(Math.sin(a), 0.72) * (1 - 0.20 * Math.pow(yFrac, 1.6)),
+        We * Math.pow(Math.sin(a), 0.68) * (1 - 0.20 * Math.pow(yFrac, 1.6)),
         E + Math.max(h - E, 0.008) * yFrac,
       ));
     }
@@ -248,9 +252,9 @@ function createRealisticCar(options = {}) {
   function loft(t0, t1, stations, sectionFn, closeEnds = false) {
     const secs = [];
     for (let s = 0; s <= stations; s++) secs.push(sectionFn(t0 + (t1 - t0) * (s / stations)));
-    if (closeEnds) {
-      for (const sec of [secs[0], secs[stations]])
-        for (const p of sec) p.x *= 0.03;
+    if (closeEnds) {   // progressive pinch → rounded caps without a hard crease
+      for (const [idx, k] of [[0, 0.03], [1, 0.55], [stations - 1, 0.55], [stations, 0.03]])
+        for (const p of secs[idx]) p.x *= k;
     }
     const S = secs[0].length, M = 2 * S - 1;
     const pos = new Float32Array((stations + 1) * M * 3);
@@ -281,7 +285,7 @@ function createRealisticCar(options = {}) {
     }),
     glass: new THREE.MeshPhysicalMaterial({
       color: 0x0a0e14, metalness: 0, roughness: 0.06, envMapIntensity: 1.1,
-      transparent: true, opacity: 0.9, side: THREE.DoubleSide,
+      transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthWrite: false,
     }),
     chrome: new THREE.MeshStandardMaterial({ color: 0xdfe3e8, metalness: 1, roughness: 0.08, envMapIntensity: 1.3 }),
     trim: new THREE.MeshStandardMaterial({ color: new THREE.Color(opts.accent), metalness: 0.2, roughness: 0.55 }),
@@ -306,7 +310,8 @@ function createRealisticCar(options = {}) {
 
   // ── Body shell + glass canopy ─────────────────────────────────────────
   add(new THREE.Mesh(loft(0, 1, 150, bodySection, true), M.paint));
-  add(new THREE.Mesh(loft(CANOPY_T0, CANOPY_T1, 90, canopySection), M.glass));
+  const canopy = add(new THREE.Mesh(loft(CANOPY_T0, CANOPY_T1, 90, canopySection), M.glass));
+  canopy.castShadow = false;   // glass must not throw an opaque shadow
 
   // Chrome trim along the visible glass/body junction, both sides.
   // Where the glass is narrower than the body (cowl), it rides up on the
@@ -323,9 +328,9 @@ function createRealisticCar(options = {}) {
   }
 
   // ── Underbody, wheel tubs, interior ───────────────────────────────────
-  add(new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.06, 1.52), M.dark)).position.set(0, 0.16, 0);
+  add(new THREE.Mesh(new THREE.BoxGeometry(3.45, 0.06, 1.28), M.dark)).position.set(0, 0.16, 0);
   for (const [ta, r] of [[T_FRONT_AXLE, ARCH_R_F], [T_REAR_AXLE, ARCH_R_R]]) {
-    const tub = add(new THREE.Mesh(new THREE.CylinderGeometry(r - 0.015, r - 0.015, 1.62, 24, 1, true), M.dark));
+    const tub = add(new THREE.Mesh(new THREE.CylinderGeometry(r - 0.015, r - 0.015, 1.95, 24, 1, true), M.dark));
     tub.rotation.x = Math.PI / 2;
     tub.position.set(xAt(ta), HUB_Y, 0);
   }
@@ -341,8 +346,9 @@ function createRealisticCar(options = {}) {
   // ── Front fascia ──────────────────────────────────────────────────────
   const intake = add(new THREE.Mesh(new RoundedBoxGeometry(0.30, 0.20, 1.02, 3, 0.035), M.glossBlack));
   intake.position.set(2.16, 0.335, 0); intake.rotation.z = -0.10;
-  const splitter = add(new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.035, 1.18, 2, 0.015), M.trim));
-  splitter.position.set(2.05, 0.115, 0);
+  // splitter rises into the bumper underside — no daylight gap
+  const splitter = add(new THREE.Mesh(new RoundedBoxGeometry(0.30, 0.10, 1.10, 2, 0.02), M.trim));
+  splitter.position.set(2.05, 0.20, 0);
   for (const sgn of [1, -1]) {
     const side = add(new THREE.Mesh(new RoundedBoxGeometry(0.20, 0.16, 0.18, 2, 0.03), M.glossBlack));
     side.position.set(2.11, 0.40, sgn * 0.50); side.rotation.y = sgn * 0.6;
@@ -362,7 +368,7 @@ function createRealisticCar(options = {}) {
     add(new THREE.Mesh(new THREE.TubeGeometry(drlPath(0.146, 0.038, 0.108, 12), 24, 0.020, 8), M.glossBlack));
   }
   const badgeF = add(new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.012, 24), M.chrome));
-  badgeF.rotation.z = Math.PI / 2; badgeF.position.set(2.30, 0.50, 0);
+  badgeF.rotation.z = Math.PI / 2; badgeF.position.set(2.316, 0.50, 0);
 
   // ── Rear ──────────────────────────────────────────────────────────────
   {  // full-width bowed LED tail bar on the vertical tail face
@@ -373,9 +379,9 @@ function createRealisticCar(options = {}) {
     }
     add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.026, 10), M.tail));
   }
-  // gloss-black lower fascia panel — breaks up the tail and carries the plate
-  const tailPanel = add(new THREE.Mesh(new RoundedBoxGeometry(0.045, 0.36, 1.12, 2, 0.02), M.glossBlack));
-  tailPanel.position.set(-2.315, 0.40, 0);
+  // compact gloss-black plate recess, embedded in the bumper face
+  const tailPanel = add(new THREE.Mesh(new RoundedBoxGeometry(0.045, 0.20, 0.64, 2, 0.02), M.glossBlack));
+  tailPanel.position.set(-2.30, 0.50, 0);
   {  // ducktail lip swept along the deck's crown so it never floats
     const pts = [];
     for (let i = 0; i <= 20; i++) {
@@ -388,14 +394,14 @@ function createRealisticCar(options = {}) {
   diffuser.position.set(-2.10, 0.235, 0);
   for (let i = -2; i <= 2; i++)
     add(new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.13, 0.018), M.dark)).position.set(-2.16, 0.17, i * 0.27);
-  for (const sgn of [1, -1]) {
+  for (const sgn of [1, -1]) {   // outboard, above the diffuser, tips proud ~2 cm
     const tip = add(new THREE.Mesh(new THREE.CylinderGeometry(0.046, 0.05, 0.18, 20), M.chrome));
-    tip.rotation.z = Math.PI / 2; tip.position.set(-2.29, 0.31, sgn * 0.46);
+    tip.rotation.z = Math.PI / 2; tip.position.set(-2.24, 0.38, sgn * 0.60);
     const inner = add(new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.185, 20), M.dark));
-    inner.rotation.z = Math.PI / 2; inner.position.set(-2.293, 0.31, sgn * 0.46);
+    inner.rotation.z = Math.PI / 2; inner.position.set(-2.243, 0.38, sgn * 0.60);
   }
-  // license plate with a generated texture
-  {
+  // license plate with a generated texture (needs a DOM; skipped headless)
+  if (typeof document !== 'undefined') {
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 128;
     const cx = cv.getContext('2d');
     cx.fillStyle = '#e9ecef'; cx.fillRect(0, 0, 512, 128);
@@ -406,11 +412,11 @@ function createRealisticCar(options = {}) {
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.50, 0.125),
       new THREE.MeshStandardMaterial({ map: tex, roughness: 0.55, metalness: 0.05 }));
-    plate.rotation.y = -Math.PI / 2; plate.position.set(-2.340, 0.455, 0);
+    plate.rotation.y = -Math.PI / 2; plate.position.set(-2.328, 0.50, 0);
     add(plate);
-    const badgeR = add(new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.012, 24), M.chrome));
-    badgeR.rotation.z = Math.PI / 2; badgeR.position.set(-2.295, 0.74, 0);
   }
+  const badgeR = add(new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.012, 24), M.chrome));
+  badgeR.rotation.z = Math.PI / 2; badgeR.position.set(-2.318, 0.74, 0);
 
   // ── Side details ──────────────────────────────────────────────────────
   for (const sgn of [1, -1]) {
@@ -421,8 +427,9 @@ function createRealisticCar(options = {}) {
     arm.position.set(xAt(tM), eY + 0.022, sgn * (zRoot + 0.045));
     const shell = add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.085, 0.10, 3, 0.03), M.paint));
     shell.position.set(xAt(tM) - 0.02, eY + 0.058, sgn * (zRoot + 0.115));
-    const face = add(new THREE.Mesh(new THREE.PlaneGeometry(0.13, 0.065), M.glossBlack));
-    face.rotation.y = Math.PI / 2 + (sgn > 0 ? 0 : Math.PI); face.position.set(xAt(tM) - 0.105, eY + 0.058, sgn * (zRoot + 0.115));
+    const face = add(new THREE.Mesh(new THREE.PlaneGeometry(0.09, 0.06), M.glossBlack));
+    face.rotation.y = -Math.PI / 2;   // normal -X: visible from behind the car
+    face.position.set(xAt(tM) - 0.105, eY + 0.058, sgn * (zRoot + 0.115));
     // flush door handle
     const tH = 0.565, yH = 0.735;
     const handle = add(new THREE.Mesh(new RoundedBoxGeometry(0.16, 0.028, 0.014, 2, 0.006), M.chrome));
@@ -448,7 +455,9 @@ function createRealisticCar(options = {}) {
   fin.scale.set(2.4, 1, 0.55); fin.position.set(xAt(0.935), topY(0.935) + 0.018, 0);
 
   // ── Wheels: tire (lathe) + 10-spoke rim + brakes ──────────────────────
-  function buildWheel() {
+  // flip = -1 builds the mirrored (left, -Z) wheel so the caliper stays on
+  // the same side of the axle after the group is turned around.
+  function buildWheel(flip = 1) {
     const w = new THREE.Group();
     const hw = TIRE_W / 2;
     const prof = [
@@ -482,14 +491,24 @@ function createRealisticCar(options = {}) {
     const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.185, 0.026, 36), M.brake);
     disc.rotation.x = Math.PI / 2; disc.position.z = 0.02; w.add(disc);
     const caliper = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.17, 0.062, 2, 0.02), M.caliper);
-    caliper.position.set(0.125, 0.09, 0.02); caliper.rotation.z = -0.62; w.add(caliper);
+    caliper.position.set(0.125 * flip, 0.09, 0.02); caliper.rotation.z = -0.62 * flip;
+    w.add(caliper);
     return w;
   }
 
+  // Each wheel is an identity-orientation wrapper group: spinning it with
+  // wheel.rotation.z rolls all four the same way (the mirrored parts sit
+  // inside, so the flip never inverts the documented spin axis).
+  // Order: [FL, FR, RL, RR], FL = front left = -Z side. Rear pair clones the
+  // front prototypes, sharing geometries and materials.
+  const protoL = buildWheel(-1); protoL.rotation.y = Math.PI;
+  const protoR = buildWheel(1);
   const wheels = [];
-  for (const [ta, sgn] of [[T_FRONT_AXLE, 1], [T_FRONT_AXLE, -1], [T_REAR_AXLE, 1], [T_REAR_AXLE, -1]]) {
-    const w = buildWheel();
-    if (sgn < 0) w.rotation.y = Math.PI;       // mirror onto the far side
+  for (const [ta, sgn] of [[T_FRONT_AXLE, -1], [T_FRONT_AXLE, 1], [T_REAR_AXLE, -1], [T_REAR_AXLE, 1]]) {
+    const proto = sgn < 0 ? protoL : protoR;
+    const parts = wheels.length < 2 ? proto : proto.clone(true);
+    const w = new THREE.Group();
+    w.add(parts);
     w.position.set(xAt(ta), HUB_Y, sgn * TRACK_HALF);
     w.traverse((o) => { o.castShadow = true; });
     group.add(w); wheels.push(w);
