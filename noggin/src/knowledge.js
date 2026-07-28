@@ -214,10 +214,28 @@
       taste: 'aggressively sour from citric acid, which can be around five percent of the juice'
     },
     {
-      id: 'grape', name: 'grapes', match: ['grape', 'grapes', 'vitis'],
-      sizeCm: 16, lengthCm: 16, widthCm: 9,
-      cluster: { count: 34, berryCm: 2.0 }, seed: 12,
-      color: [0.36, 0.14, 0.38],
+      id: 'grape', name: 'grapes', match: ['grape', 'grapes', 'vitis', 'bunch of grapes'],
+      sizeCm: 18, lengthCm: 18, widthCm: 11,
+      /* A wine bunch, not a supermarket one: 18 cm long, packed tight enough
+         that the berries flatten where they meet. 150 berries at 1.7 cm is
+         about 300 g, which is a real bunch off a real vine. */
+      cluster: {
+        count: 190, berryCm: 1.8, pack: 1.30, fill: 0.90,
+        /* Shoulders at the top, tapering to a point at the bottom. */
+        shape: [0.60, 0.88, 1.00, 0.98, 0.91, 0.80, 0.66, 0.50, 0.31, 0.10],
+        /* The wax. Pale blue-grey, and it is what you actually see — the skin
+           under it is nearly black. Both in linear light. */
+        bloomColor: [0.128, 0.140, 0.232], bloomAmount: 0.80,
+        ripeColor: [0.062, 0.011, 0.026]
+      },
+      seed: 12,
+      color: [0.028, 0.007, 0.036], gloss: false,
+      skin: 'bloom', skinAmt: 0.05, skinShade: 0.34,
+      stem: { lengthCm: 5.4, widthCm: 0.62, at: 0.47, color: [0.115, 0.075, 0.032] },
+      leaves: {
+        count: 1, lengthCm: 7.5, widthCm: 8.0, at: 0.70, tilt: 0.30,
+        lobes: 5, teeth: 0.28, color: [0.052, 0.125, 0.026]
+      },
       family: 'Vitaceae', binomial: 'Vitis vinifera', type: 'berry',
       origin: 'the Near East and the South Caucasus',
       facts: [

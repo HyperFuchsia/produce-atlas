@@ -2129,16 +2129,34 @@
   }
 
   /* A flat-ish leaf: a lens shape bent along its length. */
-  function leaf(len, wid, curl) {
-    const rings = 12, seg = 9;
+  /* A blade. `lobes` cuts sinuses into the sides and `teeth` serrates the
+     rim, which between them are the whole difference between a generic leaf
+     and a vine leaf — and a bunch of grapes with the wrong leaf on it reads
+     as a bunch of something else. Both default off, so every other leaf here
+     is untouched. */
+  function leaf(len, wid, curl, opts) {
+    const lobes = (opts && opts.lobes) || 0;
+    const teeth = (opts && opts.teeth) || 0;
+    const rings = lobes ? 22 : 12, seg = lobes ? 15 : 9;
     const positions = new Float32Array(rings * seg * 3);
     const indices = [];
     let p = 0;
     for (let i = 0; i < rings; i++) {
       const t = i / (rings - 1);
-      const w = Math.sin(Math.PI * Math.pow(t, 0.8)) * wid;
+      /* Broad and blunt for a lobed leaf — a vine leaf is as wide as it is
+         long and notched at the base, not a spearhead. */
+      let w = lobes
+        ? Math.sin(Math.PI * Math.pow(t, 0.42)) * wid * (1 - 0.45 * Math.pow(1 - t, 6))
+        : Math.sin(Math.PI * Math.pow(t, 0.8)) * wid;
+      if (lobes) w *= 1 - 0.26 * Math.pow(Math.sin(t * Math.PI * lobes * 0.5), 8);
       for (let j = 0; j < seg; j++) {
-        const s = (j / (seg - 1)) * 2 - 1;
+        let s = (j / (seg - 1)) * 2 - 1;
+        if (teeth) {
+          /* Only the rim is cut, so the teeth ride the edge instead of
+             rippling the whole blade. */
+          const rim = Math.pow(Math.abs(s), 8);
+          s *= 1 - rim * teeth * (0.5 + 0.5 * Math.sin(t * 37.0));
+        }
         positions[p] = s * w;
         positions[p + 1] = t * len;
         positions[p + 2] = (1 - s * s) * wid * 0.28 + Math.sin(t * Math.PI) * curl;
@@ -2298,6 +2316,12 @@
        geometry, and it is the one form that keeps moving after it arrives. */
     if (spec.kind === 'face') return NG.FACE.onSphere(out, spec, dx, dy, dz, spec._mouth);
 
+    if (spec.cluster) {
+      const h = clusterHit(spec, dx, dy, dz);
+      out[0] = dx * h.t; out[1] = dy * h.t; out[2] = dz * h.t;
+      return out;
+    }
+
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
@@ -2332,6 +2356,191 @@
     return out;
   };
 
+  /* ---- clusters: a bunch of grapes ------------------------------------- */
+
+  /* A bunch is not a shape, it is an arrangement, and it is the one specimen
+     here whose topology is genuinely not a sphere. Two things follow.
+
+     First, the arrangement is generated once and used by both the standalone
+     bunch (real separate berries, real gaps) and by the being wearing it —
+     otherwise the thing standing next to you and the thing you turned into
+     are two different bunches.
+
+     Second, the being cannot have gaps: it is one closed surface. So what it
+     wears is the *union* of the berries, which sounds like a compromise and
+     is very nearly not one — a real bunch is packed tight enough that you
+     rarely see through it, and a union of packed spheres has exactly the
+     lumpy silhouette and the creases between berries that make a bunch read
+     as a bunch. */
+  function clusterBerries(spec) {
+    if (spec._berries) return spec._berries;
+    const c = spec.cluster;
+    const scale = P.cm(1);
+    const r0 = (c.berryCm || 1.6) * 0.5 * scale;
+    /* Berry *centres* are packed into an envelope one berry-radius inside the
+       bunch's stated size, because each berry then sticks a radius out past
+       it. Packed to the stated size instead, an 11 cm bunch measured 12.6. */
+    const H = (spec.lengthCm || spec.sizeCm) * scale - r0 * 2;
+    const R = (spec.widthCm || spec.sizeCm) * 0.5 * scale - r0;
+    const rnd = M.rng(spec.seed || 7);
+    const want = c.count || 140;
+    /* Shoulders at the top, tapering to a point: the profile of the envelope
+       the berries are packed into, top to bottom. */
+    const shape = c.shape || [0.60, 0.88, 1.00, 0.98, 0.91, 0.80, 0.66, 0.50, 0.31, 0.10];
+    /* How close two berries may sit, as a fraction of their radius. Under two
+       they are touching, which is what a bunch does — the berries press on
+       each other hard enough to flatten where they meet. */
+    const near = (c.pack || 1.42) * r0;
+    const near2 = near * near;
+
+    const list = [];
+    let tries = 0;
+    while (list.length < want && tries < want * 300) {
+      tries++;
+      /* Biased up the bunch, because the top half holds most of the fruit. */
+      const t = Math.pow(rnd(), 0.82);
+      const rad = sampleProfile(shape, t) * R;
+      const a = rnd() * Math.PI * 2;
+      /* Pushed out towards the skin of the bunch rather than spread through
+         its volume. Two reasons, and the second is the real one: the middle
+         of a bunch is stems, not fruit; and a berry sitting further in than
+         its neighbours is seen obliquely by the radial field that carries it,
+         which stretches it into a finger. Packed onto a shell, the berries
+         are all seen roughly face-on and stay round. */
+      const q = Math.pow(rnd(), 0.30);
+      const px = Math.cos(a) * rad * q;
+      const pz = Math.sin(a) * rad * q;
+      const py = (0.5 - t) * H;
+      let ok = true;
+      for (let i = 0; i < list.length; i++) {
+        const b = list[i];
+        const ddx = b.x - px, ddy = b.y - py, ddz = b.z - pz;
+        if (ddx * ddx + ddy * ddy + ddz * ddz < near2) { ok = false; break; }
+      }
+      if (!ok) continue;
+      list.push({ x: px, y: py, z: pz, r: r0 * (0.88 + rnd() * 0.26), i: list.length });
+    }
+    /* The envelope goes with the arrangement, so the surface that fills the
+       gaps between berries is the surface they were packed into. */
+    list.envelope = { R: R, H: H, shape: shape };
+    Object.defineProperty(spec, '_berries', { value: list });
+    return list;
+  }
+  P.clusterBerries = clusterBerries;
+
+  /* Where a ray from the middle of the bunch leaves the union of the berries,
+     and which berry it left through.
+
+     For a berry the ray misses, the far intersection does not exist, so the
+     tangent point is used instead and falls away smoothly past the rim. That
+     keeps the field continuous everywhere, which matters: a hole in it would
+     be a vertex of the being flung to the origin. */
+  /* How far the tapering envelope of the bunch reaches in a direction. Found
+     by bisection rather than solved, because the envelope is a profile
+     revolved about the axis and the ray is not perpendicular to it.
+
+     This is what fills the gaps between berries. Without it, a direction that
+     threads between two berries has nothing to land on, and the only
+     available answer — the tangent point of the nearest berry — falls away
+     so steeply that every berry ends up a spike. With it, a gap simply shows
+     the mass of the bunch a few millimetres further in, which is what a gap
+     in a real bunch shows: more grapes. */
+  function envelopeReach(shape, R, H, dx, dy, dz) {
+    const lat = Math.hypot(dx, dz);
+    let lo = 0, hi = Math.max(R, H) * 1.2;
+    for (let i = 0; i < 20; i++) {
+      const t = (lo + hi) * 0.5;
+      const py = dy * t;
+      if (Math.abs(py) > H * 0.5) { hi = t; continue; }
+      const tt = M.clamp(0.5 - py / H, 0, 1);
+      if (lat * t <= sampleProfile(shape, tt) * R) lo = t; else hi = t;
+    }
+    return lo;
+  }
+
+  const HIT = { t: 0, i: -1, nx: 0, ny: 0, nz: 0 };
+  function clusterHit(spec, dx, dy, dz) {
+    const list = clusterBerries(spec);
+    const e = list.envelope;
+    /* Exactly the envelope the centres were packed into, so a berry's cap
+       meets it tangentially at the edge of the berry and there is no step.
+       Set lower, every berry on the silhouette ended in a cliff and the
+       bunch grew a fringe of pegs. */
+    const fill = envelopeReach(e.shape, e.R, e.H, dx, dy, dz)
+      * (spec.cluster.fill === undefined ? 1.0 : spec.cluster.fill);
+
+    let best = fill, bi = -1;
+    for (let k = 0; k < list.length; k++) {
+      const b = list[k];
+      const proj = b.x * dx + b.y * dy + b.z * dz;
+      if (proj <= 0) continue;
+      const perp2 = b.x * b.x + b.y * b.y + b.z * b.z - proj * proj;
+      const rr = b.r * b.r;
+      if (perp2 > rr) continue;
+      const t = proj + Math.sqrt(rr - perp2);
+      if (t > best) { best = t; bi = k; }
+    }
+    HIT.t = Math.max(best, 0.02);
+    /* In a gap, the colour belongs to whichever berry is nearest — the wax
+       down in a crevice is the wax on the berries around it. */
+    if (bi < 0) {
+      let nd = 1e9;
+      for (let k = 0; k < list.length; k++) {
+        const b = list[k];
+        const ddx = b.x - dx * HIT.t, ddy = b.y - dy * HIT.t, ddz = b.z - dz * HIT.t;
+        const d2 = ddx * ddx + ddy * ddy + ddz * ddz;
+        if (d2 < nd) { nd = d2; bi = k; }
+      }
+    }
+    const b = list[bi];
+    HIT.i = bi;
+    /* Outward normal of the berry it left through — which way that berry is
+       facing is what decides how much bloom sits on it. */
+    const hx = dx * HIT.t - b.x, hy = dy * HIT.t - b.y, hz = dz * HIT.t - b.z;
+    const l = Math.hypot(hx, hy, hz) || 1;
+    HIT.nx = hx / l; HIT.ny = hy / l; HIT.nz = hz / l;
+    return HIT;
+  }
+  P.clusterHit = clusterHit;
+
+  /* The colour of a berry, and of the bloom on it.
+
+     Bloom is the whole read. A grape is a very dark, almost black purple with
+     a coat of pale waxy dust over it, and it is the dust you actually see —
+     it is why grapes photograph slate blue rather than black, and why they
+     look matte in a bowl of otherwise shiny fruit. Left off, this comes out
+     as a bag of glass beads.
+
+     It is not uniform. It sits heaviest where the berry faces up and out, and
+     it is missing where berries have rubbed against each other, so the darker
+     skin shows through in patches down in the crevices. */
+  function berryColour(out, spec, i, nx, ny, nz) {
+    const c = spec.cluster;
+    const skin = spec.color;
+    const bloom = c.bloomColor || [0.130, 0.144, 0.238];
+    const varies = c.ripeColor || null;
+
+    /* A cheap hash of the berry index: some berries are riper than others,
+       and a bunch where every berry is the same colour reads as manufactured. */
+    const h = ((i * 2654435761) >>> 0) / 4294967296;
+    out[0] = skin[0]; out[1] = skin[1]; out[2] = skin[2];
+    if (varies) M.mix3(out, out, varies, Math.pow(h, 1.5));
+
+    /* Facing up and outward: how much wax has settled and stayed. */
+    const up = M.clamp(ny * 0.55 + 0.55, 0, 1);
+    const k = (c.bloomAmount === undefined ? 0.80 : c.bloomAmount)
+      * (0.42 + 0.58 * Math.pow(up, 1.4))
+      * (0.80 + 0.20 * h);
+    M.mix3(out, out, bloom, M.clamp(k, 0, 1));
+    return out;
+  }
+  P.berryColour = berryColour;
+
+  P.clusterPaint = function (out, spec, dx, dy, dz) {
+    const h = clusterHit(spec, dx, dy, dz);
+    return berryColour(out, spec, h.i, h.nx, h.ny, h.nz);
+  };
+
   /* What colour the surface is at a given direction.
 
      One flat colour per specimen is most of why they read as plastic: a real
@@ -2345,6 +2554,7 @@
      like. */
   P.paintOnSphere = function (out, spec, dx, dy, dz) {
     if (spec.kind === 'face') return NG.FACE.paint(out, spec, dx, dy, dz);
+    if (spec.cluster) return P.clusterPaint(out, spec, dx, dy, dz);
     const base = spec.color;
     out[0] = base[0]; out[1] = base[1]; out[2] = base[2];
     const paint = spec.paint;
@@ -2374,7 +2584,8 @@
     seeded: 3,      /* strawberry: achenes sitting in their own pits */
     freckled: 4,    /* banana: sparse dark spots over faint ridges */
     waxy: 5,        /* apple, plum: fine lenticel speckle under a sheen */
-    pores: 6        /* skin: fine grain, and a highlight that scatters */
+    pores: 6,       /* skin: fine grain, and a highlight that scatters */
+    bloom: 7        /* grapes, plums: pale wax dust, matte, rubbed off in patches */
   };
 
   /* A lofted shell, built by pushing a sphere through the same mapping the
@@ -2418,22 +2629,28 @@
       const hull = hullMesh(spec);
       part.add(hull.positions, hull.indices, spec.color, mat);
     } else if (spec.cluster) {
-      /* Grapes and the like: scatter small spheres down a tapering bunch. */
-      const rnd = M.rng(spec.seed || 7);
-      const n = spec.cluster.count;
-      const berry = (spec.cluster.berryCm || 2) * 0.5 * scale;
-      for (let i = 0; i < n; i++) {
-        const t = i / (n - 1);
-        const ring = revolve({
-          rings: 12, segments: 14, height: berry * 2, radius: berry,
-          profile: [0, 0.6, 0.92, 1, 0.92, 0.6, 0]
-        });
-        const spread = (1 - t) * radius * 0.95;
-        const ang = i * 2.399;    /* golden angle keeps the bunch from stacking */
-        const px = Math.cos(ang) * spread * (0.35 + rnd() * 0.65);
-        const pz = Math.sin(ang) * spread * (0.35 + rnd() * 0.65);
-        const py = (0.5 - t) * height * 0.92;
-        part.add(translate(ring.positions, px, py, pz), ring.indices, spec.color, mat);
+      /* The bunch you can stand next to: real separate berries, so it has
+         real gaps and a real silhouette. Same arrangement the being wears. */
+      const berries = clusterBerries(spec);
+      const unit = G.icosphere(2);
+      const col = [0, 0, 0];
+      const n = unit.positions.length / 3;
+      for (let k = 0; k < berries.length; k++) {
+        const b = berries[k];
+        const pos = new Float32Array(n * 3);
+        /* Very slightly taller than wide. A berry hanging in a bunch is not a
+           marble; it is squashed by its neighbours and pulled by its own
+           weight, and perfect spheres are most of why a cluster of them
+           reads as beads. */
+        for (let v = 0; v < n; v++) {
+          pos[v * 3] = b.x + unit.positions[v * 3] * b.r;
+          pos[v * 3 + 1] = b.y + unit.positions[v * 3 + 1] * b.r * 1.06;
+          pos[v * 3 + 2] = b.z + unit.positions[v * 3 + 2] * b.r;
+        }
+        /* Coloured per berry from its own upward face, the same rule the worn
+           form uses, so the two bunches are the same bunch. */
+        berryColour(col, spec, k, 0, 0.55, 0.5);
+        part.add(pos, unit.indices, col, mat);
       }
     } else {
       const body = revolve({
@@ -2468,7 +2685,8 @@
     if (spec.leaves) {
       const n = spec.leaves.count || 1;
       for (let i = 0; i < n; i++) {
-        const l = leaf(spec.leaves.lengthCm * scale, spec.leaves.widthCm * 0.5 * scale, 0.02);
+        const l = leaf(spec.leaves.lengthCm * scale, spec.leaves.widthCm * 0.5 * scale, 0.02,
+          spec.leaves);
         let g = rotateZ(l.positions, spec.leaves.tilt !== undefined ? spec.leaves.tilt : 0.7);
         g = rotateY(g, (i / n) * Math.PI * 2 + 0.4);
         const y = height * (spec.leaves.at !== undefined ? spec.leaves.at : 0.5);
@@ -2789,10 +3007,28 @@
       taste: 'aggressively sour from citric acid, which can be around five percent of the juice'
     },
     {
-      id: 'grape', name: 'grapes', match: ['grape', 'grapes', 'vitis'],
-      sizeCm: 16, lengthCm: 16, widthCm: 9,
-      cluster: { count: 34, berryCm: 2.0 }, seed: 12,
-      color: [0.36, 0.14, 0.38],
+      id: 'grape', name: 'grapes', match: ['grape', 'grapes', 'vitis', 'bunch of grapes'],
+      sizeCm: 18, lengthCm: 18, widthCm: 11,
+      /* A wine bunch, not a supermarket one: 18 cm long, packed tight enough
+         that the berries flatten where they meet. 150 berries at 1.7 cm is
+         about 300 g, which is a real bunch off a real vine. */
+      cluster: {
+        count: 190, berryCm: 1.8, pack: 1.30, fill: 0.90,
+        /* Shoulders at the top, tapering to a point at the bottom. */
+        shape: [0.60, 0.88, 1.00, 0.98, 0.91, 0.80, 0.66, 0.50, 0.31, 0.10],
+        /* The wax. Pale blue-grey, and it is what you actually see — the skin
+           under it is nearly black. Both in linear light. */
+        bloomColor: [0.128, 0.140, 0.232], bloomAmount: 0.80,
+        ripeColor: [0.062, 0.011, 0.026]
+      },
+      seed: 12,
+      color: [0.028, 0.007, 0.036], gloss: false,
+      skin: 'bloom', skinAmt: 0.05, skinShade: 0.34,
+      stem: { lengthCm: 5.4, widthCm: 0.62, at: 0.47, color: [0.115, 0.075, 0.032] },
+      leaves: {
+        count: 1, lengthCm: 7.5, widthCm: 8.0, at: 0.70, tilt: 0.30,
+        lobes: 5, teeth: 0.28, color: [0.052, 0.125, 0.026]
+      },
       family: 'Vitaceae', binomial: 'Vitis vinifera', type: 'berry',
       origin: 'the Near East and the South Caucasus',
       facts: [
@@ -4877,6 +5113,20 @@ vec2 skinDetail(int kind, vec3 q, float fine) {
     float h = ridge - freckle * 0.5 * fine;
     return vec2(h, h);
   }
+  if (kind == 7) {
+    /* Bloom. The waxy dust a grape grows on itself — the thing that makes a
+       bunch look slate blue and matte among otherwise shiny fruit, and which
+       carries the wild yeast that made wine possible before anyone knew what
+       yeast was. Almost all of it is colour: the wax has no relief to speak
+       of, it is a powder.
+
+       The part that matters is that it is *patchy*. Berries in a bunch press
+       against one another and rub it off, so the dark skin shows in the
+       crevices, and an even coat reads as paint. */
+    float dust = (vnoise(q * 22.0) - 0.5) + 0.5 * (vnoise(q * 9.0) - 0.5);
+    float rubbed = smoothstep(0.46, 0.78, cells(q * 6.0));
+    return vec2(dust * 0.10, dust * 0.60 - rubbed * 0.50);
+  }
   if (kind == 6) {
     /* Skin. What it is for is breaking the specular, because a face with a
        mathematically smooth highlight reads as wet plastic however good the
@@ -5042,8 +5292,10 @@ void main() {
          film; on skin the light goes in, bounces about and comes back out
          diffuse, so what is left on top is broad and weak. At the fruit
          setting a face grew a wet patch across one cheek. */
-      float rough = uSkin > 5.5 ? 0.46 : (uSkin > 0.5 ? 0.34 : 0.17);
-      float specI = uSkin > 5.5 ? 0.075 : (uSkin > 0.5 ? 0.13 : 0.22);
+      float rough = 0.17, specI = 0.22;             /* made things: car paint */
+      if (uSkin > 6.5)      { rough = 0.54; specI = 0.045; }  /* bloom: matte */
+      else if (uSkin > 5.5) { rough = 0.46; specI = 0.075; }  /* skin */
+      else if (uSkin > 0.5) { rough = 0.34; specI = 0.13; }   /* fruit peel */
       form += uLightColor * ggx(N, V, L, rough) * specI;
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise

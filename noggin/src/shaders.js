@@ -298,6 +298,20 @@ vec2 skinDetail(int kind, vec3 q, float fine) {
     float h = ridge - freckle * 0.5 * fine;
     return vec2(h, h);
   }
+  if (kind == 7) {
+    /* Bloom. The waxy dust a grape grows on itself — the thing that makes a
+       bunch look slate blue and matte among otherwise shiny fruit, and which
+       carries the wild yeast that made wine possible before anyone knew what
+       yeast was. Almost all of it is colour: the wax has no relief to speak
+       of, it is a powder.
+
+       The part that matters is that it is *patchy*. Berries in a bunch press
+       against one another and rub it off, so the dark skin shows in the
+       crevices, and an even coat reads as paint. */
+    float dust = (vnoise(q * 22.0) - 0.5) + 0.5 * (vnoise(q * 9.0) - 0.5);
+    float rubbed = smoothstep(0.46, 0.78, cells(q * 6.0));
+    return vec2(dust * 0.10, dust * 0.60 - rubbed * 0.50);
+  }
   if (kind == 6) {
     /* Skin. What it is for is breaking the specular, because a face with a
        mathematically smooth highlight reads as wet plastic however good the
@@ -463,8 +477,10 @@ void main() {
          film; on skin the light goes in, bounces about and comes back out
          diffuse, so what is left on top is broad and weak. At the fruit
          setting a face grew a wet patch across one cheek. */
-      float rough = uSkin > 5.5 ? 0.46 : (uSkin > 0.5 ? 0.34 : 0.17);
-      float specI = uSkin > 5.5 ? 0.075 : (uSkin > 0.5 ? 0.13 : 0.22);
+      float rough = 0.17, specI = 0.22;             /* made things: car paint */
+      if (uSkin > 6.5)      { rough = 0.54; specI = 0.045; }  /* bloom: matte */
+      else if (uSkin > 5.5) { rough = 0.46; specI = 0.075; }  /* skin */
+      else if (uSkin > 0.5) { rough = 0.34; specI = 0.13; }   /* fruit peel */
       form += uLightColor * ggx(N, V, L, rough) * specI;
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise

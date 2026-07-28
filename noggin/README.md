@@ -312,6 +312,38 @@ carrot, a bunch of grapes and a pineapple recognisable from one small data
 table. They render through the same shader as the being and cast the same
 shadows.
 
+**A bunch of grapes is the one specimen whose topology is genuinely not a
+sphere**, so it gets solved twice from one arrangement. 190 berries are packed
+into a tapering envelope with a minimum-distance rule, biased out towards the
+skin of the bunch — the middle of a real bunch is stems, not fruit. The bunch
+you can stand next to is built from those centres as real separate berries,
+with real gaps. The being cannot have gaps, because it is one closed surface,
+so what it wears is the *union* of the same berries: for each of its 10242
+directions, the furthest point at which a ray from the middle leaves any berry.
+A real bunch is packed tight enough that you rarely see through it, and a union
+of packed spheres has exactly the lumpy silhouette and the creases that make a
+bunch read as a bunch.
+
+Three things had to be right, and each was wrong first:
+
+- **Gaps need something to land on.** A direction threading between berries has
+  no berry to hit, and the nearest berry's tangent point falls away so steeply
+  that every berry became a spike. Now the packing envelope itself is the
+  floor.
+- **That floor has to sit exactly where the centres were packed to**, or each
+  berry's cap ends in a cliff and the bunch grows a fringe of pegs.
+- **Berries at different depths get stretched.** A radial field sees an
+  off-shell berry obliquely and draws it as a finger. Packing them onto a shell
+  keeps them face-on and round.
+
+**Bloom** is the whole read on a grape — the pale wax it grows on itself, which
+is why a bunch photographs slate blue rather than black and looks matte in a
+bowl of otherwise shiny fruit. It is per-vertex paint rather than a shader
+tint, because a scalar tint can only brighten and bloom has to *desaturate*: it
+sits heaviest where a berry faces up and out, and the shader adds the patchiness
+where berries have rubbed against each other and the near-black skin shows
+through.
+
 **A dimple is authored the way you would measure one**, because the alternative
 was guessing at coefficients:
 

@@ -103,7 +103,10 @@ A case that hides these is worth nothing.
   really two volumes — a car's body and its glasshouse — needs the second one
   attached separately, and attached parts are rigid, so they do not deform when
   you pull the being around. Good enough at rest, visibly a seam if you stretch
-  it. Genuinely different topology (a bunch of grapes) stays an approximation.
+  it. Genuinely different topology — a bunch of grapes — is approximated by the
+  *union* of its parts, which turns out to cost less than it sounds: a bunch is
+  packed tight enough that the gaps between berries are creases rather than
+  holes, so a closed surface through them is very nearly the real thing.
 - **This is the demo, not the product.** The product claim is that *any* model
   could drive this layer. Nothing here proves that integration is cheap.
 
@@ -267,6 +270,25 @@ other form goes completely still, because motion belongs to the being and not
 to what it is pretending to be. A face is the exception, and for a reason that
 supports the rule rather than breaking it: on a face, the motion of speaking
 *does* belong to the form.
+
+**Grapes, which are not a shape but an arrangement.** — §6, the limitation
+above, partly retired. Every other specimen is one connected thing and grapes
+are not, so this was the case that was supposed to stay an approximation
+forever. It does not have to. One packing of 190 berries feeds both the bunch
+you stand next to — real separate berries, real gaps — and the union of the
+same berries, which is what the being wears. A bunch is dense enough that a
+closed surface through it loses almost nothing.
+
+Worth logging because it is the first time the *"same body"* constraint bought
+something rather than costing something. The union is not a workaround for the
+sphere; it is why you can grab a bunch of grapes by one berry and pull the
+whole thing out of shape, which no mesh-swap avatar can do.
+
+And bloom is the lesson from the apple again, arriving somewhere new: what
+identifies a grape is not its shape, it is the pale wax on it. Get the shape
+perfect and leave the wax off and you have a bag of glass beads. Most of the
+recognisability of a fruit lives on its surface, and this is now three for
+three — pineapple, apple, grape.
 
 Honest about where it landed: the face is stylised and soft, and the eyes are
 the weakest part of it. That is a resolution limit rather than a taste
