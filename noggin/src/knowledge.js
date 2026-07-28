@@ -47,6 +47,11 @@
       color: [0.78, 0.13, 0.12], seed: 3,
       stem: { lengthCm: 2.2, widthCm: 0.35, at: 0.42 },
       leaves: { count: 1, lengthCm: 4, widthCm: 2, at: 0.5, tilt: 0.9 },
+      skin: 'waxy', skinAmt: 0.05, skinShade: 0.20,
+      paint: {
+        bottom: [0.74, 0.66, 0.24], bottomPower: 2.6, bottomAmount: 0.85,
+        blush: { color: [0.66, 0.07, 0.06], dir: [0.42, 0.62, 0.66], power: 1.5, amount: 0.9 }
+      },
       family: 'Rosaceae, the rose family', binomial: 'Malus domestica', type: 'pome',
       origin: 'the Tian Shan mountains of Central Asia, around modern Kazakhstan',
       ancestor: 'Malus sieversii, which still grows wild there',
@@ -61,6 +66,11 @@
       id: 'banana', name: 'banana', match: ['banana', 'bananas', 'musa', 'plantain'],
       sizeCm: 18, lengthCm: 18, widthCm: 3.8, profile: ROD, bend: 0.95, lie: true,
       color: [0.92, 0.78, 0.19], segments: 22, rings: 30,
+      skin: 'freckled', skinAmt: 0.26, skinShade: 0.30,
+      paint: {
+        top: [0.24, 0.19, 0.10], topPower: 6.0, topAmount: 0.95,
+        bottom: [0.30, 0.24, 0.12], bottomPower: 6.0, bottomAmount: 0.9
+      },
       family: 'Musaceae', binomial: 'Musa acuminata and its hybrids', type: 'berry',
       origin: 'New Guinea and Island Southeast Asia',
       ancestor: 'wild bananas that are full of hard black seeds',
@@ -91,6 +101,8 @@
       sizeCm: 7, lengthCm: 5.6, widthCm: 7, profile: SPHERE, ribs: 8, ribDepth: 0.05,
       color: [0.83, 0.13, 0.09],
       stem: { lengthCm: 1.4, widthCm: 0.4, at: 0.46, color: [0.25, 0.42, 0.15] },
+      skin: 'waxy', skinAmt: 0.05, skinShade: 0.15,
+      paint: { top: [0.46, 0.36, 0.10], topPower: 5.0, topAmount: 0.5 },
       family: 'Solanaceae, the nightshades', binomial: 'Solanum lycopersicum', type: 'berry',
       origin: 'western South America, domesticated in Mesoamerica',
       facts: [
@@ -104,6 +116,7 @@
       id: 'potato', name: 'potato', match: ['potato', 'potatoes', 'spud', 'tuber'],
       sizeCm: 9, lengthCm: 6, widthCm: 9, profile: ELLIPSOID, ribs: 5, ribDepth: 0.06, lie: true,
       color: [0.72, 0.56, 0.34], gloss: false,
+      skin: 'waxy', skinAmt: 0.14, skinShade: 0.26,
       family: 'Solanaceae, the nightshades', binomial: 'Solanum tuberosum', type: 'tuber',
       origin: 'the Andes, in the region of modern Peru and Bolivia',
       facts: [
@@ -118,6 +131,9 @@
       sizeCm: 3.5, lengthCm: 4, widthCm: 3.2, profile: BERRY_POINT,
       color: [0.85, 0.11, 0.18],
       leaves: { count: 5, lengthCm: 2.2, widthCm: 1.1, at: 0.44, tilt: 1.1 },
+      skin: 'seeded', skinAmt: 0.28, skinShade: 0.34,
+      paint: { top: [0.58, 0.12, 0.10], topPower: 3.0, topAmount: 0.5,
+        bottom: [0.80, 0.22, 0.14], bottomPower: 2.4, bottomAmount: 0.55 },
       family: 'Rosaceae, the rose family', binomial: 'Fragaria × ananassa', type: 'aggregate',
       origin: 'a garden hybrid, crossed in 18th-century France from a North American and a Chilean species',
       facts: [
@@ -132,6 +148,9 @@
       sizeCm: 18, lengthCm: 18, widthCm: 12, profile: BARREL, ribs: 16, ribDepth: 0.07,
       color: [0.76, 0.55, 0.13], gloss: false,
       crown: { count: 11, lengthCm: 16, widthCm: 3, color: [0.24, 0.44, 0.18] },
+      skin: 'celled', skinAmt: 0.30, skinShade: 0.30,
+      paint: { bottom: [0.55, 0.40, 0.14], bottomPower: 3.0, bottomAmount: 0.7,
+        top: [0.52, 0.52, 0.20], topPower: 3.5, topAmount: 0.55 },
       family: 'Bromeliaceae, the bromeliads', binomial: 'Ananas comosus', type: 'multiple',
       origin: 'South America, between the Paraná and Paraguay rivers',
       facts: [
@@ -145,6 +164,7 @@
       id: 'avocado', name: 'avocado', match: ['avocado', 'avocados', 'persea'],
       sizeCm: 10, lengthCm: 11, widthCm: 7.5, profile: PEAR,
       color: [0.22, 0.26, 0.13], gloss: false,
+      skin: 'pitted', skinAmt: 0.26, skinShade: 0.26,
       family: 'Lauraceae, alongside cinnamon and bay', binomial: 'Persea americana', type: 'berry',
       origin: 'south-central Mexico',
       facts: [
@@ -158,6 +178,9 @@
       id: 'lemon', name: 'lemon', match: ['lemon', 'lemons', 'citrus limon'],
       sizeCm: 7, lengthCm: 9, widthCm: 6, profile: OVOID,
       color: [0.94, 0.82, 0.12],
+      skin: 'pitted', skinAmt: 0.22, skinShade: 0.20,
+      paint: { top: [0.62, 0.58, 0.16], topPower: 5.0, topAmount: 0.6,
+        bottom: [0.62, 0.58, 0.16], bottomPower: 5.0, bottomAmount: 0.6 },
       family: 'Rutaceae, the citrus family', binomial: 'Citrus limon', type: 'berry',
       origin: 'a hybrid, probably of the citron and the sour orange, from South or Southeast Asia',
       facts: [
@@ -282,6 +305,7 @@
       sizeCm: 8, lengthCm: 9, widthCm: 2.6, profile: [0.05, 0.6, 0.9, 1.0, 0.96, 0.86, 0.7, 0.5, 0.28, 0],
       color: [0.80, 0.10, 0.08], bend: 0.35,
       stem: { lengthCm: 2.4, widthCm: 0.5, at: 0.46, color: [0.28, 0.44, 0.16] },
+      skin: 'waxy', skinAmt: 0.04, skinShade: 0.10,
       family: 'Solanaceae, the nightshades', binomial: 'Capsicum annuum', type: 'berry',
       origin: 'the Americas — Capsicum annuum was domesticated in Mexico',
       facts: [
@@ -295,6 +319,7 @@
       id: 'cacao', name: 'cacao pod', match: ['cacao', 'cocoa', 'chocolate', 'theobroma'],
       sizeCm: 20, lengthCm: 20, widthCm: 9, profile: OVOID, ribs: 10, ribDepth: 0.11,
       color: [0.72, 0.30, 0.09], gloss: false,
+      skin: 'pitted', skinAmt: 0.24, skinShade: 0.24,
       family: 'Malvaceae, alongside okra and cotton', binomial: 'Theobroma cacao', type: 'berry',
       origin: 'the upper Amazon basin; used in Mesoamerica for thousands of years',
       facts: [
@@ -321,6 +346,8 @@
       id: 'mango', name: 'mango', match: ['mango', 'mangoes', 'mangifera'],
       sizeCm: 12, lengthCm: 13, widthCm: 8.5, profile: ELLIPSOID, lie: true,
       color: [0.86, 0.45, 0.10],
+      skin: 'waxy', skinAmt: 0.06, skinShade: 0.18,
+      paint: { blush: { color: [0.70, 0.14, 0.10], dir: [0.35, 0.72, 0.6], power: 1.3, amount: 0.9 } },
       family: 'Anacardiaceae', binomial: 'Mangifera indica', type: 'drupe',
       origin: 'South Asia',
       facts: [
@@ -335,6 +362,8 @@
       sizeCm: 7.5, lengthCm: 7, widthCm: 7.5, profile: SPHERE,
       color: [0.92, 0.48, 0.32],
       leaves: { count: 1, lengthCm: 5, widthCm: 1.4, at: 0.48, tilt: 0.8 },
+      skin: 'waxy', skinAmt: 0.06, skinShade: 0.20,
+      paint: { blush: { color: [0.72, 0.16, 0.10], dir: [0.4, 0.5, 0.77], power: 1.4, amount: 0.85 } },
       family: 'Rosaceae, the rose family', binomial: 'Prunus persica', type: 'drupe',
       origin: 'China',
       facts: [
@@ -348,6 +377,7 @@
       id: 'coconut', name: 'coconut', match: ['coconut', 'coconuts', 'cocos'],
       sizeCm: 15, lengthCm: 16, widthCm: 14, profile: ELLIPSOID,
       color: [0.42, 0.28, 0.16], gloss: false,
+      skin: 'freckled', skinAmt: 0.24, skinShade: 0.22,
       family: 'Arecaceae, the palms', binomial: 'Cocos nucifera', type: 'drupe',
       origin: 'the Indo-Pacific; it spread across the tropics partly by floating',
       facts: [
@@ -362,6 +392,7 @@
       sizeCm: 18, lengthCm: 20, widthCm: 9, profile: PEAR,
       color: [0.24, 0.10, 0.28],
       stem: { lengthCm: 3.5, widthCm: 1.2, at: 0.44, color: [0.26, 0.40, 0.16] },
+      skin: 'waxy', skinAmt: 0.04, skinShade: 0.10,
       family: 'Solanaceae, the nightshades', binomial: 'Solanum melongena', type: 'berry',
       origin: 'South and East Asia',
       facts: [

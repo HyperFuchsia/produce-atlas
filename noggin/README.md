@@ -279,6 +279,24 @@ it says so rather than inventing an answer.
 
 ## How the pieces work
 
+**Skin is procedural too, and there are no textures anywhere.** Every surface
+is a function of position evaluated in the shader: oil-gland pits on citrus,
+the diamond lattice of fused fruitlets on a pineapple, achenes sitting in their
+own dimples on a strawberry, lenticels on an apple. They bump the lighting
+through screen-space derivatives, because the surface has no UVs and never
+will, and they fade out as the feature size approaches a pixel — mipmapping,
+arrived at without a mip.
+
+**And the body is painted per vertex.** One flat colour per specimen was most
+of why they read as plastic: a real apple is red where it saw the sun and
+yellow-green underneath, a banana browns at both ends. The paint travels with
+the morph, so it arrives with the shape.
+
+Two things learned the hard way, both visible in the first attempt: patterns
+finer than a pixel are not detail, they are static; and view-angle terms — the
+film, the sheen, the rim — must read the *geometric* normal, or every speckle
+on an apple catches its own rainbow.
+
 **The specimens** are procedural. Each is a revolved radius profile plus
 optional ribs, a bend, a stem, leaves, a leaf crown, or a scatter into a
 cluster — enough vocabulary to make an apple, a banana, a carrot, a bunch of

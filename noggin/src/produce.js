@@ -317,6 +317,49 @@
     return out;
   };
 
+  /* What colour the surface is at a given direction.
+
+     One flat colour per specimen is most of why they read as plastic: a real
+     apple is red on the side that saw the sun and yellow-green underneath, a
+     banana browns at both ends, a mango is red over gold. None of that is
+     texture — it is large, soft variation across the body, and it is the
+     cheapest realism available.
+
+     `paint.top` / `paint.bottom` blend toward the poles; `paint.blush` blends
+     toward a direction, which is what a fruit ripening on one side looks
+     like. */
+  P.paintOnSphere = function (out, spec, dx, dy, dz) {
+    const base = spec.color;
+    out[0] = base[0]; out[1] = base[1]; out[2] = base[2];
+    const paint = spec.paint;
+    if (!paint) return out;
+
+    if (paint.bottom) {
+      const k = Math.pow(M.clamp(-dy, 0, 1), paint.bottomPower || 2.2);
+      M.mix3(out, out, paint.bottom, k * (paint.bottomAmount || 1));
+    }
+    if (paint.top) {
+      const k = Math.pow(M.clamp(dy, 0, 1), paint.topPower || 2.2);
+      M.mix3(out, out, paint.top, k * (paint.topAmount || 1));
+    }
+    if (paint.blush) {
+      const b = paint.blush, d = b.dir;
+      const k = Math.pow(M.clamp(dx * d[0] + dy * d[1] + dz * d[2], 0, 1), b.power || 1.8);
+      M.mix3(out, out, b.color, k * (b.amount === undefined ? 1 : b.amount));
+    }
+    return out;
+  };
+
+  /* Which procedural surface the shader should draw on this thing. */
+  P.SKINS = {
+    none: 0,
+    pitted: 1,      /* citrus: oil glands, dimpled */
+    celled: 2,      /* pineapple: fused fruitlets in a diamond lattice */
+    seeded: 3,      /* strawberry: achenes sitting in their own pits */
+    freckled: 4,    /* banana: sparse dark spots over faint ridges */
+    waxy: 5         /* apple, plum: fine lenticel speckle under a sheen */
+  };
+
   /* A lofted shell, built by pushing a sphere through the same mapping the
      being uses — so there is one definition of the shape and the standalone
      specimen and the worn form cannot drift apart. */

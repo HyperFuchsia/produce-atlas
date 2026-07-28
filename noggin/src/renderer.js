@@ -199,6 +199,9 @@
       const p = props[i];
       if (!p.handle) continue;
       gl.uniformMatrix4fv(useProgram.u.uModel, false, p.matrix);
+      gl.uniform1f(useProgram.u.uSkin, p.skin || 0);
+      gl.uniform1f(useProgram.u.uSkinAmt, p.skinAmt || 0.35);
+      gl.uniform1f(useProgram.u.uSkinShade, p.skinShade || 0.30);
       gl.bindVertexArray(p.handle.vao);
       gl.drawElements(gl.TRIANGLES, p.handle.count, gl.UNSIGNED_INT, 0);
     }
@@ -215,6 +218,7 @@
       this.meshVAOs.forEach(function (v) { gl.deleteVertexArray(v); });
       this.dynBuffers.forEach(function (b) { gl.deleteBuffer(b); });
       gl.deleteBuffer(this.staticBuffer);
+      gl.deleteBuffer(this.colorBuffer);
       gl.deleteBuffer(this.indexBuffer);
     }
 
@@ -233,6 +237,16 @@
     this.staticBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.staticBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, staticData, gl.STATIC_DRAW);
+
+    /* Colour lives in its own buffer rather than in the per-frame stream:
+       it only changes while a form is being painted on, which is a handful of
+       frames per morph, and streaming it every frame to say nothing would cost
+       a third again on the hot upload. */
+    const initial = new Float32Array(mesh.total * 3);
+    for (let i = 0; i < mesh.total * 3; i++) initial[i] = mesh.colors[i];
+    this.colorBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, initial, gl.DYNAMIC_DRAW);
 
     this.indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
@@ -258,9 +272,11 @@
       gl.enableVertexAttribArray(S.LOC.STRETCH);
       gl.vertexAttribPointer(S.LOC.STRETCH, 1, gl.FLOAT, false, ds, 24);
 
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.staticBuffer);
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
       gl.enableVertexAttribArray(S.LOC.COL);
-      gl.vertexAttribPointer(S.LOC.COL, 3, gl.FLOAT, false, 16, 0);
+      gl.vertexAttribPointer(S.LOC.COL, 3, gl.FLOAT, false, 12, 0);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.staticBuffer);
       gl.enableVertexAttribArray(S.LOC.MAT);
       gl.vertexAttribPointer(S.LOC.MAT, 1, gl.FLOAT, false, 16, 12);
 
@@ -271,6 +287,13 @@
     }
     this.dynIndex = 0;
     gl.bindVertexArray(null);
+  };
+
+  /* Repaint the body. Only called when the paint actually changes. */
+  Renderer.prototype.updateColors = function (colors) {
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.colorBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors);
   };
 
   /* Interleave the solver output and stream it into the next buffer. */
@@ -569,6 +592,10 @@
     gl.uniform1f(pr.u.uGas, gas);
     gl.uniform1f(pr.u.uBoil, state.boil || 0);
     gl.uniform1f(pr.u.uInert, state.inert || 0);
+    gl.uniform1f(pr.u.uSkin, state.skin || 0);
+    gl.uniform1f(pr.u.uSkinAmt, state.skinAmt || 0.35);
+    gl.uniform1f(pr.u.uSkinShade, state.skinShade || 0.30);
+    gl.uniform1f(pr.u.uPaint, state.paint ? 1 : 0);
     if (gas > 0.01) {
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
@@ -584,6 +611,7 @@
        material-gated, so it has to be switched off before they are drawn. */
     gl.uniform1f(pr.u.uGas, 0);
     gl.uniform1f(pr.u.uBoil, 0);
+    gl.uniform1f(pr.u.uPaint, 0);
 
     this.drawProps(state.props, pr);
     this.drawProps(state.attached, pr);

@@ -207,3 +207,10 @@ what the subject needs, with limits that scale, and the idle rotation stops
 once it is wearing a form: a slowly pitching car moved its own lowest point by
 metres, so it rode up and down against the ground and the camera chased it
 forever. Measured to zero drift once the subject settles.
+
+**Skin and paint.** — §4.2, and honestly §1 too. A thing at true scale still
+has to be recognisable as itself, and a smooth flat-coloured solid is not: it
+reads as a placeholder for the thing rather than as the thing. Procedural skin
+and per-vertex paint cost no assets, which keeps the whole argument about
+distribution ("cost is a link") intact — and the pineapple in particular goes
+from an unidentifiable yellow barrel to unmistakable.

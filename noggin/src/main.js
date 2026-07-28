@@ -205,8 +205,16 @@
     this.props = [];
     /* Morph state: the being's rest shape animating from one form to another. */
     this.baseRest = new Float32Array(this.mesh ? 0 : 0);
-    this.morph = { t: 1, dur: 1, from: null, to: null, amount: 0, target: 0, form: null };
+    this.morph = { t: 1, dur: 1, from: null, to: null, amount: 0, target: 0, form: null,
+      colFrom: null, colTo: null };
     this.formColor = [0.9, 0.9, 0.9];
+    /* What the body is painted, per vertex, and which procedural skin it
+       wears. Both travel with the morph so the paint arrives with the shape. */
+    this.vertColor = null;
+    this.paint = false;
+    this.skin = 0;
+    this.skinAmt = 0.35;
+    this.skinShade = 0.30;
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onClear = function () { self.clearSpecimens(); };
@@ -243,6 +251,7 @@
     this.orbRest = new Float32Array(this.mesh.rest);
     /* Unit directions per vertex — what any form is projected onto. */
     this.dirs = new Float32Array(this.mesh.total * 3);
+    this.vertColor = new Float32Array(this.mesh.colors);
     for (let i = 0; i < this.mesh.total; i++) {
       const x = this.orbRest[i * 3], y = this.orbRest[i * 3 + 1], z = this.orbRest[i * 3 + 2];
       const l = Math.hypot(x, y, z) || 1;
@@ -264,17 +273,32 @@
     const target = new Float32Array(n * 3);
     const out = [0, 0, 0];
 
+    const paint = new Float32Array(n * 3);
     if (entry) {
       for (let i = 0; i < n; i++) {
-        NG.P.formOnSphere(out, entry, this.dirs[i * 3], this.dirs[i * 3 + 1], this.dirs[i * 3 + 2]);
+        const dx = this.dirs[i * 3], dy = this.dirs[i * 3 + 1], dz = this.dirs[i * 3 + 2];
+        NG.P.formOnSphere(out, entry, dx, dy, dz);
         target[i * 3] = out[0];
         target[i * 3 + 1] = out[1];
         target[i * 3 + 2] = out[2];
+        NG.P.paintOnSphere(out, entry, dx, dy, dz);
+        paint[i * 3] = out[0];
+        paint[i * 3 + 1] = out[1];
+        paint[i * 3 + 2] = out[2];
       }
       this.formColor = entry.color.slice();
+      this.paint = true;
+      this.skin = NG.P.SKINS[entry.skin] || 0;
+      this.skinAmt = entry.skinAmt === undefined ? 0.35 : entry.skinAmt;
+      this.skinShade = entry.skinShade === undefined ? 0.30 : entry.skinShade;
     } else {
       target.set(this.orbRest);
+      paint.set(this.mesh.colors);
+      this.paint = false;
+      this.skin = 0;
     }
+    this.morph.colFrom = new Float32Array(this.vertColor);
+    this.morph.colTo = paint;
 
     this.morph.from = new Float32Array(this.body.rest);
     this.morph.to = target;
@@ -367,6 +391,13 @@
     this.body.refreshRestLengths();
     this._measureRest();
 
+    /* The paint arrives with the shape rather than snapping on at the end. */
+    if (m.colFrom && m.colTo) {
+      const c = this.vertColor, a = m.colFrom, bb = m.colTo;
+      for (let i = 0; i < c.length; i++) c[i] = a[i] + (bb[i] - a[i]) * e;
+      this.renderer.updateColors(c);
+    }
+
     if (m.t >= 1) {
       /* Geodesic grab distances are only worth recomputing once, at the end. */
       this.body.refreshEdgeLengths();
@@ -391,6 +422,10 @@
     if (skin) {
       this.formColor = skin.color.slice();
       this.morph.target = skin.amount;
+      /* Stone is stone all over: a state of matter overrides whatever the
+         body was painted, and takes its own single colour. */
+      this.paint = false;
+      this.skin = 0;
     }
 
     if (p.fall) {
@@ -788,6 +823,9 @@
 
     this.props.push({
       handle: handle, entry: entry, el: el,
+      skin: NG.P.SKINS[entry.skin] || 0,
+      skinAmt: entry.skinAmt === undefined ? 0.35 : entry.skinAmt,
+      skinShade: entry.skinShade === undefined ? 0.30 : entry.skinShade,
       matrix: M.m4(), t: 0, fade: 1, fading: false, spin: 0.6,
       x: 1.35 + handle.radiusUnits,
       y: -0.25,
@@ -1445,6 +1483,10 @@
       voice: this.voice,
       morph: this.morph.amount,
       formColor: this.formColor,
+      paint: this.paint,
+      skin: this.skin,
+      skinAmt: this.skinAmt,
+      skinShade: this.skinShade,
       gas: this.gas,
       boil: this.boil,
       inert: this.inert,

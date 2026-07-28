@@ -26,6 +26,33 @@ float hash13(vec3 p3) {
   p3 += dot(p3, p3.zyx + 31.32);
   return fract((p3.x + p3.y) * p3.z);
 }
+
+/* Value noise, and a cell pattern built from it. There are no textures here
+   and there is not going to be: everything a surface needs has to be a
+   function of position, which is also why it costs nothing to ship. */
+float vnoise(vec3 p) {
+  vec3 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  float n000 = hash13(i + vec3(0.0, 0.0, 0.0));
+  float n100 = hash13(i + vec3(1.0, 0.0, 0.0));
+  float n010 = hash13(i + vec3(0.0, 1.0, 0.0));
+  float n110 = hash13(i + vec3(1.0, 1.0, 0.0));
+  float n001 = hash13(i + vec3(0.0, 0.0, 1.0));
+  float n101 = hash13(i + vec3(1.0, 0.0, 1.0));
+  float n011 = hash13(i + vec3(0.0, 1.0, 1.0));
+  float n111 = hash13(i + vec3(1.0, 1.0, 1.0));
+  return mix(mix(mix(n000, n100, f.x), mix(n010, n110, f.x), f.y),
+             mix(mix(n001, n101, f.x), mix(n011, n111, f.x), f.y), f.z);
+}
+
+/* Rough cellular distance: how close this point is to the middle of a cell.
+   Real Worley would want 27 neighbour lookups; two octaves of value noise
+   pushed through a curve gets close enough for skin at a fraction of it. */
+float cells(vec3 p) {
+  float a = vnoise(p);
+  float b = vnoise(p * 2.03 + 11.7);
+  return clamp(a * 0.72 + b * 0.28, 0.0, 1.0);
+}
 `;
 
   /* ---- fullscreen triangle -------------------------------------------- */
@@ -99,6 +126,7 @@ out vec3 vCol;
 out float vMat;
 out float vStretch;
 out vec4 vLPos;
+out vec3 vObj;   /* unit direction on the body: where the skin lives */
 
 void main() {
   vec3 p = aPos;
@@ -160,6 +188,9 @@ void main() {
   vec4 wp = uModel * vec4(p, 1.0);
   vWPos = wp.xyz;
   vNor = wn;
+  /* Normalised, so a pineapple has the same number of cells whatever size
+     it is — skin is counted in features, not in centimetres. */
+  vObj = normalize(aPos + vec3(1e-6));
   vCol = aCol;
   vMat = aMat;
   vStretch = aStretch;
@@ -176,6 +207,7 @@ in vec3 vCol;
 in float vMat;
 in float vStretch;
 in vec4 vLPos;
+in vec3 vObj;
 
 uniform vec3 uEye;
 uniform vec3 uLightDir, uLightColor;
@@ -195,6 +227,10 @@ uniform float uMorph;        /* 0 = itself, 1 = fully wearing a form */
 uniform vec3 uFormColor;
 uniform float uGas;          /* 0 = a surface, 1 = a cloud of itself */
 uniform float uInert;        /* 0 = alive and looking at you, 1 = an object */
+uniform float uSkin;         /* which procedural surface, 0 for none */
+uniform float uSkinAmt;      /* how far the skin pushes the normal */
+uniform float uSkinShade;    /* how far it darkens the pits */
+uniform float uPaint;        /* 1 = the form is painted per vertex */
 
 out vec4 oColor;
 ${COMMON}
@@ -213,6 +249,66 @@ float ggx(vec3 N, vec3 V, vec3 L, float rough) {
   return D * G;
 }
 
+/* The height of the surface detail at a point on the body, in arbitrary
+   units. One function per kind of skin, all of them cheap, none of them
+   needing a single byte of texture. */
+float skinHeight(int kind, vec3 q, float fine) {
+  if (kind == 1) {
+    /* Citrus. Oil glands: pits sunk into an otherwise taut skin, with a
+       slow swell underneath so it is not evenly stippled. */
+    float pit = cells(q * 13.0);
+    return (-pow(clamp(pit, 0.0, 1.0), 2.0)) * fine + 0.30 * vnoise(q * 4.0);
+  }
+  if (kind == 2) {
+    /* Pineapple. Fruitlets are separate flowers fused together, and they
+       land on a diamond lattice wrapping the body — two helices crossing. */
+    float u = atan(q.z, q.x);
+    float v = asin(clamp(q.y / max(length(q), 1e-4), -1.0, 1.0));
+    float d = abs(sin(6.0 * u + 7.0 * v)) * abs(sin(6.0 * u - 7.0 * v));
+    return (pow(d, 0.45) - 0.5) * fine;
+  }
+  if (kind == 3) {
+    /* Strawberry. The seeds are the actual fruits, and each one sits in its
+       own dimple — the pit around the pip is most of the read. */
+    float c = cells(q * 11.0);
+    float seed = smoothstep(0.62, 0.86, c);
+    return (seed * 0.9 - smoothstep(0.30, 0.62, c) * 0.55) * fine;
+  }
+  if (kind == 4) {
+    /* Banana. Faint ridges down its length, freckles scattered over them. */
+    float ridge = sin(atan(q.z, q.x) * 5.0) * 0.18;
+    float freckle = smoothstep(0.80, 0.95, cells(q * 10.0));
+    return ridge - freckle * 0.5 * fine;
+  }
+  /* Waxy skins: lenticels, barely there, but the eye misses them. */
+  /* Lenticels — the pores an apple breathes through. Pale flecks, and almost
+     no relief at all: giving them depth turned them into bruises. */
+  float sp = cells(q * 21.0);
+  return smoothstep(0.80, 0.97, sp) * 0.55 * fine + 0.10 * vnoise(q * 5.0);
+}
+
+/* How much fine detail this pixel can actually resolve. Once a feature is
+   smaller than the pixel showing it there is nothing left but static, so the
+   fine terms fade out rather than sparkling — the same reason textures have
+   mipmaps, arrived at without one. */
+float skinFine(vec3 q, float freq) {
+  return 1.0 - smoothstep(0.10, 0.45, length(fwidth(q)) * freq);
+}
+
+/* Bump without a parametrisation. The surface has no UVs and never will, so
+   the gradient of the height is recovered from screen-space derivatives —
+   Mikkelsen's method. This is what turns a height function into something the
+   light actually catches. */
+vec3 bumpNormal(vec3 N, vec3 wpos, float h, float strength) {
+  vec3 dpdx = dFdx(wpos), dpdy = dFdy(wpos);
+  float dhdx = dFdx(h), dhdy = dFdy(h);
+  vec3 r1 = cross(dpdy, N), r2 = cross(N, dpdx);
+  float det = dot(dpdx, r1);
+  if (abs(det) < 1e-12) return N;
+  vec3 grad = (r1 * dhdx + r2 * dhdy) / det;
+  return normalize(N - grad * strength);
+}
+
 float sampleShadow(vec4 lpos) {
   vec3 p = lpos.xyz / lpos.w;
   p = p * 0.5 + 0.5;
@@ -229,11 +325,27 @@ float sampleShadow(vec4 lpos) {
 void main() {
   vec3 N = normalize(vNor);
   if (!gl_FrontFacing) N = -N;
+
+  /* Skin first, so everything downstream lights the bumped surface rather
+     than a smooth one with a pattern painted on it. */
+  vec3 Ng = N;                 /* geometric: what the silhouette is made of */
+  float skinT = 1.0;
+  if (uSkin > 0.5) {
+    float h = skinHeight(int(uSkin + 0.5), vObj, skinFine(vObj, 20.0));
+    N = bumpNormal(N, vWPos, h, uSkinAmt);
+    skinT = clamp(1.0 + h * uSkinShade, 0.30, 1.7);
+  }
+
   vec3 V = normalize(uEye - vWPos);
   vec3 L = normalize(uLightDir);
   float m = vMat;
 
   float ndvAll = clamp(dot(N, V), 0.0, 1.0);
+  /* Everything view-angle driven — the film, the sheen, the rim — reads the
+     geometric normal. Run through the bumped one instead and every speckle on
+     an apple catches its own rainbow, which is exactly what the first attempt
+     at pitting looked like. */
+  float ndvGeo = clamp(dot(Ng, V), 0.0, 1.0);
 
   // Wireframe overlays: emissive filament, brightest edge-on.
   if (m > 5.5) {
@@ -248,7 +360,7 @@ void main() {
 
     // Thin-film interference. Film thickness varies with view angle and drifts
     // slowly over the surface, so the hue sweeps the way an oil film does.
-    float f = pow(1.0 - ndvAll, 1.5);
+    float f = pow(1.0 - ndvGeo, 1.5);
     float flow = sin(vWPos.y * 2.7 + uTime * 0.35)
                + sin(vWPos.x * 2.1 - uTime * 0.27)
                + sin(vWPos.z * 2.4 + uTime * 0.31);
@@ -290,7 +402,8 @@ void main() {
       float ndl = dot(N, L);
       float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
       vec3 amb = mix(uAmbGround, uAmbSky, N.y * 0.5 + 0.5);
-      vec3 form = uFormColor * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
+      vec3 paint = (uPaint > 0.5 ? vCol : uFormColor) * skinT;
+      vec3 form = paint * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
       /* Car paint, not satin plastic: a tight highlight rather than a broad
          one. At 0.30 roughness the lobe smeared a white band down the entire
          flank of anything with a large flat panel. */
@@ -310,10 +423,10 @@ void main() {
          turns away fast; a car's flank is one normal over two square metres,
          so the whole side lit up. It is the being's own tell in any case, and
          whatever it has become does not get to keep it. */
-      form += sheen * pow(1.0 - ndvAll, 5.0) * 0.12 * (1.0 - uInert);
+      form += sheen * pow(1.0 - ndvGeo, 5.0) * 0.12 * (1.0 - uInert);
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
-      form += uRimColor * pow(1.0 - ndvAll, 3.2) * 0.35 * uInert;
+      form += uRimColor * pow(1.0 - ndvGeo, 3.2) * 0.35 * uInert;
       col = mix(col, form, uMorph);
     }
 
@@ -361,7 +474,7 @@ void main() {
   else if (m > 2.5)            { rough = 0.62; specI = 0.10; sssAmt = 0.05; }
 
   float st = clamp(vStretch * 0.72, 0.0, 1.0);
-  vec3 base = vCol;
+  vec3 base = vCol * skinT;
   if (m < 0.5) base = mix(base, uStretchTint, st * 0.8);
 
   float sh = sampleShadow(vLPos);
@@ -386,7 +499,7 @@ void main() {
   float spec = ggx(N, V, L, rough) * specI * sh;
   lit += uLightColor * spec;
 
-  float ndv = clamp(dot(N, V), 0.0, 1.0);
+  float ndv = ndvGeo;
   // Rim light is reflected light, so a black surface should barely take any.
   // Without this a tyre picks up the same warm edge as a lemon and reads as
   // grey plastic.
