@@ -127,12 +127,43 @@
     if (spec._rig) return spec._rig;
     const f = spec.face || {};
 
-    /* Everything below is authored as "how far out from a unit sphere", so
-       the head can then be scaled to its real centimetres in one place. */
-    const noseWide = f.noseWide === undefined ? 1 : f.noseWide;
-    const lipFull = f.lipFull === undefined ? 1 : f.lipFull;
-    const cheek = f.cheek === undefined ? 1 : f.cheek;
-    const browHeavy = f.browHeavy === undefined ? 1 : f.browHeavy;
+    /* What varies from face to face is a set of measurements in millimetres,
+       not a set of multipliers.
+
+       This mattered more than it sounds. The first version had `noseWide: 1.28`
+       and `lipFull: 1.35` — numbers with no unit, no source and nothing to
+       check them against, and it is very easy to talk yourself into a
+       multiplier. Measured, the nose those produced was 79 mm across. The
+       widest nose on any living human is around 48. That is not a stylistic
+       choice, it is a caricature, and no amount of good intent in the
+       surrounding code makes it not one.
+
+       A measurement cannot do that quietly. 42 mm is either right or it is
+       wrong, anyone can look it up, and scratchpad/anthro.js measures the
+       built mesh and fails if any of it lands outside the range a real face
+       occupies. Difference between populations is real and belongs here;
+       exaggeration of it is the thing being guarded against, and the guard is
+       arithmetic rather than taste. */
+    const mm = function (v, dflt) { return (v === undefined ? dflt : v) / 10; };
+    const alarWidth = mm(f.alarWidth, 42);
+    const bridgeWidth = mm(f.bridgeWidth, 15);
+    const noseProjection = mm(f.noseProjection, 18);
+    const vermUpper = mm(f.vermilionUpper, 11);
+    const vermLower = mm(f.vermilionLower, 14);
+    const mouthWidth = mm(f.mouthWidth, 54);
+    const bizygomatic = mm(f.bizygomatic, 141);
+    const browProjection = mm(f.browProjection, 5);
+    const chinProjection = mm(f.chinProjection, 6);
+
+    /* A gaussian of half-width w and height a is still 2 mm proud at about
+       1.12w from its centre, and 2 mm is where a surface stops reading as
+       flat. So a feature that has to *measure* W across sits at W/2 - 1.12w
+       from the midline. This is the whole conversion, and it is why the
+       numbers above survive contact with the mesh. */
+    const edge = function (halfWidthCm) { return 1.12 * halfWidthCm; };
+    const alaHalfW = 0.80;
+    const alaX = Math.max(0.4, alarWidth * 0.5 - edge(alaHalfW));
+    const lipHalfW = mouthWidth * 0.5 - edge(0.62);
 
     const D = function (xCm, yCm, back) { return dir(xCm, yCm, back); };
     /* One feature, sized in centimetres: where it is, how far it stands off
@@ -152,12 +183,12 @@
          the brows, a rounded ball at the tip, and two wings either side of
          it. One bump gives a snout every time. Together they stand about
          1.7 cm off the face, which is what a nose does. */
-      bridge: F(D(0, -1.6), 0.70, 1.0 * noseWide, 2.6),
-      tip: F(D(0, CM.noseTip), 1.15, 1.2 * noseWide, 1.1),
-      alaL: F(D(-CM.alaX * noseWide, CM.noseBase), 0.70, 1.0 * noseWide, 0.8),
-      alaR: F(D(CM.alaX * noseWide, CM.noseBase), 0.70, 1.0 * noseWide, 0.8),
-      nostrilL: F(D(-1.1 * noseWide, CM.noseBase - 0.5), -0.42, 0.6, 0.55),
-      nostrilR: F(D(1.1 * noseWide, CM.noseBase - 0.5), -0.42, 0.6, 0.55),
+      bridge: F(D(0, -1.6), noseProjection * 0.34, bridgeWidth * 0.5, 2.6),
+      tip: F(D(0, CM.noseTip), noseProjection * 0.88, alarWidth * 0.26, 1.1),
+      alaL: F(D(-alaX, CM.noseBase), 0.60, alaHalfW, 0.8),
+      alaR: F(D(alaX, CM.noseBase), 0.60, alaHalfW, 0.8),
+      nostrilL: F(D(-alaX * 0.52, CM.noseBase - 0.5), -0.34, 0.42, 0.55),
+      nostrilR: F(D(alaX * 0.52, CM.noseBase - 0.5), -0.34, 0.42, 0.55),
       /* Philtrum: the groove from the nose down to the lip. Small, and its
          absence is one of those things you cannot name but do notice. */
       philtrum: F(D(0, -5.7), -0.25, 0.5, 0.8),
@@ -165,8 +196,8 @@
       /* Brow ridge, then the sockets under it. The ridge is most of what
          makes a face read as male; the sockets are what stop the eyes
          floating on the front of a ball. */
-      browL: F(D(-3.4, CM.glabella), 0.50 * browHeavy, 1.9, 0.9),
-      browR: F(D(3.4, CM.glabella), 0.50 * browHeavy, 1.9, 0.9),
+      browL: F(D(-3.4, CM.glabella), browProjection, 1.9, 0.9),
+      browR: F(D(3.4, CM.glabella), browProjection, 1.9, 0.9),
       socketL: F(D(-CM.eyeX, CM.eye), -0.75, 1.9, 1.1),
       socketR: F(D(CM.eyeX, CM.eye), -0.75, 1.9, 1.1),
       /* Nasion, the dip between the brows. Without it the ridge runs straight
@@ -183,18 +214,25 @@
       lidLoR: F(D(CM.eyeX, CM.eye - 0.90), 0.72, 1.9, 0.55),
 
       /* Malar prominence — the cheekbone — and the softer cheek under it. */
-      malarL: S(D(-CM.malarX, CM.malar), 0.50 * cheek, 2.6, 2.0),
-      malarR: S(D(CM.malarX, CM.malar), 0.50 * cheek, 2.6, 2.0),
+      malarL: S(D(-(bizygomatic * 0.5 - 0.9), CM.malar), 0.50, 2.6, 2.0),
+      malarR: S(D(bizygomatic * 0.5 - 0.9, CM.malar), 0.50, 2.6, 2.0),
       cheekL: S(D(-CM.cheekX, CM.cheek), 0.30, 2.4, 2.2),
       cheekR: S(D(CM.cheekX, CM.cheek), 0.30, 2.4, 2.2),
 
       /* The mouth. A seam, two lips either side of it, and the muzzle they
          both sit on — lips are not stuck to a flat plane, they are wrapped
          round the front of the teeth. */
-      muzzle: F(D(0, CM.mouth + 0.4), 0.60, 2.9, 2.6),
-      seam: F(D(0, CM.mouth), -0.52, 1.7, 0.55),
-      upperLip: F(D(0, CM.mouth + 0.60), 0.58 * lipFull, 1.6, 0.58),
-      lowerLip: F(D(0, CM.mouth - 0.78), 0.66 * lipFull, 1.55, 0.68),
+      muzzle: F(D(0, CM.mouth + 0.4), 0.60, mouthWidth * 0.55, 2.6),
+      seam: F(D(0, CM.mouth), -0.52, lipHalfW, 0.55),
+      /* Vermilion: each lip is as tall as it measures, centred on its own
+         half of that height either side of the seam. */
+      upperLip: F(D(0, CM.mouth + vermUpper * 0.5), 0.55, lipHalfW, vermUpper * 0.5),
+      lowerLip: F(D(0, CM.mouth - vermLower * 0.5), 0.62, lipHalfW, vermLower * 0.5),
+      /* The coloured area, which is a separate question from the shape and is
+         where caricature actually hides. Sized to the lip and no larger; the
+         first version let the paint mask spread 124 mm across the face. */
+      vermilion: F(D(0, CM.mouth + (vermUpper - vermLower) * 0.25), 0,
+        mouthWidth * 0.62, (vermUpper + vermLower) * 0.42),
       /* What is behind the lips. A mouth that opens without one is a crease
          in the chin: the jaw drops, the lips part, and there is nothing but
          more face behind them. This recesses when it opens, and is painted
@@ -203,7 +241,7 @@
       cavity: F(D(0, CM.mouth - 0.10), 0, 1.75, 1.15),
       /* The crease under the lower lip, which is what gives a chin its shelf. */
       mentolabial: F(D(0, -8.3), -0.30, 1.7, 0.8),
-      chin: F(D(0, CM.chin), 0.70, 2.6, 1.8),
+      chin: F(D(0, CM.chin), chinProjection, 2.6, 1.8),
 
       /* Jaw corners: where the mandible turns up towards the ear. */
       jawL: S(D(-CM.jawX, CM.jaw), 0.80, 2.8, 2.4),
@@ -356,15 +394,18 @@
     /* Lips. The seam is darkest, the vermilion of both lips a shade under the
        surrounding skin — on darker skin the contrast is lower than people
        tend to draw it, and overdoing it is what turns a face into a mask. */
-    const lip = M.clamp(
-      at(R.upperLip, dx, dy, dz) * 1.15 +
-      at(R.lowerLip, dx, dy, dz) * 1.15 +
-      at(R.seam, dx, dy, dz) * 1.35, 0, 1);
-    /* Vermilion has an edge — that is what the word means. Blended in as a
-       smooth falloff the lips dissolve into the chin and the mouth stops
-       being a feature. */
-    M.mix3(out, out, lipC,
-      M.smoothstep(0.16, 0.62, lip) * (c.lipAmount === undefined ? 0.70 : c.lipAmount));
+    /* The coloured area is its own feature, sized to the lip, rather than
+       whatever three overlapping gaussians happen to add up to. Measured, the
+       old mask painted a patch 124 mm across and 58 mm tall onto a face
+       155 mm wide — most of the lower half of it — which is precisely the
+       shape of the thing this must not be.
+
+       Vermilion also has an edge, which is what the word means; blended as a
+       smooth falloff the lips dissolve into the chin and stop being a
+       feature at all. So: a hard-ish edge over a small area, at low contrast,
+       rather than a soft one over a large area. */
+    const lip = M.smoothstep(0.30, 0.72, at(R.vermilion, dx, dy, dz));
+    M.mix3(out, out, lipC, lip * (c.lipAmount === undefined ? 0.34 : c.lipAmount));
 
     /* And the dark behind them. */
     const inner = M.smoothstep(0.20, 0.66, at(R.cavity, dx, dy, dz));
@@ -624,20 +665,40 @@
       color: [0.115, 0.046, 0.021],
       skin: 'pores', skinAmt: 0.025, skinShade: 0.11,
 
+      /* Millimetres, from craniofacial anthropometry of adult men. Where the
+         population means genuinely differ these are the West-African-descent
+         figures; where they do not, they are simply the adult male mean, and
+         most of this face is the latter. All of it is checkable, and
+         scratchpad/anthro.js measures the built mesh against the range a real
+         face occupies rather than against anybody's judgement. */
       face: {
-        noseWide: 1.28,
-        lipFull: 1.35,
-        cheek: 1.15,
-        browHeavy: 1.1,
+        alarWidth: 42,        /* al-al. ~34 N.European, ~42 W.African */
+        bridgeWidth: 15,      /* nasal dorsum */
+        noseProjection: 18,   /* pronasale, forward of the face */
+        vermilionUpper: 11,   /* ls-sto */
+        vermilionLower: 14,   /* sto-li */
+        mouthWidth: 54,       /* ch-ch */
+        bizygomatic: 141,     /* cheekbone to cheekbone */
+        browProjection: 5,    /* supraorbital ridge — a male trait, not a
+                                 population one, and set as one */
+        chinProjection: 6,
+
         jawDrop: 0.30,
         hairCm: 3.9,
         hairColor: [0.011, 0.008, 0.007],
-        lipColor: [0.115, 0.036, 0.030],
+        /* Lip colour contrast on darker skin is *low*. High-contrast lips are
+           the single most recognisable marker of the caricature tradition
+           this is being kept well clear of, so the lips are defined by their
+           shape — vermilion has an edge, which is what the word means — and
+           barely at all by their colour. */
+        lipColor: [0.098, 0.040, 0.034],
+        lipAmount: 0.34,
         shadeColor: [0.036, 0.015, 0.009],
         warmColor: [0.165, 0.062, 0.036],
-        scleraColor: [0.235, 0.222, 0.205],
-        irisColor: [0.048, 0.026, 0.014],
-        lipAmount: 0.78
+        /* And sclera is not white. Bright eyes against dark skin is the other
+           marker, and a real sclera is a soft grey-ivory on anyone. */
+        scleraColor: [0.225, 0.212, 0.196],
+        irisColor: [0.048, 0.026, 0.014]
       },
 
       family: 'people, and I am not one',

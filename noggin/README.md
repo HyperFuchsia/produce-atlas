@@ -380,6 +380,39 @@ the eyes halfway down the whole head. The first attempt wrote them as raw
 direction vectors, which are normalised before use, so every landmark drifted
 toward the equator and the mouth sat three centimetres too high.
 
+**Every feature of a face is a measurement in millimetres, and there is a test
+that checks them.** This is not a stylistic commitment, it is the only workable
+defence against caricature — and it was needed. The first version of this face
+had knobs called `noseWide: 1.28` and `lipFull: 1.35`: numbers with no unit, no
+source, and nothing to check them against. Measured, the nose they produced was
+**79 mm across**. The widest nose on any living human is around 48. The lip
+*colour* covered a patch 124 mm wide and 58 mm tall on a face 155 mm wide —
+most of the lower half of it. Neither was visible in the source and neither was
+intended; both are unambiguous once measured.
+
+The entry now reads in millimetres — `alarWidth: 42`, `vermilionUpper: 11`,
+`mouthWidth: 54` — taken from craniofacial anthropometry of adult men, using
+the West-African-descent figures where the population means genuinely differ
+and the plain adult male mean where they do not (which is most of the face).
+`scratchpad/anthro.js` measures the *built mesh* and fails anything outside the
+range a real face occupies:
+
+```
+alarWidth         40.5   human range 32-48   ok
+noseProjection    18.7   human range 14-24   ok
+vermilionUpper    11.5   human range  6-15   ok
+mouthWidth        46.5   human range 45-62   ok
+lipPaintWidth     48.0   human range 45-68   ok
+bizygomatic      151.0   human range 125-155 ok
+```
+
+Two further things are colour rather than shape, and both are markers of the
+caricature tradition rather than of any face: **lip contrast on darker skin is
+low**, so the lips here are defined by the edge of the vermilion and barely at
+all by its colour; and **sclera is not white** on anyone, so the eyes are a
+soft grey-ivory. Difference between populations is real and belongs in the
+data. Exaggerating it is the failure, and the guard against it is arithmetic.
+
 The mouth is driven by the letters themselves. It speaks by typing, so the
 characters arrive one at a time as they are said, and each maps to two numbers:
 how far the jaw drops, and whether the lips are pursed or spread. What matters

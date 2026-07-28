@@ -301,6 +301,30 @@ perfect and leave the wax off and you have a bag of glass beads. Most of the
 recognisability of a fruit lives on its surface, and this is now three for
 three — pineapple, apple, grape.
 
+**The face is measured, and there is a test that says so.** — §6, and the most
+important entry in this log. The first version of the face had knobs called
+`noseWide: 1.28` and `lipFull: 1.35`. Numbers with no unit and no source, which
+is exactly the kind of number you can talk yourself into. Measured, the nose
+they built was **79 mm across** — the widest real human nose is about 48 — and
+the lip *colour* covered 124 × 58 mm of a 155 mm face. Nobody intended either.
+Both are caricature, and intent does not enter into it.
+
+The lesson is not "be careful". It is that **a stylistic knob cannot be
+audited and a measurement can.** `alarWidth: 42` is either right or wrong,
+anyone can look it up, and a script measures the built mesh and fails if
+anything lands outside the range a real face occupies. That converts a
+question of taste — which nobody can settle, and on which the project would
+have been judged — into arithmetic, which anybody can check.
+
+Worth stating plainly because it bears on §1. This project's whole argument is
+that showing beats telling. The corollary nobody puts on the slide is that
+showing carries a responsibility telling does not: a paragraph about facial
+anatomy cannot be a caricature, and a face can. A rendering layer that claims
+to answer questions by *becoming things* has to be able to prove that what it
+became is accurate — not assert it, prove it. The anthropometric harness is
+that proof for faces, and the same discipline is why the apple's dimple is in
+centimetres and the grape bunch measures 11 cm.
+
 Honest about where it landed: the face is stylised and soft, and the eyes are
 the weakest part of it. That is a resolution limit rather than a taste
 decision — 10242 vertices over a 23 cm head is 3.5 mm between them, and a lip
