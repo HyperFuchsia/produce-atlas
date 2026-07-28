@@ -292,16 +292,47 @@ of why they read as plastic: a real apple is red where it saw the sun and
 yellow-green underneath, a banana browns at both ends. The paint travels with
 the morph, so it arrives with the shape.
 
-Two things learned the hard way, both visible in the first attempt: patterns
-finer than a pixel are not detail, they are static; and view-angle terms — the
+Skin returns two numbers, not one: relief, which bends the light, and tint,
+which only says how pale the surface is there. An apple's stripes are pigment
+with no depth at all, and while one value did both, feeding them to the bump
+chopped the highlight into three mirror blobs.
+
+Three things learned the hard way, all visible in the first attempt: patterns
+finer than a pixel are not detail, they are static; view-angle terms — the
 film, the sheen, the rim — must read the *geometric* normal, or every speckle
-on an apple catches its own rainbow.
+on an apple catches its own rainbow; and colour is authored in **linear light**,
+where a saturated red arrives on screen as tomato soup, because the 1/2.2 at
+the end of the composite flattens a 7:1 ratio into a 2.2:1 one. That last one
+is measured off the rendered pixels rather than guessed at.
 
 **The specimens** are procedural. Each is a revolved radius profile plus
-optional ribs, a bend, a stem, leaves, a leaf crown, or a scatter into a
-cluster — enough vocabulary to make an apple, a banana, a carrot, a bunch of
-grapes and a pineapple recognisable from one small data table. They render
-through the same shader as the being and cast the same shadows.
+optional ribs, a bend, a dimple at either end, a stem, leaves, a leaf crown, or
+a scatter into a cluster — enough vocabulary to make an apple, a banana, a
+carrot, a bunch of grapes and a pineapple recognisable from one small data
+table. They render through the same shader as the being and cast the same
+shadows.
+
+**A dimple is authored the way you would measure one**, because the alternative
+was guessing at coefficients:
+
+```js
+dimple: {
+  top:    { deepCm: 1.15, mouthCm: 3.4 },   /* the stem well */
+  bottom: { deepCm: 0.55, mouthCm: 3.0 }    /* the calyx basin */
+}
+```
+
+A radius profile alone cannot say "indented". Height is a straight function of
+the polar angle, so a radius of zero at the pole gives a *point* — a teardrop,
+never a well. The axis itself has to turn back. Near a pole, writing `u` for the
+distance from it and `k = 1 - u/span`, the axis runs `y = (0.5 - u) - amp*k²`,
+whose highest point is the rim; the depth and mouth of the resulting well
+invert cleanly for `span` and `amp`, so the shape lands on the measurements by
+construction. Denting the ends shortens the body and stretching it back to its
+stated height deepens the dents again, so the two ends are solved together.
+Measured off the built mesh, the apple comes out 7.20 cm tall and 8.04 cm wide
+with a well 1.15 cm deep — which is the point of stating sizes in the first
+place.
 
 **The being** is a soft body. Each vertex is sprung back to its rest position,
 with a Laplacian coupling term diffusing displacement across the one-ring

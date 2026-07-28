@@ -13,7 +13,10 @@
 
   /* Reusable profiles, base (t=0) to tip (t=1). */
   const SPHERE = [0, 0.58, 0.9, 1.0, 1.0, 0.9, 0.58, 0];
-  const APPLE = [0, 0.70, 0.93, 1.0, 1.0, 0.96, 0.85, 0.60, 0.26, 0];
+  /* Fuller at the shoulders than a sphere, and it does not taper to a point at
+     either end — the ends are pulled in by a dimple instead, so the profile
+     only has to say how wide the body is on the way to each well. */
+  const APPLE = [0, 0.38, 0.66, 0.85, 0.95, 1.00, 1.00, 0.97, 0.89, 0.66, 0];
   const PEAR = [0, 0.52, 0.88, 1.0, 0.97, 0.82, 0.6, 0.44, 0.34, 0.18, 0];
   const OVOID = [0, 0.58, 0.86, 0.98, 1.0, 0.98, 0.90, 0.74, 0.45, 0];
   const ELLIPSOID = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
@@ -44,13 +47,33 @@
     {
       id: 'apple', name: 'apple', match: ['apple', 'apples', 'malus'],
       sizeCm: 8, lengthCm: 7.2, widthCm: 8, profile: APPLE,
-      color: [0.78, 0.13, 0.12], seed: 3,
-      stem: { lengthCm: 2.2, widthCm: 0.35, at: 0.42 },
-      leaves: { count: 1, lengthCm: 4, widthCm: 2, at: 0.5, tilt: 0.9 },
-      skin: 'waxy', skinAmt: 0.05, skinShade: 0.20,
+      /* Measured off a real one: the stem sits at the bottom of a well a little
+         over a centimetre deep, and the calyx in a basin that is wider and
+         half as deep. `at` is a fraction of the height from the middle, and
+         the rim of a dimpled end is always at 0.5 — so the stem starts at the
+         floor of its well, 1.15 cm below that. */
+      dimple: {
+        top: { deepCm: 1.15, mouthCm: 3.4 },
+        bottom: { deepCm: 0.55, mouthCm: 3.0 }
+      },
+      /* Authored in linear light, which is not where anyone's intuition lives:
+         the 1/2.2 at the end of the composite lifts a 7:1 red into a 2.2:1
+         one, and this colour arrived on screen as tomato soup. Measured, then
+         set so the fruit actually comes out the red of an apple. */
+      color: [0.58, 0.018, 0.014], seed: 3,
+      stem: { lengthCm: 3.0, widthCm: 0.3, at: 0.34, color: [0.15, 0.075, 0.030] },
+      leaves: {
+        count: 1, lengthCm: 2.9, widthCm: 1.35, at: 0.62, tilt: 0.5,
+        color: [0.055, 0.14, 0.030]
+      },
+      skin: 'waxy', skinAmt: 0.05, skinShade: 0.26,
+      /* Pale yellow-green under the calyx, darker red around the stem, and one
+         side that saw more sun than the other. The underside has to be
+         *lighter* than the body — an ochre there read as a bruise. */
       paint: {
-        bottom: [0.74, 0.66, 0.24], bottomPower: 2.6, bottomAmount: 0.85,
-        blush: { color: [0.66, 0.07, 0.06], dir: [0.42, 0.62, 0.66], power: 1.5, amount: 0.9 }
+        bottom: [0.74, 0.56, 0.13], bottomPower: 4.0, bottomAmount: 0.62,
+        top: [0.30, 0.010, 0.008], topPower: 3.0, topAmount: 0.45,
+        blush: { color: [0.86, 0.038, 0.020], dir: [0.44, 0.40, 0.80], power: 1.6, amount: 0.75 }
       },
       family: 'Rosaceae, the rose family', binomial: 'Malus domestica', type: 'pome',
       origin: 'the Tian Shan mountains of Central Asia, around modern Kazakhstan',

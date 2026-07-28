@@ -249,42 +249,66 @@ float ggx(vec3 N, vec3 V, vec3 L, float rough) {
   return D * G;
 }
 
-/* The height of the surface detail at a point on the body, in arbitrary
-   units. One function per kind of skin, all of them cheap, none of them
-   needing a single byte of texture. */
-float skinHeight(int kind, vec3 q, float fine) {
+/* Surface detail at a point on the body. Two numbers, not one: x is relief,
+   which bends the light, and y is tint, which only says how pale the skin is
+   there.
+
+   They started as a single value and that was a real mistake. An apple's
+   stripes are pigment with no depth whatsoever, and feeding them to the bump
+   chopped the highlight into three mirror blobs and washed the red underneath
+   out to salmon. A freckle on a banana is not a dent either. Anything that is
+   colour has to be able to say so.
+
+   One branch per kind of skin, all of them cheap, none of them needing a
+   single byte of texture. */
+vec2 skinDetail(int kind, vec3 q, float fine) {
   if (kind == 1) {
     /* Citrus. Oil glands: pits sunk into an otherwise taut skin, with a
        slow swell underneath so it is not evenly stippled. */
-    float pit = cells(q * 13.0);
-    return (-pow(clamp(pit, 0.0, 1.0), 2.0)) * fine + 0.30 * vnoise(q * 4.0);
+    float pit = -pow(cells(q * 13.0), 2.0) * fine;
+    float swell = 0.30 * vnoise(q * 4.0);
+    return vec2(pit + swell, pit + swell);
   }
   if (kind == 2) {
     /* Pineapple. Fruitlets are separate flowers fused together, and they
-       land on a diamond lattice wrapping the body — two helices crossing. */
+       land on a diamond lattice wrapping the body — two helices crossing.
+       Here relief and shade genuinely are the same thing: the dark is the
+       groove between the fruitlets. */
     float u = atan(q.z, q.x);
     float v = asin(clamp(q.y / max(length(q), 1e-4), -1.0, 1.0));
     float d = abs(sin(6.0 * u + 7.0 * v)) * abs(sin(6.0 * u - 7.0 * v));
-    return (pow(d, 0.45) - 0.5) * fine;
+    float h = (pow(d, 0.45) - 0.5) * fine;
+    return vec2(h, h);
   }
   if (kind == 3) {
     /* Strawberry. The seeds are the actual fruits, and each one sits in its
        own dimple — the pit around the pip is most of the read. */
     float c = cells(q * 11.0);
     float seed = smoothstep(0.62, 0.86, c);
-    return (seed * 0.9 - smoothstep(0.30, 0.62, c) * 0.55) * fine;
+    float h = (seed * 0.9 - smoothstep(0.30, 0.62, c) * 0.55) * fine;
+    return vec2(h, h);
   }
   if (kind == 4) {
-    /* Banana. Faint ridges down its length, freckles scattered over them. */
+    /* Banana. Faint ridges down its length, freckles scattered over them.
+       A freckle is bruised pigment and ought to be flat, but most of what
+       makes these read is the pit the bump gives them, so relief and tint
+       stay tied here until there is a reason to separate them. */
     float ridge = sin(atan(q.z, q.x) * 5.0) * 0.18;
     float freckle = smoothstep(0.80, 0.95, cells(q * 10.0));
-    return ridge - freckle * 0.5 * fine;
+    float h = ridge - freckle * 0.5 * fine;
+    return vec2(h, h);
   }
-  /* Waxy skins: lenticels, barely there, but the eye misses them. */
-  /* Lenticels — the pores an apple breathes through. Pale flecks, and almost
-     no relief at all: giving them depth turned them into bruises. */
-  float sp = cells(q * 21.0);
-  return smoothstep(0.80, 0.97, sp) * 0.55 * fine + 0.10 * vnoise(q * 5.0);
+  /* Waxy skins — apples, chillies, tomatoes. Two things carry the read.
+     Lenticels, the pores the fruit breathes through: pale flecks, with a
+     whisper of relief because giving them any real depth turned them into
+     bruises. And striping, which is emphatically not a sine wave — real
+     stripes vary in width, drift, and some of them stop halfway up. Noise
+     squashed along the axis streaks into meridians, which is the direction
+     the pigment actually runs, and costs the same as a sine would. */
+  float lenticel = smoothstep(0.86, 0.99, cells(q * 21.0)) * fine;
+  float stripe = (vnoise(vec3(q.x, q.y * 0.13, q.z) * 5.0) - 0.5) * 1.6;
+  float mottle = 0.10 * vnoise(q * 4.0);
+  return vec2(lenticel * 0.18, lenticel * 0.40 + stripe + mottle);
 }
 
 /* How much fine detail this pixel can actually resolve. Once a feature is
@@ -331,9 +355,9 @@ void main() {
   vec3 Ng = N;                 /* geometric: what the silhouette is made of */
   float skinT = 1.0;
   if (uSkin > 0.5) {
-    float h = skinHeight(int(uSkin + 0.5), vObj, skinFine(vObj, 20.0));
-    N = bumpNormal(N, vWPos, h, uSkinAmt);
-    skinT = clamp(1.0 + h * uSkinShade, 0.30, 1.7);
+    vec2 sk = skinDetail(int(uSkin + 0.5), vObj, skinFine(vObj, 20.0));
+    N = bumpNormal(N, vWPos, sk.x, uSkinAmt);
+    skinT = clamp(1.0 + sk.y * uSkinShade, 0.30, 1.7);
   }
 
   vec3 V = normalize(uEye - vWPos);
@@ -406,8 +430,15 @@ void main() {
       vec3 form = paint * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
       /* Car paint, not satin plastic: a tight highlight rather than a broad
          one. At 0.30 roughness the lobe smeared a white band down the entire
-         flank of anything with a large flat panel. */
-      form += uLightColor * ggx(N, V, L, 0.17) * 0.22;
+         flank of anything with a large flat panel.
+
+         Fruit is the opposite problem. Wax over a scattering surface gives a
+         highlight that is broad and weak, and the tight lobe put three hard
+         mirror spots on an apple's shoulder. Whether a form has skin is
+         already the question of whether it is a made thing or a grown one, so
+         it can decide this too. */
+      float rough = uSkin > 0.5 ? 0.34 : 0.17;
+      form += uLightColor * ggx(N, V, L, rough) * (uSkin > 0.5 ? 0.13 : 0.22);
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.

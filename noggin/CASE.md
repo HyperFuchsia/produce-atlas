@@ -214,3 +214,33 @@ reads as a placeholder for the thing rather than as the thing. Procedural skin
 and per-vertex paint cost no assets, which keeps the whole argument about
 distribution ("cost is a link") intact — and the pineapple in particular goes
 from an unidentifiable yellow barrel to unmistakable.
+
+**The apple is an apple.** — §4.2, and the sharpest test of it available,
+because the apple is the first thing anyone types. Three separate faults, none
+of which was guessable and all of which were found by measuring:
+
+1. *A radius profile cannot say "indented".* Height is a straight function of
+   the polar angle, so a radius of zero at the pole gives a point — the apple
+   was a teardrop with a stem stuck through it. The axis has to turn back on
+   itself. Dimples are now authored as **depth and mouth width in centimetres**
+   and solved for, which is the difference between a number a person can check
+   against fruit on the table and a coefficient they can only guess at. The
+   first attempt guessed, and produced a bucket.
+2. *One number cannot be both relief and pigment.* Apple stripes have no depth,
+   and driving the bump with them put three hard mirror blobs on the shoulder.
+3. *Colour is authored in linear light.* The 1/2.2 at the end of the composite
+   turns a 7:1 red into 2.2:1, so the deepest red in the table arrived on
+   screen as tomato soup at (211, 96, 70). Reading the actual pixels instead of
+   trusting the swatch got it to (212, 38, 26).
+
+Worth logging as a group because they share a moral, and it is the one this
+project keeps relearning: **at true scale you cannot fake it, and you cannot
+eyeball it either.** Every one of these was invisible in the source and
+obvious in a render, and each fix was verified against a measurement rather
+than an opinion. The claim in §4.2 is that scale is *felt* — that only pays
+off if the thing at that scale survives being looked at closely.
+
+Still outstanding, and worth knowing: the other twenty-five entries have their
+colours authored against the wrong assumption too, so they are all a little
+paler and a little less saturated than intended. Fixing that is a sweep with a
+verification pass per specimen, not a one-line change.

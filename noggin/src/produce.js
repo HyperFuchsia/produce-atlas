@@ -35,6 +35,7 @@
       (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 +
       (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
   }
+  P.sampleProfile = sampleProfile;
 
   function Part() {
     this.pos = [];
@@ -53,7 +54,105 @@
     for (let i = 0; i < indices.length; i++) this.idx.push(indices[i] + base);
   };
 
+  /* An apple is not a teardrop. Both ends are pushed in — the stem sits at the
+     bottom of a well, the calyx in a basin at the other end — and a radius
+     profile alone cannot say so. The height is a straight function of the
+     polar angle, so a radius of zero at a pole gives a point, never a dent.
+     An indent needs the axis itself to turn back on itself.
+
+     A dimple is authored the way you would measure one on the real thing:
+     how deep the well is, and how wide its mouth. Centimetres, like every
+     other dimension here. Depth and width are what a person can picture and
+     check against a fruit on the table; the two coefficients that produce
+     them are not, and guessing at them is how the first attempt at this
+     turned an apple into a bucket.
+
+     Near a pole, writing u for the distance from it along the profile and
+     k = 1 - u/span for that distance normalised over the dimple's reach,
+
+       y(u) = (0.5 - u) - amp * k^2
+
+     which is highest at k = span / (2 * amp), giving a well of
+
+       depth = amp * (1 - k)^2   with its mouth at   u = span * (1 - k).
+
+     So: pick u from the mouth width by walking in from the pole until the
+     body is that wide, then invert the pair for span and amp. The dimple
+     lands on the requested measurements by construction rather than by
+     tuning. */
+  function mouthU(profile, want, fromTop) {
+    let lo = 0, hi = 0.5;
+    for (let i = 0; i < 40; i++) {
+      const u = (lo + hi) * 0.5;
+      if (sampleProfile(profile, fromTop ? 1 - u : u) < want) lo = u; else hi = u;
+    }
+    return M.clamp((lo + hi) * 0.5, 0.02, 0.45);
+  }
+
+  /* Solved once per specimen and cached on the spec — the profile and the
+     dimensions it is solved against never change under it. */
+  function dimpleSolve(d, profile, height, radius) {
+    if (!d) return null;
+    if (d._s) return d._s;
+
+    const ends = [];
+    for (let i = 0; i < 2; i++) {
+      const e = i === 0 ? d.top : d.bottom;
+      if (!e || !(e.deepCm > 0) || !(e.mouthCm > 0)) { ends.push(null); continue; }
+      ends.push({
+        u: mouthU(profile, P.cm(e.mouthCm) * 0.5 / radius, i === 0),
+        want: P.cm(e.deepCm) / height
+      });
+    }
+
+    /* Denting the ends shortens the body, and stretching it back to the
+       height it claims deepens the dents again. The two are solved together;
+       it converges in two or three passes, six is free. */
+    let s = 1, top = null, bottom = null, hi = 0.5, lo = -0.5;
+    for (let pass = 0; pass < 6; pass++) {
+      const solved = [null, null];
+      hi = 0.5; lo = -0.5;
+      for (let i = 0; i < 2; i++) {
+        const e = ends[i];
+        if (!e) continue;
+        const k = 1 / (1 + 2 * (e.want / s) / e.u);
+        const span = e.u / (1 - k);
+        const amp = span / (2 * k);
+        solved[i] = { span: span, amp: amp };
+        const rim = e.u + amp * k * k;
+        if (i === 0) hi = 0.5 - rim; else lo = -0.5 + rim;
+      }
+      top = solved[0]; bottom = solved[1];
+      s = 1 / Math.max(hi - lo, 1e-6);
+    }
+
+    /* Hidden, because an atlas entry is walked elsewhere as data and a cache
+       is not one of the things it knows about a fruit. */
+    Object.defineProperty(d, '_s', {
+      value: { top: top, bottom: bottom, s: s, c: (hi + lo) * 0.5 * s }
+    });
+    return d._s;
+  }
+
+  /* Where a ring of the profile sits along the axis, dimples included. */
+  function axisY(sol, t) {
+    if (!sol) return t - 0.5;
+    let o = 0;
+    if (sol.top) {
+      const k = Math.max(0, (t - (1 - sol.top.span)) / sol.top.span);
+      o -= sol.top.amp * k * k;
+    }
+    if (sol.bottom) {
+      const k = Math.max(0, (sol.bottom.span - t) / sol.bottom.span);
+      o += sol.bottom.amp * k * k;
+    }
+    return ((t - 0.5) + o) * sol.s - sol.c;
+  }
+  P.dimpleSolve = dimpleSolve;
+  P.axisY = axisY;
+
   /* Revolve a profile into a closed solid. */
+
   function revolve(opts) {
     const rings = opts.rings || 26;
     const seg = opts.segments || 30;
@@ -64,6 +163,7 @@
     const ribDepth = opts.ribDepth || 0;
     const bend = opts.bend || 0;
     const twist = opts.twist || 0;
+    const dimple = dimpleSolve(opts.dimple, profile, height, radius);
 
     const positions = new Float32Array(rings * seg * 3);
     const indices = [];
@@ -73,7 +173,7 @@
       const t = i / (rings - 1);
       let r = sampleProfile(profile, t) * radius;
       if (r < 0) r = 0;
-      let y = (t - 0.5) * height;
+      let y = axisY(dimple, t) * height;
 
       /* Fade ribs out towards the poles, where all the segments converge and
          a constant-depth groove turns into a starburst. */
@@ -291,7 +391,7 @@
     const t = 1 - Math.acos(M.clamp(dy, -1, 1)) / Math.PI;
     let r = sampleProfile(profile, t) * radius;
     if (r < 0) r = 0;
-    let y = (t - 0.5) * height;
+    let y = axisY(dimpleSolve(spec.dimple, profile, height, radius), t) * height;
 
     const phi = Math.atan2(dz, dx);
     if (spec.ribs) {
@@ -421,6 +521,7 @@
         height: height,
         radius: radius,
         profile: spec.profile,
+        dimple: spec.dimple,
         ribs: spec.ribs || 0,
         ribDepth: spec.ribDepth || 0,
         bend: spec.bend || 0,

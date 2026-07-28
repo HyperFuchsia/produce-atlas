@@ -1946,6 +1946,7 @@
       (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 +
       (-p0 + 3 * p1 - 3 * p2 + p3) * f3);
   }
+  P.sampleProfile = sampleProfile;
 
   function Part() {
     this.pos = [];
@@ -1964,7 +1965,105 @@
     for (let i = 0; i < indices.length; i++) this.idx.push(indices[i] + base);
   };
 
+  /* An apple is not a teardrop. Both ends are pushed in — the stem sits at the
+     bottom of a well, the calyx in a basin at the other end — and a radius
+     profile alone cannot say so. The height is a straight function of the
+     polar angle, so a radius of zero at a pole gives a point, never a dent.
+     An indent needs the axis itself to turn back on itself.
+
+     A dimple is authored the way you would measure one on the real thing:
+     how deep the well is, and how wide its mouth. Centimetres, like every
+     other dimension here. Depth and width are what a person can picture and
+     check against a fruit on the table; the two coefficients that produce
+     them are not, and guessing at them is how the first attempt at this
+     turned an apple into a bucket.
+
+     Near a pole, writing u for the distance from it along the profile and
+     k = 1 - u/span for that distance normalised over the dimple's reach,
+
+       y(u) = (0.5 - u) - amp * k^2
+
+     which is highest at k = span / (2 * amp), giving a well of
+
+       depth = amp * (1 - k)^2   with its mouth at   u = span * (1 - k).
+
+     So: pick u from the mouth width by walking in from the pole until the
+     body is that wide, then invert the pair for span and amp. The dimple
+     lands on the requested measurements by construction rather than by
+     tuning. */
+  function mouthU(profile, want, fromTop) {
+    let lo = 0, hi = 0.5;
+    for (let i = 0; i < 40; i++) {
+      const u = (lo + hi) * 0.5;
+      if (sampleProfile(profile, fromTop ? 1 - u : u) < want) lo = u; else hi = u;
+    }
+    return M.clamp((lo + hi) * 0.5, 0.02, 0.45);
+  }
+
+  /* Solved once per specimen and cached on the spec — the profile and the
+     dimensions it is solved against never change under it. */
+  function dimpleSolve(d, profile, height, radius) {
+    if (!d) return null;
+    if (d._s) return d._s;
+
+    const ends = [];
+    for (let i = 0; i < 2; i++) {
+      const e = i === 0 ? d.top : d.bottom;
+      if (!e || !(e.deepCm > 0) || !(e.mouthCm > 0)) { ends.push(null); continue; }
+      ends.push({
+        u: mouthU(profile, P.cm(e.mouthCm) * 0.5 / radius, i === 0),
+        want: P.cm(e.deepCm) / height
+      });
+    }
+
+    /* Denting the ends shortens the body, and stretching it back to the
+       height it claims deepens the dents again. The two are solved together;
+       it converges in two or three passes, six is free. */
+    let s = 1, top = null, bottom = null, hi = 0.5, lo = -0.5;
+    for (let pass = 0; pass < 6; pass++) {
+      const solved = [null, null];
+      hi = 0.5; lo = -0.5;
+      for (let i = 0; i < 2; i++) {
+        const e = ends[i];
+        if (!e) continue;
+        const k = 1 / (1 + 2 * (e.want / s) / e.u);
+        const span = e.u / (1 - k);
+        const amp = span / (2 * k);
+        solved[i] = { span: span, amp: amp };
+        const rim = e.u + amp * k * k;
+        if (i === 0) hi = 0.5 - rim; else lo = -0.5 + rim;
+      }
+      top = solved[0]; bottom = solved[1];
+      s = 1 / Math.max(hi - lo, 1e-6);
+    }
+
+    /* Hidden, because an atlas entry is walked elsewhere as data and a cache
+       is not one of the things it knows about a fruit. */
+    Object.defineProperty(d, '_s', {
+      value: { top: top, bottom: bottom, s: s, c: (hi + lo) * 0.5 * s }
+    });
+    return d._s;
+  }
+
+  /* Where a ring of the profile sits along the axis, dimples included. */
+  function axisY(sol, t) {
+    if (!sol) return t - 0.5;
+    let o = 0;
+    if (sol.top) {
+      const k = Math.max(0, (t - (1 - sol.top.span)) / sol.top.span);
+      o -= sol.top.amp * k * k;
+    }
+    if (sol.bottom) {
+      const k = Math.max(0, (sol.bottom.span - t) / sol.bottom.span);
+      o += sol.bottom.amp * k * k;
+    }
+    return ((t - 0.5) + o) * sol.s - sol.c;
+  }
+  P.dimpleSolve = dimpleSolve;
+  P.axisY = axisY;
+
   /* Revolve a profile into a closed solid. */
+
   function revolve(opts) {
     const rings = opts.rings || 26;
     const seg = opts.segments || 30;
@@ -1975,6 +2074,7 @@
     const ribDepth = opts.ribDepth || 0;
     const bend = opts.bend || 0;
     const twist = opts.twist || 0;
+    const dimple = dimpleSolve(opts.dimple, profile, height, radius);
 
     const positions = new Float32Array(rings * seg * 3);
     const indices = [];
@@ -1984,7 +2084,7 @@
       const t = i / (rings - 1);
       let r = sampleProfile(profile, t) * radius;
       if (r < 0) r = 0;
-      let y = (t - 0.5) * height;
+      let y = axisY(dimple, t) * height;
 
       /* Fade ribs out towards the poles, where all the segments converge and
          a constant-depth groove turns into a starburst. */
@@ -2202,7 +2302,7 @@
     const t = 1 - Math.acos(M.clamp(dy, -1, 1)) / Math.PI;
     let r = sampleProfile(profile, t) * radius;
     if (r < 0) r = 0;
-    let y = (t - 0.5) * height;
+    let y = axisY(dimpleSolve(spec.dimple, profile, height, radius), t) * height;
 
     const phi = Math.atan2(dz, dx);
     if (spec.ribs) {
@@ -2332,6 +2432,7 @@
         height: height,
         radius: radius,
         profile: spec.profile,
+        dimple: spec.dimple,
         ribs: spec.ribs || 0,
         ribDepth: spec.ribDepth || 0,
         bend: spec.bend || 0,
@@ -2477,7 +2578,10 @@
 
   /* Reusable profiles, base (t=0) to tip (t=1). */
   const SPHERE = [0, 0.58, 0.9, 1.0, 1.0, 0.9, 0.58, 0];
-  const APPLE = [0, 0.70, 0.93, 1.0, 1.0, 0.96, 0.85, 0.60, 0.26, 0];
+  /* Fuller at the shoulders than a sphere, and it does not taper to a point at
+     either end — the ends are pulled in by a dimple instead, so the profile
+     only has to say how wide the body is on the way to each well. */
+  const APPLE = [0, 0.38, 0.66, 0.85, 0.95, 1.00, 1.00, 0.97, 0.89, 0.66, 0];
   const PEAR = [0, 0.52, 0.88, 1.0, 0.97, 0.82, 0.6, 0.44, 0.34, 0.18, 0];
   const OVOID = [0, 0.58, 0.86, 0.98, 1.0, 0.98, 0.90, 0.74, 0.45, 0];
   const ELLIPSOID = [0, 0.55, 0.84, 0.96, 1.0, 1.0, 0.96, 0.84, 0.55, 0];
@@ -2508,13 +2612,33 @@
     {
       id: 'apple', name: 'apple', match: ['apple', 'apples', 'malus'],
       sizeCm: 8, lengthCm: 7.2, widthCm: 8, profile: APPLE,
-      color: [0.78, 0.13, 0.12], seed: 3,
-      stem: { lengthCm: 2.2, widthCm: 0.35, at: 0.42 },
-      leaves: { count: 1, lengthCm: 4, widthCm: 2, at: 0.5, tilt: 0.9 },
-      skin: 'waxy', skinAmt: 0.05, skinShade: 0.20,
+      /* Measured off a real one: the stem sits at the bottom of a well a little
+         over a centimetre deep, and the calyx in a basin that is wider and
+         half as deep. `at` is a fraction of the height from the middle, and
+         the rim of a dimpled end is always at 0.5 — so the stem starts at the
+         floor of its well, 1.15 cm below that. */
+      dimple: {
+        top: { deepCm: 1.15, mouthCm: 3.4 },
+        bottom: { deepCm: 0.55, mouthCm: 3.0 }
+      },
+      /* Authored in linear light, which is not where anyone's intuition lives:
+         the 1/2.2 at the end of the composite lifts a 7:1 red into a 2.2:1
+         one, and this colour arrived on screen as tomato soup. Measured, then
+         set so the fruit actually comes out the red of an apple. */
+      color: [0.58, 0.018, 0.014], seed: 3,
+      stem: { lengthCm: 3.0, widthCm: 0.3, at: 0.34, color: [0.15, 0.075, 0.030] },
+      leaves: {
+        count: 1, lengthCm: 2.9, widthCm: 1.35, at: 0.62, tilt: 0.5,
+        color: [0.055, 0.14, 0.030]
+      },
+      skin: 'waxy', skinAmt: 0.05, skinShade: 0.26,
+      /* Pale yellow-green under the calyx, darker red around the stem, and one
+         side that saw more sun than the other. The underside has to be
+         *lighter* than the body — an ochre there read as a bruise. */
       paint: {
-        bottom: [0.74, 0.66, 0.24], bottomPower: 2.6, bottomAmount: 0.85,
-        blush: { color: [0.66, 0.07, 0.06], dir: [0.42, 0.62, 0.66], power: 1.5, amount: 0.9 }
+        bottom: [0.74, 0.56, 0.13], bottomPower: 4.0, bottomAmount: 0.62,
+        top: [0.30, 0.010, 0.008], topPower: 3.0, topAmount: 0.45,
+        blush: { color: [0.86, 0.038, 0.020], dir: [0.44, 0.40, 0.80], power: 1.6, amount: 0.75 }
       },
       family: 'Rosaceae, the rose family', binomial: 'Malus domestica', type: 'pome',
       origin: 'the Tian Shan mountains of Central Asia, around modern Kazakhstan',
@@ -4008,42 +4132,66 @@ float ggx(vec3 N, vec3 V, vec3 L, float rough) {
   return D * G;
 }
 
-/* The height of the surface detail at a point on the body, in arbitrary
-   units. One function per kind of skin, all of them cheap, none of them
-   needing a single byte of texture. */
-float skinHeight(int kind, vec3 q, float fine) {
+/* Surface detail at a point on the body. Two numbers, not one: x is relief,
+   which bends the light, and y is tint, which only says how pale the skin is
+   there.
+
+   They started as a single value and that was a real mistake. An apple's
+   stripes are pigment with no depth whatsoever, and feeding them to the bump
+   chopped the highlight into three mirror blobs and washed the red underneath
+   out to salmon. A freckle on a banana is not a dent either. Anything that is
+   colour has to be able to say so.
+
+   One branch per kind of skin, all of them cheap, none of them needing a
+   single byte of texture. */
+vec2 skinDetail(int kind, vec3 q, float fine) {
   if (kind == 1) {
     /* Citrus. Oil glands: pits sunk into an otherwise taut skin, with a
        slow swell underneath so it is not evenly stippled. */
-    float pit = cells(q * 13.0);
-    return (-pow(clamp(pit, 0.0, 1.0), 2.0)) * fine + 0.30 * vnoise(q * 4.0);
+    float pit = -pow(cells(q * 13.0), 2.0) * fine;
+    float swell = 0.30 * vnoise(q * 4.0);
+    return vec2(pit + swell, pit + swell);
   }
   if (kind == 2) {
     /* Pineapple. Fruitlets are separate flowers fused together, and they
-       land on a diamond lattice wrapping the body — two helices crossing. */
+       land on a diamond lattice wrapping the body — two helices crossing.
+       Here relief and shade genuinely are the same thing: the dark is the
+       groove between the fruitlets. */
     float u = atan(q.z, q.x);
     float v = asin(clamp(q.y / max(length(q), 1e-4), -1.0, 1.0));
     float d = abs(sin(6.0 * u + 7.0 * v)) * abs(sin(6.0 * u - 7.0 * v));
-    return (pow(d, 0.45) - 0.5) * fine;
+    float h = (pow(d, 0.45) - 0.5) * fine;
+    return vec2(h, h);
   }
   if (kind == 3) {
     /* Strawberry. The seeds are the actual fruits, and each one sits in its
        own dimple — the pit around the pip is most of the read. */
     float c = cells(q * 11.0);
     float seed = smoothstep(0.62, 0.86, c);
-    return (seed * 0.9 - smoothstep(0.30, 0.62, c) * 0.55) * fine;
+    float h = (seed * 0.9 - smoothstep(0.30, 0.62, c) * 0.55) * fine;
+    return vec2(h, h);
   }
   if (kind == 4) {
-    /* Banana. Faint ridges down its length, freckles scattered over them. */
+    /* Banana. Faint ridges down its length, freckles scattered over them.
+       A freckle is bruised pigment and ought to be flat, but most of what
+       makes these read is the pit the bump gives them, so relief and tint
+       stay tied here until there is a reason to separate them. */
     float ridge = sin(atan(q.z, q.x) * 5.0) * 0.18;
     float freckle = smoothstep(0.80, 0.95, cells(q * 10.0));
-    return ridge - freckle * 0.5 * fine;
+    float h = ridge - freckle * 0.5 * fine;
+    return vec2(h, h);
   }
-  /* Waxy skins: lenticels, barely there, but the eye misses them. */
-  /* Lenticels — the pores an apple breathes through. Pale flecks, and almost
-     no relief at all: giving them depth turned them into bruises. */
-  float sp = cells(q * 21.0);
-  return smoothstep(0.80, 0.97, sp) * 0.55 * fine + 0.10 * vnoise(q * 5.0);
+  /* Waxy skins — apples, chillies, tomatoes. Two things carry the read.
+     Lenticels, the pores the fruit breathes through: pale flecks, with a
+     whisper of relief because giving them any real depth turned them into
+     bruises. And striping, which is emphatically not a sine wave — real
+     stripes vary in width, drift, and some of them stop halfway up. Noise
+     squashed along the axis streaks into meridians, which is the direction
+     the pigment actually runs, and costs the same as a sine would. */
+  float lenticel = smoothstep(0.86, 0.99, cells(q * 21.0)) * fine;
+  float stripe = (vnoise(vec3(q.x, q.y * 0.13, q.z) * 5.0) - 0.5) * 1.6;
+  float mottle = 0.10 * vnoise(q * 4.0);
+  return vec2(lenticel * 0.18, lenticel * 0.40 + stripe + mottle);
 }
 
 /* How much fine detail this pixel can actually resolve. Once a feature is
@@ -4090,9 +4238,9 @@ void main() {
   vec3 Ng = N;                 /* geometric: what the silhouette is made of */
   float skinT = 1.0;
   if (uSkin > 0.5) {
-    float h = skinHeight(int(uSkin + 0.5), vObj, skinFine(vObj, 20.0));
-    N = bumpNormal(N, vWPos, h, uSkinAmt);
-    skinT = clamp(1.0 + h * uSkinShade, 0.30, 1.7);
+    vec2 sk = skinDetail(int(uSkin + 0.5), vObj, skinFine(vObj, 20.0));
+    N = bumpNormal(N, vWPos, sk.x, uSkinAmt);
+    skinT = clamp(1.0 + sk.y * uSkinShade, 0.30, 1.7);
   }
 
   vec3 V = normalize(uEye - vWPos);
@@ -4165,8 +4313,15 @@ void main() {
       vec3 form = paint * (uLightColor * wrap * mix(1.0, shf, 0.8) + amb + uFillColor * 0.45);
       /* Car paint, not satin plastic: a tight highlight rather than a broad
          one. At 0.30 roughness the lobe smeared a white band down the entire
-         flank of anything with a large flat panel. */
-      form += uLightColor * ggx(N, V, L, 0.17) * 0.22;
+         flank of anything with a large flat panel.
+
+         Fruit is the opposite problem. Wax over a scattering surface gives a
+         highlight that is broad and weak, and the tight lobe put three hard
+         mirror spots on an apple's shoulder. Whether a form has skin is
+         already the question of whether it is a made thing or a grown one, so
+         it can decide this too. */
+      float rough = uSkin > 0.5 ? 0.34 : 0.17;
+      form += uLightColor * ggx(N, V, L, rough) * (uSkin > 0.5 ? 0.13 : 0.22);
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
