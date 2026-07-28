@@ -392,6 +392,17 @@ from. It blinks by bulging its own eyelids forward over the eyeballs, so a blink
 needs no extra geometry. And it turns to face the camera as you orbit, because
 a face that will not look at you is worse than no face.
 
+**A face is flesh on bone, and nothing else here is.** The being is
+deliberately underdamped — the wobble is most of its charm, and the speech
+ripple is its voice. Both are wrong on a face. The ripple was already gated off
+by the morph, but the solver was not: a jaw dropping on every syllable fed the
+Laplacian coupling, and the skull rippled **four centimetres** while it talked.
+Forms can now carry their own physics, and a face is sprung stiff and damped
+near critical. Measured across 3933 vertices of skull and forehead while it
+speaks a full sentence: **zero movement.** The jaw and the lips move; nothing
+else does. States of matter still override it — turning to stone replaces what
+you are made of.
+
 **Known limit: 10242 vertices over a 23 cm head is 3.5 mm between them.** Lip
 edges, nostril rims and eyelid margins are 1–3 mm features, so they come out
 soft however they are authored. The face is deliberately stylised rather than

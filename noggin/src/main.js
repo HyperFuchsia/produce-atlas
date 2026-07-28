@@ -299,8 +299,10 @@
         open: 0, round: 0, blink: 0, blinkIn: 1.2, blinkFor: 0,
         poses: this._buildFacePoses(entry, target)
       } : null;
+      this.bodyOverride = entry.body || null;
     } else {
       this.face = null;
+      this.bodyOverride = null;
       target.set(this.orbRest);
       paint.set(this.mesh.colors);
       this.paint = false;
@@ -316,6 +318,7 @@
     this.morph.target = entry ? 1 : 0;
     this.morph.form = entry;
 
+    this._applyBody();
     this._setTrimmings(entry);
 
     /* A shove so the change is felt, not just seen. Melting is the exception:
@@ -514,24 +517,44 @@
 
   /* ---- states of matter ------------------------------------------------- */
 
+  /* How the body is sprung, which is a property of the state of matter it is
+     in — except that some forms have their own physics and that has to win.
+
+     A face is the case that made this necessary. The being is deliberately
+     underdamped: it wobbles, and the wobble is most of its charm. Put a face
+     on it and the jaw drops on every syllable, the coupling term spreads that
+     across the whole head, and the skull ripples four centimetres while it
+     talks. Nothing about that is a face. A face is flesh on bone: the jaw
+     moves, the lips move, and the back of the skull does not move at all. */
+  App.prototype._applyBody = function () {
+    const p = MATTER[this.phase] || MATTER.free;
+    const o = this.bodyOverride;
+    this.body.stiffness = o ? o.stiffness : p.stiffness;
+    this.body.coupling = o ? o.coupling : p.coupling;
+    this.body.damping = o ? o.damping : p.damping;
+  };
+
   App.prototype.enterPhase = function (name) {
     const p = MATTER[name];
     if (!p) return;
     this.phase = name;
     if (name !== 'free') { this.hideTesseract(); this.dismissHand(); }
 
-    this.body.stiffness = p.stiffness;
-    this.body.coupling = p.coupling;
-    this.body.damping = p.damping;
+    this._applyBody();
 
     const skin = SKIN[name];
     if (skin) {
       this.formColor = skin.color.slice();
       this.morph.target = skin.amount;
       /* Stone is stone all over: a state of matter overrides whatever the
-         body was painted, and takes its own single colour. */
+         body was painted, and takes its own single colour. It overrides how
+         the body is sprung for the same reason — a form's own physics is
+         about what it *is*, and turning to stone or to liquid replaces that
+         outright. */
       this.paint = false;
       this.skin = 0;
+      this.bodyOverride = null;
+      this._applyBody();
     }
 
     if (p.fall) {

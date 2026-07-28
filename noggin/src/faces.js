@@ -191,10 +191,16 @@
       /* The mouth. A seam, two lips either side of it, and the muzzle they
          both sit on — lips are not stuck to a flat plane, they are wrapped
          round the front of the teeth. */
-      muzzle: F(D(0, CM.mouth + 0.4), 0.60, 3.4, 2.6),
-      seam: F(D(0, CM.mouth), -0.48, 2.2, 0.55),
-      upperLip: F(D(0, CM.mouth + 0.62), 0.58 * lipFull, 2.0, 0.60),
-      lowerLip: F(D(0, CM.mouth - 0.80), 0.66 * lipFull, 1.9, 0.70),
+      muzzle: F(D(0, CM.mouth + 0.4), 0.60, 2.9, 2.6),
+      seam: F(D(0, CM.mouth), -0.52, 1.7, 0.55),
+      upperLip: F(D(0, CM.mouth + 0.60), 0.58 * lipFull, 1.6, 0.58),
+      lowerLip: F(D(0, CM.mouth - 0.78), 0.66 * lipFull, 1.55, 0.68),
+      /* What is behind the lips. A mouth that opens without one is a crease
+         in the chin: the jaw drops, the lips part, and there is nothing but
+         more face behind them. This recesses when it opens, and is painted
+         near black, so the same feature is a dark line when the mouth is shut
+         and a dark opening when it is not. */
+      cavity: F(D(0, CM.mouth - 0.10), 0, 1.75, 1.15),
       /* The crease under the lower lip, which is what gives a chin its shelf. */
       mentolabial: F(D(0, -8.3), -0.30, 1.7, 0.8),
       chin: F(D(0, CM.chin), 0.70, 2.6, 1.8),
@@ -245,6 +251,10 @@
     /* Rounding the lips for an "oo" pushes the muzzle forward and narrows it;
        spreading for an "ee" does the opposite. Cheap, and it is most of what
        separates a mouth flapping from a mouth speaking. */
+    if (open > 0.001) {
+      r -= open * 0.175 * at(R.cavity, dx, dy, dz);
+    }
+
     if (round > 0.001) {
       const m = at(R.muzzle, dx, dy, dz);
       r += round * 0.045 * m;
@@ -350,7 +360,15 @@
       at(R.upperLip, dx, dy, dz) * 1.15 +
       at(R.lowerLip, dx, dy, dz) * 1.15 +
       at(R.seam, dx, dy, dz) * 1.35, 0, 1);
-    M.mix3(out, out, lipC, lip * (c.lipAmount === undefined ? 0.70 : c.lipAmount));
+    /* Vermilion has an edge — that is what the word means. Blended in as a
+       smooth falloff the lips dissolve into the chin and the mouth stops
+       being a feature. */
+    M.mix3(out, out, lipC,
+      M.smoothstep(0.16, 0.62, lip) * (c.lipAmount === undefined ? 0.70 : c.lipAmount));
+
+    /* And the dark behind them. */
+    const inner = M.smoothstep(0.20, 0.66, at(R.cavity, dx, dy, dz));
+    M.mix3(out, out, c.mouthColor || [0.007, 0.002, 0.003], inner * 0.96);
 
     /* Eyebrows are painted, not modelled: a brow is hair lying flat on skin,
        and a geometric ridge with no colour reads as a swelling. */
@@ -596,6 +614,13 @@
       sizeCm: 23, lengthCm: 23, widthCm: 15.5, depthCm: 19.5,
       morphDur: 1.6,
 
+      /* Flesh on bone. The being is deliberately underdamped and the wobble is
+         most of its charm, but a jaw dropping on every syllable spread four
+         centimetres of ripple across the whole skull. Nothing about that is a
+         face. Stiff, and damped near critical, so the jaw and the lips move
+         and the back of the head does not. */
+      body: { stiffness: 2200, coupling: 150, damping: 60 },
+
       color: [0.115, 0.046, 0.021],
       skin: 'pores', skinAmt: 0.025, skinShade: 0.11,
 
@@ -607,12 +632,12 @@
         jawDrop: 0.30,
         hairCm: 3.9,
         hairColor: [0.011, 0.008, 0.007],
-        lipColor: [0.088, 0.030, 0.026],
+        lipColor: [0.115, 0.036, 0.030],
         shadeColor: [0.036, 0.015, 0.009],
         warmColor: [0.165, 0.062, 0.036],
         scleraColor: [0.235, 0.222, 0.205],
         irisColor: [0.048, 0.026, 0.014],
-        lipAmount: 0.62
+        lipAmount: 0.78
       },
 
       family: 'people, and I am not one',

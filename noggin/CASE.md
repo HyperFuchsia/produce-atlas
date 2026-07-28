@@ -271,6 +271,17 @@ to what it is pretending to be. A face is the exception, and for a reason that
 supports the rule rather than breaking it: on a face, the motion of speaking
 *does* belong to the form.
 
+Which turned out to have a second half, missed the first time. Stopping the
+being's *ripple* was not enough, because the being's **springiness** is also
+its own and not the face's. The solver is deliberately underdamped — that
+wobble is most of what makes the sphere feel alive — and with a face on, the
+jaw dropping on every syllable spread four centimetres of ripple across the
+skull. It looked like a rubber mask being talked through. Forms now carry
+their own physics, and a face is stiff and near-critically damped: measured
+across 3933 vertices of skull and forehead through a full spoken sentence,
+zero movement. The right rule is sharper than "it goes still" — **whatever it
+becomes brings its own physics, and the being's belongs to the being.**
+
 **Grapes, which are not a shape but an arrangement.** — §6, the limitation
 above, partly retired. Every other specimen is one connected thing and grapes
 are not, so this was the case that was supposed to stay an approximation
