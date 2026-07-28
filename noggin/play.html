@@ -7139,7 +7139,10 @@ void main() {
     this._trimTmp = M.m4();
     /* Half a second under the floor and he takes the camera off you. */
     this.fourthWall = { phase: 'off', t: 0, under: 0, cool: 0, blend: 0,
-      hand: 1, yaw: 0, pitch: 0, toPitch: 0.14, strikes: 0 };
+      hand: 1, yaw: 0, pitch: 0, toPitch: 0.14, strikes: 0,
+      /* How many times the camera has been under there, and whether he has
+         finally had enough of it. See updateFloorLimit. */
+      trips: 0, dwell: 0, sealed: false, sealT: 0 };
     /* He is watching the input box for one word. */
     this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
       heat: 0, palm: 0, look: 0, at: { spin: 0, tilt: 0 } };
@@ -7432,6 +7435,73 @@ void main() {
 
      Only when he is wearing the face. A pineapple cannot do this. */
   const WALL = { grab: 0.55, hold: 0.30, pull: 1.15, let_go: 0.65 };
+
+  /* ---- and eventually, a floor ----------------------------------------- */
+
+  /* Handling it socially is the good version — two warnings and then a hand,
+     because a person dealing with it says something a rule cannot. But a
+     person has a limit, and his is seventy-six and two thirds.
+
+     A trip counts a whole one when you come back up. While you are down there
+     it counts as however far through it you are, which is where the two
+     thirds live: the floor goes solid two thirds of the way into the
+     seventy-seventh, under a camera already on its way down. From then on it
+     is a real floor. He stops being gracious about it and fixes the bug. */
+  const PATIENCE = 76.67;
+  /* Half a second under is what the rest of this already means by properly
+     down there — the same half second the first warning waits out — so that
+     is what a whole trip is worth. */
+  const TRIP = 0.5;
+  /* The floor closing under you, rather than a wall you were always going to
+     hit. It eases shut exactly once; after that it is hard, because a stop
+     that can be shoved through for a few frames is not a stop. */
+  const SEAL_CLOSE = 0.45;
+  /* Where the camera comes to rest. A camera is a thing with a size, and a
+     lens set down on the boards ends up a few centimetres above them rather
+     than in the same plane as them — which is also the only place the floor
+     is worth looking at. Stop it dead level with the surface and the surface
+     is edge-on and invisible, so the shot you are held at looks exactly like
+     the void you were being kept out of. Eight centimetres and the boards run
+     away under the lens, which is what hitting the ground looks like. */
+  const LENS_CLEAR = 0.8;
+
+  App.prototype.updateFloorLimit = function (dt) {
+    const w = this.fourthWall;
+    if (w.sealed) { w.sealT += dt; return; }
+
+    /* Every trip counts, in every form. It is the camera doing it, not him,
+       and the camera is yours whatever he happens to be at the time. */
+    const below = this.eye[1] < this.renderer.floorY;
+    if (below) w.dwell = Math.min(TRIP, w.dwell + dt);
+    else if (w.dwell > 0) { w.trips++; w.dwell = 0; }
+
+    if (w.trips + w.dwell / TRIP < PATIENCE) return;
+
+    w.sealed = true;
+    w.sealT = 0;
+    /* If he had hold of the camera when it went solid he lets go of it. The
+       floor is lifting you out now, and two things cannot do that at once. */
+    if (w.phase !== 'off') { w.phase = 'off'; w.under = 0; w.cool = 0; }
+    this.chat.say(['That is seventy-six and two thirds times.',
+      'Right. It is a floor now. That is what a floor does. Off you go.']);
+  };
+
+  /* Stop the orbit rather than fix up the eye afterwards. Clamping where the
+     camera ends up and leaving the angle alone would let you keep dragging
+     downward into a pitch that does nothing, and then make you drag all of it
+     back before the view moved again — which feels like the controls have
+     stopped working, not like there is something in the way. */
+  App.prototype._clampToFloor = function () {
+    const c = this.camera, w = this.fourthWall;
+    if (!w.sealed) return;
+    const want = (this.renderer.floorY + LENS_CLEAR - this.target[1]) / Math.max(c.dist, 0.001);
+    /* The floor is out of the orbit's reach entirely — nothing to hit. */
+    if (want >= 1 || want <= -1) return;
+    const lowest = Math.asin(want);
+    if (c.pitch >= lowest) return;
+    const close = M.smoothstep(0, 1, Math.min(1, w.sealT / SEAL_CLOSE));
+    c.pitch = lowest - (lowest - c.pitch) * (1 - close);
+  };
 
   App.prototype.updateFourthWall = function (dt) {
     const w = this.fourthWall;
@@ -8832,6 +8902,8 @@ void main() {
     this.target[0] += (wantX - this.target[0]) * Math.min(1, dt * 3);
     this.target[1] += (this.stageY + this.stageBias - this.target[1]) * Math.min(1, dt * 3);
 
+    this._clampToFloor();
+
     const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
     this.eye[0] = this.target[0] + c.dist * cp * Math.sin(c.yaw);
     this.eye[1] = this.target[1] + c.dist * sp;
@@ -9019,6 +9091,9 @@ void main() {
     this.time += dt;
 
     this.updateCamera(dt);
+    /* Straight after the camera, so it is counting where the eye actually is
+       this frame rather than where it was last one. */
+    this.updateFloorLimit(dt);
     this.updateAttention(dt);
     this.updateMatter(dt);
     this.updateModel(dt);
