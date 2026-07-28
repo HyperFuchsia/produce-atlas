@@ -244,3 +244,37 @@ Still outstanding, and worth knowing: the other twenty-five entries have their
 colours authored against the wrong assumption too, so they are all a little
 paler and a little less saturated than intended. Fixing that is a sweep with a
 verification pass per specimen, not a one-line change.
+
+**It can be a face, and the face talks.** — §1 and §3, and the first thing here
+that argues about *itself*. Everything before this was the being demonstrating
+something about the world. A face demonstrates something about the being: that
+the sphere you have been talking to is a default, not a limit. That is not a
+claim a sphere can make about itself in text without sounding like marketing —
+"I could look like anything" is worth nothing — and it takes about two seconds
+to make by doing it.
+
+It also sharpens §5. The load-bearing trick was always "morph, not mesh swap",
+and a face is where that stops being a technical detail: swap in a head model
+and you have a chat product with an avatar, which is a thing that already
+exists and is not interesting. Morph the same 10242 vertices you were just
+pulling on into a face that then talks with them — and which you can still
+reach in and pull by the nose — is a different claim entirely. The mouth is
+driven by the letters as they are typed, so the speech and the shape are the
+same event rather than two systems kept in sync.
+
+And it inverts §4.1's rule about stillness in a way worth writing down. Every
+other form goes completely still, because motion belongs to the being and not
+to what it is pretending to be. A face is the exception, and for a reason that
+supports the rule rather than breaking it: on a face, the motion of speaking
+*does* belong to the form.
+
+Honest about where it landed: the face is stylised and soft, and the eyes are
+the weakest part of it. That is a resolution limit rather than a taste
+decision — 10242 vertices over a 23 cm head is 3.5 mm between them, and a lip
+edge or an eyelid margin is 1–3 mm. It cost seven rebuilds and every one of the
+faults was invisible in the source and obvious in a render: landmarks written
+as direction vectors instead of centimetres, pores asked for at a size smaller
+than a pixel, a hairline flat enough to read as a hood, lids that swallowed the
+eyes whole. Same moral as the apple, which is starting to look like the moral
+of the whole project: **you cannot eyeball it, and at true scale you cannot
+fake it either.**

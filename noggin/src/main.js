@@ -151,6 +151,9 @@
     this.leanDir = [0, 0, 0];
     this.voice = 0;
     this.swell = 0;
+    /* Set while it is wearing a face, which is the one form that keeps
+       moving on its own after the morph has finished. */
+    this.face = null;
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -291,7 +294,13 @@
       this.skin = NG.P.SKINS[entry.skin] || 0;
       this.skinAmt = entry.skinAmt === undefined ? 0.35 : entry.skinAmt;
       this.skinShade = entry.skinShade === undefined ? 0.30 : entry.skinShade;
+      /* A face keeps moving after it arrives, so it needs its poses. */
+      this.face = entry.kind === 'face' ? {
+        open: 0, round: 0, blink: 0, blinkIn: 1.2, blinkFor: 0,
+        poses: this._buildFacePoses(entry, target)
+      } : null;
     } else {
+      this.face = null;
       target.set(this.orbRest);
       paint.set(this.mesh.colors);
       this.paint = false;
@@ -403,6 +412,103 @@
       this.body.refreshEdgeLengths();
       m.amount = m.target;
       this.refitCamera();
+    }
+  };
+
+  /* ---- a face, once it has arrived ------------------------------------- */
+
+  /* Every other form is finished the moment the morph completes. A face is
+     not: it has to keep talking, and it has to blink, or it is a mask.
+
+     Re-evaluating the sculpt per vertex per frame is out — that is 10242
+     vertices against thirty gaussians, sixty times a second. So the poses are
+     built once, at the moment it becomes the face, and blended. Only the
+     vertices that any pose actually moves are touched, which for a mouth and
+     two eyelids is a small fraction of the head. */
+  App.prototype._buildFacePoses = function (entry, base) {
+    const unit = this.dirs;
+    const poses = { base: base, keys: [], idx: null };
+    const shapes = [
+      { name: 'open', mouth: { open: 1, round: 0, blink: 0 } },
+      { name: 'round', mouth: { open: 0, round: 1, blink: 0 } },
+      { name: 'blink', mouth: { open: 0, round: 0, blink: 1 } }
+    ];
+    const n = base.length / 3;
+    const out = [0, 0, 0];
+    const moved = new Uint8Array(n);
+
+    for (let s = 0; s < shapes.length; s++) {
+      const target = new Float32Array(base.length);
+      for (let i = 0; i < n; i++) {
+        NG.FACE.onSphere(out, entry, unit[i * 3], unit[i * 3 + 1], unit[i * 3 + 2],
+          shapes[s].mouth);
+        target[i * 3] = out[0];
+        target[i * 3 + 1] = out[1];
+        target[i * 3 + 2] = out[2];
+        if (!moved[i]) {
+          const d = Math.abs(out[0] - base[i * 3]) + Math.abs(out[1] - base[i * 3 + 1])
+            + Math.abs(out[2] - base[i * 3 + 2]);
+          if (d > 1e-4) moved[i] = 1;
+        }
+      }
+      poses.keys.push({ name: shapes[s].name, pos: target });
+    }
+
+    let count = 0;
+    for (let i = 0; i < n; i++) if (moved[i]) count++;
+    const idx = new Int32Array(count);
+    let w = 0;
+    for (let i = 0; i < n; i++) if (moved[i]) idx[w++] = i;
+    poses.idx = idx;
+    return poses;
+  };
+
+  App.prototype.updateFace = function (dt) {
+    const f = this.face;
+    if (!f) return;
+
+    /* Blinking. Every few seconds, and fast — a blink is about a tenth of a
+       second, and anything slower reads as drowsiness. */
+    f.blinkIn -= dt;
+    if (f.blinkIn <= 0) {
+      f.blinkIn = 2.6 + Math.random() * 4.2;
+      f.blinkFor = 0.13;
+    }
+    if (f.blinkFor > 0) {
+      f.blinkFor -= dt;
+      f.blink = Math.min(1, f.blink + dt * 16);
+    } else {
+      f.blink = Math.max(0, f.blink - dt * 11);
+    }
+
+    /* The mouth chases the letter currently being typed. Fast on the way open
+       so consonants land, slower closing so it does not chatter. */
+    const v = this.chat.viseme;
+    const talking = this.chat.busy() ? 1 : 0;
+    const wantOpen = v.open * talking;
+    const kOpen = wantOpen > f.open ? Math.min(1, dt * 34) : Math.min(1, dt * 17);
+    f.open += (wantOpen - f.open) * kOpen;
+    f.round += (v.round * talking - f.round) * Math.min(1, dt * 15);
+
+    if (this.morph.t < 1 || !f.poses) return;
+
+    /* Blend the poses into the rest shape. The solver then chases it, which is
+       what gives the lips their slight lag — the mouth is not animated, it is
+       a target the body is trying to reach, same as everything else here. */
+    const p = f.poses, idx = p.idx, base = p.base, rest = this.body.rest;
+    const amt = [f.open, f.round, f.blink];
+    for (let j = 0; j < idx.length; j++) {
+      const i = idx[j], a = i * 3;
+      let x = base[a], y = base[a + 1], z = base[a + 2];
+      for (let k = 0; k < p.keys.length; k++) {
+        const w = amt[k];
+        if (w < 0.002) continue;
+        const t = p.keys[k].pos;
+        x += (t[a] - base[a]) * w;
+        y += (t[a + 1] - base[a + 1]) * w;
+        z += (t[a + 2] - base[a + 2]) * w;
+      }
+      rest[a] = x; rest[a + 1] = y; rest[a + 2] = z;
     }
   };
 
@@ -1354,6 +1460,21 @@
     this.spin += dt * 0.06 * alive * held;
     const wantTilt = Math.sin(this.spin * 1.5) * 0.2 * held;
     this.tilt += (wantTilt - this.tilt) * Math.min(1, dt * 2.5);
+
+    /* A face has a front, which is a thing no other form here has. Stopping
+       the drift is not enough — it stops at whatever angle it had reached, so
+       the face arrived in three-quarter profile or looking at the wall.
+
+       It turns to the camera instead, and keeps turning as you orbit. That is
+       not a fix dressed up as a feature: a face that will not look at you is
+       worse than no face, and this is the only form where walking round the
+       back of it should not be possible. */
+    if (this.face) {
+      let d = (this.camera.yaw - this.spin) % (Math.PI * 2);
+      if (d > Math.PI) d -= Math.PI * 2;
+      if (d < -Math.PI) d += Math.PI * 2;
+      this.spin += d * Math.min(1, dt * 2.4);
+    }
     this.composeModel();
   };
 
@@ -1438,6 +1559,7 @@
     this.updateLight();
     this.trackGrabVelocity(dt);
     this.updateMorph(dt);
+    this.updateFace(dt);
     this.stepPhysics(dt);
     this.updateTesseract(dt);
 

@@ -383,6 +383,10 @@
       return out;
     }
 
+    /* A face is its own module: too much of it is anatomy rather than
+       geometry, and it is the one form that keeps moving after it arrives. */
+    if (spec.kind === 'face') return NG.FACE.onSphere(out, spec, dx, dy, dz, spec._mouth);
+
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;
     const radius = (spec.widthCm || spec.sizeCm) * 0.5 * scale;
@@ -429,6 +433,7 @@
      toward a direction, which is what a fruit ripening on one side looks
      like. */
   P.paintOnSphere = function (out, spec, dx, dy, dz) {
+    if (spec.kind === 'face') return NG.FACE.paint(out, spec, dx, dy, dz);
     const base = spec.color;
     out[0] = base[0]; out[1] = base[1]; out[2] = base[2];
     const paint = spec.paint;
@@ -457,7 +462,8 @@
     celled: 2,      /* pineapple: fused fruitlets in a diamond lattice */
     seeded: 3,      /* strawberry: achenes sitting in their own pits */
     freckled: 4,    /* banana: sparse dark spots over faint ridges */
-    waxy: 5         /* apple, plum: fine lenticel speckle under a sheen */
+    waxy: 5,        /* apple, plum: fine lenticel speckle under a sheen */
+    pores: 6        /* skin: fine grain, and a highlight that scatters */
   };
 
   /* A lofted shell, built by pushing a sphere through the same mapping the
@@ -485,6 +491,10 @@
      same local frame, and ride its transform. Returns null when the specimen
      has no such parts. */
   P.build = function (spec, trimOnly) {
+    /* Eyes, ears and hair. There is no standalone face — it is only ever
+       something the being is wearing, so there is no body to build here. */
+    if (spec.kind === 'face') return trimOnly ? NG.FACE.mesh(spec) : null;
+
     const part = new Part();
     const scale = P.cm(1);
     const height = (spec.lengthCm || spec.sizeCm) * scale;

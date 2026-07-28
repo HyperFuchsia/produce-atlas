@@ -334,6 +334,41 @@ Measured off the built mesh, the apple comes out 7.20 cm tall and 8.04 cm wide
 with a well 1.15 cm deep — which is the point of stating sizes in the first
 place.
 
+**It can be a face, and the face talks.** This is the one form that is not an
+object, and the only one that keeps moving after it has arrived. It is still
+the same body — the same 10242 vertices, the same solver — so the skull, brow,
+nose, lips, cheeks, chin and jaw are all radial displacements you can reach in
+and pull. Only three things are attached, each because a radial field genuinely
+cannot express it: eyeballs (a second surface along the same ray as the socket),
+ears (thin fins standing off the skull), and hair (its own volume).
+
+Landmarks are authored in centimetres from the centre of a head 23 cm tall and
+15.5 cm wide, and follow the canonical construction — the face in equal thirds,
+the eyes halfway down the whole head. The first attempt wrote them as raw
+direction vectors, which are normalised before use, so every landmark drifted
+toward the equator and the mouth sat three centimetres too high.
+
+The mouth is driven by the letters themselves. It speaks by typing, so the
+characters arrive one at a time as they are said, and each maps to two numbers:
+how far the jaw drops, and whether the lips are pursed or spread. What matters
+most is that the closures land — `m`, `b` and `p` are the only sounds English
+makes with the lips fully shut, and a mouth that stays open through "somebody"
+reads as a puppet at once. The poses are built once, when it becomes the face,
+and blended per frame over the ~5600 vertices any of them actually move; the
+solver then chases the blend, which is where the slight lag in the lips comes
+from. It blinks by bulging its own eyelids forward over the eyeballs, so a blink
+needs no extra geometry. And it turns to face the camera as you orbit, because
+a face that will not look at you is worse than no face.
+
+**Known limit: 10242 vertices over a 23 cm head is 3.5 mm between them.** Lip
+edges, nostril rims and eyelid margins are 1–3 mm features, so they come out
+soft however they are authored. The face is deliberately stylised rather than
+detailed, and that is the reason — not a stylistic preference. The eyes in
+particular are shaped to the opening rather than clipped by the lids, because
+the lid margin that would do the clipping is finer than the mesh. The honest
+fix is a shader-side detail pass drawing those lines at pixel resolution, the
+way the pineapple's lattice is drawn.
+
 **The being** is a soft body. Each vertex is sprung back to its rest position,
 with a Laplacian coupling term diffusing displacement across the one-ring
 neighbourhood:

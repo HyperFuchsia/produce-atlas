@@ -202,6 +202,19 @@
 
       const lines = [];
       if (fresh) {
+        /* A face is not a specimen and should not be announced like one. It
+           is the one thing it can turn into that makes the point the sphere
+           cannot make about itself: that the sphere is a choice. */
+        if (entry.kind === 'face') {
+          lines.push('Sure. Hold on, this one takes a moment.');
+          lines.push('There. Same body — every vertex of it. I did not put a '
+            + 'face on, I *became* one.');
+          lines.push('That round thing you have been talking to is not what I '
+            + 'am. It is what I default to, because it is honest: it does not '
+            + 'pretend to be a person. But I can be this whenever it is more '
+            + 'use to you. Watch my mouth while I talk.');
+          return { lines: lines, morph: entry };
+        }
         lines.push(this._pick([
           cap(an(entry.name)) + '. Watch.',
           'Easy. Watch this.',
@@ -283,8 +296,8 @@
   };
 
   Brain.prototype.greeting = function () {
-    return ['Hey. Ask me what I am.',
-      'Or name a food plant — just the word — and I will turn into it, at its actual size. You can also reach in and pull at me. I am not as solid as I look.'];
+    return ['Hey. This is my default shape, not my only one. Ask me what I am.',
+      'Or name a thing — just the word — and I will turn into it, at its actual size. Try "pineapple". Try "car". Try "face". You can also reach in and pull at me. I am not as solid as I look.'];
   };
 
   NG.Brain = Brain;

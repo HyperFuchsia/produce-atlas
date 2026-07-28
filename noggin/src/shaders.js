@@ -298,6 +298,28 @@ vec2 skinDetail(int kind, vec3 q, float fine) {
     float h = ridge - freckle * 0.5 * fine;
     return vec2(h, h);
   }
+  if (kind == 6) {
+    /* Skin. What it is for is breaking the specular, because a face with a
+       mathematically smooth highlight reads as wet plastic however good the
+       shape underneath is.
+
+       The first attempt asked for pores at their real size and got a field of
+       white sparks — a pore is under a millimetre and this head is 23 cm, so
+       every one of them landed well inside a single pixel. That is the exact
+       failure the LOD fade exists to prevent, and it did not fire because the
+       fade is estimated at one fixed frequency for the whole function. The
+       fix is not a better fade. It is to stop asking for detail that cannot
+       be resolved.
+
+       The second attempt then went too coarse: cells at fourteen over a head
+       is a feature every four centimetres, which is not skin, it is a walnut.
+       There is no legible middle frequency on a face at all — either it is
+       pores, which you cannot see, or it is blotches, which are a skin
+       condition. What is left is the broadest possible variation and almost
+       no relief, and the roughness of the highlight does the rest. */
+    float under = (vnoise(q * 3.2) - 0.5) + 0.45 * (vnoise(q * 6.1) - 0.5);
+    return vec2(under * 0.20, under * 0.85);
+  }
   /* Waxy skins — apples, chillies, tomatoes. Two things carry the read.
      Lenticels, the pores the fruit breathes through: pale flecks, with a
      whisper of relief because giving them any real depth turned them into
@@ -437,8 +459,13 @@ void main() {
          mirror spots on an apple's shoulder. Whether a form has skin is
          already the question of whether it is a made thing or a grown one, so
          it can decide this too. */
-      float rough = uSkin > 0.5 ? 0.34 : 0.17;
-      form += uLightColor * ggx(N, V, L, rough) * (uSkin > 0.5 ? 0.13 : 0.22);
+      /* Skin is rougher and dimmer again than fruit. Wax sits on a peel as a
+         film; on skin the light goes in, bounces about and comes back out
+         diffuse, so what is left on top is broad and weak. At the fruit
+         setting a face grew a wet patch across one cheek. */
+      float rough = uSkin > 5.5 ? 0.46 : (uSkin > 0.5 ? 0.34 : 0.17);
+      float specI = uSkin > 5.5 ? 0.075 : (uSkin > 0.5 ? 0.13 : 0.22);
+      form += uLightColor * ggx(N, V, L, rough) * specI;
       // The film along the rim and the focal point are the two things that
       // make it look inhabited, so an inert body has to lose both — otherwise
       // turning to stone just tints a thing that is still obviously awake.
@@ -454,7 +481,12 @@ void main() {
          turns away fast; a car's flank is one normal over two square metres,
          so the whole side lit up. It is the being's own tell in any case, and
          whatever it has become does not get to keep it. */
-      form += sheen * pow(1.0 - ndvGeo, 5.0) * 0.12 * (1.0 - uInert);
+      /* Scaled by how reflective the surface it is sitting on actually is.
+         Added flat, it was an oil slick around the silhouette of anything
+         dark — the same reason the rim light downstream is weighted this way,
+         and a dark face is where it showed up worst. */
+      float sheenLit = 0.30 + 0.70 * dot(paint, vec3(0.3333));
+      form += sheen * pow(1.0 - ndvGeo, 5.0) * 0.12 * (1.0 - uInert) * sheenLit;
       // What replaces them is a plain rim light, so a dark solid still has an
       // edge against a dark room instead of reading as a hole.
       form += uRimColor * pow(1.0 - ndvGeo, 3.2) * 0.35 * uInert;

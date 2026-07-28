@@ -50,6 +50,13 @@
        `emphasis` spikes on the ones that carry weight. */
     this.pulse = 0;
     this.emphasis = 0;
+
+    /* Mouth shape, for when it is wearing a face. It speaks by typing, so the
+       letters are right here as they are said — which is a better signal than
+       anything that could be inferred from an audio envelope. Two numbers
+       carry almost all of visible speech: how far the jaw is down, and
+       whether the lips are pursed or spread. */
+    this.viseme = { open: 0, round: 0 };
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
@@ -65,6 +72,34 @@
     /* Typing in the box must not trigger the game's single-key shortcuts. */
     this.input.addEventListener('keydown', function (e) { e.stopPropagation(); });
   }
+
+  /* Letter to mouth shape. Not phonemes — the spelling is what it has, and
+     for the handful of shapes an eye can actually resolve at conversational
+     speed the spelling is close enough. What matters far more than which
+     vowel is which is that the closures land: `m`, `b` and `p` are the only
+     sounds English makes with the lips fully shut, and a mouth that never
+     shuts during "somebody" reads as a puppet immediately.
+
+     open: how far the jaw drops.  round: pursed at 1, spread at 0. */
+  const VISEME = {
+    a: [1.00, 0.10], e: [0.55, 0.00], i: [0.40, 0.00],
+    o: [0.70, 0.95], u: [0.45, 1.00], y: [0.40, 0.15],
+    w: [0.30, 1.00], r: [0.35, 0.55], q: [0.35, 0.90],
+    m: [0.00, 0.30], b: [0.00, 0.25], p: [0.00, 0.25],
+    f: [0.15, 0.20], v: [0.15, 0.20],
+    s: [0.18, 0.00], z: [0.18, 0.00], c: [0.22, 0.10], x: [0.22, 0.10],
+    t: [0.25, 0.05], d: [0.28, 0.05], n: [0.22, 0.10], l: [0.35, 0.05],
+    g: [0.35, 0.20], k: [0.30, 0.15], h: [0.40, 0.20], j: [0.30, 0.45],
+    th: [0.20, 0.00]
+  };
+
+  /* Punctuation closes the mouth, which is what a pause looks like. */
+  Chat.prototype._say = function (ch) {
+    const v = ch ? VISEME[ch.toLowerCase()] : null;
+    if (!v) { this.viseme.open = 0; this.viseme.round *= 0.5; return; }
+    this.viseme.open = v[0];
+    this.viseme.round = v[1];
+  };
 
   Chat.prototype.busy = function () {
     return !!this.typingEl || this.queue.length > 0;
@@ -212,9 +247,10 @@
       this.typingEl.textContent = this.full.slice(0, now);
       for (let i = before; i < now; i++) {
         const ch = this.full.charAt(i);
-        if (ch === ' ' || ch === '\n') continue;
+        if (ch === ' ' || ch === '\n') { this._say(null); continue; }
         if (++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
         this.pulse = Math.min(1, this.pulse + PULSE_PER_CHAR);
+        this._say(ch);
         const w = EMPHASIS[ch];
         if (w) this.emphasis = Math.min(1, this.emphasis + w);
         else if (ch >= 'A' && ch <= 'Z') {
