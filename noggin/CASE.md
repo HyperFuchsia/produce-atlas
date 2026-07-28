@@ -352,6 +352,14 @@ something else. A scripted apology is a feature. An escalating argument about
 something already dealt with is a temperament, and a temperament is the thing
 you cannot bolt onto a text field afterwards.
 
+And by the fourth time he takes the placeholder. The greyed suggestion in the
+empty box — the one piece of the interface that talks to you before you have
+done anything — stops offering ideas and starts saying *"Stop asking about my
+hands!"*. Worth noting as the smallest possible example of the whole thesis:
+the interface itself is inside the fiction, so it is available to him as
+somewhere to speak from. In a chat product the placeholder belongs to the
+product. Here it belongs to whoever is in the room.
+
 **The face is measured, and there is a test that says so.** — §6, and the most
 important entry in this log. The first version of the face had knobs called
 `noseWide: 1.28` and `lipFull: 1.35`. Numbers with no unit and no source, which

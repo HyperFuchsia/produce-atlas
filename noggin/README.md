@@ -463,6 +463,16 @@ harder each time:
 > Type literally anything else. Type "pineapple". I will do the pineapple.
 > ...
 
+And from the fourth mention he takes the suggestion line off you. The greyed
+placeholder in the empty box stops saying *name a food plant…* and starts
+saying:
+
+> **Stop asking about my hands!**
+
+Which is the one piece of the interface that speaks before you have done
+anything, and therefore the only way he gets to keep saying it while you are
+not typing. It stays until he is wearing a different face.
+
 The trigger is edge-detected, so finishing the sentence does not set him off
 once per letter — he has to watch the word *appear*, and clearing the box arms
 him again. The hands stay skeletal. He knows.

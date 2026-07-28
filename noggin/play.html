@@ -4992,6 +4992,10 @@
     this.log = els.log;
     this.input = els.input;
     this.form = els.form;
+    /* The greyed-out suggestion in the empty box. It is the one piece of UI
+       that talks to you before you have done anything, which makes it the
+       only place he can get a word in without saying it out loud. */
+    this.defaultHint = this.input.placeholder;
 
     this.queue = [];
     this.live = [];      /* on-screen lines with their remaining lifetime */
@@ -5064,6 +5068,11 @@
     if (!v) { this.viseme.open = 0; this.viseme.round *= 0.5; return; }
     this.viseme.open = v[0];
     this.viseme.round = v[1];
+  };
+
+  /* Change what the empty box suggests. Passing nothing puts it back. */
+  Chat.prototype.hint = function (text) {
+    this.input.placeholder = text || this.defaultHint;
   };
 
   Chat.prototype.busy = function () {
@@ -7303,6 +7312,7 @@ void main() {
     const c = this.caught;
     c.phase = 'off'; c.count = 0; c.armed = true; c.cool = 0;
     c.heat = 0; c.palm = 0; c.look = 0;
+    this.chat.hint(null);
     const w = this.fourthWall;
     w.strikes = 0;
     w.phase = 'off';
@@ -7534,6 +7544,12 @@ void main() {
     c.phase = 'retort';
     c.heat = Math.min(1, (c.count - 1) / 6);
     this.chat.say(RETORTS[Math.min(c.count - 2, RETORTS.length - 1)]);
+
+    /* And once he has had enough, he takes the suggestion line off you. It
+       sits there greyed out in the empty box, which is the one bit of the
+       interface that speaks before you have done anything — so it is the only
+       way he gets to keep saying it while you are not typing. */
+    if (c.count >= 4) this.chat.hint('Stop asking about my hands!');
   };
 
   /* Where he is looking, as a spin and a tilt that will point his front at a

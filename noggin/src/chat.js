@@ -36,6 +36,10 @@
     this.log = els.log;
     this.input = els.input;
     this.form = els.form;
+    /* The greyed-out suggestion in the empty box. It is the one piece of UI
+       that talks to you before you have done anything, which makes it the
+       only place he can get a word in without saying it out loud. */
+    this.defaultHint = this.input.placeholder;
 
     this.queue = [];
     this.live = [];      /* on-screen lines with their remaining lifetime */
@@ -108,6 +112,11 @@
     if (!v) { this.viseme.open = 0; this.viseme.round *= 0.5; return; }
     this.viseme.open = v[0];
     this.viseme.round = v[1];
+  };
+
+  /* Change what the empty box suggests. Passing nothing puts it back. */
+  Chat.prototype.hint = function (text) {
+    this.input.placeholder = text || this.defaultHint;
   };
 
   Chat.prototype.busy = function () {

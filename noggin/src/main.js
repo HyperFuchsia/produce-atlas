@@ -366,6 +366,7 @@
     const c = this.caught;
     c.phase = 'off'; c.count = 0; c.armed = true; c.cool = 0;
     c.heat = 0; c.palm = 0; c.look = 0;
+    this.chat.hint(null);
     const w = this.fourthWall;
     w.strikes = 0;
     w.phase = 'off';
@@ -597,6 +598,12 @@
     c.phase = 'retort';
     c.heat = Math.min(1, (c.count - 1) / 6);
     this.chat.say(RETORTS[Math.min(c.count - 2, RETORTS.length - 1)]);
+
+    /* And once he has had enough, he takes the suggestion line off you. It
+       sits there greyed out in the empty box, which is the one bit of the
+       interface that speaks before you have done anything — so it is the only
+       way he gets to keep saying it while you are not typing. */
+    if (c.count >= 4) this.chat.hint('Stop asking about my hands!');
   };
 
   /* Where he is looking, as a spin and a tilt that will point his front at a
