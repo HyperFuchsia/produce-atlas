@@ -1,0 +1,6 @@
+# render intermediates - only the finished mp4 and poster are tracked
+__pycache__/
+out/check/
+out/still_*.png
+out/soundtrack.wav
+out/render.log
