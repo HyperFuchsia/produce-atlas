@@ -438,6 +438,19 @@ he leans on. Putting them away after each grab made them a special effect that
 fires and resets. Leaving them means the third strike permanently changes what
 he looks like, and everything he says afterwards has hands behind it.
 
+**And the palms face the wrong way.** Outward, away from him, which is not how
+anybody holds their hands. That is a real mistake and it is left in on purpose,
+because the moment somebody notices is worth more than the mistake costs: type
+the word **hand** anywhere in the box and — before you press send, before you
+have finished the sentence — he stops, looks down at one hand, then the other,
+says *"I am sorry — my hands were facing the wrong way"*, and turns them round.
+You never get to tell him. He gets there first, once per face.
+
+That is also why the hands sit in **world space** rather than in his frame.
+Parented to him they turned when he turned and stayed forever in the corner of
+his eye, so he could never look *at* them — and your hands do not swing round
+when you turn your head either.
+
 They gesture on `chat.emphasis` — the same spike on stressed words the sphere's
 swell already rides. One number that already existed, and it is the difference
 between a face with hands near it and a face that is talking to you.

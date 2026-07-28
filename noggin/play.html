@@ -5016,6 +5016,7 @@
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
+    this.onType = null;
     this.onClear = null;
     this.onAbort = null;
 
@@ -5027,6 +5028,14 @@
     });
     /* Typing in the box must not trigger the game's single-key shortcuts. */
     this.input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+
+    /* What is being typed, before it is sent. Almost nothing should read this
+       — a thing that reacts to half-finished sentences is exhausting — but it
+       is the only way to catch somebody in the act of noticing something, and
+       there is exactly one of those. */
+    this.input.addEventListener('input', function () {
+      if (self.onType) self.onType(self.input.value);
+    });
   }
 
   /* Letter to mouth shape. Not phonemes — the spelling is what it has, and
@@ -7087,6 +7096,9 @@ void main() {
     /* Half a second under the floor and he takes the camera off you. */
     this.fourthWall = { phase: 'off', t: 0, under: 0, cool: 0, blend: 0,
       hand: 1, yaw: 0, pitch: 0, toPitch: 0.14 };
+    /* He is watching the input box for one word. */
+    this.caught = { phase: 'off', t: 0, done: false, palm: 0, look: 0,
+      at: { spin: 0, tilt: 0 } };
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -7153,6 +7165,7 @@ void main() {
     this.skinShade = 0.30;
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
+    this.chat.onType = function (text) { self.noticeHands(text); };
     this.chat.onClear = function () { self.clearSpecimens(); };
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
@@ -7287,6 +7300,8 @@ void main() {
     /* A face arrives with no hands. They are not decoration and they are not
        always there — they exist for exactly one purpose, and turning up is
        most of the effect. See updateFourthWall. */
+    const c = this.caught;
+    c.phase = 'off'; c.done = false; c.palm = 0; c.look = 0;
     const w = this.fourthWall;
     w.strikes = 0;
     w.phase = 'off';
@@ -7311,7 +7326,7 @@ void main() {
       const side = s === 0 ? -1 : 1;
       const h = {
         handle: this.renderer.createProp(NG.FACE.hand(entry, side)),
-        matrix: M.m4(), local: M.m4(), grow: 0, target: 1,
+        matrix: M.m4(), local: M.m4(), world: true, grow: 0, target: 1,
         side: side, phase: s * 2.1, lift: 0
       };
       this.attached.push(h);
@@ -7456,6 +7471,85 @@ void main() {
     }
   };
 
+  /* ---- caught out ------------------------------------------------------ */
+
+  /* The palms face outward, away from him, which is not how anybody holds
+     their hands. It is a real mistake and it was left in on purpose, because
+     the moment somebody notices is worth more than the mistake costs.
+
+     So: he is watching the box. Type the word "hand" anywhere in it and —
+     before you press send, before you have finished the sentence — he stops,
+     looks down at one hand, then the other, apologises, and turns them round.
+     You never get to tell him. He gets there first.
+
+     It fires once per face. A thing that keeps apologising is not embarrassed,
+     it is a machine with a trigger. */
+  const CAUGHT = { left: 0.85, right: 0.80, turn: 0.75, back: 0.70 };
+
+  App.prototype.noticeHands = function (text) {
+    const c = this.caught;
+    if (c.done || c.phase !== 'off') return;
+    if (!this.face || !this.hands || this.morph.t < 1) return;
+    if (this.fourthWall.phase !== 'off') return;
+    if (!/hand/i.test(String(text || ''))) return;
+
+    c.phase = 'left';
+    c.t = 0;
+    c.done = true;
+    this.chat.say(['Oh — hold on.']);
+  };
+
+  /* Where he is looking, as a spin and a tilt that will point his front at a
+     world point. The model applies Ry then Rx, so its +Z axis ends up at
+     (sin y cos x, -sin x, cos y cos x) — invert that and the two angles fall
+     out with no search. */
+  App.prototype._lookAngles = function (at) {
+    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], at, this.headPos));
+    return { spin: Math.atan2(d[0], d[2]), tilt: -Math.asin(M.clamp(d[1], -1, 1)) };
+  };
+
+  App.prototype.updateCaught = function (dt) {
+    const c = this.caught;
+    if (c.phase === 'off') return;
+    if (!this.face || !this.hands) { c.phase = 'off'; c.look = 0; return; }
+
+    c.t += dt;
+    c.look = Math.min(1, c.look + dt * 4);
+
+    const hand = function (app, i) {
+      const h = app.hands[i];
+      return [h.local[12], h.local[13], h.local[14]];
+    };
+
+    if (c.phase === 'left') {
+      c.at = this._lookAngles(hand(this, 0));
+      if (c.t >= CAUGHT.left) {
+        c.phase = 'right'; c.t = 0;
+        this.chat.say(['I am sorry — my hands were facing the wrong way.']);
+      }
+      return;
+    }
+    if (c.phase === 'right') {
+      c.at = this._lookAngles(hand(this, 1));
+      if (c.t >= CAUGHT.right) { c.phase = 'turn'; c.t = 0; }
+      return;
+    }
+    if (c.phase === 'turn') {
+      /* Both palms come round to face him. */
+      c.palm = M.smoothstep(0, 1, Math.min(1, c.t / CAUGHT.turn));
+      c.at = this._lookAngles(hand(this, 1));
+      if (c.t >= CAUGHT.turn) {
+        c.phase = 'back'; c.t = 0;
+        this.chat.say(['There. That is better.']);
+      }
+      return;
+    }
+    /* back: he looks up at you again. */
+    c.palm = 1;
+    c.look = Math.max(0, c.look - dt * 2.2);
+    if (c.t >= CAUGHT.back) { c.phase = 'off'; c.look = 0; }
+  };
+
   /* Where the grabbing hand has to be: just off the lens, palm toward you. */
   App.prototype._wallHandPose = function (h) {
     const w = this.fourthWall;
@@ -7463,12 +7557,11 @@ void main() {
     /* Far enough back that you see a hand rather than four sausages entering
        from the top of the frame. */
     const world = M.addScaled3([0, 0, 0], this.eye, fwd, 3.6);
-    const local = M.transformPoint([0, 0, 0], this.invModel, world);
+    const local = world;
 
     /* Face the palm at the camera. The mesh's palm normal is -Z, and the
-       local matrix applies Ry then Rx, so the two angles fall straight out. */
-    const at = M.transformPoint([0, 0, 0], this.invModel, this.eye);
-    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], at, local));
+       matrix applies Ry then Rx, so the two angles fall straight out. */
+    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, local));
     const rx = Math.asin(M.clamp(d[1], -1, 1));
     const ry = Math.atan2(-d[0], -d[2]);
     /* A little wobble while he has hold of it, so it reads as a grip and not
@@ -7495,14 +7588,25 @@ void main() {
       const sway = Math.sin(t * 0.44 + p * 2.3) * 0.030;
 
       /* Out to the side, below the chin, and a little forward — where your
-         own hands are when you are explaining something. */
-      const x = h.side * (1.62 + sway * 0.5 + h.lift * 0.10);
-      const y = -1.42 + bob + h.lift * 0.30;
-      const z = 0.55 + Math.sin(t * 0.53 + p) * 0.05 + h.lift * 0.16;
+         own hands are when you are explaining something. In world space, so
+         they stay put while he turns his head. */
+      /* A little further out once the palms come round, or they crowd him. */
+      const out = 1.62 + this.caught.palm * 0.42;
+      const x = this.headPos[0] + h.side * (out + sway * 0.5 + h.lift * 0.10);
+      const y = this.headPos[1] - 1.42 + bob + h.lift * 0.30;
+      const z = this.headPos[2] + 0.55 + Math.sin(t * 0.53 + p) * 0.05 + h.lift * 0.16;
 
       /* Turned palm-inward, and opening a little as it gestures. */
-      let yaw = h.side * (-0.62 + h.lift * 0.34) + sway * 0.35;
-      let pitch = -0.30 + bob * 0.9 - h.lift * 0.45;
+      /* Palms out to begin with, which is wrong and is meant to be. They come
+         round to face him the moment somebody notices — see updateCaught. */
+      const palmYaw = -0.62 + (1.30 - -0.62) * this.caught.palm;
+      let yaw = h.side * (palmYaw + h.lift * 0.34) + sway * 0.35;
+      /* The tilt has to come back up as the palms turn. `compose` applies the
+         yaw first, so at the turned-round yaw the same downward pitch swings
+         the fingers *inward* instead of outward and he ends up clawing at his
+         own head. Near zero they stay upright, which is where fingers go. */
+      const tilt0 = -0.30 + (-0.06 - -0.30) * this.caught.palm;
+      let pitch = tilt0 + bob * 0.9 - h.lift * (0.45 - 0.30 * this.caught.palm);
       let px = x, py = y, pz = z;
 
       /* Unless it is currently holding the camera. Blended rather than
@@ -7542,10 +7646,14 @@ void main() {
         0, 0, g, 0,
         0, 0, 0, 1
       ];
-      if (t.local) {
-        /* A part with a life of its own — a hand — sits at its own place in
-           the being's frame and grows from its own wrist rather than from
-           the middle of the head. */
+      if (t.world) {
+        /* Hands are placed in world space rather than in the being's frame.
+           They ride his position but not his rotation, which is both more
+           true — your hands do not swing round when you turn your head — and
+           the only way he can ever look *at* them. Parented to him, they
+           turned with him and stayed forever in the corner of his eye. */
+        M.multiply(t.matrix, t.local, s);
+      } else if (t.local) {
         M.multiply(this._trimTmp, this.model, t.local);
         M.multiply(t.matrix, this._trimTmp, s);
       } else {
@@ -8681,10 +8789,17 @@ void main() {
        worse than no face, and this is the only form where walking round the
        back of it should not be possible. */
     if (this.face) {
-      let d = (this.camera.yaw - this.spin) % (Math.PI * 2);
+      /* Normally he turns to whoever is looking. While he is checking his own
+         hands he turns to those instead, and eases back afterwards. */
+      const c = this.caught;
+      const want = c.look > 0.001 ? c.at.spin : this.camera.yaw;
+      let d = (want - this.spin) % (Math.PI * 2);
       if (d > Math.PI) d -= Math.PI * 2;
       if (d < -Math.PI) d += Math.PI * 2;
-      this.spin += d * Math.min(1, dt * 2.4);
+      this.spin += d * Math.min(1, dt * (c.look > 0.001 ? 4.5 : 2.4));
+      if (c.look > 0.001) {
+        this.tilt += (c.at.tilt - this.tilt) * Math.min(1, dt * 4.5 * c.look);
+      }
     }
     this.composeModel();
   };
@@ -8767,6 +8882,7 @@ void main() {
     this.updatePlay(dt);
     this.updateHelper(dt);
     this.updateFourthWall(dt);
+    this.updateCaught(dt);
     this.updateHands(dt);
     this.updateTrimmings(dt);
     this.updateLight();

@@ -60,6 +60,7 @@
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
     this.onSpawn = null;
+    this.onType = null;
     this.onClear = null;
     this.onAbort = null;
 
@@ -71,6 +72,14 @@
     });
     /* Typing in the box must not trigger the game's single-key shortcuts. */
     this.input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+
+    /* What is being typed, before it is sent. Almost nothing should read this
+       — a thing that reacts to half-finished sentences is exhausting — but it
+       is the only way to catch somebody in the act of noticing something, and
+       there is exactly one of those. */
+    this.input.addEventListener('input', function () {
+      if (self.onType) self.onType(self.input.value);
+    });
   }
 
   /* Letter to mouth shape. Not phonemes — the spelling is what it has, and

@@ -332,6 +332,19 @@ of the simulation, and something that already knows how to speak — and the
 cost of building it, given all three, was one state machine and an afternoon.
 That is what an interaction moat looks like from the inside.
 
+**He apologises for his own hands before you can mention them.** — §4.3, and
+the sharpest version of it yet. The palms face outward, which is wrong, and it
+is left wrong on purpose: he is watching the input box, and the moment the word
+"hand" appears in it — mid-sentence, before send — he stops, checks both hands,
+apologises and turns them round.
+
+Worth logging because of what it costs to copy. It needs a body whose flaws are
+visible, a character who can be embarrassed by them, and a read on what you are
+typing *before you commit to it*. A chat product has the last one and nothing
+to do with it. Here it turns a modelling error into the most human beat in the
+whole thing — and the beat only exists *because* the error does, which is a
+strange and useful thing to know about building this way.
+
 **The face is measured, and there is a test that says so.** — §6, and the most
 important entry in this log. The first version of the face had knobs called
 `noseWide: 1.28` and `lipFull: 1.35`. Numbers with no unit and no source, which
