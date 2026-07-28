@@ -7097,8 +7097,8 @@ void main() {
     this.fourthWall = { phase: 'off', t: 0, under: 0, cool: 0, blend: 0,
       hand: 1, yaw: 0, pitch: 0, toPitch: 0.14 };
     /* He is watching the input box for one word. */
-    this.caught = { phase: 'off', t: 0, done: false, palm: 0, look: 0,
-      at: { spin: 0, tilt: 0 } };
+    this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
+      heat: 0, palm: 0, look: 0, at: { spin: 0, tilt: 0 } };
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -7301,7 +7301,8 @@ void main() {
        always there — they exist for exactly one purpose, and turning up is
        most of the effect. See updateFourthWall. */
     const c = this.caught;
-    c.phase = 'off'; c.done = false; c.palm = 0; c.look = 0;
+    c.phase = 'off'; c.count = 0; c.armed = true; c.cool = 0;
+    c.heat = 0; c.palm = 0; c.look = 0;
     const w = this.fourthWall;
     w.strikes = 0;
     w.phase = 'off';
@@ -7479,24 +7480,60 @@ void main() {
 
      So: he is watching the box. Type the word "hand" anywhere in it and —
      before you press send, before you have finished the sentence — he stops,
-     looks down at one hand, then the other, apologises, and turns them round.
-     You never get to tell him. He gets there first.
+     looks down at one hand, then the other, apologises, and turns the palms
+     round to face you. You never get to tell him. He gets there first.
 
-     It fires once per face. A thing that keeps apologising is not embarrassed,
-     it is a machine with a trigger. */
-  const CAUGHT = { left: 0.85, right: 0.80, turn: 0.75, back: 0.70 };
+     Type it again and he is less pleased about it. The palms are fixed after
+     the first time, so every mention after that is somebody picking at
+     something he has already dealt with, and he takes it exactly as well as a
+     person would. The hands stay skeletal, and he knows, and he would rather
+     not discuss it. */
+  const CAUGHT = { left: 0.85, right: 0.80, turn: 0.75, back: 0.70, retort: 1.05 };
+
+  /* One per mention after the first. He runs out of patience before he runs
+     out of lines; the last one is where he stays. */
+  const RETORTS = [
+    ['They are fine now. I turned them round.'],
+    ['There is nothing wrong with my hands.'],
+    ['Why do you keep typing that word.'],
+    ['They are HANDS. They hold things. They are fine.'],
+    ['Yes. They are a bit skeletal. I am aware. It is on a list.'],
+    ['It is a long list and they are not near the top of it.'],
+    ['Type literally anything else. Type "pineapple". I will do the pineapple.'],
+    ['...'],
+    ['We are still doing this.']
+  ];
 
   App.prototype.noticeHands = function (text) {
     const c = this.caught;
-    if (c.done || c.phase !== 'off') return;
+    const has = /hand/i.test(String(text || ''));
+
+    /* Edge-triggered. The input event fires on every keystroke, so once the
+       box contains the word it would match forever — he has to see it appear
+       rather than see it present, or finishing the sentence sets him off once
+       per letter. Clearing it out arms him again. */
+    if (!has) { c.armed = true; return; }
+    if (!c.armed) return;
+
     if (!this.face || !this.hands || this.morph.t < 1) return;
     if (this.fourthWall.phase !== 'off') return;
-    if (!/hand/i.test(String(text || ''))) return;
+    if (c.phase !== 'off' || c.cool > 0) return;
 
-    c.phase = 'left';
+    c.armed = false;
+    c.count++;
     c.t = 0;
-    c.done = true;
-    this.chat.say(['Oh — hold on.']);
+
+    if (c.count === 1) {
+      c.phase = 'left';
+      this.chat.say(['Oh — hold on.']);
+      return;
+    }
+
+    /* Every mention after the first: a look down, a line, and rather more
+       feeling each time. */
+    c.phase = 'retort';
+    c.heat = Math.min(1, (c.count - 1) / 6);
+    this.chat.say(RETORTS[Math.min(c.count - 2, RETORTS.length - 1)]);
   };
 
   /* Where he is looking, as a spin and a tilt that will point his front at a
@@ -7510,6 +7547,7 @@ void main() {
 
   App.prototype.updateCaught = function (dt) {
     const c = this.caught;
+    if (c.cool > 0) c.cool -= dt;
     if (c.phase === 'off') return;
     if (!this.face || !this.hands) { c.phase = 'off'; c.look = 0; return; }
 
@@ -7534,8 +7572,15 @@ void main() {
       if (c.t >= CAUGHT.right) { c.phase = 'turn'; c.t = 0; }
       return;
     }
+    if (c.phase === 'retort') {
+      /* He glances down at them — briefly, and with less and less patience —
+         and holds them up at you while he says it. */
+      c.at = this._lookAngles(hand(this, c.count % 2));
+      if (c.t >= CAUGHT.retort) { c.phase = 'back'; c.t = 0; }
+      return;
+    }
     if (c.phase === 'turn') {
-      /* Both palms come round to face him. */
+      /* Both palms come round to face you. */
       c.palm = M.smoothstep(0, 1, Math.min(1, c.t / CAUGHT.turn));
       c.at = this._lookAngles(hand(this, 1));
       if (c.t >= CAUGHT.turn) {
@@ -7545,9 +7590,9 @@ void main() {
       return;
     }
     /* back: he looks up at you again. */
-    c.palm = 1;
+    if (c.count <= 1) c.palm = 1;
     c.look = Math.max(0, c.look - dt * 2.2);
-    if (c.t >= CAUGHT.back) { c.phase = 'off'; c.look = 0; }
+    if (c.t >= CAUGHT.back) { c.phase = 'off'; c.look = 0; c.cool = 0.6; }
   };
 
   /* Where the grabbing hand has to be: just off the lens, palm toward you. */
@@ -7597,16 +7642,40 @@ void main() {
       const z = this.headPos[2] + 0.55 + Math.sin(t * 0.53 + p) * 0.05 + h.lift * 0.16;
 
       /* Turned palm-inward, and opening a little as it gestures. */
-      /* Palms out to begin with, which is wrong and is meant to be. They come
-         round to face him the moment somebody notices — see updateCaught. */
-      const palmYaw = -0.62 + (1.30 - -0.62) * this.caught.palm;
-      let yaw = h.side * (palmYaw + h.lift * 0.34) + sway * 0.35;
+      /* Palms out to begin with, which is wrong and is meant to be.
+
+         Once he has been caught out they face *you* — aimed at the eye every
+         frame rather than parked at some fixed angle, so they keep facing you
+         as you orbit. Which is the point: "facing the camera" is not a pose,
+         it is a relationship, and a hand held out at where the camera used to
+         be is no better than one held out backwards. */
+      let yaw = h.side * (-0.62 + h.lift * 0.34) + sway * 0.35;
       /* The tilt has to come back up as the palms turn. `compose` applies the
          yaw first, so at the turned-round yaw the same downward pitch swings
          the fingers *inward* instead of outward and he ends up clawing at his
          own head. Near zero they stay upright, which is where fingers go. */
-      const tilt0 = -0.30 + (-0.06 - -0.30) * this.caught.palm;
-      let pitch = tilt0 + bob * 0.9 - h.lift * (0.45 - 0.30 * this.caught.palm);
+      let pitch = -0.30 + bob * 0.9 - h.lift * 0.45;
+
+      const cp = this.caught.palm;
+      if (cp > 0.001) {
+        /* The palm normal is -Z in the mesh, and the matrix applies Ry then
+           Rx, so aiming it is the same two-angle inversion the look-at uses.
+           Blended in, so the turn is a movement rather than a cut. */
+        const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, [x, y, z]));
+        const wantP = Math.asin(M.clamp(d[1], -1, 1));
+        const wantY = Math.atan2(-d[0], -d[2]);
+        let dy = (wantY - yaw) % (Math.PI * 2);
+        if (dy > Math.PI) dy -= Math.PI * 2;
+        if (dy < -Math.PI) dy += Math.PI * 2;
+        yaw += dy * cp;
+        pitch += (wantP - pitch) * cp;
+        /* And a shake, which arrives with his patience running out. */
+        const heat = this.caught.heat * (this.caught.phase === 'retort' ? 1 : 0);
+        if (heat > 0.001) {
+          yaw += Math.sin(this.time * 21) * 0.10 * heat;
+          pitch += Math.sin(this.time * 17 + 1.1) * 0.07 * heat;
+        }
+      }
       let px = x, py = y, pz = z;
 
       /* Unless it is currently holding the camera. Blended rather than

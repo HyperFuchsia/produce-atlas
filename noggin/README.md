@@ -438,13 +438,34 @@ he leans on. Putting them away after each grab made them a special effect that
 fires and resets. Leaving them means the third strike permanently changes what
 he looks like, and everything he says afterwards has hands behind it.
 
-**And the palms face the wrong way.** Outward, away from him, which is not how
+**And the palms face the wrong way.** Outward, away from you, which is not how
 anybody holds their hands. That is a real mistake and it is left in on purpose,
 because the moment somebody notices is worth more than the mistake costs: type
 the word **hand** anywhere in the box and — before you press send, before you
 have finished the sentence — he stops, looks down at one hand, then the other,
-says *"I am sorry — my hands were facing the wrong way"*, and turns them round.
-You never get to tell him. He gets there first, once per face.
+says *"I am sorry — my hands were facing the wrong way"*, and turns them to
+face you. You never get to tell him. He gets there first.
+
+They then keep facing you as you orbit, because "facing the camera" is not a
+pose, it is a relationship — a hand held out at where the camera used to be is
+no better than one held out backwards.
+
+**And if you keep bringing it up, he stops being sorry.** Every mention after
+the first gets a shorter answer and a worse mood, and his hands shake a little
+harder each time:
+
+> They are fine now. I turned them round.
+> There is nothing wrong with my hands.
+> Why do you keep typing that word.
+> They are HANDS. They hold things. They are fine.
+> Yes. They are a bit skeletal. I am aware. It is on a list.
+> It is a long list and they are not near the top of it.
+> Type literally anything else. Type "pineapple". I will do the pineapple.
+> ...
+
+The trigger is edge-detected, so finishing the sentence does not set him off
+once per letter — he has to watch the word *appear*, and clearing the box arms
+him again. The hands stay skeletal. He knows.
 
 That is also why the hands sit in **world space** rather than in his frame.
 Parented to him they turned when he turned and stayed forever in the corner of

@@ -345,6 +345,13 @@ to do with it. Here it turns a modelling error into the most human beat in the
 whole thing — and the beat only exists *because* the error does, which is a
 strange and useful thing to know about building this way.
 
+The second mention is where it stops being a trick. He fixed the palms; you
+brought it up again anyway; so he is defensive, and then irritated, and then
+he admits the hands are a bit skeletal and asks you to please talk about
+something else. A scripted apology is a feature. An escalating argument about
+something already dealt with is a temperament, and a temperament is the thing
+you cannot bolt onto a text field afterwards.
+
 **The face is measured, and there is a test that says so.** — §6, and the most
 important entry in this log. The first version of the face had knobs called
 `noseWide: 1.28` and `lipFull: 1.35`. Numbers with no unit and no source, which
