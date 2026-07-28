@@ -154,6 +154,8 @@
     /* Set while it is wearing a face, which is the one form that keeps
        moving on its own after the morph has finished. */
     this.face = null;
+    this.hands = null;
+    this._trimTmp = M.m4();
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -336,12 +338,74 @@
      they ride the being's own transform with no fitting required, and they
      grow out of it rather than appearing. */
   App.prototype._setTrimmings = function (entry) {
-    const mesh = entry && entry.id ? NG.P.build(entry, true) : null;
-    if (this.trim) this.trim.target = 0;
-    if (!mesh) return;
-    const t = { handle: this.renderer.createProp(mesh), matrix: M.m4(), grow: 0, target: 1 };
-    this.attached.push(t);
-    this.trim = t;
+    for (let i = 0; i < this.attached.length; i++) this.attached[i].target = 0;
+    this.trim = null;
+    this.hands = null;
+    if (!entry || !entry.id) return;
+
+    const mesh = NG.P.build(entry, true);
+    if (mesh) {
+      const t = {
+        handle: this.renderer.createProp(mesh), matrix: M.m4(),
+        local: null, grow: 0, target: 1
+      };
+      this.attached.push(t);
+      this.trim = t;
+    }
+
+    /* Hands, which only a face has. They are their own props rather than part
+       of the head's trimming because they have to move independently of it —
+       a pair of hands welded to a skull is a hat stand. */
+    if (entry.kind === 'face') {
+      const hands = [];
+      for (let s = 0; s < 2; s++) {
+        const side = s === 0 ? -1 : 1;
+        const h = {
+          handle: this.renderer.createProp(NG.FACE.hand(entry, side)),
+          matrix: M.m4(), local: M.m4(), grow: 0, target: 1,
+          side: side, phase: s * 2.1, lift: 0
+        };
+        this.attached.push(h);
+        hands.push(h);
+      }
+      this.hands = hands;
+    }
+  };
+
+  /* Where the hands sit and what they are doing.
+
+     People talk with their hands, and the being already knows exactly when it
+     is stressing a word — `chat.emphasis` spikes on the marks that carry
+     weight, which is the same signal the sphere's swell rides. So the hands
+     beat on the stresses. It costs one number that already exists, and it is
+     the difference between a face with hands near it and a face that is
+     talking to you. */
+  App.prototype.updateHands = function (dt) {
+    if (!this.hands) return;
+    const t = this.time;
+    const emph = this.chat.emphasis;
+
+    for (let i = 0; i < this.hands.length; i++) {
+      const h = this.hands[i];
+      h.lift += (emph - h.lift) * Math.min(1, dt * (emph > h.lift ? 9 : 3.4));
+
+      const p = h.phase;
+      /* Idle drift, incommensurate so the two never sync up and the pair
+         never looks like one animation played twice. */
+      const bob = Math.sin(t * 0.61 + p) * 0.035 + Math.sin(t * 0.37 + p * 1.7) * 0.022;
+      const sway = Math.sin(t * 0.44 + p * 2.3) * 0.030;
+
+      /* Out to the side, below the chin, and a little forward — where your
+         own hands are when you are explaining something. */
+      const x = h.side * (1.62 + sway * 0.5 + h.lift * 0.10);
+      const y = -1.42 + bob + h.lift * 0.30;
+      const z = 0.55 + Math.sin(t * 0.53 + p) * 0.05 + h.lift * 0.16;
+
+      /* Turned palm-inward, and opening a little as it gestures. */
+      const yaw = h.side * (-0.62 + h.lift * 0.34) + sway * 0.35;
+      const pitch = -0.30 + bob * 0.9 - h.lift * 0.45;
+      M.compose(h.local, x, y, z, yaw, pitch, 1);
+    }
   };
 
   App.prototype.updateTrimmings = function (dt) {
@@ -362,7 +426,15 @@
         0, 0, g, 0,
         0, 0, 0, 1
       ];
-      M.multiply(t.matrix, this.model, s);
+      if (t.local) {
+        /* A part with a life of its own — a hand — sits at its own place in
+           the being's frame and grows from its own wrist rather than from
+           the middle of the head. */
+        M.multiply(this._trimTmp, this.model, t.local);
+        M.multiply(t.matrix, this._trimTmp, s);
+      } else {
+        M.multiply(t.matrix, this.model, s);
+      }
     }
   };
 
@@ -1578,6 +1650,7 @@
     this.resolveFloorContact();
     this.updatePlay(dt);
     this.updateHelper(dt);
+    this.updateHands(dt);
     this.updateTrimmings(dt);
     this.updateLight();
     this.trackGrabVelocity(dt);

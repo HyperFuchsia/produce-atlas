@@ -656,6 +656,212 @@
     return { positions: pos, indices: unit.indices, colors: col };
   }
 
+  /* ---- hands ----------------------------------------------------------- */
+
+  /* A tapered capsule from A to B: the only primitive a hand really needs.
+     Built from a unit sphere so both ends are proper hemispheres and the
+     middle lofts between the two radii — a plain cylinder with ball ends
+     gives a step wherever the radius changes, and a finger changes radius
+     along its whole length. */
+  function capsule(unit, ax, ay, az, bx, by, bz, r0, r1, flat) {
+    const fz = flat === undefined ? 1 : flat;
+    const wx = bx - ax, wy = by - ay, wz = bz - az;
+    const len = Math.hypot(wx, wy, wz) || 1e-6;
+    const w = [wx / len, wy / len, wz / len];
+    const fr = M.frame(w);
+    const u = fr[0], v = fr[1];
+    const n = unit.positions.length / 3;
+    const out = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) {
+      const x = unit.positions[i * 3], y = unit.positions[i * 3 + 1],
+        z = unit.positions[i * 3 + 2];
+      const t = M.smoothstep(-0.4, 0.4, y);
+      const r = r0 + (r1 - r0) * t;
+      const c = t * len + y * r;
+      const rz = r * fz;
+      out[i * 3] = ax + u[0] * x * r + v[0] * z * rz + w[0] * c;
+      out[i * 3 + 1] = ay + u[1] * x * r + v[1] * z * rz + w[1] * c;
+      out[i * 3 + 2] = az + u[2] * x * r + v[2] * z * rz + w[2] * c;
+    }
+    return out;
+  }
+
+  /* Adult male hand, in millimetres, measured the same way the face is:
+     189 mm wrist crease to middle fingertip, 107 mm of that palm, 89 mm
+     across the knuckles. Finger lengths from the knuckle are 75, 82, 76 and
+     60, and each divides into phalanges at roughly 45 / 27 / 28 per cent.
+
+     The single thing that decides whether this reads as a hand or as a rubber
+     glove is that **a relaxed hand is never flat**. Every joint sits at some
+     flexion even at rest — about 20 degrees at the knuckle, 40 at the middle
+     joint, 15 at the last — and the amount increases from index to little, so
+     the fingertips fall along a curve rather than a line. Flat fingers are
+     what shop mannequins have and the reason they look dead. */
+  FACE.hand = function (spec, side) {
+    const parts = { pos: [], col: [], mat: [], idx: [] };
+    const seg = G.icosphere(2);
+    const ball = G.icosphere(2);
+    const mm = 0.01;                       /* 1 mm in world units */
+    const f = spec.face || {};
+    const skin = spec.color;
+    /* Palms and the underside of the fingers are markedly lighter than the
+       back of the hand. True of everyone, and leaving it out is most of why
+       a monochrome hand reads as a prop. */
+    const palmar = f.palmColor ||
+      [skin[0] * 1.25 + 0.016, skin[1] * 1.50 + 0.013, skin[2] * 1.65 + 0.009];
+    const nail = f.nailColor ||
+      [skin[0] * 1.7 + 0.055, skin[1] * 2.0 + 0.040, skin[2] * 2.1 + 0.034];
+
+    /* Everything is authored for a right hand and mirrored for a left. */
+    const S = side < 0 ? -1 : 1;
+
+    const add = function (positions, indices, colour, matId, shade) {
+      const base = parts.pos.length / 3;
+      for (let i = 0; i < positions.length / 3; i++) {
+        parts.pos.push(positions[i * 3] * S * mm, positions[i * 3 + 1] * mm,
+          positions[i * 3 + 2] * mm);
+        if (shade) {
+          /* Palmar side is -Z. Blended by how far round the surface has
+             turned, so the change is a gradient at the edge of the hand
+             rather than a seam down it. */
+          const k = M.clamp(-positions[i * 3 + 2] / shade + 0.5, 0, 1);
+          const g = M.smoothstep(0, 1, k);
+          parts.col.push(
+            colour[0] + (palmar[0] - colour[0]) * g,
+            colour[1] + (palmar[1] - colour[1]) * g,
+            colour[2] + (palmar[2] - colour[2]) * g);
+        } else {
+          parts.col.push(colour[0], colour[1], colour[2]);
+        }
+        parts.mat.push(matId);
+      }
+      for (let i = 0; i < indices.length; i++) parts.idx.push(indices[i] + base);
+    };
+
+    /* --- the palm ---
+       One solid, not a heap of them. A palm is 89 mm across, 28 mm through
+       and 107 mm long: a flat, rounded slab that narrows to the wrist. Built
+       out of overlapping ellipsoids it stayed a heap of overlapping
+       ellipsoids — you could see every one of them — so it is revolved from a
+       single profile and then squashed flat, which is one surface with no
+       seams anywhere on it.
+
+       The parts that genuinely do stand off that slab get added to it: the
+       thenar pad at the base of the thumb, the hypothenar down the little
+       finger's edge, and the knuckles. Those are supposed to be lumps. */
+    const I3 = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    const palm = P.build({
+      id: 'palm', rings: 30, segments: 30,
+      lengthCm: 13.4, widthCm: 8.9, color: skin,
+      /* wrist ......................................... knuckles */
+      profile: [0, 0.50, 0.58, 0.64, 0.72, 0.84, 0.95, 1.00, 0.97, 0.76, 0]
+    });
+    {
+      const q = new Float32Array(palm.positions.length);
+      for (let i = 0; i < palm.positions.length; i += 3) {
+        q[i] = palm.positions[i];
+        q[i + 1] = palm.positions[i + 1] + 52;
+        /* 28 mm through against 89 across, and a little thinner at the wrist
+           end than at the knuckles. */
+        q[i + 2] = palm.positions[i + 2] * 0.315;
+      }
+      add(q, palm.indices, skin, MAT.SKIN, 13);
+    }
+
+    const KNUCK = [
+      { x: 28, y: 104, z: 2, len: 75, r: 11.0, flex: [0.28, 0.58, 0.24] },  /* index */
+      { x: 9.5, y: 107, z: 4, len: 82, r: 11.0, flex: [0.26, 0.56, 0.22] }, /* middle */
+      { x: -9.5, y: 103, z: 2, len: 76, r: 10.5, flex: [0.29, 0.62, 0.26] },/* ring */
+      { x: -27, y: 95, z: -1, len: 60, r: 9.5, flex: [0.36, 0.70, 0.30] }   /* little */
+    ];
+
+    /* The two muscle pads that make a palm a palm, both on the palmar side. */
+    add(ellipsoid(G.icosphere(3), [29, 40, -9], I3, [18, 28, 10]),
+      G.icosphere(3).indices, skin, MAT.SKIN, 12);
+    add(ellipsoid(seg, [-33, 50, -6], I3, [12, 28, 8]), seg.indices, skin, MAT.SKIN, 10);
+
+    /* Metacarpal ridges on the back of the hand, and the knuckle heads. */
+    for (let i = 0; i < 4; i++) {
+      const k = KNUCK[i];
+      add(capsule(seg, k.x * 0.45, 40, 5, k.x, k.y - 12, k.z + 6, 5.5, 7.0, 0.72),
+        seg.indices, skin, MAT.SKIN, 0);
+      add(ellipsoid(seg, [k.x, k.y - 5, k.z + 1], I3,
+        [k.r * 1.08, k.r * 1.02, k.r * 0.90]), seg.indices, skin, MAT.SKIN, k.r * 1.3);
+    }
+
+    /* --- the fingers ---
+       Slightly wider than they are thick, like real ones. */
+    const PHAL = [0.45, 0.27, 0.28];
+    const FLAT = 0.86;
+    for (let i = 0; i < 4; i++) {
+      const k = KNUCK[i];
+      /* Fingers converge slightly as they flex, which is why a closed hand
+         does not have four parallel fingers. */
+      /* Barely any. Relaxed fingers rest against each other; splayed, they
+         read as four separate sticks rather than as a hand. */
+      const spread = (k.x > 0 ? 1 : -1) * 0.020 * Math.abs(k.x) / 30;
+      let px = k.x, py = k.y, pz = k.z, a = 0;
+      for (let s = 0; s < 3; s++) {
+        a += k.flex[s];
+        const L = k.len * PHAL[s];
+        let dx = spread * (s === 0 ? 1 : 0.35), dy = Math.cos(a), dz = -Math.sin(a);
+        const dl = Math.hypot(dx, dy, dz);
+        dx /= dl; dy /= dl; dz /= dl;
+        const nx = px + dx * L, ny = py + dy * L, nz = pz + dz * L;
+        /* A gentle taper. Stepped harder, each phalanx ended visibly narrower
+           than the next one began and the finger read as a string of beads. */
+        const r0 = k.r * (1 - s * 0.085), r1 = k.r * (1 - (s + 1) * 0.085);
+        add(capsule(seg, px, py, pz, nx, ny, nz, r0, r1, FLAT), seg.indices,
+          skin, MAT.SKIN, r0 * 1.4);
+        /* A knuckle. Without the swelling at the joints a finger is a cone,
+           and cones are what gloves are made of. */
+        if (s < 2) {
+          add(ellipsoid(ball, [nx, ny, nz], [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            [r1 * 1.00, r1 * 0.88, r1 * 0.94]), ball.indices, skin, MAT.SKIN, r1 * 1.4);
+        }
+        /* And a nail on the last one, on the back of the finger. */
+        if (s === 2) {
+          const mx = px + dx * L * 0.52, my = py + dy * L * 0.52, mz = pz + dz * L * 0.52;
+          add(ellipsoid(ball, [mx, my, mz + r1 * 0.72],
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            [r1 * 0.62, L * 0.30, r1 * 0.30]), ball.indices, nail, MAT.SKIN, 0);
+        }
+        px = nx; py = ny; pz = nz;
+      }
+    }
+
+    /* --- the thumb ---
+       Opposed, which is the whole point of it: it comes off the side of the
+       palm and rotates so its pad faces the fingers rather than forward. */
+    const TH = [
+      { from: [26, 28, -6], to: [46, 50, -19], r0: 13, r1: 11 },
+      { from: [46, 50, -19], to: [56, 70, -27], r0: 10.5, r1: 9.2 },
+      { from: [56, 70, -27], to: [60, 86, -30], r0: 9.0, r1: 7.4 }
+    ];
+    for (let i = 0; i < TH.length; i++) {
+      const t = TH[i];
+      add(capsule(seg, t.from[0], t.from[1], t.from[2], t.to[0], t.to[1], t.to[2],
+        t.r0, t.r1, 0.88), seg.indices, skin, MAT.SKIN, t.r0 * 1.4);
+      if (i > 0) {
+        add(ellipsoid(ball, t.from, [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+          [t.r0 * 1.04, t.r0 * 0.9, t.r0 * 1.06]), ball.indices, skin, MAT.SKIN, t.r0 * 1.4);
+      }
+    }
+    add(ellipsoid(ball, [59, 81, -24], I3, [5.4, 7.2, 3.6]),
+      ball.indices, nail, MAT.SKIN, 0);
+
+    const positions = new Float32Array(parts.pos);
+    const indices = new Uint32Array(parts.idx);
+    return {
+      positions: positions,
+      normals: G.computeNormals(positions, indices, positions.length / 3),
+      colors: new Float32Array(parts.col),
+      mats: new Float32Array(parts.mat),
+      indices: indices,
+      heightUnits: 189 * mm, topUnits: 189 * mm, radiusUnits: 89 * 0.5 * mm
+    };
+  };
+
   /* Everything attached, in the same local frame as the head. */
   FACE.mesh = function (spec) {
     const parts = { pos: [], col: [], mat: [], idx: [] };

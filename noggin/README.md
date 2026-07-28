@@ -406,6 +406,31 @@ lipPaintWidth     48.0   human range 45-68   ok
 bizygomatic      151.0   human range 125-155 ok
 ```
 
+**It has hands, and they talk with it.** Two more props, their own this time
+rather than part of the head's trimming, because they have to move
+independently of it — a pair of hands welded to a skull is a hat stand. They
+are built from adult-male measurements like everything else: 189 mm wrist to
+middle fingertip, 107 mm of that palm, 89 mm across the knuckles, fingers of
+75, 82, 76 and 60 mm dividing into phalanges at roughly 45 / 27 / 28 per cent.
+
+Three things carry it:
+
+- **A relaxed hand is never flat.** Every joint sits at some flexion at rest —
+  about 20° at the knuckle, 40° at the middle joint, 15° at the last — and the
+  amount increases from index to little, so the fingertips fall along a curve.
+  Flat fingers are what mannequins have.
+- **A palm is flat, and capsules are round.** Built from overlapping
+  ellipsoids it stayed a heap of overlapping ellipsoids with every one of them
+  visible. It is one revolved profile squashed to 31% in Z — a single surface
+  with no seams — and only the parts that genuinely stand off it are added on
+  top: the thenar pad, the hypothenar, the knuckles.
+- **Palms are lighter than the backs of hands.** True of everyone, and leaving
+  it out is most of why a monochrome hand reads as a prop.
+
+They gesture on `chat.emphasis` — the same spike on stressed words that the
+sphere's swell rides. It costs one number that already existed, and it is the
+difference between a face with hands near it and a face that is talking to you.
+
 **The hair is its own volume, not the skull with a coat of paint.** The first
 version offset the head surface by a constant, which gives a slightly larger
 head — a swimming cap. A picked afro holds a round silhouette that is nearly
