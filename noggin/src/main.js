@@ -356,23 +356,41 @@
       this.trim = t;
     }
 
-    /* Hands, which only a face has. They are their own props rather than part
-       of the head's trimming because they have to move independently of it —
-       a pair of hands welded to a skull is a hat stand. */
-    if (entry.kind === 'face') {
-      const hands = [];
-      for (let s = 0; s < 2; s++) {
-        const side = s === 0 ? -1 : 1;
-        const h = {
-          handle: this.renderer.createProp(NG.FACE.hand(entry, side)),
-          matrix: M.m4(), local: M.m4(), grow: 0, target: 1,
-          side: side, phase: s * 2.1, lift: 0
-        };
-        this.attached.push(h);
-        hands.push(h);
-      }
-      this.hands = hands;
+    /* A face arrives with no hands. They are not decoration and they are not
+       always there — they exist for exactly one purpose, and turning up is
+       most of the effect. See updateFourthWall. */
+    const w = this.fourthWall;
+    w.strikes = 0;
+    w.phase = 'off';
+    w.blend = 0;
+    w.under = 0;
+    w.cool = entry.kind === 'face' ? 1.5 : 0;
+  };
+
+  /* Built the moment they are wanted and thrown away afterwards, rather than
+     hanging around the whole time a face is on. A pair of hands floating
+     beside a head is set dressing; a pair of hands that were not there a
+     second ago is an event. */
+  App.prototype._spawnHands = function (entry) {
+    if (this.hands) return;
+    const hands = [];
+    for (let s = 0; s < 2; s++) {
+      const side = s === 0 ? -1 : 1;
+      const h = {
+        handle: this.renderer.createProp(NG.FACE.hand(entry, side)),
+        matrix: M.m4(), local: M.m4(), grow: 0, target: 1,
+        side: side, phase: s * 2.1, lift: 0
+      };
+      this.attached.push(h);
+      hands.push(h);
     }
+    this.hands = hands;
+  };
+
+  App.prototype._dismissHands = function () {
+    if (!this.hands) return;
+    for (let i = 0; i < this.hands.length; i++) this.hands[i].target = 0;
+    this.hands = null;
   };
 
   /* Where the hands sit and what they are doing.
@@ -403,27 +421,57 @@
 
   App.prototype.updateFourthWall = function (dt) {
     const w = this.fourthWall;
-    const live = !!this.hands && this.morph.t >= 1;
+    /* Wearing a face and settled — not "has hands", which is what this said
+       first and which could never become true: the hands are spawned by this
+       function, so requiring them to exist before it would run meant it never
+       ran and they never existed. */
+    const live = !!this.face && this.morph.t >= 1;
 
     if (w.cool > 0) w.cool -= dt;
-    if (!live) { w.phase = 'off'; w.blend = 0; w.under = 0; return; }
+    if (!live) {
+      if (w.phase !== 'off') this._dismissHands();
+      w.phase = 'off'; w.blend = 0; w.under = 0;
+      return;
+    }
 
     if (w.phase === 'off') {
       w.blend = Math.max(0, w.blend - dt * 3);
       const below = this.eye[1] < this.renderer.floorY;
       w.under = below ? w.under + dt : 0;
-      if (w.under > 0.5 && w.cool <= 0) {
-        w.phase = 'grab';
-        w.t = 0;
-        w.yaw = this.camera.yaw;
-        w.pitch = this.camera.pitch;
-        /* Whichever hand is on the side the camera has swung round to. */
-        w.hand = Math.sin(this.camera.yaw) >= 0 ? 1 : 0;
-        /* Where it has to lift you to: clear of the floor, and looking
-           slightly down at him again rather than straight along the ground. */
-        const clear = (this.renderer.floorY + 0.75 - this.target[1]) / Math.max(this.camera.dist, 0.5);
-        w.toPitch = Math.max(0.14, Math.asin(M.clamp(clear, -1, 1)) + 0.16);
+      if (w.under <= 0.5 || w.cool > 0) return;
+
+      w.under = 0;
+      w.strikes++;
+
+      /* He asks first. Twice. Reaching in and taking the camera off somebody
+         the first time they wander somewhere is a bouncer, not a person — and
+         the whole point of him is that he is a person about it. The first two
+         are words only: the camera stays yours, you are free to ignore him,
+         and ignoring him is what earns the hands.
+
+         It also means the hands land as a surprise. Nobody who has been told
+         twice expects to be picked up. */
+      if (w.strikes < 3) {
+        w.cool = 5.0;
+        this.chat.say(w.strikes === 1
+          ? ['Do not do that! You are breaking the immersion!']
+          : ['Again? There is nothing down there, man. I never built a downstairs.',
+             'Last time I ask nicely.']);
+        return;
       }
+
+      /* Third time. He stops asking. */
+      this._spawnHands(this.morph.form);
+      w.phase = 'grab';
+      w.t = 0;
+      w.yaw = this.camera.yaw;
+      w.pitch = this.camera.pitch;
+      /* Whichever hand is on the side the camera has swung round to. */
+      w.hand = Math.sin(this.camera.yaw) >= 0 ? 1 : 0;
+      /* Where it has to lift you to: clear of the floor, and looking
+         slightly down at him again rather than straight along the ground. */
+      const clear = (this.renderer.floorY + 0.75 - this.target[1]) / Math.max(this.camera.dist, 0.5);
+      w.toPitch = Math.max(0.14, Math.asin(M.clamp(clear, -1, 1)) + 0.16);
       return;
     }
 
@@ -438,10 +486,10 @@
         w.phase = 'hold'; w.t = 0;
         this.shake = 0.10;
         this.audio.boing(0.2);
-        this.chat.say([
-          'Hey. Hey — up here.',
-          'Do not go under there, man. There is nothing under there. I never built a downstairs.'
-        ]);
+        this.chat.say(w.strikes === 3
+          ? ['Right. Come here.',
+             'I asked you twice. Up here, where the room is.']
+          : ['Nope.', 'We have been through this.']);
       }
       return;
     }
@@ -463,7 +511,13 @@
 
     /* let_go: he releases and drifts back, and the camera is yours again. */
     w.blend = 1 - M.smoothstep(0, 1, Math.min(1, w.t / WALL.let_go));
-    if (w.t >= WALL.let_go) { w.phase = 'off'; w.under = 0; w.cool = 3.0; }
+    if (w.t >= WALL.let_go) {
+      w.phase = 'off';
+      w.under = 0;
+      w.cool = 3.0;
+      /* And the hands go away again. */
+      this._dismissHands();
+    }
   };
 
   /* Where the grabbing hand has to be: just off the lens, palm toward you. */

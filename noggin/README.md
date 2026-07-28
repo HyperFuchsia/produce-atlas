@@ -412,21 +412,32 @@ floor is one-sided, the room has no basement, and what you get is a view of the
 back of everything. Every 3-D thing has this problem and nearly all of them
 solve it by quietly refusing to let you, which is honest and says nothing.
 
-He has hands now, so he solves it himself. Half a second under the floor and
-the camera stops dead; then he reaches out, takes hold of the lens, and lifts
-you back above the ground while telling you off for it. It is the one moment
-here where he acknowledges there is a camera at all — worth spending, because
-the whole premise is that you are in the room with him rather than looking at a
-picture of him.
+He solves it himself, and **he asks first**:
+
+| under the floor | what happens |
+| --- | --- |
+| 1st time | *"Do not do that! You are breaking the immersion!"* Words only. The camera stays yours. |
+| 2nd time | *"Again? There is nothing down there, man. I never built a downstairs."* Still words. |
+| 3rd time | He stops asking. The camera halts, hands appear, one takes the lens and lifts you back above the ground. |
+| after that | No more warnings. |
+
+Reaching in and taking the camera off somebody the first time they wander
+somewhere is a bouncer, not a person, and the whole point of him is that he is
+a person about it. It also means the hands land as a surprise — nobody who has
+been told twice expects to be picked up.
 
 Only when he is wearing the face. A pineapple cannot do this, and the harness
 checks that it doesn't try.
 
-**It has hands, and they talk with it.** Two more props, their own this time
-rather than part of the head's trimming, because they have to move
-independently of it — a pair of hands welded to a skull is a hat stand. They
-are built from adult-male measurements like everything else: 189 mm wrist to
-middle fingertip, 107 mm of that palm, 89 mm across the knuckles, fingers of
+**The hands are an event, not set dressing.** A face arrives with none. They
+are built the moment they are wanted and thrown away the moment he lets go —
+a pair of hands floating beside a head the whole time is scenery, and a pair of
+hands that were not there a second ago is something happening. They are their
+own props rather than part of the head's trimming, because they have to move
+independently of it.
+
+They are built from adult-male measurements like everything else: 189 mm wrist
+to middle fingertip, 107 mm of that palm, 89 mm across the knuckles, fingers of
 75, 82, 76 and 60 mm dividing into phalanges at roughly 45 / 27 / 28 per cent.
 
 Three things carry it:
@@ -442,10 +453,6 @@ Three things carry it:
   top: the thenar pad, the hypothenar, the knuckles.
 - **Palms are lighter than the backs of hands.** True of everyone, and leaving
   it out is most of why a monochrome hand reads as a prop.
-
-They gesture on `chat.emphasis` — the same spike on stressed words that the
-sphere's swell rides. It costs one number that already existed, and it is the
-difference between a face with hands near it and a face that is talking to you.
 
 **The hair is its own volume, not the skull with a coat of paint.** The first
 version offset the head surface by a constant, which gives a slightly larger

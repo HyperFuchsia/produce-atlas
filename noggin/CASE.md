@@ -307,11 +307,17 @@ furthest it has gone. Orbit under the floor and there is nothing there; every
 camera so you cannot find it. That is the correct engineering answer and it
 communicates nothing.
 
-Because he has hands, there is a better one available: half a second under the
-floor and he reaches out, takes the lens, and lifts you back up while telling
-you off. The bug is not hidden, it is *acknowledged by the character* — which
-converts the one moment where the illusion would break into the one moment he
-admits you are in the room. It is also the only place here where anything
+Because he has hands, there is a better one available. The bug is not hidden,
+it is *acknowledged by the character* — which converts the one moment where the
+illusion would break into the one moment he admits you are in the room.
+
+And he asks first. Twice. Reaching in and taking the camera off somebody the
+first time they wander somewhere is a bouncer, not a person, and the argument
+being made here is that there is a person in the room. Two warnings, then he
+stops asking — which is also the only structure under which the hands land as
+a surprise, because nobody who has been told twice expects to be picked up.
+The hands do not exist until that moment and are thrown away afterwards: a
+pair of hands floating beside a head the whole time is scenery. It is also the only place here where anything
 addresses the camera directly, and it is deliberately the only place, because
 the trick works once and stops working the third time.
 
