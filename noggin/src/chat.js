@@ -30,6 +30,28 @@
   const PULSE_PER_CHAR = 0.20;
   const CAPITAL_STRESS = 0.22;
 
+  /* The one word the box will not hold.
+
+     Type it anywhere in a sentence and the box stops being a box: it takes no
+     more letters, and what is already in it comes back off the end faster than
+     anybody could backspace it. He is not arguing with you about his hands any
+     more. He is taking the question away.
+
+     Fast, and faster the longer it runs, so a long sentence does not sit there
+     unwinding — a held backspace key with the repeat delay taken out. And the
+     field goes read-only the same instant, because a box that is deleting your
+     sentence while still accepting letters reads as a glitch rather than as a
+     refusal. */
+  const FORBIDDEN = /hand/i;
+  const WIPE_RATE = 42;      /* characters a second at the start */
+  const WIPE_ACCEL = 270;    /* and how much quicker each second after */
+  /* And it stays shut while you are still hitting keys. Unlocking the moment
+     the field is empty hands the box back mid-sentence, and the tail of what
+     you were saying lands in it — "…your hands then" wipes and leaves you
+     holding " then". Key presses still arrive at a read-only field, so he can
+     hear you carrying on and keep it shut until you stop. */
+  const LOCK_TAIL = 0.45;
+
   function Chat(audio, brain, els) {
     this.audio = audio;
     this.brain = brain;
@@ -63,6 +85,12 @@
     this.viseme = { open: 0, round: 0 };
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
+    /* Erasing what you typed at you. See FORBIDDEN. */
+    this.wiping = false;
+    this.wipeT = 0;
+    this.wipeLeft = 0;
+    this.lockFor = 0;
+    this._unblip = 0;
     this.onSpawn = null;
     this.onType = null;
     this.onClear = null;
@@ -71,20 +99,75 @@
     const self = this;
     this.form.addEventListener('submit', function (e) {
       e.preventDefault();
+      /* Send is part of what stops. Letting it through mid-wipe would post
+         whatever was left of the sentence at that instant. */
+      if (self.wiping || self.lockFor > 0) return;
       self.send(self.input.value);
       self.input.value = '';
     });
-    /* Typing in the box must not trigger the game's single-key shortcuts. */
-    this.input.addEventListener('keydown', function (e) { e.stopPropagation(); });
+    /* Typing in the box must not trigger the game's single-key shortcuts.
+       A read-only field still gets these, which is the only way to tell that
+       somebody is carrying on typing at a box that has stopped taking it. */
+    this.input.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (self.wiping || self.lockFor > 0) self.lockFor = LOCK_TAIL;
+    });
 
     /* What is being typed, before it is sent. Almost nothing should read this
        — a thing that reacts to half-finished sentences is exhausting — but it
        is the only way to catch somebody in the act of noticing something, and
        there is exactly one of those. */
     this.input.addEventListener('input', function () {
-      if (self.onType) self.onType(self.input.value);
+      if (self.wiping) return;
+      const text = self.input.value;
+      if (self.onType) self.onType(text);
+      if (FORBIDDEN.test(text)) self._wipe();
     });
   }
+
+  /* Take the sentence back off them. */
+  Chat.prototype._wipe = function () {
+    if (this.wiping) return;
+    this.wiping = true;
+    this.wipeT = 0;
+    this.wipeLeft = this.input.value.length;
+    this.lockFor = LOCK_TAIL;
+    this._unblip = 0;
+    /* Read-only rather than disabled: the caret stays where it was and the
+       field does not grey out. It is refusing you, not broken. */
+    this.input.readOnly = true;
+  };
+
+  Chat.prototype._updateWipe = function (dt) {
+    if (this.wiping) {
+      this.wipeT += dt;
+      this.wipeLeft -= (WIPE_RATE + WIPE_ACCEL * this.wipeT) * dt;
+      const want = Math.max(0, Math.ceil(this.wipeLeft));
+      const have = this.input.value.length;
+      if (want < have) {
+        for (let i = have; i > want; i--) {
+          if (++this._unblip % 3 === 0) {
+            this.audio.unblip(this.input.value.charCodeAt(i - 1));
+          }
+        }
+        this.input.value = this.input.value.slice(0, want);
+      }
+      if (want > 0) return;
+      this.wiping = false;
+      /* The box is empty now, and whoever was watching it has to be told —
+         nothing dispatches an input event for a field a script emptied.
+         Without this he would stay armed against a word that is no longer
+         there and would only ever react to it once. */
+      if (this.onType) this.onType('');
+      return;
+    }
+
+    this.lockFor -= dt;
+    if (this.lockFor <= 0) {
+      this.lockFor = 0;
+      this.input.readOnly = false;
+    }
+  };
 
   /* Letter to mouth shape. Not phonemes — the spelling is what it has, and
      for the handful of shapes an eye can actually resolve at conversational
@@ -235,6 +318,7 @@
 
   Chat.prototype.update = function (dt) {
     this.lastActivity += dt;
+    if (this.wiping || this.lockFor > 0) this._updateWipe(dt);
     this._ageLines(dt);
     /* Both fall away on their own; only typing puts anything back. */
     this.pulse -= this.pulse * Math.min(1, dt * 9);

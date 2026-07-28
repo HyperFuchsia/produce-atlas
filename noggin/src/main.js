@@ -167,7 +167,7 @@
       trips: 0, dwell: 0, sealed: false, sealT: 0 };
     /* He is watching the input box for one word. */
     this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
-      heat: 0, palm: 0, look: 0, at: { spin: 0, tilt: 0 } };
+      heat: 0, palm: 0, look: 0, blanks: 0, at: { spin: 0, tilt: 0 } };
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -665,6 +665,17 @@
   const FED_UP_AT = 4;
   const SICK_OF_IT = 'Stop asking about my hands!';
 
+  /* The box eats the word whether or not there are any hands out to be asked
+     about — see Chat._wipe, which is a property of the box and not of him.
+     When there are none he still says something, because a sentence vanishing
+     out of a field on its own needs to read as a thing he did rather than as
+     something going wrong. */
+  const NO_HANDS = [
+    ['No.'],
+    ['I do not have hands at the moment. There is nothing there to look at.'],
+    ['Still no.']
+  ];
+
   App.prototype.noticeHands = function (text) {
     const c = this.caught;
     const has = /hand/i.test(String(text || ''));
@@ -676,7 +687,15 @@
     if (!has) { c.armed = true; return; }
     if (!c.armed) return;
 
-    if (!this.face || !this.hands || this.morph.t < 1) return;
+    if (!this.face || !this.hands || this.morph.t < 1) {
+      /* Nothing to defend, but the word still does not get to sit there. */
+      c.armed = false;
+      if (c.cool <= 0 && this.morph.t >= 1) {
+        c.cool = 3.0;
+        this.chat.say(NO_HANDS[Math.min(c.blanks++, NO_HANDS.length - 1)]);
+      }
+      return;
+    }
     if (this.fourthWall.phase !== 'off') return;
     if (c.phase !== 'off' || c.cool > 0) return;
 

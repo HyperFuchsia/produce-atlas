@@ -173,6 +173,34 @@
     osc.start(t); osc.stop(t + 0.09);
   };
 
+  /* A character coming back off the end of the line. The typing blip runs
+     upward; this one runs down, which is the entire difference between putting
+     a letter there and taking one away. Shorter and quieter, because there are
+     a lot of them and they go past very fast. */
+  Audio.prototype.unblip = function (charCode) {
+    if (!this.ready || !this.enabled) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const step = (charCode % 12) - 6;
+    const freq = 380 * Math.pow(2, step / 24);
+
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.72, t + 0.035);
+
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 1300;
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.035, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+
+    osc.connect(filt); filt.connect(g); g.connect(this.master);
+    osc.start(t); osc.stop(t + 0.06);
+  };
+
   /* Something heavy arriving on the floor. A sine dropping fast under a
      filtered noise transient — the noise is the contact, the sine is the mass
      behind it. strength 0..1. */
