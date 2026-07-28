@@ -32,25 +32,31 @@
 
   /* The one word the box will not hold.
 
-     Type it anywhere in a sentence and the box stops being a box: it takes no
-     more letters, and what is already in it comes back off the end faster than
-     anybody could backspace it. He is not arguing with you about his hands any
-     more. He is taking the question away.
+     Type it anywhere in a sentence and the box stops being a box. It takes no
+     more letters — and then nothing happens. Your sentence sits there, whole,
+     for three seconds, while the field ignores you.
 
-     Fast, and faster the longer it runs, so a long sentence does not sit there
-     unwinding — a held backspace key with the repeat delay taken out. And the
-     field goes read-only the same instant, because a box that is deleting your
-     sentence while still accepting letters reads as a glitch rather than as a
-     refusal. */
+     The pause is the part that does the work. Deleting it the instant the word
+     lands reads as a text effect; three seconds of a dead box with your own
+     words still in it reads as somebody deciding. Then it all goes at once,
+     far faster than any backspace, and there was never anything you could do
+     about it.
+
+     Read-only for all of it, because a box that is refusing your sentence
+     while still accepting letters is a glitch rather than a refusal. */
   const FORBIDDEN = /hand/i;
-  const WIPE_RATE = 42;      /* characters a second at the start */
-  const WIPE_ACCEL = 270;    /* and how much quicker each second after */
-  /* And it stays shut while you are still hitting keys. Unlocking the moment
-     the field is empty hands the box back mid-sentence, and the tail of what
-     you were saying lands in it — "…your hands then" wipes and leaves you
-     holding " then". Key presses still arrive at a read-only field, so he can
-     hear you carrying on and keep it shut until you stop. */
+  const WIPE_HOLD = 3.0;      /* seconds of nothing, with your words still up */
+  const WIPE_RATE = 140;      /* then characters a second, at the start */
+  const WIPE_ACCEL = 900;     /* and how much quicker each second after */
+  /* And it stays shut a moment longer while you are still hitting keys.
+     Unlocking the instant the field is empty hands the box back mid-sentence
+     and the tail of what you were saying lands in it. Key presses still arrive
+     at a read-only field, so he can hear you carrying on and keep it shut
+     until you stop. */
   const LOCK_TAIL = 0.45;
+  /* One every so often rather than one per character: at this speed a sound
+     per letter is a buzz, not a sound. */
+  const UNBLIP_EVERY = 0.045;
 
   function Chat(audio, brain, els) {
     this.audio = audio;
@@ -85,8 +91,11 @@
     this.viseme = { open: 0, round: 0 };
     this._blip = 0;
     this.scripted = false;   /* a multi-step routine is running */
-    /* Erasing what you typed at you. See FORBIDDEN. */
+    /* Taking your sentence off you. See FORBIDDEN. `wiping` covers the whole
+       of it — the pause, the erase and the moment after — because for all of
+       that the box is not yours. */
     this.wiping = false;
+    this.wipePhase = 'off';   /* 'hold' | 'erase' | 'tail' */
     this.wipeT = 0;
     this.wipeLeft = 0;
     this.lockFor = 0;
@@ -125,35 +134,45 @@
     });
   }
 
-  /* Take the sentence back off them. */
+  /* Stop taking letters. The sentence stays up for now. */
   Chat.prototype._wipe = function () {
     if (this.wiping) return;
     this.wiping = true;
-    this.wipeT = 0;
-    this.wipeLeft = this.input.value.length;
+    this.wipePhase = 'hold';
+    this.wipeT = WIPE_HOLD;
     this.lockFor = LOCK_TAIL;
-    this._unblip = 0;
     /* Read-only rather than disabled: the caret stays where it was and the
        field does not grey out. It is refusing you, not broken. */
     this.input.readOnly = true;
   };
 
   Chat.prototype._updateWipe = function (dt) {
-    if (this.wiping) {
+    if (this.wipePhase === 'hold') {
+      /* Three seconds of your own sentence, and no way to add to it. */
+      this.wipeT -= dt;
+      if (this.wipeT > 0) return;
+      this.wipePhase = 'erase';
+      this.wipeT = 0;
+      this.wipeLeft = this.input.value.length;
+      this._unblip = 0;
+      return;
+    }
+
+    if (this.wipePhase === 'erase') {
       this.wipeT += dt;
       this.wipeLeft -= (WIPE_RATE + WIPE_ACCEL * this.wipeT) * dt;
       const want = Math.max(0, Math.ceil(this.wipeLeft));
       const have = this.input.value.length;
+      this._unblip += dt;
       if (want < have) {
-        for (let i = have; i > want; i--) {
-          if (++this._unblip % 3 === 0) {
-            this.audio.unblip(this.input.value.charCodeAt(i - 1));
-          }
+        if (this._unblip >= UNBLIP_EVERY) {
+          this._unblip = 0;
+          this.audio.unblip(this.input.value.charCodeAt(have - 1));
         }
         this.input.value = this.input.value.slice(0, want);
       }
       if (want > 0) return;
-      this.wiping = false;
+      this.wipePhase = 'tail';
       /* The box is empty now, and whoever was watching it has to be told —
          nothing dispatches an input event for a field a script emptied.
          Without this he would stay armed against a word that is no longer
@@ -163,10 +182,11 @@
     }
 
     this.lockFor -= dt;
-    if (this.lockFor <= 0) {
-      this.lockFor = 0;
-      this.input.readOnly = false;
-    }
+    if (this.lockFor > 0) return;
+    this.lockFor = 0;
+    this.wipePhase = 'off';
+    this.wiping = false;
+    this.input.readOnly = false;
   };
 
   /* Letter to mouth shape. Not phonemes — the spelling is what it has, and
