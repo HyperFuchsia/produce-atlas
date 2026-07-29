@@ -1,61 +1,31 @@
 import { makeCanvas } from '../core/screen.js';
 import { PAL } from './palette.js';
-import { hash2 } from './pixel.js';
 import { makeSprite } from './pixel.js';
+import { Sheet, ell, limb, poly, resolveSheet } from './monart.js';
 
-const BAYER = [
-  [0, 8, 2, 10],
-  [12, 4, 14, 6],
-  [3, 11, 1, 9],
-  [15, 7, 13, 5],
-];
+// Overworld props use the same cel-shading engine as the creatures, so the whole
+// game reads as one hand: hard tone bands, tinted outlines, no dithering.
+
+const BARK = ['#2a1a0c', '#4a2e18', '#6b4524', '#8c5c30', '#ad7a44'];
+const LEAF = ['#123a1c', '#1f5c2a', '#2f8038', '#4aa848', '#78cc66'];
+const LEAF_B = ['#0f3018', '#1c4f24', '#2a7030', '#3f9440', '#6ab85a'];
+const ROCK = ['#25232f', '#3d3a4c', '#5b5670', '#807a96', '#a9a3bc'];
+const POT = ['#4a2414', '#7a3c20', '#a85c34', '#c47a4c', '#dc9a6c'];
+const BLOOM_Y = ['#8a6a10', '#c0a020', '#e8cc38', '#f8e470', '#fff8b8'];
+const BLOOM_R = ['#6d1f3c', '#a3355e', '#cc5a86', '#e88bad', '#ffc3d8'];
+const BLOOM_W = ['#8a8aa0', '#c0c0d4', '#e0e0ee', '#f4f4fb', '#ffffff'];
 
 function mk(w, h) {
   const c = makeCanvas(w, h);
   const g = c.getContext('2d');
-  const px = (x, y, col) => {
-    if (x < 0 || y < 0 || x >= w || y >= h) return;
-    g.fillStyle = col;
-    g.fillRect(x, y, 1, 1);
-  };
   const rect = (x, y, w2, h2, col) => {
     g.fillStyle = col;
     g.fillRect(x, y, w2, h2);
   };
-  return { c, g, px, rect };
+  return { c, g, rect };
 }
 
-/**
- * Dithered lit blob — the workhorse for organic props (canopies, rocks, bushes).
- * `cols` runs dark→light; cols[0] is used for the rim.
- */
-function blob(px, cx, cy, rx, ry, cols, seed, opts = {}) {
-  const lightX = opts.lightX ?? -0.55;
-  const lightY = opts.lightY ?? -0.85;
-  const wob = opts.wobble ?? 0.10;
-  const x0 = Math.floor(cx - rx - 1);
-  const x1 = Math.ceil(cx + rx + 1);
-  const y0 = Math.floor(cy - ry - 1);
-  const y1 = Math.ceil(cy + ry + 1);
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
-      const nx = (x + 0.5 - cx) / rx;
-      const ny = (y + 0.5 - cy) / ry;
-      const n = hash2(x, y, seed);
-      const d = nx * nx + ny * ny + (n - 0.5) * wob;
-      if (d > 1) continue;
-      if (d > 0.80) { px(x, y, cols[0]); continue; }
-      let lum = nx * lightX + ny * lightY;         // -1..1, higher = lit
-      lum = lum * 0.5 + 0.5;
-      lum += ((BAYER[y & 3][x & 3] + 0.5) / 16 - 0.5) * 0.22;
-      lum += (n - 0.5) * 0.16;
-      const band = Math.min(cols.length - 1, Math.max(1, Math.floor(lum * (cols.length - 1)) + 1));
-      px(x, y, cols[band]);
-    }
-  }
-}
-
-function dropShadow(g, cx, cy, rx, ry) {
+function shadow(g, cx, cy, rx, ry) {
   g.fillStyle = 'rgba(18,14,26,0.26)';
   for (let y = -ry; y <= ry; y++) {
     const w = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (y / ry) ** 2)));
@@ -64,149 +34,375 @@ function dropShadow(g, cx, cy, rx, ry) {
   }
 }
 
-const LEAF = ['#14361f', PAL.leaf0, PAL.leaf1, PAL.leaf2, PAL.leaf3];
-const ROCK = ['#3a3846', PAL.stone0, PAL.stone1, PAL.stone2, PAL.stone3];
+/** Build a cel-shaded sprite from a list of shapes, with a ground shadow. */
+function celSprite(w, h, shapes, shadowSpec) {
+  const s = new Sheet(w, h);
+  shapes.forEach((sh, i) => {
+    if (sh.t === 'ell') ell(s, i, sh.pal, sh);
+    else if (sh.t === 'limb') limb(s, i, sh.pal, sh);
+    else if (sh.t === 'poly') poly(s, i, sh.pal, sh);
+  });
+  const art = resolveSheet(s);
+  const out = makeCanvas(w, h);
+  const g = out.getContext('2d');
+  if (shadowSpec) shadow(g, shadowSpec[0], shadowSpec[1], shadowSpec[2], shadowSpec[3]);
+  g.drawImage(art, 0, 0);
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 export function makeTree(variant = 0) {
-  const W = 32;
-  const H = 40;
-  const { c, g, px, rect } = mk(W, H);
-  dropShadow(g, 16, 36, 12, 4);
-  // trunk
-  rect(13, 22, 6, 13, PAL.bark0);
-  rect(14, 22, 4, 13, PAL.bark1);
-  rect(14, 22, 2, 13, PAL.bark2);
-  for (let y = 24; y < 34; y += 3) { px(17, y, PAL.bark0); px(15, y + 1, PAL.bark0); }
-  rect(11, 34, 10, 2, PAL.bark0);
-  // canopy: one big mass plus offset clumps for an irregular silhouette
-  const s = 200 + variant * 37;
-  blob(px, 16, 15, 15, 12, LEAF, s);
-  blob(px, 8 + (variant % 2), 12, 8, 7, LEAF, s + 5);
-  blob(px, 24 - (variant % 2), 14, 8, 7, LEAF, s + 9);
-  blob(px, 16, 7, 9, 6, LEAF, s + 13);
-  blob(px, 16, 22, 12, 6, LEAF, s + 17);
-  // a few bright leaf specks catching the light
-  for (let i = 0; i < 7; i++) {
-    const a = hash2(i, variant, 77) * Math.PI * 2;
-    const r = 0.35 + hash2(i, variant, 88) * 0.4;
-    px(Math.round(16 + Math.cos(a) * 13 * r), Math.round(14 + Math.sin(a) * 10 * r), '#7fd06a');
-  }
-  return { c, ox: 0, oy: -24, fw: 2, fh: 1, solid: true };
+  const leaf = variant % 2 ? LEAF_B : LEAF;
+  const shapes = [
+    { t: 'limb', x1: 17, y1: 41, r1: 5, x2: 17, y2: 24, r2: 3.6, pal: BARK },
+    { t: 'ell', x: 12, y: 41, rx: 5, ry: 3, n: 2.4, pal: BARK },
+    { t: 'ell', x: 22, y: 41, rx: 5, ry: 3, n: 2.4, pal: BARK },
+    { t: 'ell', x: 17, y: 18, rx: 16, ry: 12, n: 2.4, pal: leaf },
+    { t: 'ell', x: 7, y: 20, rx: 7, ry: 6, n: 2.2, pal: leaf },
+    { t: 'ell', x: 27, y: 21, rx: 7, ry: 6, n: 2.2, pal: leaf },
+    { t: 'ell', x: 12, y: 10, rx: 8, ry: 6.5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 23, y: 11, rx: 7.5, ry: 6, n: 2.2, pal: leaf },
+    { t: 'ell', x: 17, y: 25, rx: 12, ry: 6, n: 2.4, pal: leaf },
+  ];
+  const c = celSprite(34, 46, shapes, [17, 42, 12, 4]);
+  return { c, ox: -1, oy: -28, fw: 2, fh: 1, solid: true };
 }
 
 export function makeBush(variant = 0) {
-  const { c, g, px } = mk(16, 20);
-  dropShadow(g, 8, 17, 6, 2);
-  blob(px, 8, 10, 7, 6, LEAF, 300 + variant * 11);
-  blob(px, 5, 8, 4, 4, LEAF, 305 + variant);
-  blob(px, 11, 9, 4, 4, LEAF, 309 + variant);
+  const leaf = variant % 2 ? LEAF_B : LEAF;
+  const shapes = [
+    { t: 'ell', x: 8, y: 13, rx: 8, ry: 6, n: 2.4, pal: leaf },
+    { t: 'ell', x: 4, y: 10, rx: 4.5, ry: 4, n: 2.2, pal: leaf },
+    { t: 'ell', x: 11, y: 9, rx: 5, ry: 4.5, n: 2.2, pal: leaf },
+  ];
+  const c = celSprite(16, 20, shapes, [8, 17, 6, 2]);
   return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
 }
 
-export function makeRock(variant = 0) {
-  const { c, g, px } = mk(16, 18);
-  dropShadow(g, 8, 15, 7, 2);
-  blob(px, 8, 10, 7, 5, ROCK, 400 + variant * 13, { wobble: 0.16 });
-  blob(px, 5, 8, 3, 3, ROCK, 404 + variant);
+export function makeRock() {
+  const shapes = [
+    { t: 'ell', x: 8, y: 11, rx: 7.5, ry: 5.5, n: 3, pal: ROCK },
+    { t: 'ell', x: 5, y: 8, rx: 4, ry: 3.5, n: 2.6, pal: ROCK },
+    { t: 'ell', x: 11, y: 9, rx: 3.5, ry: 3, n: 2.6, pal: ROCK },
+  ];
+  const c = celSprite(16, 18, shapes, [8, 15, 7, 2]);
   return { c, ox: 0, oy: -2, fw: 1, fh: 1, solid: true };
 }
 
 export function makeStump() {
-  const { c, g, rect } = mk(16, 16);
-  dropShadow(g, 8, 14, 6, 2);
-  rect(4, 6, 8, 8, PAL.bark0);
-  rect(5, 5, 6, 8, PAL.bark1);
-  rect(5, 5, 6, 2, PAL.bark2);
-  rect(7, 6, 2, 1, PAL.dirt2);
+  const top = ['#3a2410', '#6b4524', '#8c5c30', '#ad7a44', '#c9975e'];
+  const shapes = [
+    { t: 'ell', x: 8, y: 11, rx: 6, ry: 4.5, n: 3, pal: BARK },
+    { t: 'ell', x: 8, y: 7, rx: 5.5, ry: 3, n: 2.6, pal: top },
+  ];
+  const c = celSprite(16, 16, shapes, [8, 14, 6, 2]);
   return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: true };
 }
 
+export function makePlant() {
+  const shapes = [
+    { t: 'ell', x: 8, y: 20, rx: 5.5, ry: 4.5, n: 3.4, pal: POT },
+    { t: 'ell', x: 8, y: 11, rx: 7, ry: 6.5, n: 2.2, pal: LEAF },
+    { t: 'ell', x: 4, y: 8, rx: 4, ry: 3.5, n: 2.2, pal: LEAF },
+    { t: 'ell', x: 12, y: 9, rx: 4, ry: 3.5, n: 2.2, pal: LEAF },
+  ];
+  const c = celSprite(16, 26, shapes, [8, 23, 6, 2]);
+  return { c, ox: 0, oy: -10, fw: 1, fh: 1, solid: true };
+}
+
+export function makeCaveMouth() {
+  const shapes = [
+    { t: 'ell', x: 24, y: 30, rx: 24, ry: 17, n: 2.6, pal: ROCK },
+    { t: 'ell', x: 10, y: 20, rx: 11, ry: 9, n: 2.4, pal: ROCK },
+    { t: 'ell', x: 38, y: 21, rx: 11, ry: 9, n: 2.4, pal: ROCK },
+    { t: 'ell', x: 24, y: 16, rx: 12, ry: 8, n: 2.4, pal: ROCK },
+  ];
+  const c = celSprite(48, 46, shapes, null);
+  const g = c.getContext('2d');
+  g.fillStyle = '#0d0a16';
+  for (let y = 0; y < 20; y++) {
+    const w = Math.round(11 * Math.sqrt(Math.max(0, 1 - ((y - 20) / 20) ** 2)));
+    g.fillRect(24 - w, 26 + y, w * 2, 1);
+  }
+  g.fillStyle = '#1d1830';
+  g.fillRect(13, 26, 22, 1);
+  return { c, ox: -8, oy: -30, fw: 2, fh: 1, solid: true };
+}
+
+export function makeFlowerPatch() {
+  const shapes = [{ t: 'ell', x: 8, y: 8, rx: 7.5, ry: 4, n: 2.4, pal: LEAF }];
+  const c = celSprite(16, 12, shapes, null);
+  const g = c.getContext('2d');
+  const put = (x, y, pal) => {
+    g.fillStyle = pal[1];
+    g.fillRect(x - 1, y, 3, 1);
+    g.fillRect(x, y - 1, 1, 3);
+    g.fillStyle = pal[3];
+    g.fillRect(x, y, 1, 1);
+  };
+  put(3, 5, BLOOM_Y);
+  put(9, 3, BLOOM_R);
+  put(12, 7, BLOOM_W);
+  put(6, 8, BLOOM_R);
+  return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
+}
+
+// ---------------------------------------------------------------------------
+// Geometric props stay hand-drawn — straight edges want exact pixels.
+
 const SIGN_ART = [
   '................',
-  '....oooooooo....',
-  '...ohhhhhhhho...',
-  '...ohwwwwwwho...',
-  '...ohwddwddwho..',
-  '...ohwwwwwwho...',
-  '...ohwddwddwho..',
-  '...ohwwwwwwho...',
-  '...ohhhhhhhho...',
-  '....oooooooo....',
-  '...... obo......',
-  '......obbo......',
-  '......obbo......',
-  '......obbo......',
+  '...oooooooooo...',
+  '..oHHHHHHHHHHo..',
+  '..oHwwwwwwwwHo..',
+  '..oHwddwwddwHo..',
+  '..oHwwwwwwwwHo..',
+  '..oHwddwwddwHo..',
+  '..oHwwwwwwwwHo..',
+  '..oHHHHHHHHHHo..',
+  '...oooooooooo...',
+  '......oBbo......',
+  '......oBbo......',
+  '......oBbo......',
   '.....oooooo.....',
   '................',
+  '................',
 ];
-const SIGN_PAL = { o: '#3a2414', h: PAL.wood2, w: PAL.wood3, d: '#6b4a28', b: PAL.wood1 };
+const SIGN_PAL = {
+  o: '#2a1a0c', H: '#8c5c30', w: '#c9975e', d: '#6b4524', B: '#8c5c30', b: '#4a2e18',
+};
 
 export function makeSign() {
-  const c = makeSprite(SIGN_ART, SIGN_PAL);
-  const g = c.getContext('2d');
+  const art = makeSprite(SIGN_ART, SIGN_PAL);
   const out = mk(16, 20);
-  dropShadow(out.g, 8, 17, 5, 2);
-  out.g.drawImage(c, 0, 2);
+  shadow(out.g, 8, 17, 5, 2);
+  out.g.drawImage(art, 0, 2);
   return { c: out.c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
 }
 
 export function makeFence(vertical = false) {
   const { c, rect } = mk(16, 16);
+  const post = (x) => {
+    rect(x, 2, 4, 13, '#4a2e18');
+    rect(x, 2, 3, 13, '#6b4524');
+    rect(x, 2, 1, 13, '#8c5c30');
+    rect(x, 2, 4, 1, '#ad7a44');
+  };
   if (!vertical) {
-    rect(0, 6, 16, 2, PAL.wood1);
-    rect(0, 6, 16, 1, PAL.wood3);
-    rect(0, 11, 16, 2, PAL.wood1);
-    rect(0, 11, 16, 1, PAL.wood3);
-    rect(3, 3, 3, 12, PAL.wood0);
-    rect(3, 3, 1, 12, PAL.wood2);
-    rect(11, 3, 3, 12, PAL.wood0);
-    rect(11, 3, 1, 12, PAL.wood2);
+    rect(0, 5, 16, 3, '#4a2e18');
+    rect(0, 5, 16, 1, '#8c5c30');
+    rect(0, 10, 16, 3, '#4a2e18');
+    rect(0, 10, 16, 1, '#8c5c30');
+    post(2);
+    post(10);
   } else {
-    rect(6, 0, 2, 16, PAL.wood1);
-    rect(6, 0, 1, 16, PAL.wood3);
-    rect(11, 0, 2, 16, PAL.wood1);
-    rect(4, 3, 8, 3, PAL.wood0);
-    rect(4, 3, 8, 1, PAL.wood2);
-    rect(4, 11, 8, 3, PAL.wood0);
-    rect(4, 11, 8, 1, PAL.wood2);
+    rect(5, 0, 3, 16, '#4a2e18');
+    rect(5, 0, 1, 16, '#8c5c30');
+    rect(10, 0, 3, 16, '#4a2e18');
+    rect(10, 0, 1, 16, '#8c5c30');
+    rect(3, 3, 10, 3, '#6b4524');
+    rect(3, 3, 10, 1, '#ad7a44');
+    rect(3, 10, 10, 3, '#6b4524');
+    rect(3, 10, 10, 1, '#ad7a44');
   }
   return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: true };
 }
 
-const ORB_ART = [
-  '................',
-  '................',
-  '.....oooooo.....',
-  '...oohhaaaaoo...',
-  '..ohhaaaaaaAAo..',
-  '.ohaaaaaaaaAAAo.',
-  '.oaaaaaaaaaAAAo.',
-  '.oOOOOOOOOOOOOo.',
-  '.obbbbbbbbbbbbo.',
-  '.oOOOOOOOOOOOOo.',
-  '.owwwwwwwwwSSSo.',
-  '..owwwwwwwwSSo..',
-  '...oowwwwwSSoo..',
-  '.....oooooo.....',
-  '................',
-  '................',
-];
-const ORB_PAL = {
-  o: '#241a12', h: '#ffe6a0', a: '#e8a838', A: '#a85c14',
-  O: '#1a120c', b: '#584434', w: '#f4e8cc', S: '#c0aa84',
-};
+const ORB_PAL = ['#4a2600', '#8a5410', '#c88a1c', '#e8b53c', '#ffe28a'];
+const BAND_PAL = ['#3a2a08', '#7a6018', '#b09030', '#d8bc60', '#f8e8a8'];
 
-/** The capture orb, used both as a ground pickup and in the throw animation. */
+/** The capture orb: an amber sphere held in a banded ring. */
 export function orbSprite() {
-  return makeSprite(ORB_ART, ORB_PAL);
+  const s = new Sheet(16, 16);
+  ell(s, 0, ORB_PAL, { x: 8, y: 8, rx: 6.6, ry: 6.6, n: 2 });
+  const art = resolveSheet(s);
+  const g = art.getContext('2d');
+  // ring wrapping the sphere, drawn as a shallow arc so it reads as 3D
+  for (let x = 1; x <= 14; x++) {
+    const t = (x - 7.5) / 7;
+    if (Math.abs(t) > 1) continue;
+    const bulge = Math.sqrt(Math.max(0, 1 - t * t));
+    const y = Math.round(8 + bulge * 2.2);
+    g.fillStyle = BAND_PAL[1];
+    g.fillRect(x, y, 1, 2);
+    g.fillStyle = BAND_PAL[3];
+    g.fillRect(x, y, 1, 1);
+  }
+  g.fillStyle = BAND_PAL[0];
+  g.fillRect(6, 4, 4, 1);
+  g.fillStyle = BAND_PAL[2];
+  g.fillRect(6, 3, 4, 1);
+  g.fillStyle = '#ffffff';
+  g.fillRect(5, 4, 2, 1);
+  g.fillRect(5, 5, 1, 1);
+  return art;
 }
 
 export function makeOrbItem() {
   const out = mk(16, 18);
-  dropShadow(out.g, 8, 15, 5, 2);
+  shadow(out.g, 8, 15, 5, 2);
   out.g.drawImage(orbSprite(), 0, -1);
   return { c: out.c, ox: 0, oy: -2, fw: 1, fh: 1, solid: false };
+}
+
+// ---- interior furniture ----------------------------------------------------
+const W0 = '#3a2414';
+const W1 = '#6b4524';
+const W2 = '#8c5c30';
+const W3 = '#b5824c';
+
+export function makeTable(w = 2) {
+  const W = w * 16;
+  const { c, g, rect } = mk(W, 24);
+  shadow(g, W / 2, 21, W / 2 - 2, 3);
+  rect(2, 14, 3, 6, W0);
+  rect(W - 5, 14, 3, 6, W0);
+  rect(0, 4, W, 11, W1);
+  rect(0, 4, W, 2, W3);
+  rect(0, 6, W, 1, W2);
+  rect(0, 13, W, 2, W0);
+  return { c, ox: 0, oy: -8, fw: w, fh: 1, solid: true };
+}
+
+export function makeChair(dir = 0) {
+  const { c, g, rect } = mk(16, 20);
+  shadow(g, 8, 18, 5, 2);
+  if (dir === 1) { rect(3, 1, 10, 8, W1); rect(3, 1, 10, 1, W3); rect(3, 8, 10, 1, W0); }
+  rect(3, 8, 10, 6, W2);
+  rect(3, 8, 10, 1, W3);
+  rect(3, 13, 10, 2, W0);
+  if (dir !== 1) { rect(3, 14, 10, 4, W1); rect(3, 14, 10, 1, W2); }
+  rect(4, 15, 2, 4, W0);
+  rect(10, 15, 2, 4, W0);
+  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
+}
+
+export function makeBed() {
+  const { c, rect } = mk(16, 32);
+  rect(1, 0, 14, 32, W1);
+  rect(1, 0, 14, 2, W3);
+  rect(1, 30, 14, 2, W0);
+  rect(2, 2, 12, 10, '#d8d0e8');
+  rect(3, 3, 10, 8, '#f4f0ff');
+  rect(3, 3, 10, 2, '#ffffff');
+  rect(2, 12, 12, 18, '#3f5fa8');
+  rect(2, 12, 12, 2, '#6a8ad8');
+  rect(2, 28, 12, 2, '#2c4278');
+  rect(4, 17, 8, 1, '#6a8ad8');
+  rect(4, 23, 8, 1, '#6a8ad8');
+  return { c, ox: 0, oy: -16, fw: 1, fh: 2, solid: true };
+}
+
+export function makeBookshelf() {
+  const { c, rect } = mk(16, 28);
+  rect(0, 0, 16, 28, W0);
+  rect(1, 1, 14, 26, W1);
+  rect(1, 1, 14, 1, W2);
+  const cols = ['#b83c3c', '#3c7ab8', '#c09028', '#4a9a52', '#8a5cb0'];
+  for (let sh = 0; sh < 3; sh++) {
+    const y = 3 + sh * 8;
+    rect(1, y + 6, 14, 2, W0);
+    rect(1, y + 6, 14, 1, W2);
+    for (let i = 0; i < 6; i++) {
+      const h = 4 + ((i * 3 + sh * 5) % 3);
+      rect(2 + i * 2, y + 6 - h, 2, h, cols[(i + sh * 2) % cols.length]);
+    }
+  }
+  return { c, ox: 0, oy: -12, fw: 1, fh: 1, solid: true };
+}
+
+export function makeTV() {
+  const { c, g, rect } = mk(16, 20);
+  shadow(g, 8, 18, 6, 2);
+  rect(1, 3, 14, 13, '#22222c');
+  rect(1, 3, 14, 1, '#4a4a58');
+  rect(2, 5, 12, 9, '#2c4a6a');
+  rect(3, 6, 10, 7, '#6ab0e0');
+  rect(3, 6, 6, 3, '#b8e4f8');
+  rect(5, 16, 6, 3, '#16161e');
+  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
+}
+
+export function makeHealMachine() {
+  const { c, g, rect } = mk(32, 30);
+  shadow(g, 16, 27, 14, 3);
+  rect(0, 8, 32, 18, '#a8b0c4');
+  rect(0, 8, 32, 2, '#e0e6f0');
+  rect(0, 10, 32, 1, '#c4ccdc');
+  rect(0, 24, 32, 3, '#6a7288');
+  rect(2, 12, 28, 9, '#2f3648');
+  for (let i = 0; i < 3; i++) {
+    rect(5 + i * 9, 14, 6, 5, '#e0608c');
+    rect(6 + i * 9, 15, 4, 3, '#ffb0cc');
+    rect(6 + i * 9, 15, 2, 1, '#ffe0ec');
+  }
+  rect(4, 0, 24, 8, '#8d95aa');
+  rect(4, 0, 24, 1, '#d0d8e8');
+  rect(5, 1, 22, 6, '#242c40');
+  rect(7, 2, 6, 3, '#5ce0a0');
+  rect(15, 2, 10, 3, '#5ca8e0');
+  return { c, ox: 0, oy: -14, fw: 2, fh: 1, solid: true };
+}
+
+export function makeLabDesk() {
+  const { c, g, rect } = mk(32, 26);
+  shadow(g, 16, 23, 14, 3);
+  rect(3, 20, 3, 4, '#6a7288');
+  rect(26, 20, 3, 4, '#6a7288');
+  rect(0, 6, 32, 14, '#a8b0c4');
+  rect(0, 6, 32, 2, '#e0e6f0');
+  rect(0, 18, 32, 2, '#6a7288');
+  rect(6, 1, 4, 5, '#8fd8e8');
+  rect(5, 3, 6, 3, '#4fbcd4');
+  rect(5, 3, 2, 1, '#d8f8ff');
+  rect(20, 2, 3, 4, '#c8e8a0');
+  rect(19, 4, 5, 2, '#8ec860');
+  return { c, ox: 0, oy: -10, fw: 2, fh: 1, solid: true };
+}
+
+export function makeCounterProp(w = 3) {
+  const W = w * 16;
+  const { c, g, rect } = mk(W, 22);
+  shadow(g, W / 2, 20, W / 2 - 2, 2);
+  rect(0, 4, W, 12, W1);
+  rect(0, 4, W, 2, W3);
+  rect(0, 14, W, 3, W0);
+  return { c, ox: 0, oy: -6, fw: w, fh: 1, solid: true };
+}
+
+export function makeCrate() {
+  const { c, g, rect } = mk(16, 20);
+  shadow(g, 8, 18, 6, 2);
+  rect(1, 4, 14, 14, W1);
+  rect(1, 4, 14, 2, W3);
+  rect(1, 16, 14, 2, W0);
+  rect(1, 10, 14, 2, W0);
+  rect(7, 4, 2, 14, W0);
+  rect(1, 4, 1, 14, W2);
+  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
+}
+
+/** Interior doorway drawn on the wall the player exits through. */
+export function makeDoorway() {
+  const { c, rect } = mk(16, 18);
+  rect(0, 0, 16, 18, '#2a1c10');
+  rect(1, 2, 14, 16, W0);
+  rect(2, 3, 12, 15, '#1d1522');
+  rect(2, 3, 12, 2, W1);
+  rect(1, 2, 1, 16, W2);
+  rect(14, 2, 1, 16, W0);
+  rect(3, 14, 10, 4, '#302638');
+  return { c, ox: 0, oy: -2, fw: 1, fh: 1, solid: false };
+}
+
+export function makeWarpMat() {
+  const { c, rect } = mk(16, 16);
+  rect(0, 2, 16, 12, '#3c3c4a');
+  rect(1, 3, 14, 10, '#7e7e94');
+  rect(2, 4, 12, 8, '#b0b0c4');
+  rect(2, 4, 12, 1, '#d0d0e0');
+  rect(4, 6, 8, 4, '#5e5e74');
+  return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
 }
 
 export function makeLedgeMarker() {
@@ -214,190 +410,5 @@ export function makeLedgeMarker() {
   rect(0, 0, 16, 2, '#6a4c2c');
   rect(0, 2, 16, 4, PAL.dirt1);
   rect(0, 6, 16, 2, PAL.dirt0);
-  return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
-}
-
-// ---- interior furniture ----------------------------------------------------
-export function makeTable(w = 2) {
-  const W = w * 16;
-  const { c, g, rect } = mk(W, 24);
-  dropShadow(g, W / 2, 21, W / 2 - 2, 3);
-  rect(0, 4, W, 10, PAL.wood1);
-  rect(0, 4, W, 2, PAL.wood3);
-  rect(0, 12, W, 2, PAL.wood0);
-  rect(2, 14, 3, 6, PAL.wood0);
-  rect(W - 5, 14, 3, 6, PAL.wood0);
-  return { c, ox: 0, oy: -8, fw: w, fh: 1, solid: true };
-}
-
-export function makeChair(dir = 0) {
-  const { c, g, rect } = mk(16, 20);
-  dropShadow(g, 8, 18, 5, 2);
-  rect(3, 8, 10, 6, PAL.wood2);
-  rect(3, 8, 10, 1, PAL.wood3);
-  rect(3, 13, 10, 2, PAL.wood0);
-  if (dir === 1) rect(3, 2, 10, 6, PAL.wood1);
-  else rect(3, 14, 10, 4, PAL.wood1);
-  rect(4, 15, 2, 4, PAL.wood0);
-  rect(10, 15, 2, 4, PAL.wood0);
-  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
-}
-
-export function makeBed() {
-  const { c, rect } = mk(16, 32);
-  rect(1, 0, 14, 32, PAL.wood1);
-  rect(1, 0, 14, 2, PAL.wood3);
-  rect(2, 2, 12, 10, '#e8e0f0');
-  rect(3, 3, 10, 8, '#f8f4ff');
-  rect(2, 12, 12, 18, '#5878c8');
-  rect(2, 12, 12, 2, '#7a9ce8');
-  rect(2, 28, 12, 2, '#3a58a0');
-  rect(4, 16, 8, 1, '#7a9ce8');
-  rect(4, 22, 8, 1, '#7a9ce8');
-  return { c, ox: 0, oy: -16, fw: 1, fh: 2, solid: true };
-}
-
-export function makeBookshelf() {
-  const { c, rect } = mk(16, 28);
-  rect(0, 0, 16, 28, PAL.wood0);
-  rect(1, 1, 14, 26, PAL.wood1);
-  const cols = ['#c04848', '#48a0c0', '#c0a048', '#70b060', '#a070c0'];
-  for (let s = 0; s < 3; s++) {
-    const y = 3 + s * 8;
-    rect(1, y + 6, 14, 2, PAL.wood0);
-    for (let i = 0; i < 6; i++) {
-      const h = 4 + ((i + s) % 3);
-      rect(2 + i * 2, y + 6 - h, 2, h, cols[(i + s * 2) % cols.length]);
-    }
-  }
-  return { c, ox: 0, oy: -12, fw: 1, fh: 1, solid: true };
-}
-
-export function makePlant() {
-  const { c, g, px, rect } = mk(16, 26);
-  dropShadow(g, 8, 23, 6, 2);
-  rect(4, 16, 8, 7, '#a05838');
-  rect(4, 16, 8, 2, '#c07850');
-  rect(4, 22, 8, 1, '#703820');
-  blob(px, 8, 10, 7, 7, LEAF, 512);
-  blob(px, 5, 7, 4, 4, LEAF, 517);
-  blob(px, 11, 8, 4, 4, LEAF, 521);
-  return { c, ox: 0, oy: -10, fw: 1, fh: 1, solid: true };
-}
-
-export function makeTV() {
-  const { c, rect } = mk(16, 20);
-  rect(1, 4, 14, 12, '#2a2a34');
-  rect(2, 5, 12, 9, '#4a6a8a');
-  rect(3, 6, 10, 7, '#8ac0e0');
-  rect(3, 6, 5, 3, '#c8e8f8');
-  rect(5, 16, 6, 3, '#1a1a24');
-  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
-}
-
-export function makeHealMachine() {
-  const { c, g, rect } = mk(32, 30);
-  dropShadow(g, 16, 27, 14, 3);
-  rect(0, 8, 32, 18, PAL.lab1);
-  rect(0, 8, 32, 2, PAL.lab3);
-  rect(0, 24, 32, 3, PAL.lab0);
-  rect(2, 12, 28, 9, '#3a4258');
-  for (let i = 0; i < 3; i++) {
-    rect(5 + i * 9, 14, 6, 5, '#e8709c');
-    rect(6 + i * 9, 15, 4, 3, '#ffc0d8');
-  }
-  rect(4, 0, 24, 8, PAL.lab0);
-  rect(5, 1, 22, 6, '#2a3248');
-  rect(7, 2, 6, 3, '#70e0a0');
-  rect(15, 2, 10, 3, '#70b0e0');
-  return { c, ox: 0, oy: -14, fw: 2, fh: 1, solid: true };
-}
-
-export function makeLabDesk() {
-  const { c, g, rect } = mk(32, 26);
-  dropShadow(g, 16, 23, 14, 3);
-  rect(0, 6, 32, 14, PAL.lab1);
-  rect(0, 6, 32, 2, PAL.lab3);
-  rect(0, 18, 32, 2, PAL.lab0);
-  rect(3, 20, 3, 4, PAL.lab0);
-  rect(26, 20, 3, 4, PAL.lab0);
-  // glassware
-  rect(6, 1, 4, 5, '#8fd8e8');
-  rect(5, 3, 6, 3, '#6ac0d8');
-  rect(20, 2, 3, 4, '#c8e8a0');
-  rect(19, 4, 5, 2, '#a0d070');
-  return { c, ox: 0, oy: -10, fw: 2, fh: 1, solid: true };
-}
-
-export function makeCounterProp(w = 3) {
-  const W = w * 16;
-  const { c, g, rect } = mk(W, 22);
-  dropShadow(g, W / 2, 20, W / 2 - 2, 2);
-  rect(0, 4, W, 12, PAL.wood1);
-  rect(0, 4, W, 2, PAL.wood3);
-  rect(0, 14, W, 3, PAL.wood0);
-  rect(0, 17, W, 2, PAL.wood0);
-  return { c, ox: 0, oy: -6, fw: w, fh: 1, solid: true };
-}
-
-export function makeCrate() {
-  const { c, g, rect } = mk(16, 20);
-  dropShadow(g, 8, 18, 6, 2);
-  rect(1, 4, 14, 14, PAL.wood1);
-  rect(1, 4, 14, 2, PAL.wood3);
-  rect(1, 16, 14, 2, PAL.wood0);
-  rect(1, 10, 14, 2, PAL.wood0);
-  rect(7, 4, 2, 14, PAL.wood0);
-  return { c, ox: 0, oy: -4, fw: 1, fh: 1, solid: true };
-}
-
-export function makeCaveMouth() {
-  const { c, g, px, rect } = mk(48, 44);
-  blob(px, 24, 26, 24, 18, ROCK, 900, { wobble: 0.14 });
-  blob(px, 12, 18, 11, 9, ROCK, 906);
-  blob(px, 36, 20, 11, 9, ROCK, 911);
-  // dark mouth
-  g.fillStyle = '#100c18';
-  g.beginPath();
-  g.ellipse(24, 34, 10, 12, 0, Math.PI, 0);
-  g.fill();
-  g.fillRect(14, 34, 20, 10);
-  rect(14, 22, 20, 1, '#241c30');
-  return { c, ox: -8, oy: -28, fw: 2, fh: 1, solid: true };
-}
-
-/** Interior doorway drawn on the wall the player exits through. */
-export function makeDoorway() {
-  const { c, rect } = mk(16, 18);
-  rect(0, 0, 16, 18, '#2a1c10');
-  rect(1, 2, 14, 16, PAL.wood0);
-  rect(2, 3, 12, 15, '#241a14');
-  rect(2, 3, 12, 2, PAL.wood1);
-  rect(1, 2, 1, 16, PAL.wood2);
-  rect(14, 2, 1, 16, PAL.wood0);
-  rect(3, 14, 10, 4, '#3a2c22');
-  return { c, ox: 0, oy: -2, fw: 1, fh: 1, solid: false };
-}
-
-export function makeWarpMat() {
-  const { c, rect } = mk(16, 16);
-  rect(0, 2, 16, 12, '#4a4a5a');
-  rect(1, 3, 14, 10, '#8a8aa0');
-  rect(2, 4, 12, 8, '#b8b8cc');
-  rect(4, 6, 8, 4, '#6a6a80');
-  return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
-}
-
-export function makeFlowerPatch() {
-  const { c, px } = mk(16, 12);
-  blob(px, 8, 7, 7, 4, LEAF, 611);
-  const cols = ['#f0d048', '#e04868', '#f8f8f8'];
-  for (let i = 0; i < 5; i++) {
-    const x = 2 + ((i * 5 + 3) % 12);
-    const y = 3 + ((i * 3) % 6);
-    px(x, y, cols[i % 3]);
-    px(x + 1, y, cols[i % 3]);
-    px(x, y + 1, cols[i % 3]);
-  }
   return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
 }

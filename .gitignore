@@ -3,3 +3,4 @@ screenshots/
 shots/
 *.log
 .DS_Store
+# dist/ is committed on purpose — it is the playable build

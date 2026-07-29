@@ -29,17 +29,28 @@ function speckle(px, seed, dark, light, dp = 0.14, lp = 0.88) {
   }
 }
 
+/**
+ * Chunky mottling placed at free positions rather than on a grid — a grid reads
+ * as brickwork once tiles repeat.
+ */
+function mottle(rect, seed, dark, light, count = 13, cell = 2) {
+  for (let i = 0; i < count; i++) {
+    const x = Math.floor(hash2(i, 0, seed) * (T - cell + 1));
+    const y = Math.floor(hash2(i, 1, seed) * (T - cell + 1));
+    const light2 = hash2(i, 2, seed) > 0.62;
+    rect(x, y, cell, hash2(i, 3, seed) > 0.5 ? cell : 1, light2 ? light : dark);
+  }
+}
+
 // ---------------------------------------------------------------------------
 export function tileGrass(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  speckle(px, 11 + v, PAL.grass0, PAL.grass2, 0.13, 0.87);
-  // A couple of blade tufts to break up the noise.
-  const spots = [
-    [3, 4], [10, 9], [6, 12], [13, 2],
-  ];
+  mottle(rect, 11 + v, PAL.grass0, PAL.grass2, 14);
+  // a few blade marks so the ground has direction
+  const spots = [[3, 5], [11, 9], [7, 13], [14, 3], [1, 11]];
   for (let i = 0; i < 3; i++) {
-    const [sx, sy] = spots[(i + v) % spots.length];
+    const [sx, sy] = spots[(i + v * 2) % spots.length];
     px(sx, sy, PAL.grass3);
     px(sx + 1, sy + 1, PAL.grass3);
     px(sx - 1, sy + 1, PAL.grass2);
@@ -91,7 +102,7 @@ export function tallGrassFront(ctx, ox = 0, oy = 0) {
 export function tileTallGrass(v) {
   const { c, g, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  speckle(px, 31 + v, PAL.grass0, PAL.grass2, 0.14, 0.9);
+  mottle(rect, 31 + v, PAL.grass0, PAL.grass2, 10);
   // shaded ground under the clumps
   rect(0, 8, T, 8, PAL.grass0);
   for (let x = 0; x < T; x++) if (hash2(x, 8, 33 + v) > 0.5) px(x, 8, PAL.grass1);
@@ -106,13 +117,12 @@ export function tileTallGrass(v) {
 export function tilePath(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.dirt1);
-  speckle(px, 51 + v, PAL.dirt0, PAL.dirt2, 0.12, 0.86);
-  // pebbles
+  mottle(rect, 51 + v, PAL.dirt0, PAL.dirt2, 11);
   const pebbles = [[4, 6], [12, 11], [8, 3], [2, 13]];
   for (let i = 0; i < 2; i++) {
     const [x, y] = pebbles[(i + v) % pebbles.length];
     px(x, y, PAL.dirt3);
-    px(x + 1, y, PAL.dirt3);
+    px(x + 1, y, PAL.dirt2);
     px(x, y + 1, PAL.dirt0);
     px(x + 1, y + 1, PAL.dirt0);
   }
@@ -120,9 +130,9 @@ export function tilePath(v) {
 }
 
 export function tileSand(v) {
-  const { c, px, rect } = mk();
+  const { c, rect } = mk();
   rect(0, 0, T, T, PAL.sand1);
-  speckle(px, 71 + v, PAL.sand0, PAL.sand2, 0.16, 0.84);
+  mottle(rect, 71 + v, PAL.sand0, PAL.sand2, 12);
   return c;
 }
 
@@ -152,10 +162,10 @@ export function tileWater(frame, deep = false) {
 export function tileCaveFloor(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.stone1);
-  speckle(px, 91 + v, PAL.stone0, PAL.stone2, 0.18, 0.9);
+  mottle(rect, 91 + v, PAL.stone0, PAL.stone2, 15);
   if (v % 2) {
-    px(5, 7, PAL.stone0); px(6, 7, PAL.stone0); px(6, 8, PAL.stone0);
-    px(5, 8, PAL.stone2);
+    px(4, 7, PAL.stone0); px(5, 8, PAL.stone0); px(6, 8, PAL.stone0); px(7, 9, PAL.stone0);
+    px(5, 7, PAL.stone2); px(6, 9, PAL.stone2);
   }
   return c;
 }

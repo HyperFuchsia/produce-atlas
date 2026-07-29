@@ -16,14 +16,19 @@ built on the Web Audio API.
 
 ## Play
 
+**The quickest way:** open `dist/wildbound.html`. It is the whole game inlined
+into one file — no server, no install, no network. Double-click it.
+
+To run from source instead:
+
 ```bash
 npm start          # serves the folder on http://localhost:8080
+npm run build      # regenerate dist/wildbound.html after editing src/
 ```
 
-Then open <http://localhost:8080>. Any static server works
-(`python3 -m http.server`, `npx serve`, GitHub Pages, …). A server is required
-because the game is written as ES modules, which browsers refuse to load over
-`file://`.
+Any static server works (`python3 -m http.server`, `npx serve`, GitHub Pages).
+A server is only needed for the `src/` version, because ES modules will not load
+over `file://` — which is exactly why the single-file build exists.
 
 ### Controls
 
@@ -84,12 +89,13 @@ src/
   core/               loop, input (keyboard/touch/gamepad), canvas, audio,
                       coroutines, RNG, constants
   gfx/                the entire art pipeline:
+    monart.js         the cel-shading engine: primitives, tone quantisation,
+                      contact shadows, rim light, tinted outlines
     font.js           hand-drawn 5x8 bitmap font, proportional, cached per colour
     terrain.js        procedurally textured 16x16 tiles
     props.js          trees, rocks, signs, furniture — dithered lit blobs
     buildings.js      procedural houses with sloped roofs
     chars.js          16x24 walkers, palette-swapped per NPC
-    monart.js         the creature compositor (blobs, wings, flames, horns)
     monrecipes.js     18 species described as part lists
     battlebg.js       battle backdrops and perspective platforms
     ui.js             windows, bars, cursors, type chips
@@ -100,7 +106,8 @@ src/
                       transitions, collision) and the map definitions
   states/             title, overworld, battle, menu, party, bag, shop,
                       summary, wildbook
-tools/                headless Chromium harnesses used to develop the art
+tools/                headless Chromium harnesses used to develop the art,
+                      plus bundle.mjs (the single-file build)
 ```
 
 ### Notes on a couple of the more interesting bits
@@ -110,11 +117,17 @@ tools/                headless Chromium harnesses used to develop the art
   onto dirt, foam where water meets land, skirting where a wall meets a floor).
   Drawing the world is then a single `drawImage` plus the animated water tiles
   and the sorted sprite list.
-- **Creatures are recipes, not bitmaps.** Each species is a list of parts —
-  `blob`, `tri`, `chain`, `wing`, `flame`, `leaf`, `shard`, `eye` — rendered with
-  ordered (Bayer) dithering and a unified light direction. The same recipe
-  produces the front sprite, the mirrored back sprite (face parts dropped), and
-  the half-scale party icon, so nothing ever goes out of sync.
+- **Creatures are recipes, not bitmaps.** Each species is a list of shaded
+  primitives — superellipses, tapered capsules, polygons, ribbons, flames,
+  leaves — lit from one direction and then finished by three passes that do the
+  actual work: lighting quantised into four hard tone bands (cel shading, never
+  dithered), a 1px contact shadow wherever a later shape overlaps an earlier one
+  so limbs separate from bodies, and a silhouette outline tinted from whatever
+  it touches and weighted heavier underneath. A rim light picks out the lit edge,
+  and shapes flagged `fur` scallop their own outline into clumps so nothing reads
+  as a smooth ellipse. The same recipe produces the front sprite, the mirrored
+  back sprite (face parts dropped), and the half-scale party icon, so nothing
+  ever goes out of sync. The overworld props run through the same engine.
 - **Scripts are generators.** Cutscenes, dialogue and the entire battle flow are
   written as generator functions that yield tasks (`wait`, `tween`, `say`,
   `selectAction`), driven by a ~40-line coroutine runner. The battle reads

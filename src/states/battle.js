@@ -26,9 +26,9 @@ import { PartyState } from './party.js';
 import { BagState } from './bag.js';
 
 const FOE_X = 172;
-const FOE_Y = 58;
+const FOE_Y = 62;
 const ME_X = 58;
-const ME_Y = 106;
+const ME_Y = 110;
 
 const STRUGGLE = { id: '__flail', name: 'FLAIL', type: 'Wild', cat: 'phys', pow: 40, acc: 100, pp: 1, recoil: 0.25, desc: '' };
 
