@@ -137,7 +137,7 @@ function study() {
     ground: p.ground(), objs: p.objs(),
     warps: [{ x: 7, y: 10, to: 'hearthstead', tx: 19, ty: 8, dir: 0, kind: 'door' }],
     npcs: [
-      { x: 7, y: 3, dir: 0, pal: 'prof', name: 'YARROW', face: true, action: 'yarrow' },
+      { x: 7, y: 4, dir: 0, pal: 'prof', name: 'YARROW', face: true, action: 'yarrow' },
     ],
     objects: [
       { x: 5, y: 5, action: 'starter', which: 'sproutle' },

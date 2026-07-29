@@ -374,8 +374,9 @@ export class Overworld {
     let ty = p.y + v.y;
 
     let npc = this.npcAt(tx, ty) || this.npcs.find((n) => n.x === tx && n.y === ty);
-    // reach across a counter
-    if (!npc && TILES[this.map.at(tx, ty)]?.mat === 'wood' && this.map.solidAt(tx, ty)) {
+    // Reach across anything one tile deep — a shop counter, a lab bench, a
+    // table. Without this you have to walk around the furniture to be served.
+    if (!npc && this.map.solidAt(tx, ty)) {
       npc = this.npcs.find((n) => n.x === tx + v.x && n.y === ty + v.y);
     }
     if (npc) {

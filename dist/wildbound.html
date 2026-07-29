@@ -1369,6 +1369,8 @@ const GLYPHS = {
   "'": '00100/00100/00000/00000/00000/00000/00000',
   '"': '01010/01010/00000/00000/00000/00000/00000',
   '-': '00000/00000/00000/01110/00000/00000/00000',
+  '–': '00000/00000/00000/01110/00000/00000/00000',   // en dash
+  '—': '00000/00000/00000/11111/00000/00000/00000',   // em dash
   '_': '00000/00000/00000/00000/00000/00000/11111',
   ':': '00000/00000/00100/00000/00100/00000/00000',
   ';': '00000/00000/00000/00100/00000/00100/01000/00000',
@@ -4003,8 +4005,9 @@ class Overworld {
     let ty = p.y + v.y;
 
     let npc = this.npcAt(tx, ty) || this.npcs.find((n) => n.x === tx && n.y === ty);
-    // reach across a counter
-    if (!npc && TILES[this.map.at(tx, ty)]?.mat === 'wood' && this.map.solidAt(tx, ty)) {
+    // Reach across anything one tile deep — a shop counter, a lab bench, a
+    // table. Without this you have to walk around the furniture to be served.
+    if (!npc && this.map.solidAt(tx, ty)) {
       npc = this.npcs.find((n) => n.x === tx + v.x && n.y === ty + v.y);
     }
     if (npc) {
@@ -6138,7 +6141,7 @@ function study() {
     ground: p.ground(), objs: p.objs(),
     warps: [{ x: 7, y: 10, to: 'hearthstead', tx: 19, ty: 8, dir: 0, kind: 'door' }],
     npcs: [
-      { x: 7, y: 3, dir: 0, pal: 'prof', name: 'YARROW', face: true, action: 'yarrow' },
+      { x: 7, y: 4, dir: 0, pal: 'prof', name: 'YARROW', face: true, action: 'yarrow' },
     ],
     objects: [
       { x: 5, y: 5, action: 'starter', which: 'sproutle' },
