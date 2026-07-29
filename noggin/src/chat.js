@@ -104,6 +104,7 @@
     this.onType = null;
     this.onClear = null;
     this.onAbort = null;
+    this.onWipe = null;
 
     const self = this;
     this.form.addEventListener('submit', function (e) {
@@ -144,9 +145,27 @@
     /* Read-only rather than disabled: the caret stays where it was and the
        field does not grey out. It is refusing you, not broken. */
     this.input.readOnly = true;
+
+    /* Unless something else wants to deal with it, in which case the box is
+       not the box's any more and it stops having opinions about when the
+       words go. See App.startSnatch, which takes the whole element off the
+       screen and does not give it back until it has finished. */
+    if (this.onWipe && this.onWipe()) this.wipePhase = 'taken';
+  };
+
+  /* Handed back. `clear` because whatever was in it did not survive. */
+  Chat.prototype.releaseBox = function (clear) {
+    if (this.wipePhase !== 'taken') return;
+    if (clear) this.input.value = '';
+    this.wipePhase = 'tail';
+    this.lockFor = LOCK_TAIL;
+    if (this.onType) this.onType(this.input.value);
   };
 
   Chat.prototype._updateWipe = function (dt) {
+    /* Somebody else has it. Nothing here runs until they give it back. */
+    if (this.wipePhase === 'taken') return;
+
     if (this.wipePhase === 'hold') {
       /* Three seconds of your own sentence, and no way to add to it. */
       this.wipeT -= dt;

@@ -278,6 +278,52 @@
   }
   #sound:hover, #sound:focus-visible { color: var(--paper); outline: none; }
 
+  /* ---- prototype ----------------------------------------------------------- */
+
+  /* One switch, in the same voice as the sound toggle, for the thing that is
+     not finished. Armed it goes gold, because you should be able to tell at a
+     glance whether the next thing you type is going to cost you the box. */
+  #proto {
+    position: fixed;
+    right: 24px;
+    top: 42px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
+    transition: color 0.15s ease;
+  }
+  #proto:hover, #proto:focus-visible { color: var(--paper); outline: none; }
+  body.proto #proto { color: var(--accent); }
+  body.proto #proto::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 7px;
+    vertical-align: 1px;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* While he has hold of it. The transform is written frame by frame from the
+     scene, so all this does is get the browser's own animations out of the
+     way and stop the thing being clickable while it is in the air. */
+  #composer.taken {
+    pointer-events: none;
+    will-change: transform;
+    transform-origin: 50% 50%;
+  }
+  #composer.taken #prompt { transition: none; }
+
   /* ---- boot ---------------------------------------------------------------- */
 
   #boot {
@@ -327,6 +373,7 @@
 
 <div id="mark">Produce <em>Atlas</em></div>
 <button id="sound" type="button">Sound on</button>
+<button id="proto" type="button" title="Unfinished. With this on, saying the wrong word to him costs you the text box.">Prototype off</button>
 
 <div id="hud">
   <div id="dialogue"></div>
@@ -5092,6 +5139,7 @@
     this.onType = null;
     this.onClear = null;
     this.onAbort = null;
+    this.onWipe = null;
 
     const self = this;
     this.form.addEventListener('submit', function (e) {
@@ -5132,9 +5180,27 @@
     /* Read-only rather than disabled: the caret stays where it was and the
        field does not grey out. It is refusing you, not broken. */
     this.input.readOnly = true;
+
+    /* Unless something else wants to deal with it, in which case the box is
+       not the box's any more and it stops having opinions about when the
+       words go. See App.startSnatch, which takes the whole element off the
+       screen and does not give it back until it has finished. */
+    if (this.onWipe && this.onWipe()) this.wipePhase = 'taken';
+  };
+
+  /* Handed back. `clear` because whatever was in it did not survive. */
+  Chat.prototype.releaseBox = function (clear) {
+    if (this.wipePhase !== 'taken') return;
+    if (clear) this.input.value = '';
+    this.wipePhase = 'tail';
+    this.lockFor = LOCK_TAIL;
+    if (this.onType) this.onType(this.input.value);
   };
 
   Chat.prototype._updateWipe = function (dt) {
+    /* Somebody else has it. Nothing here runs until they give it back. */
+    if (this.wipePhase === 'taken') return;
+
     if (this.wipePhase === 'hold') {
       /* Three seconds of your own sentence, and no way to add to it. */
       this.wipeT -= dt;
@@ -7278,6 +7344,13 @@ void main() {
     /* He is watching the input box for one word. */
     this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
       heat: 0, palm: 0, look: 0, blanks: 0, at: { spin: 0, tilt: 0 } };
+    /* And with the prototype switch on, he does something about it. */
+    this.proto = false;
+    this.snatch = { phase: 'off', t: 0, blend: 0, side: 1, hand: 1,
+      pos: [0, 0, 0], vel: [0, 0, 0], glass: [0, 0, 0], grip: [0, 0, 0],
+      spin: 0, spinV: 0, spinRest: 0, tilt: 0, tiltRest: 70, resist: 0,
+      home: null, el: null,
+      camTilt: 0, said: false, hadFocus: false };
     this.focusDir = [0, 0, 1];
 
     /* State of matter. `fallY` is a vertical offset on top of the drift, so
@@ -7345,6 +7418,7 @@ void main() {
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onType = function (text) { self.noticeHands(text); };
+    this.chat.onWipe = function () { return self.startSnatch(); };
     this.chat.onClear = function () { self.clearSpecimens(); };
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
@@ -7623,14 +7697,20 @@ void main() {
      downward into a pitch that does nothing, and then make you drag all of it
      back before the view moved again — which feels like the controls have
      stopped working, not like there is something in the way. */
+  /* The lowest the orbit may go, or null when the floor is out of its reach
+     entirely and there is nothing to hit. */
+  App.prototype._lowestPitch = function () {
+    const want = (this.renderer.floorY + LENS_CLEAR - this.target[1])
+      / Math.max(this.camera.dist, 0.001);
+    if (want >= 1 || want <= -1) return null;
+    return Math.asin(want);
+  };
+
   App.prototype._clampToFloor = function () {
     const c = this.camera, w = this.fourthWall;
     if (!w.sealed) return;
-    const want = (this.renderer.floorY + LENS_CLEAR - this.target[1]) / Math.max(c.dist, 0.001);
-    /* The floor is out of the orbit's reach entirely — nothing to hit. */
-    if (want >= 1 || want <= -1) return;
-    const lowest = Math.asin(want);
-    if (c.pitch >= lowest) return;
+    const lowest = this._lowestPitch();
+    if (lowest === null || c.pitch >= lowest) return;
     const close = M.smoothstep(0, 1, Math.min(1, w.sealT / SEAL_CLOSE));
     c.pitch = lowest - (lowest - c.pitch) * (1 - close);
   };
@@ -7797,6 +7877,11 @@ void main() {
     if (!has) { c.armed = true; return; }
     if (!c.armed) return;
 
+    /* With the prototype armed he does not answer the question at all. He
+       takes the box off you. One or the other — both at once is him
+       apologising while he does it, which is a different man. */
+    if (this._canSnatch()) { c.armed = false; return; }
+
     if (!this.face || !this.hands || this.morph.t < 1) {
       /* Nothing to defend, but the word still does not get to sit there. */
       c.armed = false;
@@ -7830,6 +7915,327 @@ void main() {
        interface that speaks before you have done anything — so it is the only
        way he gets to keep saying it while you are not typing. */
     if (c.count >= FED_UP_AT) this.chat.hint(SICK_OF_IT);
+  };
+
+  /* ---- he takes the box off you ----------------------------------------- */
+
+  /* The prototype. Everything else here answers you inside the frame; this
+     reaches out of it.
+
+     The text box is a DOM element sitting on the glass in front of the scene,
+     which is exactly what it looks like from in there: a thing stuck to the
+     window. So he comes up to the window, takes hold of it, peels it off — it
+     resists, because it is stuck — and throws it on the floor of the room he
+     is standing in. It lands, it lies there, and then he puts it back,
+     because you still need it.
+
+     It is the real element the whole way. Nothing is drawn to stand in for
+     it: the same input, the same border, the same text you were typing, moved
+     by a transform written from the scene every frame. Substituting a
+     rendered slab would have been easier and would have broken the one thing
+     that makes it work, which is that it is unmistakably *your* text box. */
+  const SNATCH = {
+    reach: 0.85,     /* his hand comes up to the glass */
+    grip:  0.40,     /* takes hold, and tugs, and it does not come         */
+    peel:  0.55,     /* until it does                                      */
+    throw: 0.30,     /* the wind-up and the release                        */
+    rest:  2.30,     /* it lies on the floor being on the floor            */
+    back:  0.70      /* and he puts it back                                */
+  };
+  /* How far in front of the lens the glass is. It sets two things at once and
+     they pull in opposite directions: how big the box is as an object in the
+     room, and — because his hand has to be at the box — how big his hand
+     looks. Close, and the box is a neat little slab and his hand fills the
+     entire screen like a special effect. Far, and the hand is his own hand at
+     his own scale.
+
+     Measured both: at 5.6 the composer is a 33 cm panel, which is about what
+     a bar spanning most of the window ought to be in a room where his head
+     takes up a third of it, and his hand comes out at 297 px against a 334 px
+     head. A hand is about the size of a face. That is the one that looks like
+     a person picking something up. */
+  const GLASS = 5.6;
+  const HAND_BEHIND = 0.5;    /* his hand is behind the glass, as it would be */
+  /* And it holds the box at the palm rather than at the wrist, or the fingers
+     stand a foot above the thing they are supposed to be gripping. */
+  const HAND_HOLD = 0.95;
+  /* How far into the room he drags it before letting go. Without this the
+     grip point was where the box already was, so the peel moved it nowhere
+     and the whole middle of the thing was a hand holding a stationary bar. */
+  const PULL = 2.6;
+  /* It falls under the same gravity as he does — there is only one room. */
+  const TUMBLE = 74;          /* degrees of lie-flat once it is on the floor */
+  const SNATCH_LOOK = 0.26;   /* radians the camera rises to watch it land */
+
+  /* Screen pixels to a world point at a given distance from the eye. The
+     camera basis and the frustum half-angles are already worked out every
+     frame for the pointer ray, so this is the same arithmetic run forwards. */
+  App.prototype._screenToWorld = function (out, px, py, dist) {
+    const nx = (px / this.cssW) * 2 - 1;
+    const ny = 1 - (py / this.cssH) * 2;
+    const d = [
+      this.rayF[0] + this.rayR[0] * nx + this.rayU[0] * ny,
+      this.rayF[1] + this.rayR[1] * nx + this.rayU[1] * ny,
+      this.rayF[2] + this.rayR[2] * nx + this.rayU[2] * ny
+    ];
+    M.norm3(d, d);
+    return M.addScaled3(out, this.eye, d, dist);
+  };
+
+  /* And back the other way, in CSS pixels. w <= 0 means behind the lens. */
+  App.prototype._toScreen = function (p) {
+    const vp = this.viewProj;
+    const w = vp[3] * p[0] + vp[7] * p[1] + vp[11] * p[2] + vp[15];
+    if (w <= 0.0001) return null;
+    const nx = (vp[0] * p[0] + vp[4] * p[1] + vp[8] * p[2] + vp[12]) / w;
+    const ny = (vp[1] * p[0] + vp[5] * p[1] + vp[9] * p[2] + vp[13]) / w;
+    return { x: (nx * 0.5 + 0.5) * this.cssW, y: (0.5 - ny * 0.5) * this.cssH };
+  };
+
+  /* Whether the next mention costs you the box. */
+  App.prototype._canSnatch = function () {
+    return this.proto && this.snatch.phase === 'off'
+      && !!this.face && this.morph.t >= 1;
+  };
+
+  App.prototype.setProto = function (on) {
+    this.proto = !!on;
+    document.body.classList.toggle('proto', this.proto);
+    $('proto').textContent = this.proto ? 'Prototype on' : 'Prototype off';
+    if (!this.proto && this.snatch.phase !== 'off') this._giveBackBox(true);
+  };
+
+  /* Called by the box when the word lands. Returning true means the box is
+     his now and it should stop counting down to its own erase. */
+  App.prototype.startSnatch = function () {
+    const s = this.snatch;
+    /* He needs a hand, and he needs to be someone with hands. A pineapple
+       cannot do this either. */
+    if (!this._canSnatch()) return false;
+    this._spawnHands(this.morph.form);
+    if (!this.hands) return false;
+
+    const el = $('composer');
+    s.el = el;
+    s.home = this._boxHome(el);
+    s.phase = 'reach';
+    s.t = 0;
+    s.blend = 0;
+    s.spin = 0; s.spinV = 0; s.tilt = 0; s.resist = 0;
+    s.camTilt = 0; s.said = false;
+    /* Whichever hand is on the side the camera has swung round to, same as
+       when he takes the camera off you. */
+    s.hand = Math.sin(this.camera.yaw) >= 0 ? 1 : 0;
+    s.side = this.hands[s.hand].side;
+    this._screenToWorld(s.glass, s.home.cx, s.home.cy, GLASS);
+    M.copy3(s.pos, s.glass);
+    el.classList.add('taken');
+    /* Nobody types into a box that is being carried across a room. Whether
+       the caret was in it is worth remembering, though: if you were mid
+       sentence when he took it, you should be mid sentence when it comes
+       back. */
+    s.hadFocus = document.activeElement === this.chat.input;
+    if (s.hadFocus) this.chat.input.blur();
+    this.chat.say(['Right. Give me that.']);
+    return true;
+  };
+
+  /* Where the box would be if nobody had touched it. Layout offsets rather
+     than a bounding rect, because a bounding rect is the transformed one —
+     asking it where the box lives while it is being thrown across a room
+     answers with where it is being thrown to. Read fresh every frame, which
+     is also what makes the window resizing mid-throw harmless. */
+  App.prototype._boxHome = function (el) {
+    return {
+      cx: el.offsetLeft + el.offsetWidth * 0.5,
+      cy: el.offsetTop + el.offsetHeight * 0.5
+    };
+  };
+
+  App.prototype._giveBackBox = function (now) {
+    const s = this.snatch;
+    if (s.el) {
+      s.el.classList.remove('taken');
+      s.el.style.transform = '';
+    }
+    s.phase = 'off';
+    s.blend = 0;
+    s.camTilt = 0;
+    s.el = null;
+    this.chat.releaseBox(true);
+    if (s.hadFocus && !now) this.chat.input.focus();
+    s.hadFocus = false;
+  };
+
+  App.prototype.updateSnatch = function (dt) {
+    const s = this.snatch;
+    if (s.phase === 'off') return;
+    /* If he stops being someone with hands halfway through, he cannot finish,
+       and you get your box back rather than watching it hang in the air. */
+    if (!this.face || !this.hands) { this._giveBackBox(true); return; }
+
+    s.t += dt;
+    /* The glass moves with the camera, so where the box is stuck is worked
+       out fresh rather than remembered. */
+    s.home = this._boxHome(s.el);
+    this._screenToWorld(s.glass, s.home.cx, s.home.cy, GLASS);
+
+    if (s.phase === 'reach') {
+      s.blend = M.smoothstep(0, 1, Math.min(1, s.t / SNATCH.reach));
+      M.copy3(s.pos, s.glass);
+      if (s.t >= SNATCH.reach) {
+        s.phase = 'grip'; s.t = 0;
+        this.audio.click();
+      }
+    } else if (s.phase === 'grip') {
+      /* He has hold of it and it will not come. The pull shows up as the box
+         straining toward him rather than as it moving, which is the whole
+         difference between peeling something off and picking something up. */
+      s.blend = 1;
+      const k = Math.min(1, s.t / SNATCH.grip);
+      s.resist = Math.sin(k * Math.PI) * (0.55 + 0.45 * Math.sin(this.time * 34));
+      M.copy3(s.pos, s.glass);
+      if (s.t >= SNATCH.grip) {
+        s.phase = 'peel'; s.t = 0;
+        s.resist = 0;
+        this.audio.boing(0.35);
+        this.shake = 0.06;
+      }
+    } else if (s.phase === 'peel') {
+      /* Free. It follows his hand into the room, which is what takes it from
+         being a thing on your screen to being a thing in there with him. */
+      s.blend = 1;
+      const k = M.smoothstep(0, 1, Math.min(1, s.t / SNATCH.peel));
+      const grip = this._handGrip(s);
+      for (let i = 0; i < 3; i++) s.pos[i] = s.glass[i] + (grip[i] - s.glass[i]) * k;
+      s.spin += (s.side * 40 - s.spin) * Math.min(1, dt * 4);
+      s.tilt += (18 - s.tilt) * Math.min(1, dt * 4);
+      if (s.t >= SNATCH.peel) { s.phase = 'throw'; s.t = 0; }
+    } else if (s.phase === 'throw') {
+      /* The wind-up: back and up, and then it is gone. */
+      s.blend = 1;
+      const k = Math.min(1, s.t / SNATCH.throw);
+      const grip = this._handGrip(s);
+      for (let i = 0; i < 3; i++) s.pos[i] = grip[i];
+      if (s.t >= SNATCH.throw) {
+        s.phase = 'down'; s.t = 0;
+        this._launchBox();
+      }
+    } else if (s.phase === 'down') {
+      this._flyBox(dt);
+    } else if (s.phase === 'rest') {
+      s.blend = Math.max(0, s.blend - dt * 2.2);
+      const k = Math.min(1, dt * 7);
+      s.spin += (s.spinRest - s.spin) * k;
+      s.tilt += (s.tiltRest - s.tilt) * k;
+      if (!s.said && s.t > 0.5) {
+        s.said = true;
+        this.chat.say(['It is on the floor now. That is where it lives.']);
+      }
+      if (s.t >= SNATCH.rest) {
+        s.phase = 'back'; s.t = 0;
+        M.copy3(s.grip, s.pos);
+        this.chat.say(['I am putting it back. Do not make me do that again.']);
+      }
+    } else if (s.phase === 'back') {
+      /* Straight home, and the tilt and spin unwind on the way. */
+      const k = M.smoothstep(0, 1, Math.min(1, s.t / SNATCH.back));
+      for (let i = 0; i < 3; i++) s.pos[i] = s.grip[i] + (s.glass[i] - s.grip[i]) * k;
+      s.spin *= 1 - k;
+      s.tilt *= 1 - k;
+      s.blend = 0;
+      if (s.t >= SNATCH.back) { this._giveBackBox(false); return; }
+    }
+
+    /* The camera looks down to watch it land, because the floor is not in
+       frame from where the shot usually sits — the being is what the framing
+       is for, and the ground by his feet is below the bottom edge. */
+    const wantTilt = (s.phase === 'down' || s.phase === 'rest') ? 1
+      : (s.phase === 'back' ? 1 - Math.min(1, s.t / SNATCH.back) : 0);
+    s.camTilt += (wantTilt - s.camTilt) * Math.min(1, dt * 3.4);
+
+    this._drawBox();
+  };
+
+  /* Where his hand is holding it: a little in front of the palm, and the palm
+     itself is behind the glass, because that is which side of the window he
+     is on. */
+  App.prototype._handGrip = function (s) {
+    const h = this.hands[s.hand];
+    return [h.local[12], h.local[13] + HAND_HOLD, h.local[14] + 0.35];
+  };
+
+  /* Thrown, not dropped: a launch velocity solved so it arrives at a chosen
+     spot on the floor in a chosen time. Letting it fly wherever the arm
+     happened to be pointing put it off the bottom of the screen about half
+     the time, and a throw you cannot see is not a throw. */
+  App.prototype._launchBox = function () {
+    const s = this.snatch;
+    const T = 0.62;
+    const to = [s.side * 1.5, this.renderer.floorY + 0.06, -1.0];
+    for (let i = 0; i < 3; i++) s.vel[i] = (to[i] - s.pos[i]) / T;
+    s.vel[1] += 0.5 * GRAVITY * T;
+    s.spinV = s.side * 340;
+    this.audio.hiss();
+  };
+
+  App.prototype._flyBox = function (dt) {
+    const s = this.snatch;
+    const floor = this.renderer.floorY + 0.06;
+    s.vel[1] -= GRAVITY * dt;
+    for (let i = 0; i < 3; i++) s.pos[i] += s.vel[i] * dt;
+    s.spin += s.spinV * dt;
+    /* Flat by the time it gets there. */
+    s.tilt += (TUMBLE - s.tilt) * Math.min(1, dt * 3.6);
+
+    if (s.pos[1] > floor) return;
+    s.pos[1] = floor;
+    const hit = Math.abs(s.vel[1]);
+    this.audio.thud(M.clamp(hit / 7, 0.15, 0.7));
+    if (hit > 1.6) {
+      /* One bounce, and it is a flat thing landing flat: most of it goes. */
+      s.vel[1] = hit * 0.24;
+      s.vel[0] *= 0.42; s.vel[2] *= 0.42;
+      s.spinV *= 0.3;
+      return;
+    }
+    s.vel[0] = 0; s.vel[1] = 0; s.vel[2] = 0;
+    s.spinV = 0;
+    /* Where it comes to rest. Two things have to be right or it lands as a
+       sliver: it has to stop at a whole number of turns, or it is lying
+       end-on to you and there is nothing to see; and flat is not a fixed
+       angle, it is whatever angle puts the panel's face against the floor
+       from where the camera happens to be standing. */
+    s.spinRest = Math.round(s.spin / 360) * 360 + s.side * 9;
+    const up = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, s.pos));
+    s.tiltRest = Math.acos(M.clamp(up[1], -1, 1)) * 180 / Math.PI;
+    s.phase = 'rest';
+    s.t = 0;
+    this.shake = 0.05;
+  };
+
+  /* The one line that actually moves it. Everything above decides where the
+     box is in the room; this asks the camera where that is on the screen. */
+  App.prototype._drawBox = function () {
+    const s = this.snatch;
+    if (!s.el) return;
+    const at = this._toScreen(s.pos);
+    if (!at) { s.el.style.opacity = '0'; return; }
+    s.el.style.opacity = '';
+    const d = Math.max(0.2, M.dist3(this.eye, s.pos));
+    const scale = GLASS / d;
+    /* Stuck: while he is pulling and it is not coming, it strains toward him
+       instead of moving — taller by a hair, and shivering. */
+    const r = s.resist;
+    const stretch = r > 0.001
+      ? ' scaleY(' + (1 + r * 0.10).toFixed(4) + ') translate(0,' + (-r * 3).toFixed(2) + 'px)'
+      : '';
+    s.el.style.transform =
+      'translate(' + (at.x - s.home.cx).toFixed(2) + 'px,' + (at.y - s.home.cy).toFixed(2) + 'px)'
+      + ' scale(' + scale.toFixed(4) + ')'
+      + ' perspective(760px) rotateX(' + s.tilt.toFixed(2) + 'deg)'
+      + ' rotateZ(' + s.spin.toFixed(2) + 'deg)'
+      + stretch;
   };
 
   /* Where he is looking, as a spin and a tilt that will point his front at a
@@ -7911,12 +8317,55 @@ void main() {
     return { x: local[0], y: local[1] + j, z: local[2], yaw: ry + j * 0.5, pitch: rx };
   };
 
+  /* Where the hand has to be to have hold of the text box: at the box, on the
+     far side of the glass from you, palm to the window. */
+  App.prototype._snatchHandPose = function () {
+    const s = this.snatch;
+    const at = this._screenToWorld([0, 0, 0], s.home.cx, s.home.cy, GLASS + HAND_BEHIND);
+    at[1] -= HAND_HOLD;
+    /* Away from you is into the room, which is the direction everything about
+       this happens in. */
+    const fwd = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.target, this.eye));
+
+    if (s.phase === 'grip') {
+      /* Hauling on something that is not moving: the arm goes back, the box
+         does not. */
+      const k = Math.min(1, s.t / SNATCH.grip);
+      M.addScaled3(at, at, fwd, Math.sin(k * Math.PI) * 0.22);
+      at[1] += Math.sin(this.time * 31) * 0.012;
+    } else if (s.phase === 'peel') {
+      /* Free, and coming with him. This is the shot: the box leaves the glass
+         and goes into the room, getting smaller as it goes, which is the only
+         way anyone can tell it has stopped being part of your screen. */
+      const k = M.smoothstep(0, 1, Math.min(1, s.t / SNATCH.peel));
+      M.addScaled3(at, at, fwd, PULL * k);
+      at[1] -= 0.30 * k;
+    } else if (s.phase === 'throw') {
+      /* Up and back, and then through. */
+      const k = Math.min(1, s.t / SNATCH.throw);
+      M.addScaled3(at, at, fwd, PULL);
+      at[1] += -0.30 + Math.sin(k * Math.PI) * 0.55;
+      at[0] += s.side * 0.5 * k;
+    }
+
+    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, at));
+    return {
+      x: at[0], y: at[1], z: at[2],
+      pitch: Math.asin(M.clamp(d[1], -1, 1)),
+      yaw: Math.atan2(-d[0], -d[2])
+    };
+  };
+
   App.prototype.updateHands = function (dt) {
     if (!this.hands) return;
     const t = this.time;
     const emph = this.chat.emphasis;
     const w = this.fourthWall;
     const wall = w.blend > 0.001 ? this._wallHandPose() : null;
+    const s = this.snatch;
+    /* The box wins over the camera: he cannot be holding both, and the one he
+       is holding is the one you are watching. */
+    const took = s.blend > 0.001 && s.home ? this._snatchHandPose() : null;
 
     for (let i = 0; i < this.hands.length; i++) {
       const h = this.hands[i];
@@ -7988,6 +8437,17 @@ void main() {
         if (dy < -Math.PI) dy += Math.PI * 2;
         yaw += dy * b;
         pitch += (wall.pitch - pitch) * b;
+      }
+      if (took && i === s.hand) {
+        const b = s.blend;
+        px += (took.x - px) * b;
+        py += (took.y - py) * b;
+        pz += (took.z - pz) * b;
+        let dy = (took.yaw - yaw) % (Math.PI * 2);
+        if (dy > Math.PI) dy -= Math.PI * 2;
+        if (dy < -Math.PI) dy += Math.PI * 2;
+        yaw += dy * b;
+        pitch += (took.pitch - pitch) * b;
       }
       M.compose(h.local, px, py, pz, yaw, pitch, 1);
     }
@@ -8434,6 +8894,10 @@ void main() {
       self.audio.resume();
       self.audio.setEnabled(!self.audio.enabled);
       $('sound').textContent = self.audio.enabled ? 'Sound on' : 'Sound off';
+    });
+
+    $('proto').addEventListener('click', function () {
+      self.setProto(!self.proto);
     });
 
     canvas.addEventListener('webglcontextlost', function (e) {
@@ -9055,7 +9519,22 @@ void main() {
 
     this._clampToFloor();
 
-    const cp = Math.cos(c.pitch), sp = Math.sin(c.pitch);
+    /* He throws the box at the floor, and the floor is not in frame from
+       where the shot normally sits — the framing is for the being, and the
+       ground by his feet is below the bottom edge. So the camera rises to
+       watch it land and comes back down afterwards. Up, not down: pitch is
+       where the eye is, not where it is pointing, and lowering it walks the
+       camera towards the floor and tips the view up — the same move that
+       takes you under the boards. An offset rather than a change to the
+       orbit, so the angle you set is still the angle you set and it is
+       waiting for you when he has finished. */
+    let pitch = c.pitch + SNATCH_LOOK * this.snatch.camTilt;
+    if (this.fourthWall.sealed) {
+      const lowest = this._lowestPitch();
+      if (lowest !== null && pitch < lowest) pitch = lowest;
+    }
+
+    const cp = Math.cos(pitch), sp = Math.sin(pitch);
     this.eye[0] = this.target[0] + c.dist * cp * Math.sin(c.yaw);
     this.eye[1] = this.target[1] + c.dist * sp;
     this.eye[2] = this.target[2] + c.dist * cp * Math.cos(c.yaw);
@@ -9254,6 +9733,8 @@ void main() {
     this.updateFourthWall(dt);
     this.updateCaught(dt);
     this.updateHands(dt);
+    /* After the hands, because it holds the box in one of them. */
+    this.updateSnatch(dt);
     this.updateTrimmings(dt);
     this.updateLight();
     this.trackGrabVelocity(dt);
@@ -9283,6 +9764,17 @@ void main() {
     const frameStart = performance.now();
 
     this.stepFrame(dt);
+    this.render();
+
+    this.cpuMs = this.cpuMs * 0.9 + (performance.now() - frameStart) * 0.1;
+    this.adaptResolution();
+  };
+
+  /* Drawing, with no clock in it. Kept apart from `frame` so a still can be
+     taken of the scene exactly as it stands, without a step of time going in
+     first and changing what is being looked at. */
+  App.prototype.render = function () {
+    if (this.contextLost) return;
     this.renderer.updateDynamic(this.body.pos, this.body.nrm, this.body.stretch);
 
     this.renderer.render({
@@ -9322,9 +9814,6 @@ void main() {
       vignette: 0.62,
       aberration: 0
     });
-
-    this.cpuMs = this.cpuMs * 0.9 + (performance.now() - frameStart) * 0.1;
-    this.adaptResolution();
   };
 
   App.prototype.fail = function (message) {
