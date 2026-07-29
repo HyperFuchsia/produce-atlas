@@ -1,0 +1,14 @@
+{
+  "name": "wildbound",
+  "version": "1.0.0",
+  "description": "WILDBOUND — Amber Edition. A 2.5D pixel creature-collecting RPG in the style of early-2000s handheld games. No dependencies, no build step.",
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes http-server -p 8080 -c-1 .",
+    "serve": "npx --yes http-server -p 8080 -c-1 .",
+    "shots": "node tools/tour.mjs ./screenshots main"
+  },
+  "keywords": ["game", "rpg", "pixel-art", "canvas", "creature-collector"],
+  "license": "MIT",
+  "private": true
+}

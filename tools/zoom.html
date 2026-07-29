@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>zoom</title>
+<style>body{margin:0;background:#181820}canvas{image-rendering:pixelated;display:block}#screen{display:none}</style></head>
+<body>
+<canvas id="screen" width="240" height="160"></canvas>
+<canvas id="sheet"></canvas>
+<script type="module">
+import { drawText } from '../src/gfx/font.js';
+import * as T from '../src/gfx/terrain.js';
+import { getWalker } from '../src/gfx/chars.js';
+import { renderMon } from '../src/gfx/monart.js';
+import { MON_ART } from '../src/gfx/monrecipes.js';
+
+const S = 7, W = 200, H = 150;
+const off = document.createElement('canvas'); off.width = W; off.height = H;
+const g = off.getContext('2d'); g.imageSmoothingEnabled = false;
+g.fillStyle = '#3a7a3e'; g.fillRect(0,0,W,H);
+
+const w = getWalker('player');
+let x = 2;
+for (const dir of ['down','up','left','right']) {
+  for (const f of [0,1,2]) { g.drawImage(w[dir][f], x, 2); x += 16; }
+}
+// tall grass strip with a walker standing in it
+let y = 30;
+for (let i = 0; i < 8; i++) g.drawImage(T.tileTallGrass(i%2), i*16, y);
+for (let i = 0; i < 4; i++) g.drawImage(T.tileGrass(i%2), 128+ (i-4)*0, y);
+g.drawImage(T.tileGrass(0), 128, y); g.drawImage(T.tileFlowers(0), 144, y);
+g.drawImage(w.down[0], 40, y-8);
+y += 20;
+for (let i = 0; i < 6; i++) g.drawImage(T.tilePath(i%2), i*16, y);
+g.drawImage(w.left[1], 20, y-8);
+g.drawImage(w.right[2], 60, y-8);
+
+y += 22;
+g.drawImage(renderMon(MON_ART.thornix), 0, y);
+g.drawImage(renderMon(MON_ART.pebblit), 50, y);
+g.drawImage(renderMon(MON_ART.shadeling), 100, y);
+g.drawImage(renderMon(MON_ART.sproutle, true), 145, y);
+
+const sheet = document.getElementById('sheet');
+sheet.width = W*S; sheet.height = H*S;
+const sg = sheet.getContext('2d'); sg.imageSmoothingEnabled = false;
+sg.drawImage(off, 0, 0, W*S, H*S);
+</script></body></html>

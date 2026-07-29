@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>art check</title>
+<style>body{margin:0;background:#181820}canvas{image-rendering:pixelated;display:block}#screen{display:none}</style>
+</head>
+<body>
+<canvas id="screen" width="240" height="160"></canvas>
+<canvas id="sheet"></canvas>
+<script type="module">
+import { drawText } from '../src/gfx/font.js';
+import * as T from '../src/gfx/terrain.js';
+import * as PR from '../src/gfx/props.js';
+import { makeBuilding, BUILDING_PRESETS } from '../src/gfx/buildings.js';
+import { getWalker, PALETTES } from '../src/gfx/chars.js';
+import { renderMon, spriteBounds } from '../src/gfx/monart.js';
+import { MON_ART } from '../src/gfx/monrecipes.js';
+
+const SCALE = 3;
+const W = 460, H = 700;
+const off = document.createElement('canvas');
+off.width = W; off.height = H;
+const g = off.getContext('2d');
+g.imageSmoothingEnabled = false;
+g.fillStyle = '#2a2a36'; g.fillRect(0,0,W,H);
+
+function label(t, x, y) { drawText(g, t, x, y, { color: '#ffe08a', shadow: '#3a2a10' }); }
+
+// --- font ---
+label('FONT', 4, 4);
+drawText(g, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 4, 16, { color:'#f8f8f8', shadow:'#404050' });
+drawText(g, 'abcdefghijklmnopqrstuvwxyz', 4, 28, { color:'#f8f8f8', shadow:'#404050' });
+drawText(g, '0123456789 .,!?:;-/()[]+=%<>', 4, 40, { color:'#f8f8f8', shadow:'#404050' });
+drawText(g, 'Sproutle used Leaf Cutter! It', 4, 54, { color:'#33291f', shadow:'#c8b8a0' });
+drawText(g, "was super effective! WILDBOUND", 4, 66, { color:'#33291f', shadow:'#c8b8a0' });
+
+// --- terrain ---
+label('TERRAIN', 4, 82);
+let x = 4, y = 94;
+const tiles = [
+  T.tileGrass(0), T.tileGrass(1), T.tileFlowers(0), T.tileTallGrass(0), T.tileTallGrass(1),
+  T.tilePath(0), T.tilePath(1), T.tileSand(0), T.tileWater(0), T.tileWater(1),
+  T.tileWater(0,true), T.tileCaveFloor(0), T.tileCaveWall(0), T.tileWood(0), T.tileWood(1),
+  T.tileCarpet(0), T.tileLabFloor(0), T.tileIndoorWall(0), T.tileBridge(0), T.tileStairs(),
+  T.tileCliffFace(0), T.tileCliffTop(0), T.tileLedge(0), T.tileCounter(0),
+];
+for (const t of tiles) { g.drawImage(t, x, y); x += 18; if (x > W-20) { x = 4; y += 18; } }
+
+// --- props ---
+y += 24;
+label('PROPS', 4, y); y += 12;
+const props = [
+  PR.makeTree(0), PR.makeTree(1), PR.makeBush(0), PR.makeRock(0), PR.makeSign(),
+  PR.makeFence(false), PR.makeFence(true), PR.makeOrbItem(), PR.makeStump(), PR.makeFlowerPatch(),
+  PR.makeTable(2), PR.makeChair(1), PR.makeBed(), PR.makeBookshelf(), PR.makePlant(),
+  PR.makeTV(), PR.makeHealMachine(), PR.makeLabDesk(), PR.makeCrate(), PR.makeCaveMouth(), PR.makeWarpMat(),
+];
+x = 4;
+let rowH = 0;
+for (const p of props) {
+  if (x + p.c.width > W - 4) { x = 4; y += rowH + 4; rowH = 0; }
+  g.drawImage(p.c, x, y);
+  x += p.c.width + 4;
+  rowH = Math.max(rowH, p.c.height);
+}
+y += rowH + 8;
+
+// --- buildings ---
+label('BUILDINGS', 4, y); y += 12;
+x = 4; rowH = 0;
+for (const key of ['house_red','house_blue','study','rest_hall']) {
+  const b = makeBuilding(BUILDING_PRESETS[key]);
+  if (x + b.c.width > W - 4) { x = 4; y += rowH + 4; rowH = 0; }
+  g.drawImage(b.c, x, y);
+  x += b.c.width + 6;
+  rowH = Math.max(rowH, b.c.height);
+}
+y += rowH + 8;
+
+// --- walkers ---
+label('WALKERS', 4, y); y += 12;
+x = 4;
+for (const name of ['player','rival','mom','prof','villager1','nurse']) {
+  const w = getWalker(name);
+  let xx = x;
+  for (const dir of ['down','up','left','right']) {
+    for (const f of [0,1,2]) { g.drawImage(w[dir][f], xx, y); xx += 17; }
+  }
+  y += 26;
+}
+y += 6;
+
+// --- mons ---
+label('CREATURES', 4, y); y += 12;
+x = 2;
+const names = Object.keys(MON_ART);
+for (const n of names) {
+  const c = renderMon(MON_ART[n]);
+  if (x + 58 > W) { x = 2; y += 62; }
+  g.drawImage(c, x, y);
+  drawText(g, n.slice(0,9), x+2, y+48, { color:'#ffffff', shadow:'#000000' });
+  x += 58;
+}
+y += 62;
+label('BACK VIEWS', 4, y); y += 12;
+x = 2;
+for (const n of ['sproutle','emberet','rilldrop','voltpip','pyrelith','tidalus']) {
+  const c = renderMon(MON_ART[n], true);
+  g.drawImage(c, x, y);
+  x += 58;
+}
+
+const sheet = document.getElementById('sheet');
+sheet.width = W*SCALE; sheet.height = H*SCALE;
+const sg = sheet.getContext('2d');
+sg.imageSmoothingEnabled = false;
+sg.drawImage(off, 0, 0, W*SCALE, H*SCALE);
+window.__ready = true;
+</script>
+</body>
+</html>
