@@ -1,7 +1,7 @@
 {
   "name": "wildbound",
   "version": "1.0.0",
-  "description": "WILDBOUND \u2014 Amber Edition. A 2.5D pixel creature-collecting RPG in the style of early-2000s handheld games. No dependencies, no build step.",
+  "description": "WILDBOUND — Amber Edition. A 2.5D pixel creature-collecting RPG in the style of early-2000s handheld games. No dependencies; every sprite and sound is generated at runtime.",
   "type": "module",
   "scripts": {
     "start": "npx --yes http-server -p 8080 -c-1 .",

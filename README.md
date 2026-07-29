@@ -10,7 +10,9 @@ audio files anywhere in this repository. Sprites are drawn from hand-authored
 pixel data and shaded procedurally; the soundtrack is a small chiptune synth
 built on the Web Audio API.
 
-**No dependencies. No build step. No framework.** Plain ES modules and one canvas.
+**No dependencies. No framework.** Plain ES modules and one canvas. The only
+build step is optional: it inlines the game into a single file you can open
+without a server.
 
 ---
 
@@ -93,10 +95,10 @@ src/
                       contact shadows, rim light, tinted outlines
     font.js           hand-drawn 5x8 bitmap font, proportional, cached per colour
     terrain.js        procedurally textured 16x16 tiles
-    props.js          trees, rocks, signs, furniture — dithered lit blobs
+    props.js          trees, rocks, bushes, furniture — same shading engine
     buildings.js      procedural houses with sloped roofs
     chars.js          16x24 walkers, palette-swapped per NPC
-    monrecipes.js     18 species described as part lists
+    monrecipes.js     18 species described as lists of shaded primitives
     battlebg.js       battle backdrops and perspective platforms
     ui.js             windows, bars, cursors, type chips
   data/               types, moves, species, items
