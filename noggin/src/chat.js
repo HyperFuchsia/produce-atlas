@@ -95,7 +95,10 @@
        of it — the pause, the erase and the moment after — because for all of
        that the box is not yours. */
     this.wiping = false;
-    this.wipePhase = 'off';   /* 'hold' | 'erase' | 'tail' */
+    this.wipePhase = 'off';   /* 'hold' | 'erase' | 'tail' | 'taken' */
+    /* Set while the scene has the element and the field is live anyway — he
+       is holding it and you are still typing into it. */
+    this.held = false;
     this.wipeT = 0;
     this.wipeLeft = 0;
     this.lockFor = 0;
@@ -137,7 +140,9 @@
 
   /* Stop taking letters. The sentence stays up for now. */
   Chat.prototype._wipe = function () {
-    if (this.wiping) return;
+    /* Somebody is already holding it. The word has cost you everything it is
+       going to cost you. */
+    if (this.wiping || this.held) return;
     this.wiping = true;
     this.wipePhase = 'hold';
     this.wipeT = WIPE_HOLD;
@@ -153,7 +158,9 @@
     if (this.onWipe && this.onWipe()) this.wipePhase = 'taken';
   };
 
-  /* Handed back. `clear` because whatever was in it did not survive. */
+  /* Given back — or, while he is still holding it, simply unlocked, because
+     a box you cannot type into is no use to either of you. `clear` for when
+     whatever was in it did not survive. */
   Chat.prototype.releaseBox = function (clear) {
     if (this.wipePhase !== 'taken') return;
     if (clear) this.input.value = '';

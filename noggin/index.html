@@ -322,6 +322,10 @@
     transform-origin: 50% 50%;
   }
   #composer.taken #prompt { transition: none; }
+  /* Once it is in his hand it is a working text box again, so it has to be
+     clickable again — hit testing follows the transform, so clicking the
+     thing where you can see it is the thing that happens. */
+  #composer.taken.held { pointer-events: auto; }
 
   /* ---- boot ---------------------------------------------------------------- */
 
