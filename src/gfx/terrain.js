@@ -30,15 +30,29 @@ function speckle(px, seed, dark, light, dp = 0.14, lp = 0.88) {
 }
 
 /**
- * Chunky mottling placed at free positions rather than on a grid — a grid reads
- * as brickwork once tiles repeat.
+ * Fine organic speckle. The reference art gets its texture from dense 1px
+ * variation across three or four greens, not from big blocks.
  */
-function mottle(rect, seed, dark, light, count = 13, cell = 2) {
-  for (let i = 0; i < count; i++) {
-    const x = Math.floor(hash2(i, 0, seed) * (T - cell + 1));
-    const y = Math.floor(hash2(i, 1, seed) * (T - cell + 1));
-    const light2 = hash2(i, 2, seed) > 0.62;
-    rect(x, y, cell, hash2(i, 3, seed) > 0.5 ? cell : 1, light2 ? light : dark);
+function speck(px, seed, dark, light, hi, dp = 0.20, lp = 0.80, hp = 0.95) {
+  for (let y = 0; y < T; y++) {
+    for (let x = 0; x < T; x++) {
+      const h = hash2(x, y, seed);
+      if (h < dp) px(x, y, dark);
+      else if (h > hp && hi) px(x, y, hi);
+      else if (h > lp) px(x, y, light);
+    }
+  }
+}
+
+/** Short blades of grass, scattered but never on a grid. */
+function blades(px, seed, mid, light, n = 5) {
+  for (let i = 0; i < n; i++) {
+    const x = 1 + Math.floor(hash2(i, 0, seed) * (T - 2));
+    const y = 1 + Math.floor(hash2(i, 1, seed) * (T - 3));
+    px(x, y + 1, mid);
+    px(x, y, light);
+    px(x - 1, y + 1, mid);
+    px(x + 1, y + 1, mid);
   }
 }
 
@@ -46,16 +60,8 @@ function mottle(rect, seed, dark, light, count = 13, cell = 2) {
 export function tileGrass(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  mottle(rect, 11 + v, PAL.grass0, PAL.grass2, 14);
-  // a few blade marks so the ground has direction
-  const spots = [[3, 5], [11, 9], [7, 13], [14, 3], [1, 11]];
-  for (let i = 0; i < 3; i++) {
-    const [sx, sy] = spots[(i + v * 2) % spots.length];
-    px(sx, sy, PAL.grass3);
-    px(sx + 1, sy + 1, PAL.grass3);
-    px(sx - 1, sy + 1, PAL.grass2);
-    px(sx, sy + 2, PAL.grass0);
-  }
+  speck(px, 11 + v, PAL.grass0, PAL.grass2, PAL.grass3, 0.17, 0.76, 0.95);
+  blades(px, 40 + v, PAL.grass0, PAL.grass3, 2);
   return c;
 }
 
@@ -102,7 +108,7 @@ export function tallGrassFront(ctx, ox = 0, oy = 0) {
 export function tileTallGrass(v) {
   const { c, g, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  mottle(rect, 31 + v, PAL.grass0, PAL.grass2, 10);
+  speck(px, 31 + v, PAL.grass0, PAL.grass2, null, 0.20, 0.82);
   // shaded ground under the clumps
   rect(0, 8, T, 8, PAL.grass0);
   for (let x = 0; x < T; x++) if (hash2(x, 8, 33 + v) > 0.5) px(x, 8, PAL.grass1);
@@ -117,7 +123,7 @@ export function tileTallGrass(v) {
 export function tilePath(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.dirt1);
-  mottle(rect, 51 + v, PAL.dirt0, PAL.dirt2, 11);
+  speck(px, 51 + v, PAL.dirt0, PAL.dirt2, PAL.dirt3, 0.20, 0.78, 0.95);
   const pebbles = [[4, 6], [12, 11], [8, 3], [2, 13]];
   for (let i = 0; i < 2; i++) {
     const [x, y] = pebbles[(i + v) % pebbles.length];
@@ -130,9 +136,9 @@ export function tilePath(v) {
 }
 
 export function tileSand(v) {
-  const { c, rect } = mk();
+  const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.sand1);
-  mottle(rect, 71 + v, PAL.sand0, PAL.sand2, 12);
+  speck(px, 71 + v, PAL.sand0, PAL.sand2, null, 0.20, 0.80);
   return c;
 }
 
@@ -159,10 +165,18 @@ export function tileWater(frame, deep = false) {
   return c;
 }
 
+/** The dirt bank that rings every stretch of water. */
+export function tileBank(v) {
+  const { c, px, rect } = mk();
+  rect(0, 0, T, T, PAL.bank1);
+  speck(px, 211 + v, PAL.bank0, PAL.bank2, PAL.bank3, 0.24, 0.74, 0.93);
+  return c;
+}
+
 export function tileCaveFloor(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.stone1);
-  mottle(rect, 91 + v, PAL.stone0, PAL.stone2, 15);
+  speck(px, 91 + v, PAL.stone0, PAL.stone2, PAL.stone3, 0.22, 0.80, 0.96);
   if (v % 2) {
     px(4, 7, PAL.stone0); px(5, 8, PAL.stone0); px(6, 8, PAL.stone0); px(7, 9, PAL.stone0);
     px(5, 7, PAL.stone2); px(6, 9, PAL.stone2);
@@ -259,12 +273,25 @@ export function wallSkirting(ctx, ox, oy) {
 }
 
 export function tileBridge(v) {
-  const { c, rect } = mk();
-  rect(0, 0, T, T, PAL.wood2);
-  rect(0, 0, T, 1, PAL.wood3);
-  rect(0, 7, T, 1, PAL.wood0);
-  rect(0, 15, T, 1, PAL.wood0);
-  rect(v % 2 ? 5 : 10, 0, 1, T, PAL.wood1);
+  const { c, rect, px } = mk();
+  const dark = '#7a5024';
+  const mid = '#a8763c';
+  const light = '#c99a58';
+  const hi = '#e0bb7c';
+  rect(0, 0, T, T, mid);
+  for (let y = 0; y < T; y++) {
+    for (let x = 0; x < T; x++) {
+      const h = hash2(x, Math.floor(y / 4), 260 + v);
+      if (h < 0.18) px(x, y, light);
+      else if (h > 0.90) px(x, y, hi);
+    }
+  }
+  // cross planks
+  for (let y = 0; y < T; y += 4) {
+    rect(0, y, T, 1, dark);
+    rect(0, y + 1, T, 1, hi);
+  }
+  rect(0, 15, T, 1, dark);
   return c;
 }
 
@@ -278,18 +305,74 @@ export function tileStairs() {
   return c;
 }
 
-/** The vertical face of a cliff — this is what sells the 2.5D elevation. */
+/**
+ * The vertical face of a cliff — this is what sells the 2.5D elevation.
+ * Tiles seamlessly downward, because the dark lip along the top of a cliff is
+ * painted by the ground compositor and follows the warped edge, not the grid.
+ */
 export function tileCliffFace(v) {
   const { c, rect, px } = mk();
-  rect(0, 0, T, T, PAL.dirt0);
-  speckle(px, 171 + v, '#7a5a34', PAL.dirt1, 0.18, 0.86);
-  rect(0, 0, T, 2, '#6a4c2c');
+  rect(0, 0, T, T, PAL.bank1);
+  speck(px, 171 + v, PAL.bank0, PAL.bank2, PAL.bank3, 0.22, 0.78, 0.94);
+  // Erosion runs down a dirt face in vertical grooves. Full height, so a cliff
+  // several tiles deep still reads as one continuous wall.
   for (let i = 0; i < 3; i++) {
-    const y = 4 + i * 4;
-    rect(((i + v) * 5) % 10, y, 6, 1, '#7a5a34');
-    rect(((i + v) * 5) % 10, y + 1, 6, 1, PAL.dirt2);
+    let x = (i * 5 + v * 3) % T;
+    for (let y = 0; y < T; y++) {
+      // let the groove wander a pixel now and then, or it reads as a fence
+      if (hash2(i, y, 77 + v) > 0.76) x = (x + (hash2(i, y, 91) > 0.5 ? 1 : T - 1)) % T;
+      px(x, y, PAL.bank0);
+      px((x + 1) % T, y, PAL.bank2);
+    }
+  }
+  // clumps of earth crossing the grooves
+  for (let i = 0; i < 3; i++) {
+    const x = Math.floor(hash2(i, 4, 63 + v) * T);
+    const y = Math.floor(hash2(i, 5, 63 + v) * T);
+    for (let k = 0; k < 3; k++) px((x + k) % T, y, PAL.bank3);
+    for (let k = 0; k < 4; k++) px((x + k) % T, (y + 1) % T, PAL.bank0);
+  }
+  // stones poking out of the earth — warmed toward the dirt so they read as
+  // part of the bank rather than as blue litter
+  const st0 = mix(PAL.stone0, PAL.bank0, 0.45);
+  const st1 = mix(PAL.stone2, PAL.bank2, 0.45);
+  const st2 = mix(PAL.stone3, PAL.bank3, 0.35);
+  for (let i = 0; i < 2; i++) {
+    const x = 1 + Math.floor(hash2(i, 2, 55 + v) * (T - 3));
+    const y = 2 + Math.floor(hash2(i, 3, 55 + v) * (T - 5));
+    px(x, y, st1); px(x + 1, y, st2);
+    px(x, y + 1, st0); px(x + 1, y + 1, st1);
   }
   return c;
+}
+
+/** A wooden ladder set into a cliff face. Tiles seamlessly downward. */
+export function tileLadder(v) {
+  const c = tileCliffFace(v);
+  const g = c.getContext('2d');
+  const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  rect(3, 0, 10, T, 'rgba(30,18,8,0.42)');   // the recess it sits in
+  for (const rx of [4, 10]) {
+    rect(rx, 0, 2, T, PAL.wood1);
+    rect(rx, 0, 1, T, PAL.wood2);
+  }
+  for (let y = 1; y < T; y += 4) {           // rungs, periodic across tiles
+    rect(4, y, 8, 1, PAL.wood3);
+    rect(4, y + 1, 8, 1, PAL.wood0);
+  }
+  return c;
+}
+
+/** The two rail ends that poke above a ladder onto the cliff top. */
+export function ladderHead(g, x, y) {
+  for (const rx of [4, 10]) {
+    g.fillStyle = PAL.wood0;
+    g.fillRect(x + rx, y + T - 4, 2, 4);
+    g.fillStyle = PAL.wood2;
+    g.fillRect(x + rx, y + T - 4, 1, 4);
+    g.fillStyle = PAL.wood3;
+    g.fillRect(x + rx, y + T - 4, 2, 1);
+  }
 }
 
 export function tileCliffTop(v) {

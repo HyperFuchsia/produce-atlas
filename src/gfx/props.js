@@ -7,8 +7,8 @@ import { Sheet, ell, limb, poly, resolveSheet } from './monart.js';
 // game reads as one hand: hard tone bands, tinted outlines, no dithering.
 
 const BARK = ['#2a1a0c', '#4a2e18', '#6b4524', '#8c5c30', '#ad7a44'];
-const LEAF = ['#123a1c', '#1f5c2a', '#2f8038', '#4aa848', '#78cc66'];
-const LEAF_B = ['#0f3018', '#1c4f24', '#2a7030', '#3f9440', '#6ab85a'];
+const LEAF = ['#0e3016', '#1a5220', '#28742c', '#3f9a38', '#63bd4c'];
+const LEAF_B = ['#0b2a13', '#17471c', '#236627', '#378a32', '#57ac43'];
 const ROCK = ['#25232f', '#3d3a4c', '#5b5670', '#807a96', '#a9a3bc'];
 const POT = ['#4a2414', '#7a3c20', '#a85c34', '#c47a4c', '#dc9a6c'];
 const BLOOM_Y = ['#8a6a10', '#c0a020', '#e8cc38', '#f8e470', '#fff8b8'];
@@ -66,6 +66,22 @@ export function makeTree(variant = 0) {
   ];
   const c = celSprite(34, 46, shapes, [17, 42, 12, 4]);
   return { c, ox: -1, oy: -28, fw: 2, fh: 1, solid: true };
+}
+
+export function makeSmallTree(variant = 0) {
+  const leaf = variant % 2 ? LEAF_B : LEAF;
+  const shapes = [
+    { t: 'limb', x1: 12, y1: 30, r1: 3.6, x2: 12, y2: 19, r2: 2.8, pal: BARK },
+    { t: 'ell', x: 8, y: 30, rx: 3.6, ry: 2.4, n: 2.4, pal: BARK },
+    { t: 'ell', x: 16, y: 30, rx: 3.6, ry: 2.4, n: 2.4, pal: BARK },
+    { t: 'ell', x: 12, y: 14, rx: 11, ry: 9, n: 2.4, pal: leaf },
+    { t: 'ell', x: 6, y: 15, rx: 5, ry: 4.5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 18, y: 16, rx: 5, ry: 4.5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 12, y: 8, rx: 6, ry: 5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 12, y: 19, rx: 8.5, ry: 4.5, n: 2.4, pal: leaf },
+  ];
+  const c = celSprite(24, 34, shapes, [12, 31, 8, 3]);
+  return { c, ox: 0, oy: -18, fw: 1, fh: 1, solid: true };
 }
 
 export function makeBush(variant = 0) {

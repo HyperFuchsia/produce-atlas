@@ -193,6 +193,24 @@ if (scenario === 'world') {
   await page.evaluate(() => window.__wildbound.warp('hearthstead', 13, 12));
   await wait(700);
   await shot('44-town-wide');
+  await page.evaluate(() => window.__wildbound.warp('route1', 10, 35));
+  await wait(700);
+  await shot('45-bridge');
+  await page.evaluate(() => window.__wildbound.warp('route1', 4, 22));
+  await wait(700);
+  await shot('46-bluff');
+  await hold('ArrowUp', 820);        // climb the ladder
+  await wait(400);
+  await shot('47-bluff-top');
+  await page.evaluate(() => window.__wildbound.warp('route1', 4, 15));
+  await wait(500);
+  await press('ArrowRight');         // turn to the stash on the bluff
+  await press('KeyZ');
+  await wait(400);
+  await shot('48-bluff-stash');
+  console.log('bag:', JSON.stringify(await page.evaluate(() => window.__wildbound.G.bag)));
+  await press('KeyZ');
+  await wait(300);
   await page.evaluate(() => window.__wildbound.warp('resthall', 7, 6));
   await wait(700);
   await shot('45-resthall');

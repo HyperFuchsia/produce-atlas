@@ -52,9 +52,10 @@ polled if one is connected.
 
 **The world.** Seven maps: a home, two houses, Yarrow's study, the Rest Hall,
 Hearthstead town, a long meadow route, and the Hollow. Grid movement with
-smooth tweening, running, one-way ledge hops, tall-grass encounters, door and
-edge warps, wandering NPCs, readable signs, ground pickups, and trainers who
-spot you down a line of sight and walk over to say so.
+smooth tweening, running, one-way ledge hops, a river you cross by bridge, a
+raised bluff you climb by ladder, tall-grass encounters, door and edge warps,
+wandering NPCs, readable signs, ground pickups, and trainers who spot you down
+a line of sight and walk over to say so.
 
 **The 2.5D presentation.** The overworld is a top-down tile grid, but everything
 with height — trees, buildings, cliff faces, signs, furniture — is a tall
@@ -104,8 +105,9 @@ src/
   data/               types, moves, species, items
   game/               state + save, creature model, damage/capture maths,
                       dialogue, state stack
-  world/              tilemap building (pre-rendered ground, dithered material
-                      transitions, collision) and the map definitions
+  world/              tilemap building (pre-rendered ground, warped material
+                      boundaries, cliff shading, collision) and the map
+                      definitions
   states/             title, overworld, battle, menu, party, bag, shop,
                       summary, wildbook
 tools/                headless Chromium harnesses used to develop the art,
@@ -114,11 +116,21 @@ tools/                headless Chromium harnesses used to develop the art,
 
 ### Notes on a couple of the more interesting bits
 
-- **Ground is pre-rendered.** On map load the whole tile grid is composited into
-  one canvas, including dithered transitions between materials (grass bleeding
-  onto dirt, foam where water meets land, skirting where a wall meets a floor).
-  Drawing the world is then a single `drawImage` plus the animated water tiles
-  and the sorted sprite list.
+- **Ground is pre-rendered, and its edges are warped, not dithered.** On map
+  load the whole tile grid is composited into one canvas. Rather than stamping
+  tiles on a grid, every output pixel looks up *which material it belongs to* at
+  a noise-warped position while still sampling the texture at its true position.
+  One pass, and every organic boundary in the game — grass into path, grass into
+  sand, every shoreline — stops being a straight tile edge and starts wandering
+  like it was drawn by hand. Three passes then run on top: a dirt bank ringing
+  every stretch of water, a slow tonal drift across open ground so a meadow is
+  never one flat green, and cliff shading derived from how far each pixel sits
+  from the top and bottom of its own cliff run (dark overhang lip, face lifting
+  toward the light, shadow pooling at the foot) — all of which follow the warped
+  edge instead of the grid, which is what makes elevation read. Maps with water
+  composite four frames, one per water phase, so the shoreline stays organic
+  instead of being overdrawn by square animated tiles. Drawing the world is then
+  a single `drawImage` plus the sorted sprite list.
 - **Creatures are recipes, not bitmaps.** Each species is a list of shaded
   primitives — superellipses, tapered capsules, polygons, ribbons, flames,
   leaves — lit from one direction and then finished by three passes that do the

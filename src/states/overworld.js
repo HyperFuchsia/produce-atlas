@@ -10,7 +10,7 @@ import { drawText, drawTextCentered } from '../gfx/font.js';
 import { drawWindow } from '../gfx/ui.js';
 import { getWalker } from '../gfx/chars.js';
 import { tallGrassFront } from '../gfx/terrain.js';
-import { buildMap, waterTile, TILES } from '../world/tilemap.js';
+import { buildMap, TILES } from '../world/tilemap.js';
 import { MAP_DEFS } from '../world/maps.js';
 import { Dialog } from '../game/dialog.js';
 import { app } from '../game/app.js';
@@ -416,15 +416,12 @@ export class Overworld {
     ctx.fillStyle = map.indoor ? '#0d0d14' : '#2c4a2c';
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-    // animated water under the pre-rendered ground
-    const frame = Math.floor(this.frameT / 190) & 3;
-    for (const wt of map.waterTiles) {
-      const sx = wt.x * TILE - cam.x;
-      const sy = wt.y * TILE - cam.y;
-      if (sx < -TILE || sy < -TILE || sx > SCREEN_W || sy > SCREEN_H) continue;
-      ctx.drawImage(waterTile(wt.deep, frame), sx, sy);
-    }
-    ctx.drawImage(map.groundCanvas, cam.x, cam.y, SCREEN_W, SCREEN_H, 0, 0, SCREEN_W, SCREEN_H);
+    // The ground is pre-composited; maps with water hold one frame per phase.
+    const frames = map.groundFrames;
+    const ground = frames.length > 1
+      ? frames[Math.floor(this.frameT / 190) % frames.length]
+      : frames[0];
+    ctx.drawImage(ground, cam.x, cam.y, SCREEN_W, SCREEN_H, 0, 0, SCREEN_W, SCREEN_H);
 
     // sprite list, sorted back-to-front
     const list = [];

@@ -1232,17 +1232,19 @@ __register("src/gfx/palette.js", function (exports, __req, __exp) {
 // A deliberately limited, GBA-era palette: saturated but slightly dusty.
 const PAL = {
   // grass / foliage
-  grass0: '#3a7a3e', grass1: '#4f9c4a', grass2: '#65b657', grass3: '#83d067',
+  grass0: '#3e8f2c', grass1: '#54ae38', grass2: '#6cc848', grass3: '#8ee25c',
   leaf0: '#1e5230', leaf1: '#2c7038', leaf2: '#3f9044', leaf3: '#5fae55',
   bark0: '#4a3018', bark1: '#6b4522', bark2: '#8a5c30',
 
+  bank0: '#6b4a22', bank1: '#8a6330', bank2: '#a87c42', bank3: '#c49a5c',
+
   // ground
-  dirt0: '#9c7645', dirt1: '#c39a60', dirt2: '#dfbb84', dirt3: '#f0d7a8',
+  dirt0: '#b8975a', dirt1: '#dcc084', dirt2: '#ecd8a8', dirt3: '#f8eecc',
   sand0: '#c9ac70', sand1: '#e3cc90', sand2: '#f2e2b4',
   stone0: '#4c4a58', stone1: '#6a6878', stone2: '#8d8b9c', stone3: '#b0aec0',
 
   // water
-  water0: '#1c4f9a', water1: '#2a6cc0', water2: '#3f8ede', water3: '#7ec0f0',
+  water0: '#12308c', water1: '#2050c8', water2: '#3c7ce8', water3: '#6fa8f4',
   foam: '#d8f0ff',
 
   // buildings
@@ -3612,7 +3614,7 @@ const { drawText, drawTextCentered } = __req("src/gfx/font.js");
 const { drawWindow } = __req("src/gfx/ui.js");
 const { getWalker } = __req("src/gfx/chars.js");
 const { tallGrassFront } = __req("src/gfx/terrain.js");
-const { buildMap, waterTile, TILES } = __req("src/world/tilemap.js");
+const { buildMap, TILES } = __req("src/world/tilemap.js");
 const { MAP_DEFS } = __req("src/world/maps.js");
 const { Dialog } = __req("src/game/dialog.js");
 const { app } = __req("src/game/app.js");
@@ -4039,15 +4041,12 @@ class Overworld {
     ctx.fillStyle = map.indoor ? '#0d0d14' : '#2c4a2c';
     ctx.fillRect(0, 0, SCREEN_W, SCREEN_H);
 
-    // animated water under the pre-rendered ground
-    const frame = Math.floor(this.frameT / 190) & 3;
-    for (const wt of map.waterTiles) {
-      const sx = wt.x * TILE - cam.x;
-      const sy = wt.y * TILE - cam.y;
-      if (sx < -TILE || sy < -TILE || sx > SCREEN_W || sy > SCREEN_H) continue;
-      ctx.drawImage(waterTile(wt.deep, frame), sx, sy);
-    }
-    ctx.drawImage(map.groundCanvas, cam.x, cam.y, SCREEN_W, SCREEN_H, 0, 0, SCREEN_W, SCREEN_H);
+    // The ground is pre-composited; maps with water hold one frame per phase.
+    const frames = map.groundFrames;
+    const ground = frames.length > 1
+      ? frames[Math.floor(this.frameT / 190) % frames.length]
+      : frames[0];
+    ctx.drawImage(ground, cam.x, cam.y, SCREEN_W, SCREEN_H, 0, 0, SCREEN_W, SCREEN_H);
 
     // sprite list, sorted back-to-front
     const list = [];
@@ -4787,15 +4786,29 @@ function speckle(px, seed, dark, light, dp = 0.14, lp = 0.88) {
 }
 
 /**
- * Chunky mottling placed at free positions rather than on a grid — a grid reads
- * as brickwork once tiles repeat.
+ * Fine organic speckle. The reference art gets its texture from dense 1px
+ * variation across three or four greens, not from big blocks.
  */
-function mottle(rect, seed, dark, light, count = 13, cell = 2) {
-  for (let i = 0; i < count; i++) {
-    const x = Math.floor(hash2(i, 0, seed) * (T - cell + 1));
-    const y = Math.floor(hash2(i, 1, seed) * (T - cell + 1));
-    const light2 = hash2(i, 2, seed) > 0.62;
-    rect(x, y, cell, hash2(i, 3, seed) > 0.5 ? cell : 1, light2 ? light : dark);
+function speck(px, seed, dark, light, hi, dp = 0.20, lp = 0.80, hp = 0.95) {
+  for (let y = 0; y < T; y++) {
+    for (let x = 0; x < T; x++) {
+      const h = hash2(x, y, seed);
+      if (h < dp) px(x, y, dark);
+      else if (h > hp && hi) px(x, y, hi);
+      else if (h > lp) px(x, y, light);
+    }
+  }
+}
+
+/** Short blades of grass, scattered but never on a grid. */
+function blades(px, seed, mid, light, n = 5) {
+  for (let i = 0; i < n; i++) {
+    const x = 1 + Math.floor(hash2(i, 0, seed) * (T - 2));
+    const y = 1 + Math.floor(hash2(i, 1, seed) * (T - 3));
+    px(x, y + 1, mid);
+    px(x, y, light);
+    px(x - 1, y + 1, mid);
+    px(x + 1, y + 1, mid);
   }
 }
 
@@ -4803,16 +4816,8 @@ function mottle(rect, seed, dark, light, count = 13, cell = 2) {
 function tileGrass(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  mottle(rect, 11 + v, PAL.grass0, PAL.grass2, 14);
-  // a few blade marks so the ground has direction
-  const spots = [[3, 5], [11, 9], [7, 13], [14, 3], [1, 11]];
-  for (let i = 0; i < 3; i++) {
-    const [sx, sy] = spots[(i + v * 2) % spots.length];
-    px(sx, sy, PAL.grass3);
-    px(sx + 1, sy + 1, PAL.grass3);
-    px(sx - 1, sy + 1, PAL.grass2);
-    px(sx, sy + 2, PAL.grass0);
-  }
+  speck(px, 11 + v, PAL.grass0, PAL.grass2, PAL.grass3, 0.17, 0.76, 0.95);
+  blades(px, 40 + v, PAL.grass0, PAL.grass3, 2);
   return c;
 }
 
@@ -4859,7 +4864,7 @@ function tallGrassFront(ctx, ox = 0, oy = 0) {
 function tileTallGrass(v) {
   const { c, g, px, rect } = mk();
   rect(0, 0, T, T, PAL.grass1);
-  mottle(rect, 31 + v, PAL.grass0, PAL.grass2, 10);
+  speck(px, 31 + v, PAL.grass0, PAL.grass2, null, 0.20, 0.82);
   // shaded ground under the clumps
   rect(0, 8, T, 8, PAL.grass0);
   for (let x = 0; x < T; x++) if (hash2(x, 8, 33 + v) > 0.5) px(x, 8, PAL.grass1);
@@ -4874,7 +4879,7 @@ function tileTallGrass(v) {
 function tilePath(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.dirt1);
-  mottle(rect, 51 + v, PAL.dirt0, PAL.dirt2, 11);
+  speck(px, 51 + v, PAL.dirt0, PAL.dirt2, PAL.dirt3, 0.20, 0.78, 0.95);
   const pebbles = [[4, 6], [12, 11], [8, 3], [2, 13]];
   for (let i = 0; i < 2; i++) {
     const [x, y] = pebbles[(i + v) % pebbles.length];
@@ -4887,9 +4892,9 @@ function tilePath(v) {
 }
 
 function tileSand(v) {
-  const { c, rect } = mk();
+  const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.sand1);
-  mottle(rect, 71 + v, PAL.sand0, PAL.sand2, 12);
+  speck(px, 71 + v, PAL.sand0, PAL.sand2, null, 0.20, 0.80);
   return c;
 }
 
@@ -4916,10 +4921,18 @@ function tileWater(frame, deep = false) {
   return c;
 }
 
+/** The dirt bank that rings every stretch of water. */
+function tileBank(v) {
+  const { c, px, rect } = mk();
+  rect(0, 0, T, T, PAL.bank1);
+  speck(px, 211 + v, PAL.bank0, PAL.bank2, PAL.bank3, 0.24, 0.74, 0.93);
+  return c;
+}
+
 function tileCaveFloor(v) {
   const { c, px, rect } = mk();
   rect(0, 0, T, T, PAL.stone1);
-  mottle(rect, 91 + v, PAL.stone0, PAL.stone2, 15);
+  speck(px, 91 + v, PAL.stone0, PAL.stone2, PAL.stone3, 0.22, 0.80, 0.96);
   if (v % 2) {
     px(4, 7, PAL.stone0); px(5, 8, PAL.stone0); px(6, 8, PAL.stone0); px(7, 9, PAL.stone0);
     px(5, 7, PAL.stone2); px(6, 9, PAL.stone2);
@@ -5016,12 +5029,25 @@ function wallSkirting(ctx, ox, oy) {
 }
 
 function tileBridge(v) {
-  const { c, rect } = mk();
-  rect(0, 0, T, T, PAL.wood2);
-  rect(0, 0, T, 1, PAL.wood3);
-  rect(0, 7, T, 1, PAL.wood0);
-  rect(0, 15, T, 1, PAL.wood0);
-  rect(v % 2 ? 5 : 10, 0, 1, T, PAL.wood1);
+  const { c, rect, px } = mk();
+  const dark = '#7a5024';
+  const mid = '#a8763c';
+  const light = '#c99a58';
+  const hi = '#e0bb7c';
+  rect(0, 0, T, T, mid);
+  for (let y = 0; y < T; y++) {
+    for (let x = 0; x < T; x++) {
+      const h = hash2(x, Math.floor(y / 4), 260 + v);
+      if (h < 0.18) px(x, y, light);
+      else if (h > 0.90) px(x, y, hi);
+    }
+  }
+  // cross planks
+  for (let y = 0; y < T; y += 4) {
+    rect(0, y, T, 1, dark);
+    rect(0, y + 1, T, 1, hi);
+  }
+  rect(0, 15, T, 1, dark);
   return c;
 }
 
@@ -5035,18 +5061,74 @@ function tileStairs() {
   return c;
 }
 
-/** The vertical face of a cliff — this is what sells the 2.5D elevation. */
+/**
+ * The vertical face of a cliff — this is what sells the 2.5D elevation.
+ * Tiles seamlessly downward, because the dark lip along the top of a cliff is
+ * painted by the ground compositor and follows the warped edge, not the grid.
+ */
 function tileCliffFace(v) {
   const { c, rect, px } = mk();
-  rect(0, 0, T, T, PAL.dirt0);
-  speckle(px, 171 + v, '#7a5a34', PAL.dirt1, 0.18, 0.86);
-  rect(0, 0, T, 2, '#6a4c2c');
+  rect(0, 0, T, T, PAL.bank1);
+  speck(px, 171 + v, PAL.bank0, PAL.bank2, PAL.bank3, 0.22, 0.78, 0.94);
+  // Erosion runs down a dirt face in vertical grooves. Full height, so a cliff
+  // several tiles deep still reads as one continuous wall.
   for (let i = 0; i < 3; i++) {
-    const y = 4 + i * 4;
-    rect(((i + v) * 5) % 10, y, 6, 1, '#7a5a34');
-    rect(((i + v) * 5) % 10, y + 1, 6, 1, PAL.dirt2);
+    let x = (i * 5 + v * 3) % T;
+    for (let y = 0; y < T; y++) {
+      // let the groove wander a pixel now and then, or it reads as a fence
+      if (hash2(i, y, 77 + v) > 0.76) x = (x + (hash2(i, y, 91) > 0.5 ? 1 : T - 1)) % T;
+      px(x, y, PAL.bank0);
+      px((x + 1) % T, y, PAL.bank2);
+    }
+  }
+  // clumps of earth crossing the grooves
+  for (let i = 0; i < 3; i++) {
+    const x = Math.floor(hash2(i, 4, 63 + v) * T);
+    const y = Math.floor(hash2(i, 5, 63 + v) * T);
+    for (let k = 0; k < 3; k++) px((x + k) % T, y, PAL.bank3);
+    for (let k = 0; k < 4; k++) px((x + k) % T, (y + 1) % T, PAL.bank0);
+  }
+  // stones poking out of the earth — warmed toward the dirt so they read as
+  // part of the bank rather than as blue litter
+  const st0 = mix(PAL.stone0, PAL.bank0, 0.45);
+  const st1 = mix(PAL.stone2, PAL.bank2, 0.45);
+  const st2 = mix(PAL.stone3, PAL.bank3, 0.35);
+  for (let i = 0; i < 2; i++) {
+    const x = 1 + Math.floor(hash2(i, 2, 55 + v) * (T - 3));
+    const y = 2 + Math.floor(hash2(i, 3, 55 + v) * (T - 5));
+    px(x, y, st1); px(x + 1, y, st2);
+    px(x, y + 1, st0); px(x + 1, y + 1, st1);
   }
   return c;
+}
+
+/** A wooden ladder set into a cliff face. Tiles seamlessly downward. */
+function tileLadder(v) {
+  const c = tileCliffFace(v);
+  const g = c.getContext('2d');
+  const rect = (x, y, w, h, col) => { g.fillStyle = col; g.fillRect(x, y, w, h); };
+  rect(3, 0, 10, T, 'rgba(30,18,8,0.42)');   // the recess it sits in
+  for (const rx of [4, 10]) {
+    rect(rx, 0, 2, T, PAL.wood1);
+    rect(rx, 0, 1, T, PAL.wood2);
+  }
+  for (let y = 1; y < T; y += 4) {           // rungs, periodic across tiles
+    rect(4, y, 8, 1, PAL.wood3);
+    rect(4, y + 1, 8, 1, PAL.wood0);
+  }
+  return c;
+}
+
+/** The two rail ends that poke above a ladder onto the cliff top. */
+function ladderHead(g, x, y) {
+  for (const rx of [4, 10]) {
+    g.fillStyle = PAL.wood0;
+    g.fillRect(x + rx, y + T - 4, 2, 4);
+    g.fillStyle = PAL.wood2;
+    g.fillRect(x + rx, y + T - 4, 1, 4);
+    g.fillStyle = PAL.wood3;
+    g.fillRect(x + rx, y + T - 4, 2, 1);
+  }
 }
 
 function tileCliffTop(v) {
@@ -5089,7 +5171,7 @@ function tileCounter(v) {
   return c;
 }
 
-__exp(["tileGrass","tileFlowers","tallGrassFront","tileTallGrass","tilePath","tileSand","tileWater","tileCaveFloor","tileCaveWall","tileWood","tileCarpet","tileLabFloor","tileIndoorWall","wallSkirting","tileBridge","tileStairs","tileCliffFace","tileCliffTop","tileLedge","tileVoid","tileCounter"], () => ({ tileGrass, tileFlowers, tallGrassFront, tileTallGrass, tilePath, tileSand, tileWater, tileCaveFloor, tileCaveWall, tileWood, tileCarpet, tileLabFloor, tileIndoorWall, wallSkirting, tileBridge, tileStairs, tileCliffFace, tileCliffTop, tileLedge, tileVoid, tileCounter }));
+__exp(["tileGrass","tileFlowers","tallGrassFront","tileTallGrass","tilePath","tileSand","tileWater","tileBank","tileCaveFloor","tileCaveWall","tileWood","tileCarpet","tileLabFloor","tileIndoorWall","wallSkirting","tileBridge","tileStairs","tileCliffFace","tileLadder","ladderHead","tileCliffTop","tileLedge","tileVoid","tileCounter"], () => ({ tileGrass, tileFlowers, tallGrassFront, tileTallGrass, tilePath, tileSand, tileWater, tileBank, tileCaveFloor, tileCaveWall, tileWood, tileCarpet, tileLabFloor, tileIndoorWall, wallSkirting, tileBridge, tileStairs, tileCliffFace, tileLadder, ladderHead, tileCliffTop, tileLedge, tileVoid, tileCounter }));
 
 });
 __register("src/world/tilemap.js", function (exports, __req, __exp) {
@@ -5126,8 +5208,9 @@ const TILES = {
   '"': { mat: 'grass', art: variants(T.tileTallGrass), encounter: true, tall: true },
   ':': { mat: 'path', art: variants(T.tilePath) },
   '_': { mat: 'sand', art: variants(T.tileSand) },
-  '~': { mat: 'water', art: null, water: true, solid: true },
-  '=': { mat: 'water', art: null, water: true, deep: true, solid: true },
+  '~': { mat: 'water', art: [0, 1, 2, 3].map((f) => T.tileWater(f)), water: true, solid: true },
+  '=': { mat: 'water', art: [0, 1, 2, 3].map((f) => T.tileWater(f, true)), water: true, deep: true, solid: true },
+  'b': { mat: 'bank', art: variants(T.tileBank) },
   '#': { mat: 'cave', art: variants(T.tileCaveFloor), encounter: true },
   'X': { mat: 'cave', art: variants(T.tileCaveWall), solid: true },
   'w': { mat: 'wood', art: variants(T.tileWood) },
@@ -5137,37 +5220,223 @@ const TILES = {
   'B': { mat: 'wood', art: variants(T.tileBridge) },
   'S': { mat: 'stone', art: variants(() => T.tileStairs()), stairs: true },
   'l': { mat: 'grass', art: variants(T.tileLedge), ledge: 0 /* hop DOWN */ },
-  'F': { mat: 'dirt', art: variants(T.tileCliffFace), solid: true },
+  'F': { mat: 'dirt', art: variants(T.tileCliffFace), solid: true, cliff: true },
+  'A': { mat: 'ladder', art: variants(T.tileLadder), cliff: true, ladder: true },
   'T': { mat: 'grass', art: variants(T.tileCliffTop) },
   'K': { mat: 'wood', art: variants(T.tileCounter), solid: true },
   ' ': { mat: 'void', art: variants(() => T.tileVoid()), solid: true },
 };
 
-const BLEND = {
-  grass: PAL.grass1,
-  path: PAL.dirt1,
-  sand: PAL.sand1,
-  water: PAL.foam,
-  cave: PAL.stone1,
-  wood: PAL.floor1,
-  lab: PAL.lab2,
-  stone: PAL.stone2,
-};
+// Materials whose borders should wander. Architecture (walls, floors, bridges,
+// counters) keeps its straight tile edges; ground does not.
+const ORGANIC = new Set(['grass', 'path', 'sand', 'water', 'cave', 'dirt', 'bank']);
 
-// Which materials bleed onto which. [from][to] = true means a `from` neighbour
-// paints a dithered band on the `to` tile.
-const BLEND_RULES = {
-  grass: { path: true, sand: true, cave: true, stone: true },
-  path: { sand: true },
-  sand: { path: true },
-  water: { sand: true, path: true, grass: true },
-};
+/** Smooth value noise, bilinear over a coarse grid. */
+function vnoise(x, y, seed, cell) {
+  const gx = Math.floor(x / cell);
+  const gy = Math.floor(y / cell);
+  const fx = x / cell - gx;
+  const fy = y / cell - gy;
+  const u = fx * fx * (3 - 2 * fx);
+  const v = fy * fy * (3 - 2 * fy);
+  const a = hash2(gx, gy, seed);
+  const b = hash2(gx + 1, gy, seed);
+  const c = hash2(gx, gy + 1, seed);
+  const d = hash2(gx + 1, gy + 1, seed);
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+}
 
-const water4 = [T.tileWater(0), T.tileWater(1), T.tileWater(2), T.tileWater(3)];
-const deep4 = [T.tileWater(0, true), T.tileWater(1, true), T.tileWater(2, true), T.tileWater(3, true)];
+/** Two octaves of warp: broad curves plus a fine ragged fringe. */
+function warpAt(x, y, seed) {
+  return (vnoise(x, y, seed, 11) - 0.5) * 7 + (vnoise(x, y, seed + 91, 4) - 0.5) * 3;
+}
 
-function waterTile(deep, frame) {
-  return (deep ? deep4 : water4)[frame & 3];
+const pixCache = new Map();
+function tilePixels(ch, v) {
+  const key = `${ch}:${v}`;
+  if (!pixCache.has(key)) {
+    const t = TILES[ch] || TILES['.'];
+    const art = t.art[v % t.art.length];
+    pixCache.set(key, art.getContext('2d').getImageData(0, 0, TILE, TILE).data);
+  }
+  return pixCache.get(key);
+}
+
+const BANK_CHAR = 'b';
+
+const hasCliff = (def) => def.ground.some((row) => /[FA]/.test(row));
+
+/**
+ * Composite the ground for one water frame.
+ *
+ * Instead of stamping tiles on a grid, every output pixel looks up which
+ * material it belongs to at a *warped* position. Straight tile boundaries
+ * become the wandering, hand-drawn edges the style wants — one pass, and it
+ * applies to grass/path, grass/sand and every shoreline at once.
+ */
+function composeGround(def, w, h, waterFrame) {
+  const W = w * TILE;
+  const H = h * TILE;
+  const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? ' ' : def.ground[y][x]);
+  const src = new Int32Array(W * H);       // which tile each pixel samples
+  const isWater = new Uint8Array(W * H);
+
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const tx = px >> 4;
+      const ty = py >> 4;
+      const ch0 = at(tx, ty);
+      const t0 = TILES[ch0] || TILES['.'];
+      let sx = tx;
+      let sy = ty;
+      if (ORGANIC.has(t0.mat)) {
+        const wx = px + warpAt(px, py, 7);
+        const wy = py + warpAt(px, py, 23);
+        const nx = Math.floor(wx / TILE);
+        const ny = Math.floor(wy / TILE);
+        const t1 = TILES[at(nx, ny)];
+        if (t1 && ORGANIC.has(t1.mat)) { sx = nx; sy = ny; }
+      }
+      const i = py * W + px;
+      src[i] = sy * w + sx;
+      if ((TILES[at(sx, sy)] || {}).water) isWater[i] = 1;
+    }
+  }
+
+  // Ring every stretch of water with a dirt bank, following the warped edge.
+  const bank = new Uint8Array(W * H);
+  const R = 3;
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const i = py * W + px;
+      if (isWater[i]) continue;
+      let near = false;
+      for (let dy = -R; dy <= R && !near; dy++) {
+        const yy = py + dy;
+        if (yy < 0 || yy >= H) continue;
+        for (let dx = -R; dx <= R; dx++) {
+          const xx = px + dx;
+          if (xx < 0 || xx >= W) continue;
+          if (isWater[yy * W + xx]) { near = true; break; }
+        }
+      }
+      if (near) bank[i] = 1;
+    }
+  }
+
+  const canvas = makeCanvas(W, H);
+  const g = canvas.getContext('2d');
+  const img = g.createImageData(W, H);
+  const out = img.data;
+  const isCliff = new Uint8Array(W * H);
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const i = py * W + px;
+      const st = src[i];
+      const sx = st % w;
+      const sy = (st / w) | 0;
+      const ch = bank[i] ? BANK_CHAR : at(sx, sy);
+      const t = TILES[ch] || TILES['.'];
+      if (t.cliff) isCliff[i] = 1;
+      const v = t.water ? waterFrame : Math.floor(hash2(sx, sy, 7) * 4) % t.art.length;
+      const tex = tilePixels(ch, v);
+      const o = ((py & 15) * TILE + (px & 15)) * 4;
+      const d = i * 4;
+      // Broad, slow tonal drift across open ground so a meadow is never one
+      // flat green. Architecture is left alone.
+      let k = 1;
+      if (ORGANIC.has(t.mat) && !t.water) {
+        k = 0.90 + vnoise(px, py, 51, 30) * 0.20 + (vnoise(px, py, 77, 13) - 0.5) * 0.06;
+      }
+      out[d] = Math.min(255, tex[o] * k);
+      out[d + 1] = Math.min(255, tex[o + 1] * k);
+      out[d + 2] = Math.min(255, tex[o + 2] * k);
+      out[d + 3] = tex[o + 3];
+    }
+  }
+  // Shade cliffs by how far each pixel sits from the top and bottom of its own
+  // run. That gives the dark overhang lip, a face that lifts toward the light,
+  // and a shadow pooling at the foot — all following the warped edge rather
+  // than the tile grid, which is what makes the elevation read.
+  if (hasCliff(def)) {
+    const dTop = new Uint8Array(W * H);
+    const dBot = new Uint8Array(W * H);
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const i = py * W + px;
+        if (isCliff[i]) dTop[i] = py > 0 && isCliff[i - W] ? Math.min(255, dTop[i - W] + 1) : 0;
+      }
+    }
+    for (let py = H - 1; py >= 0; py--) {
+      for (let px = 0; px < W; px++) {
+        const i = py * W + px;
+        if (isCliff[i]) dBot[i] = py < H - 1 && isCliff[i + W] ? Math.min(255, dBot[i + W] + 1) : 0;
+      }
+    }
+    const TOP = [0.44, 0.60, 0.78, 0.90];
+    const BOT = [0.72, 0.84, 0.94];
+    for (let py = 0; py < H; py++) {
+      for (let px = 0; px < W; px++) {
+        const i = py * W + px;
+        const d = i * 4;
+        if (isCliff[i]) {
+          const t = dTop[i];
+          const f = (t < TOP.length ? TOP[t] : Math.min(1.08, 0.90 + (t - 3) * 0.012)) *
+                    (dBot[i] < BOT.length ? BOT[dBot[i]] : 1);
+          out[d] *= f; out[d + 1] *= f; out[d + 2] *= f;
+        } else if (py > 0 && isCliff[i - W]) {
+          // the ground at the foot of a cliff sits in its shadow
+          for (let k = 0; k < 3 && py + k < H; k++) {
+            const j = i + k * W;
+            if (isCliff[j]) break;
+            const s = 0.70 + k * 0.10;
+            const e = j * 4;
+            out[e] *= s; out[e + 1] *= s; out[e + 2] *= s;
+          }
+        } else if (py < H - 1 && isCliff[i + W]) {
+          // ...and the grass on the rim above catches the sun
+          out[d] = Math.min(255, out[d] * 1.16);
+          out[d + 1] = Math.min(255, out[d + 1] * 1.16);
+          out[d + 2] = Math.min(255, out[d + 2] * 1.16);
+        }
+      }
+    }
+  }
+  g.putImageData(img, 0, 0);
+
+  // rail ends poking above a ladder, so it reads as leaning on the cliff top
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const t = TILES[at(x, y)];
+      if (t && t.ladder && !(TILES[at(x, y - 1)] || {}).ladder) {
+        T.ladderHead(g, x * TILE, (y - 1) * TILE);
+      }
+    }
+  }
+
+  // skirting where an interior wall meets the floor
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const here = TILES[at(x, y)];
+      const below = TILES[at(x, y + 1)];
+      if (here && here.mat === 'wall' && below && below.mat !== 'wall' && below.mat !== 'void') {
+        wallSkirting(g, x * TILE, y * TILE);
+      }
+    }
+  }
+  // soft drop shadow under solid walls / cliffs so elevation reads
+  g.fillStyle = 'rgba(16,12,24,0.20)';
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const above = TILES[at(x, y - 1)];
+      const here = TILES[at(x, y)];
+      if (above && above.cliff) continue;   // cliffs cast their own warped shadow
+      if (above && above.solid && above.mat !== 'void' && here && !here.solid) {
+        g.fillRect(x * TILE, y * TILE, TILE, 3);
+      }
+    }
+  }
+  return canvas;
 }
 
 // ---------------------------------------------------------------------------
@@ -5176,6 +5445,8 @@ function waterTile(deep, frame) {
 const PROP_BUILDERS = {
   'T': () => PR.makeTree(0),
   'Y': () => PR.makeTree(1),
+  'y': () => PR.makeSmallTree(0),
+  'u': () => PR.makeSmallTree(1),
   't': () => PR.makeBush(0),
   'r': () => PR.makeRock(0),
   's': () => PR.makeSign(),
@@ -5219,25 +5490,6 @@ function getBuilding(type) {
 }
 
 // ---------------------------------------------------------------------------
-function ditherBand(g, tx, ty, side, color, depth = 3) {
-  g.fillStyle = color;
-  for (let i = 0; i < depth; i++) {
-    // Thinning checkerboard: solid nearest the edge, sparse further in.
-    const density = 1 - i / depth;
-    for (let j = 0; j < TILE; j++) {
-      const keep = ((j + i) % 2 === 0) ? density > 0.25 : density > 0.66;
-      if (!keep) continue;
-      let x;
-      let y;
-      if (side === 0) { x = tx * TILE + j; y = ty * TILE + TILE - 1 - i; }      // from below
-      else if (side === 1) { x = tx * TILE + j; y = ty * TILE + i; }            // from above
-      else if (side === 2) { x = tx * TILE + i; y = ty * TILE + j; }            // from left
-      else { x = tx * TILE + TILE - 1 - i; y = ty * TILE + j; }                 // from right
-      g.fillRect(x, y, 1, 1);
-    }
-  }
-}
-
 /**
  * Build the runtime representation of a map: pre-rendered ground, collision
  * grid, and a y-sortable list of props/buildings.
@@ -5272,21 +5524,18 @@ function buildMap(def) {
   map.at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? ' ' : def.ground[y][x]);
   map.solidAt = (x, y) => (x < 0 || y < 0 || x >= w || y >= h ? 1 : map.solid[y * w + x]);
 
-  const canvas = makeCanvas(w * TILE, h * TILE);
-  const g = canvas.getContext('2d');
-  g.imageSmoothingEnabled = false;
+  // Pre-render the ground. Maps with water get one frame per water phase so the
+  // shoreline can stay organic instead of being overdrawn by square tiles.
+  const hasWater = def.ground.some((row) => /[~=]/.test(row));
+  map.groundFrames = [];
+  for (let f = 0; f < (hasWater ? 4 : 1); f++) {
+    map.groundFrames.push(composeGround(def, w, h, f));
+  }
 
-  // base pass
+  // collision / encounter / ledge flags still come straight from the grid
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const ch = map.at(x, y);
-      const t = TILES[ch] || TILES['.'];
-      if (t.water) {
-        map.waterTiles.push({ x, y, deep: !!t.deep });
-      } else if (t.art) {
-        const v = Math.floor(hash2(x, y, 7) * V) % V;
-        g.drawImage(t.art[v], x * TILE, y * TILE);
-      }
+      const t = TILES[map.at(x, y)] || TILES['.'];
       const i = y * w + x;
       if (t.solid) map.solid[i] = 1;
       if (t.encounter) map.encounter[i] = 1;
@@ -5295,45 +5544,7 @@ function buildMap(def) {
     }
   }
 
-  // dithered material transitions
-  const NB = [[0, 1, 0], [0, -1, 1], [-1, 0, 2], [1, 0, 3]];
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const t = TILES[map.at(x, y)] || TILES['.'];
-      if (t.water || !t.art) continue;
-      for (const [dx, dy, side] of NB) {
-        const nt = TILES[map.at(x + dx, y + dy)];
-        if (!nt || nt.mat === t.mat) continue;
-        if (!(BLEND_RULES[nt.mat] && BLEND_RULES[nt.mat][t.mat])) continue;
-        ditherBand(g, x, y, side, BLEND[nt.mat], nt.mat === 'water' ? 2 : 3);
-      }
-    }
-  }
-
-  // skirting where an interior wall meets the floor
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const here = TILES[map.at(x, y)];
-      const below = TILES[map.at(x, y + 1)];
-      if (here && here.mat === 'wall' && below && below.mat !== 'wall' && below.mat !== 'void') {
-        wallSkirting(g, x * TILE, y * TILE);
-      }
-    }
-  }
-
-  // soft drop shadow under solid walls / cliffs so elevation reads
-  g.fillStyle = 'rgba(16,12,24,0.20)';
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const above = TILES[map.at(x, y - 1)];
-      const here = TILES[map.at(x, y)];
-      if (above && above.solid && above.mat !== 'void' && here && !here.solid) {
-        g.fillRect(x * TILE, y * TILE, TILE, 3);
-      }
-    }
-  }
-
-  map.groundCanvas = canvas;
+  map.groundCanvas = map.groundFrames[0];
 
   // ---- objects ----
   if (def.objs) {
@@ -5383,7 +5594,7 @@ function buildMap(def) {
   return map;
 }
 
-__exp(["TILES","waterTile","getProp","getBuilding","buildMap"], () => ({ TILES, waterTile, getProp, getBuilding, buildMap }));
+__exp(["TILES","getProp","getBuilding","buildMap"], () => ({ TILES, getProp, getBuilding, buildMap }));
 
 });
 __register("src/gfx/buildings.js", function (exports, __req, __exp) {
@@ -5476,7 +5687,7 @@ function makeBuilding(opts) {
   // ---- roof ----------------------------------------------------------------
   const cx = CW / 2;
   const botHalf = CW / 2;
-  const topHalf = Math.max(6, botHalf - roofH * 0.62);
+  const topHalf = Math.max(5, botHalf - roofH * 0.78);
   for (let y = 0; y < roofH; y++) {
     const t = y / (roofH - 1);
     const half = topHalf + (botHalf - topHalf) * t;
@@ -5506,6 +5717,19 @@ function makeBuilding(opts) {
   rect(0, roofH - 3, CW, 1, roof[1]);
   // ridge highlight
   rect(Math.round(cx - topHalf) + 1, 0, Math.round(topHalf * 2) - 2, 1, roof[3]);
+
+  // chimney, offset from the ridge so it does not read as a spike
+  if (opts.chimney !== false) {
+    const chx = Math.round(cx + topHalf * 0.45);
+    const chw = 7;
+    const chTop = Math.max(0, Math.round(roofH * 0.10) - 5);
+    const chBot = Math.round(roofH * 0.42);
+    rect(chx - 1, chTop - 1, chw + 2, chBot - chTop + 2, '#241a12');
+    rect(chx, chTop, chw, chBot - chTop, wall[1]);
+    rect(chx, chTop, 2, chBot - chTop, wall[2]);
+    rect(chx, chTop, chw, 2, wall[0]);
+    rect(chx + 1, chTop + 1, chw - 2, 1, '#3a2c20');
+  }
 
   // ---- optional sign -------------------------------------------------------
   if (opts.sign) {
@@ -5583,8 +5807,8 @@ const { Sheet, ell, limb, poly, resolveSheet } = __req("src/gfx/monart.js");
 // game reads as one hand: hard tone bands, tinted outlines, no dithering.
 
 const BARK = ['#2a1a0c', '#4a2e18', '#6b4524', '#8c5c30', '#ad7a44'];
-const LEAF = ['#123a1c', '#1f5c2a', '#2f8038', '#4aa848', '#78cc66'];
-const LEAF_B = ['#0f3018', '#1c4f24', '#2a7030', '#3f9440', '#6ab85a'];
+const LEAF = ['#0e3016', '#1a5220', '#28742c', '#3f9a38', '#63bd4c'];
+const LEAF_B = ['#0b2a13', '#17471c', '#236627', '#378a32', '#57ac43'];
 const ROCK = ['#25232f', '#3d3a4c', '#5b5670', '#807a96', '#a9a3bc'];
 const POT = ['#4a2414', '#7a3c20', '#a85c34', '#c47a4c', '#dc9a6c'];
 const BLOOM_Y = ['#8a6a10', '#c0a020', '#e8cc38', '#f8e470', '#fff8b8'];
@@ -5642,6 +5866,22 @@ function makeTree(variant = 0) {
   ];
   const c = celSprite(34, 46, shapes, [17, 42, 12, 4]);
   return { c, ox: -1, oy: -28, fw: 2, fh: 1, solid: true };
+}
+
+function makeSmallTree(variant = 0) {
+  const leaf = variant % 2 ? LEAF_B : LEAF;
+  const shapes = [
+    { t: 'limb', x1: 12, y1: 30, r1: 3.6, x2: 12, y2: 19, r2: 2.8, pal: BARK },
+    { t: 'ell', x: 8, y: 30, rx: 3.6, ry: 2.4, n: 2.4, pal: BARK },
+    { t: 'ell', x: 16, y: 30, rx: 3.6, ry: 2.4, n: 2.4, pal: BARK },
+    { t: 'ell', x: 12, y: 14, rx: 11, ry: 9, n: 2.4, pal: leaf },
+    { t: 'ell', x: 6, y: 15, rx: 5, ry: 4.5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 18, y: 16, rx: 5, ry: 4.5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 12, y: 8, rx: 6, ry: 5, n: 2.2, pal: leaf },
+    { t: 'ell', x: 12, y: 19, rx: 8.5, ry: 4.5, n: 2.4, pal: leaf },
+  ];
+  const c = celSprite(24, 34, shapes, [12, 31, 8, 3]);
+  return { c, ox: 0, oy: -18, fw: 1, fh: 1, solid: true };
 }
 
 function makeBush(variant = 0) {
@@ -5989,7 +6229,7 @@ function makeLedgeMarker() {
   return { c, ox: 0, oy: 0, fw: 1, fh: 1, solid: false };
 }
 
-__exp(["makeTree","makeBush","makeRock","makeStump","makePlant","makeCaveMouth","makeFlowerPatch","makeSign","makeFence","orbSprite","makeOrbItem","makeTable","makeChair","makeBed","makeBookshelf","makeTV","makeHealMachine","makeLabDesk","makeCounterProp","makeCrate","makeDoorway","makeWarpMat","makeLedgeMarker"], () => ({ makeTree, makeBush, makeRock, makeStump, makePlant, makeCaveMouth, makeFlowerPatch, makeSign, makeFence, orbSprite, makeOrbItem, makeTable, makeChair, makeBed, makeBookshelf, makeTV, makeHealMachine, makeLabDesk, makeCounterProp, makeCrate, makeDoorway, makeWarpMat, makeLedgeMarker }));
+__exp(["makeTree","makeSmallTree","makeBush","makeRock","makeStump","makePlant","makeCaveMouth","makeFlowerPatch","makeSign","makeFence","orbSprite","makeOrbItem","makeTable","makeChair","makeBed","makeBookshelf","makeTV","makeHealMachine","makeLabDesk","makeCounterProp","makeCrate","makeDoorway","makeWarpMat","makeLedgeMarker"], () => ({ makeTree, makeSmallTree, makeBush, makeRock, makeStump, makePlant, makeCaveMouth, makeFlowerPatch, makeSign, makeFence, orbSprite, makeOrbItem, makeTable, makeChair, makeBed, makeBookshelf, makeTV, makeHealMachine, makeLabDesk, makeCounterProp, makeCrate, makeDoorway, makeWarpMat, makeLedgeMarker }));
 
 });
 __register("src/world/maps.js", function (exports, __req, __exp) {
@@ -6044,6 +6284,39 @@ class Painter {
     }
     return this;
   }
+  /**
+   * Deterministically scatter props on open grass. Keeps clear of roads,
+   * anything already placed, and a margin around every doorway, so the town
+   * gets dense without ever walling the player in.
+   */
+  scatterObjs(chars, count, seed, keepClear = []) {
+    let s = (seed * 2654435761) >>> 0;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return (s >>> 7) / 0x1000000; };
+    let placed = 0;
+    for (let tries = 0; tries < count * 40 && placed < count; tries++) {
+      const x = Math.floor(rnd() * this.w);
+      const y = Math.floor(rnd() * this.h);
+      const g = this.g[y][x];
+      if (g !== '.' && g !== ',') continue;
+      if (this.o[y][x] !== '.') continue;
+      let blocked = false;
+      for (let dy = -1; dy <= 1 && !blocked; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue;
+          if (this.g[ny][nx] === ':') { blocked = true; break; }   // keep roads open
+          if (this.o[ny][nx] !== '.') { blocked = true; break; }   // no clumping
+        }
+      }
+      if (blocked) continue;
+      if (keepClear.some(([kx, ky, r]) => Math.abs(kx - x) <= r && Math.abs(ky - y) <= r)) continue;
+      this.obj(x, y, chars[Math.floor(rnd() * chars.length)]);
+      placed++;
+    }
+    return this;
+  }
+
   ground() { return this.g.map((r) => r.join('')); }
   objs() { return this.o.map((r) => r.join('')); }
 }
@@ -6211,6 +6484,15 @@ function hearthstead() {
   p.obj(7, 4, 'p'); p.obj(12, 12, 'p'); p.obj(17, 20, 'p');
   p.obj(9, 3, 'Y'); p.obj(23, 16, 'Y'); p.obj(3, 16, 'Y');
   for (let x = 8; x <= 12; x++) p.obj(x, 22, 'f');
+  // garden fences either side of the road, as in the reference
+  for (let x = 2; x <= 4; x++) p.obj(x, 4, 'f');
+  for (let x = 22; x <= 24; x++) p.obj(x, 11, 'f');
+  // flower beds and hedges, then a loose scatter of small trees and bushes
+  p.obj(2, 10, 'p'); p.obj(24, 8, 'p'); p.obj(6, 21, 'p'); p.obj(21, 22, 'p');
+  p.scatterObjs(['y', 'u', 't', 'p', 'p'], 26, 991, [
+    [4, 8, 2], [10, 8, 2], [19, 7, 2], [7, 18, 2], [19, 17, 2],
+    [13, 0, 2], [14, 0, 2],
+  ]);
 
   return {
     id: 'hearthstead', name: 'HEARTHSTEAD', music: 'town',
@@ -6268,22 +6550,27 @@ function route1() {
   // grass fields
   p.rect(2, 26, 6, 7, '"');
   p.rect(12, 26, 6, 6, '"');
-  p.rect(2, 14, 6, 5, '"');
   p.rect(11, 14, 4, 5, '"');
   p.rect(12, 4, 6, 5, '"');
   p.rect(2, 6, 3, 3, '"');
   // ledges: a one-way drop back toward town
   p.hline(11, 25, 6, 'l');
-  p.hline(2, 19, 6, 'l');
+  // A raised bluff on the west shoulder. Dirt cliff all the way round, so the
+  // ladder on its south face is the only way up.
+  p.rect(0, 13, 9, 8, 'F');
+  p.rect(1, 14, 7, 5, '.');
+  p.rect(2, 14, 6, 4, '"');
+  p.set(4, 19, 'A');
+  p.set(4, 20, 'A');
   // cliff wall across the north with the hollow mouth in it
   p.rect(0, 0, W, 1, 'F');
   p.rect(11, 0, 9, 3, 'F');
   p.rect(0, 0, 6, 3, 'F');
   p.rect(9, 0, 2, 1, ':');
-  // pond
-  p.rect(16, 32, 3, 3, '_');
-  p.rect(17, 33, 2, 2, '~');
-  p.set(4, 23, ','); p.set(13, 22, ','); p.set(8, 33, ',');
+  // a stream across the meadow, with the road bridging it
+  p.rect(0, 29, 20, 2, '~');
+  p.rect(9, 29, 2, 2, 'B');
+  p.set(4, 23, ','); p.set(13, 22, ','); p.set(8, 35, ',');
 
   // tree walls
   p.objCol(0, 3, 33, 'T', 2);
@@ -6295,10 +6582,17 @@ function route1() {
   p.obj(3, 12, 'T'); p.obj(12, 12, 'Y'); p.obj(2, 3, 'T'); p.obj(16, 9, 'Y');
   p.obj(6, 15, 't'); p.obj(13, 30, 't'); p.obj(4, 30, 'r'); p.obj(16, 16, 'r');
   p.obj(8, 22, 'r'); p.obj(11, 6, 't'); p.obj(3, 9, '-');
-  p.obj(11, 33, 's');
+  p.obj(8, 29, 'F'); p.obj(8, 30, 'F');
+  p.obj(11, 29, 'F'); p.obj(11, 30, 'F');
+  p.obj(12, 34, 's');
   p.obj(8, 2, 'm');          // the hollow's mouth
-  p.obj(5, 13, 'o');         // item on the ground
+  p.obj(5, 15, 'o');         // the reward for climbing the bluff
   p.obj(17, 27, 'o');
+  p.scatterObjs(['y', 'u', 't', 'p', 'r'], 30, 4242, [
+    [9, 35, 2], [10, 35, 2], [9, 0, 2], [10, 0, 2],
+    [6, 27, 2], [13, 16, 2], [9, 6, 2], [5, 15, 1], [17, 27, 1], [9, 30, 3], [10, 30, 3],
+    [4, 18, 1], [4, 20, 1],
+  ]);
 
   return {
     id: 'route1', name: 'ROUTE 1 - LONG MEADOW', music: 'route',
@@ -6310,10 +6604,10 @@ function route1() {
       { x: 10, y: 0, to: 'hollow', tx: 13, ty: 20, dir: 1, kind: 'cave' },
     ],
     signs: [
-      { x: 11, y: 33, text: 'ROUTE 1\nNorth: THE HOLLOW. Keep to the road after dark.' },
+      { x: 12, y: 34, text: 'ROUTE 1\nNorth: THE HOLLOW. Keep to the road after dark.' },
     ],
     items: [
-      { x: 5, y: 13, item: 'bondorb', count: 3, flag: 'r1_orbs' },
+      { x: 5, y: 15, item: 'bondorb', count: 3, flag: 'r1_orbs' },
       { x: 17, y: 27, item: 'tonic', count: 1, flag: 'r1_tonic' },
     ],
     npcs: [
@@ -6340,7 +6634,8 @@ function route1() {
         rival: true,
         team: [['voltpip', 8], ['RIVAL_STARTER', 9]] },
       { x: 3, y: 21, dir: 0, pal: 'villager1', name: 'WALKER', face: true, move: 'wander',
-        lines: ['WALKER: Ledges only go one way. Saves your knees on the way home.'] },
+        lines: ['WALKER: Ledges only go one way. Saves your knees on the way home.',
+                'WALKER: There is a ladder up that bluff. Somebody left a stash on top.'] },
     ],
     encounters: {
       rate: 0.11,

@@ -1,17 +1,19 @@
 // A deliberately limited, GBA-era palette: saturated but slightly dusty.
 export const PAL = {
   // grass / foliage
-  grass0: '#3a7a3e', grass1: '#4f9c4a', grass2: '#65b657', grass3: '#83d067',
+  grass0: '#3e8f2c', grass1: '#54ae38', grass2: '#6cc848', grass3: '#8ee25c',
   leaf0: '#1e5230', leaf1: '#2c7038', leaf2: '#3f9044', leaf3: '#5fae55',
   bark0: '#4a3018', bark1: '#6b4522', bark2: '#8a5c30',
 
+  bank0: '#6b4a22', bank1: '#8a6330', bank2: '#a87c42', bank3: '#c49a5c',
+
   // ground
-  dirt0: '#9c7645', dirt1: '#c39a60', dirt2: '#dfbb84', dirt3: '#f0d7a8',
+  dirt0: '#b8975a', dirt1: '#dcc084', dirt2: '#ecd8a8', dirt3: '#f8eecc',
   sand0: '#c9ac70', sand1: '#e3cc90', sand2: '#f2e2b4',
   stone0: '#4c4a58', stone1: '#6a6878', stone2: '#8d8b9c', stone3: '#b0aec0',
 
   // water
-  water0: '#1c4f9a', water1: '#2a6cc0', water2: '#3f8ede', water3: '#7ec0f0',
+  water0: '#12308c', water1: '#2050c8', water2: '#3c7ce8', water3: '#6fa8f4',
   foam: '#d8f0ff',
 
   // buildings

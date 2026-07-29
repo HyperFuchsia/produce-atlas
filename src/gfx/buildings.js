@@ -84,7 +84,7 @@ export function makeBuilding(opts) {
   // ---- roof ----------------------------------------------------------------
   const cx = CW / 2;
   const botHalf = CW / 2;
-  const topHalf = Math.max(6, botHalf - roofH * 0.62);
+  const topHalf = Math.max(5, botHalf - roofH * 0.78);
   for (let y = 0; y < roofH; y++) {
     const t = y / (roofH - 1);
     const half = topHalf + (botHalf - topHalf) * t;
@@ -114,6 +114,19 @@ export function makeBuilding(opts) {
   rect(0, roofH - 3, CW, 1, roof[1]);
   // ridge highlight
   rect(Math.round(cx - topHalf) + 1, 0, Math.round(topHalf * 2) - 2, 1, roof[3]);
+
+  // chimney, offset from the ridge so it does not read as a spike
+  if (opts.chimney !== false) {
+    const chx = Math.round(cx + topHalf * 0.45);
+    const chw = 7;
+    const chTop = Math.max(0, Math.round(roofH * 0.10) - 5);
+    const chBot = Math.round(roofH * 0.42);
+    rect(chx - 1, chTop - 1, chw + 2, chBot - chTop + 2, '#241a12');
+    rect(chx, chTop, chw, chBot - chTop, wall[1]);
+    rect(chx, chTop, 2, chBot - chTop, wall[2]);
+    rect(chx, chTop, chw, 2, wall[0]);
+    rect(chx + 1, chTop + 1, chw - 2, 1, '#3a2c20');
+  }
 
   // ---- optional sign -------------------------------------------------------
   if (opts.sign) {

@@ -48,6 +48,39 @@ class Painter {
     }
     return this;
   }
+  /**
+   * Deterministically scatter props on open grass. Keeps clear of roads,
+   * anything already placed, and a margin around every doorway, so the town
+   * gets dense without ever walling the player in.
+   */
+  scatterObjs(chars, count, seed, keepClear = []) {
+    let s = (seed * 2654435761) >>> 0;
+    const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return (s >>> 7) / 0x1000000; };
+    let placed = 0;
+    for (let tries = 0; tries < count * 40 && placed < count; tries++) {
+      const x = Math.floor(rnd() * this.w);
+      const y = Math.floor(rnd() * this.h);
+      const g = this.g[y][x];
+      if (g !== '.' && g !== ',') continue;
+      if (this.o[y][x] !== '.') continue;
+      let blocked = false;
+      for (let dy = -1; dy <= 1 && !blocked; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= this.w || ny >= this.h) continue;
+          if (this.g[ny][nx] === ':') { blocked = true; break; }   // keep roads open
+          if (this.o[ny][nx] !== '.') { blocked = true; break; }   // no clumping
+        }
+      }
+      if (blocked) continue;
+      if (keepClear.some(([kx, ky, r]) => Math.abs(kx - x) <= r && Math.abs(ky - y) <= r)) continue;
+      this.obj(x, y, chars[Math.floor(rnd() * chars.length)]);
+      placed++;
+    }
+    return this;
+  }
+
   ground() { return this.g.map((r) => r.join('')); }
   objs() { return this.o.map((r) => r.join('')); }
 }
@@ -215,6 +248,15 @@ function hearthstead() {
   p.obj(7, 4, 'p'); p.obj(12, 12, 'p'); p.obj(17, 20, 'p');
   p.obj(9, 3, 'Y'); p.obj(23, 16, 'Y'); p.obj(3, 16, 'Y');
   for (let x = 8; x <= 12; x++) p.obj(x, 22, 'f');
+  // garden fences either side of the road, as in the reference
+  for (let x = 2; x <= 4; x++) p.obj(x, 4, 'f');
+  for (let x = 22; x <= 24; x++) p.obj(x, 11, 'f');
+  // flower beds and hedges, then a loose scatter of small trees and bushes
+  p.obj(2, 10, 'p'); p.obj(24, 8, 'p'); p.obj(6, 21, 'p'); p.obj(21, 22, 'p');
+  p.scatterObjs(['y', 'u', 't', 'p', 'p'], 26, 991, [
+    [4, 8, 2], [10, 8, 2], [19, 7, 2], [7, 18, 2], [19, 17, 2],
+    [13, 0, 2], [14, 0, 2],
+  ]);
 
   return {
     id: 'hearthstead', name: 'HEARTHSTEAD', music: 'town',
@@ -272,22 +314,27 @@ function route1() {
   // grass fields
   p.rect(2, 26, 6, 7, '"');
   p.rect(12, 26, 6, 6, '"');
-  p.rect(2, 14, 6, 5, '"');
   p.rect(11, 14, 4, 5, '"');
   p.rect(12, 4, 6, 5, '"');
   p.rect(2, 6, 3, 3, '"');
   // ledges: a one-way drop back toward town
   p.hline(11, 25, 6, 'l');
-  p.hline(2, 19, 6, 'l');
+  // A raised bluff on the west shoulder. Dirt cliff all the way round, so the
+  // ladder on its south face is the only way up.
+  p.rect(0, 13, 9, 8, 'F');
+  p.rect(1, 14, 7, 5, '.');
+  p.rect(2, 14, 6, 4, '"');
+  p.set(4, 19, 'A');
+  p.set(4, 20, 'A');
   // cliff wall across the north with the hollow mouth in it
   p.rect(0, 0, W, 1, 'F');
   p.rect(11, 0, 9, 3, 'F');
   p.rect(0, 0, 6, 3, 'F');
   p.rect(9, 0, 2, 1, ':');
-  // pond
-  p.rect(16, 32, 3, 3, '_');
-  p.rect(17, 33, 2, 2, '~');
-  p.set(4, 23, ','); p.set(13, 22, ','); p.set(8, 33, ',');
+  // a stream across the meadow, with the road bridging it
+  p.rect(0, 29, 20, 2, '~');
+  p.rect(9, 29, 2, 2, 'B');
+  p.set(4, 23, ','); p.set(13, 22, ','); p.set(8, 35, ',');
 
   // tree walls
   p.objCol(0, 3, 33, 'T', 2);
@@ -299,10 +346,17 @@ function route1() {
   p.obj(3, 12, 'T'); p.obj(12, 12, 'Y'); p.obj(2, 3, 'T'); p.obj(16, 9, 'Y');
   p.obj(6, 15, 't'); p.obj(13, 30, 't'); p.obj(4, 30, 'r'); p.obj(16, 16, 'r');
   p.obj(8, 22, 'r'); p.obj(11, 6, 't'); p.obj(3, 9, '-');
-  p.obj(11, 33, 's');
+  p.obj(8, 29, 'F'); p.obj(8, 30, 'F');
+  p.obj(11, 29, 'F'); p.obj(11, 30, 'F');
+  p.obj(12, 34, 's');
   p.obj(8, 2, 'm');          // the hollow's mouth
-  p.obj(5, 13, 'o');         // item on the ground
+  p.obj(5, 15, 'o');         // the reward for climbing the bluff
   p.obj(17, 27, 'o');
+  p.scatterObjs(['y', 'u', 't', 'p', 'r'], 30, 4242, [
+    [9, 35, 2], [10, 35, 2], [9, 0, 2], [10, 0, 2],
+    [6, 27, 2], [13, 16, 2], [9, 6, 2], [5, 15, 1], [17, 27, 1], [9, 30, 3], [10, 30, 3],
+    [4, 18, 1], [4, 20, 1],
+  ]);
 
   return {
     id: 'route1', name: 'ROUTE 1 - LONG MEADOW', music: 'route',
@@ -314,10 +368,10 @@ function route1() {
       { x: 10, y: 0, to: 'hollow', tx: 13, ty: 20, dir: 1, kind: 'cave' },
     ],
     signs: [
-      { x: 11, y: 33, text: 'ROUTE 1\nNorth: THE HOLLOW. Keep to the road after dark.' },
+      { x: 12, y: 34, text: 'ROUTE 1\nNorth: THE HOLLOW. Keep to the road after dark.' },
     ],
     items: [
-      { x: 5, y: 13, item: 'bondorb', count: 3, flag: 'r1_orbs' },
+      { x: 5, y: 15, item: 'bondorb', count: 3, flag: 'r1_orbs' },
       { x: 17, y: 27, item: 'tonic', count: 1, flag: 'r1_tonic' },
     ],
     npcs: [
@@ -344,7 +398,8 @@ function route1() {
         rival: true,
         team: [['voltpip', 8], ['RIVAL_STARTER', 9]] },
       { x: 3, y: 21, dir: 0, pal: 'villager1', name: 'WALKER', face: true, move: 'wander',
-        lines: ['WALKER: Ledges only go one way. Saves your knees on the way home.'] },
+        lines: ['WALKER: Ledges only go one way. Saves your knees on the way home.',
+                'WALKER: There is a ladder up that bluff. Somebody left a stash on top.'] },
     ],
     encounters: {
       rate: 0.11,
