@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Produce Atlas — 3-D Information Space</title>
+    <meta
+      name="description"
+      content="Throw text into a 3-D space and watch it arrive as animated, illustrative typography above a synthwave ocean."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff0b8'/%3E%3Cstop offset='1' stop-color='%23ff5c8a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' fill='%23120736'/%3E%3Ccircle cx='16' cy='18' r='10' fill='url(%23g)'/%3E%3Crect y='20' width='32' height='2' fill='%23120736'/%3E%3Crect y='24' width='32' height='3' fill='%23120736'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <div id="boot" class="boot">
+      <div class="boot__sun"></div>
+      <div class="boot__inner">
+        <p class="boot__kicker">Produce Atlas</p>
+        <h1 class="boot__title">Information Space</h1>
+        <div class="boot__bar"><span id="boot-fill"></span></div>
+        <p class="boot__status" id="boot-status">warming up the horizon…</p>
+      </div>
+    </div>
+
+    <div id="ui" class="ui">
+      <header class="brand">
+        <span class="brand__mark"></span>
+        <span class="brand__name">Produce Atlas</span>
+        <span class="brand__sep">/</span>
+        <span class="brand__sub">3-D Information Space</span>
+      </header>
+
+      <div class="hud">
+        <div class="hud__count"><b id="hud-index">1</b><i>/</i><span id="hud-total">1</span></div>
+        <div class="hud__label" id="hud-headline">—</div>
+        <div class="hud__dots" id="hud-dots"></div>
+      </div>
+
+      <section class="composer" id="composer">
+        <div class="composer__head">
+          <span class="composer__title">Throw information in</span>
+          <button class="ghost" id="btn-collapse" title="Collapse (H)">–</button>
+        </div>
+        <textarea
+          id="input"
+          spellcheck="false"
+          placeholder="Paste anything — notes, a spec, a story, a list of numbers.&#10;&#10;# Headings become cards&#10;- Lists unfold line by line&#10;Key: value pairs get a label&#10;42%&#10;> Quotes ride in on the swell"
+        ></textarea>
+        <div class="composer__row">
+          <label class="field">
+            <span>Reveal</span>
+            <select id="sel-style"></select>
+          </label>
+          <label class="field">
+            <span>Palette</span>
+            <select id="sel-palette"></select>
+          </label>
+          <label class="field field--tight">
+            <span>Pace</span>
+            <input id="rng-speed" type="range" min="0.5" max="2" step="0.1" value="1" />
+          </label>
+        </div>
+        <div class="composer__row composer__row--actions">
+          <button class="primary" id="btn-run">Materialize</button>
+          <button class="ghost" id="btn-sample">Sample</button>
+          <button class="ghost" id="btn-replay">Replay</button>
+          <label class="toggle">
+            <input type="checkbox" id="chk-auto" checked />
+            <span>Autoplay</span>
+          </label>
+        </div>
+      </section>
+
+      <button class="reopen" id="btn-reopen" hidden>Compose</button>
+
+      <footer class="hints">
+        <kbd>Space</kbd> next
+        <kbd>←</kbd><kbd>→</kbd> travel
+        <kbd>R</kbd> replay
+        <kbd>P</kbd> autoplay
+        <kbd>H</kbd> hide
+        <kbd>F</kbd> fullscreen
+        <span class="hints__drop">or drop a .txt / .md file anywhere</span>
+      </footer>
+
+      <div class="toast" id="toast" hidden></div>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

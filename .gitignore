@@ -1,0 +1,6 @@
+node_modules/
+dist/
+shots/
+# Source TTFs are fetched on demand by scripts/build-fonts.mjs; only the
+# generated typeface JSON is tracked.
+fonts-src/
