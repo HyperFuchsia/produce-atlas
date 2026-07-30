@@ -182,9 +182,23 @@
       cageAt(p, 0, 0, 0, 5 * cm, 5 * cm, 5 * cm, 0.5 * cm, MARK);
     });
 
-    put('camera — lowest it can go', 'stops 8 cm off the floor', function (p) {
-      boxAt(p, 0, 0, 0, 5 * cm, 3.5 * cm, 7 * cm, MARK);
-      tubeAt(p, 0, 0, 7 * cm, 0, 0, 13 * cm, 3 * cm, MARK);
+    put('camera', '30 cm body, on a tripod', function (p) {
+      /* Body, lens, hood, viewfinder, two film reels, three legs. Nothing
+         here is a camera; all of it together is unmistakably a camera. */
+      boxAt(p, 0, 0, 0, 15 * cm, 10 * cm, 9 * cm);
+      tubeAt(p, 0, 0, 9 * cm, 0, 0, 22 * cm, 5 * cm, PALE);
+      tubeAt(p, 0, 0, 22 * cm, 0, 0, 25 * cm, 6.5 * cm, MARK);
+      boxAt(p, -8 * cm, 12 * cm, -2 * cm, 4 * cm, 3 * cm, 5 * cm);
+      for (let i = -1; i <= 1; i += 2) {
+        tubeAt(p, -2 * cm, 17 * cm, i * 7 * cm, 2 * cm, 17 * cm, i * 7 * cm, 9 * cm, PALE);
+      }
+      /* Tripod down to the floor, which is also where the eye actually is. */
+      const drop = -37.6;
+      for (let i = 0; i < 3; i++) {
+        const a = (i / 3) * Math.PI * 2 + 0.5;
+        tubeAt(p, 0, -10 * cm, 0,
+          Math.sin(a) * 16 * cm, drop * cm, Math.cos(a) * 16 * cm, 1.2 * cm);
+      }
     });
 
     return S;
@@ -203,7 +217,7 @@
       'specimen beside him': [-2.6, -0.25, 0.1],
       'car': [-26, floorY, -30],
       'tesseract': [0, 3.4, 0],
-      'camera — lowest it can go': [0, floorY + 0.8, 7.4]
+      'camera': [0, 0.41, 7.4]
     };
   };
 })(window.NG = window.NG || {});
