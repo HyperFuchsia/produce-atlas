@@ -76,6 +76,19 @@ Monochrome throughout — a dark bureau interior with light paper documents (the
 filing form, the certificate, the notice). Serif for prose, monospace for every
 label and figure. No colour is used to carry meaning anywhere.
 
+### The apparatus
+
+The case is a physical object rather than a card: a perspective stage with
+pointer-parallax tilt, an extruded body drawn as a stacked rim, a screen recessed
+behind a raised bezel, keys that travel in Z when pressed, and a specular highlight
+that tracks across both the case and the LCD glass as it turns. A desk shadow shifts
+and narrows with the tilt.
+
+The reels are true drums. Each face sits on a cylinder — `translateZ(-r) rotateX(a)
+translateZ(r)`, so the rest pose is the identity transform and nothing is magnified
+— and the next species is swapped in while the current face is edge-on and invisible.
+They spin down on an easing curve and settle with a small overshoot.
+
 ### Interface
 
 Powers on with a real LCD segment test — every pixel and flag lit, then blank, then
@@ -85,6 +98,11 @@ about 3 Hz, which is how a 1-bit panel cheers. Reset asks twice before clearing 
 log. Every instrument on the panel is a button that explains itself inline, the
 drift chart is readable with the arrow keys, and the reels carry live ARIA labels.
 Keyboard throughout: **space** observe, **B** burst, **S** sound, **R** reset.
+
+An issued certificate scrolls itself into view; any past certificate can be reopened
+from the register; a docked strip follows you down the page with the pending case and
+an Observe control once the apparatus scrolls away; filing hands focus to the lever;
+and a print stylesheet reduces the page to the certificate alone.
 
 ### Everything else
 

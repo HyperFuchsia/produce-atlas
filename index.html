@@ -6,6 +6,7 @@
 <title>QA-77 — The Quantum Fruit Machine</title>
 <style>
 :root{
+  --thick:27px; /* nominal case depth, drawn as a stacked rim */
   --void:#0A0C0C;
   --panel:rgba(15,18,18,.86);
   --line:#242A28;
@@ -128,35 +129,84 @@ h1{
 .doc-note b{text-transform:uppercase;letter-spacing:.1em;font-size:10px}
 .doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 
-/* ---------- device ---------- */
-.device{display:flex;justify-content:center}
-.rig{display:flex;align-items:stretch;filter:drop-shadow(0 34px 54px rgba(0,0,0,.8))}
-.shell{
-  width:min(560px,100%);
-  background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 14%,var(--shell) 78%,var(--shell-lo) 100%);
-  border:1px solid #101312;border-radius:20px 8px 8px 20px;padding:16px 18px 18px;
-  display:flex;flex-direction:column;gap:13px;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.16), inset 0 -2px 6px rgba(0,0,0,.55);
+/* ---------- device: a real box, not a card ---------- */
+.device{display:flex;justify-content:center;padding:16px 0 42px}
+.stage{position:relative;width:min(716px,100%);perspective:1600px;perspective-origin:50% 38%}
+.rig{
+  position:relative;display:flex;align-items:stretch;
+  transform-style:preserve-3d;
+  transform:rotateX(var(--rx,8deg)) rotateY(var(--ry,0deg));
+  transition:transform .55s cubic-bezier(.2,.8,.3,1);
 }
+.rig.tracking{transition:none}
+.case{position:relative;flex:1;min-width:0;transform-style:preserve-3d}
+.deskshadow{
+  position:absolute;left:6%;right:6%;bottom:-6px;height:44px;border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.85),rgba(0,0,0,0) 70%);
+  filter:blur(9px);transform:translateY(var(--shadowY,0px)) scaleX(var(--shadowS,1));
+  pointer-events:none;
+}
+.shell{
+  position:relative;z-index:1;transform-style:preserve-3d;
+  width:100%;
+  background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 14%,var(--shell) 78%,var(--shell-lo) 100%);
+  border:1px solid #101312;border-radius:13px;padding:16px 18px 18px;
+  display:flex;flex-direction:column;gap:13px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 6px rgba(0,0,0,.5),
+    0 2px 0 #2A2F2E, 0 4px 0 #282D2C, 0 6px 0 #262B2A, 0 8px 0 #242928,
+    0 10px 0 #222726, 0 12px 0 #202524, 0 14px 0 #1E2322, 0 16px 0 #1C2120,
+    0 18px 0 #1A1F1E, 0 20px 0 #181D1C, 0 22px 0 #161B1A, 0 24px 0 #141918,
+    0 26px 0 #121716, 0 27px 1px #0E1211,
+    0 34px 30px -14px rgba(0,0,0,.75), 0 46px 60px -30px rgba(0,0,0,.95);
+}
+.shell::before{
+  content:"";position:absolute;inset:0;border-radius:13px;pointer-events:none;z-index:0;
+  background:linear-gradient(104deg,
+    rgba(255,255,255,0) calc(var(--sheen,50%) - 34%),
+    rgba(255,255,255,.055) calc(var(--sheen,50%) - 8%),
+    rgba(255,255,255,.015) calc(var(--sheen,50%) + 6%),
+    rgba(255,255,255,0) calc(var(--sheen,50%) + 28%));
+}
+.shell > *{position:relative;z-index:1}
 .plate{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .brand{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;color:#D3D8D6;font-weight:700;white-space:nowrap}
 .brand em{font-style:normal;color:#8C918F}
 .model{font-family:var(--mono);font-size:8.5px;letter-spacing:.15em;color:#8B918E;text-transform:uppercase;text-align:right;line-height:1.5}
 
-.screen{background:linear-gradient(180deg,#84898C,#B4B9BA 8%,#8F9496 92%,#63686A);padding:9px;border-radius:6px;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
+.screen{
+  background:linear-gradient(180deg,#84898C,#B4B9BA 8%,#8F9496 92%,#63686A);
+  padding:9px;border-radius:6px;transform:translateZ(5px);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.65), inset 0 -1px 0 rgba(255,255,255,.28),
+             0 4px 9px -2px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.1);
+}
 .lcd{
   background:linear-gradient(180deg,var(--lcd-dim),var(--lcd) 22%,var(--lcd) 78%,var(--lcd-dim));
   border-radius:2px;padding:9px 10px 10px;display:flex;flex-direction:column;gap:8px;
-  box-shadow:inset 0 0 22px rgba(20,23,15,.3);font-family:var(--mono);color:var(--ink);
+  box-shadow:inset 0 0 22px rgba(20,23,15,.34), inset 0 3px 7px rgba(20,23,15,.4);
+  font-family:var(--mono);color:var(--ink);position:relative;
+}
+.sheen{
+  position:absolute;inset:0;pointer-events:none;border-radius:2px;z-index:2;
+  background:linear-gradient(102deg,
+    rgba(255,255,255,0) calc(var(--sheen,50%) - 26%),
+    rgba(255,255,255,.13) calc(var(--sheen,50%) - 6%),
+    rgba(255,255,255,.05) calc(var(--sheen,50%) + 4%),
+    rgba(255,255,255,0) calc(var(--sheen,50%) + 22%));
 }
 .lcd-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:9px;letter-spacing:.13em}
 .flags{display:flex;gap:9px;flex-wrap:wrap}
 .flag{color:var(--ink-ghost)}
 .flag.on{color:var(--ink)}
 .mode{opacity:.55;white-space:nowrap}
-.cells{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.cell{display:flex;flex-direction:column;align-items:center;gap:4px}
-.cell canvas{width:100%;height:auto;display:block;image-rendering:pixelated}
+.cells{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;position:relative;z-index:1}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px;perspective:480px}
+.cell canvas{
+  width:100%;height:auto;display:block;image-rendering:pixelated;
+  transform:translateZ(calc(-1 * var(--drum,0px))) rotateX(var(--a,0deg)) translateZ(var(--drum,0px));
+  transform-origin:50% 50%;
+}
+.cell.settling canvas{transition:transform .22s cubic-bezier(.2,1.5,.4,1)}
 .cell .taxon{font-size:8.5px;letter-spacing:.12em;text-align:center;line-height:1.2;min-height:11px;opacity:.5}
 .cell.locked .taxon{opacity:1;font-weight:700}
 .msg{
@@ -170,16 +220,17 @@ h1{
 .readout svg{display:block}
 .readout.right{align-items:flex-end}
 
-.keys{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.keys{display:flex;gap:9px;align-items:center;flex-wrap:wrap;transform-style:preserve-3d}
 .key{
   font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
   color:#141716;border:0;cursor:pointer;padding:11px 15px;border-radius:3px;
   background:linear-gradient(180deg,#E6EBE8,var(--key-face) 55%,#A9AFAC);
-  box-shadow:0 3px 0 #4A4F4D, inset 0 1px 0 rgba(255,255,255,.7);
-  transition:transform .05s linear, box-shadow .05s linear;
+  box-shadow:0 3px 0 #4A4F4D, inset 0 1px 0 rgba(255,255,255,.7), 0 4px 7px -2px rgba(0,0,0,.55);
+  transform:translateZ(7px);
+  transition:transform .06s linear, box-shadow .06s linear;
 }
 .key.grey{color:#DCE1DF;background:linear-gradient(180deg,#6A706E,var(--key) 55%,var(--key-lo));box-shadow:0 3px 0 #1B1F1E, inset 0 1px 0 rgba(255,255,255,.18)}
-.key:active:not(:disabled){transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
+.key:active:not(:disabled){transform:translateZ(1px) translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3)}
 .key:disabled{opacity:.42;cursor:not-allowed}
 .key:focus-visible{outline:2px solid var(--bright);outline-offset:3px}
 .key.armed{color:#141716;background:repeating-linear-gradient(135deg,#E6EBE8 0 6px,#B9BFBC 6px 12px);box-shadow:0 3px 0 #4A4F4D, inset 0 1px 0 rgba(255,255,255,.6)}
@@ -188,7 +239,7 @@ h1{
 .grille{display:flex;gap:4px}
 .grille i{width:4px;height:4px;border-radius:50%;background:#161918;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 
-.lever{position:relative;width:66px;border:0;padding:0;background:none;flex:none;cursor:grab;touch-action:none}
+.lever{position:relative;width:66px;border:0;padding:0;background:none;flex:none;cursor:grab;touch-action:none;transform-style:preserve-3d}
 .lever.dragging{cursor:grabbing}
 .lever-mount{
   position:absolute;left:0;top:50%;transform:translateY(-50%);width:30px;height:98px;border-radius:0 6px 6px 0;
@@ -199,7 +250,7 @@ h1{
 .lever-mount::after{content:"";position:absolute;left:7px;top:14px;bottom:14px;width:12px;border-radius:6px;background:linear-gradient(180deg,#0A0C0C,#161A19);box-shadow:inset 0 2px 4px rgba(0,0,0,.85)}
 .lever-arm{
   position:absolute;left:12px;top:50%;width:11px;height:150px;transform-origin:50% 100%;z-index:1;
-  transform:translateY(-100%) rotate(0deg);border-radius:5px;
+  transform:translateY(-100%) rotate(0deg) translateZ(16px);border-radius:5px;
   background:linear-gradient(90deg,#565C5A,#C9CFCC 38%,#666C6A 78%,#414645);
   transition:transform .5s cubic-bezier(.2,.85,.3,1);
 }
@@ -208,7 +259,7 @@ h1{
   background:radial-gradient(circle at 34% 30%,#6E7472,#2A2E2D 52%,#0D0F0F 100%);
   box-shadow:0 3px 8px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12);
 }
-.lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg)}
+.lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg) translateZ(16px)}
 .lever:focus-visible{outline:2px solid var(--bright);outline-offset:4px;border-radius:8px}
 .lever:disabled{cursor:not-allowed}
 
@@ -264,6 +315,35 @@ h1{
 .ptable td.barcell{width:36%;padding-left:12px}
 .pbar{position:relative;display:block;width:100%;height:3px;background:rgba(180,189,185,.11)}
 .pbar i{position:absolute;left:0;top:0;bottom:0;background:var(--text);opacity:.7}
+
+/* procedure strip */
+.procedure{
+  list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--line);border:1px solid var(--line);
+}
+@media (max-width:640px){.procedure{grid-template-columns:1fr}}
+.procedure li{
+  background:var(--panel);padding:9px 14px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim);display:flex;gap:9px;align-items:baseline;
+}
+.procedure b{color:var(--bright);font-weight:400}
+
+/* docked controls, for when the apparatus is off screen */
+.dock{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  justify-content:space-between;padding:9px 16px;background:rgba(10,12,12,.94);
+  border-top:1px solid var(--line);backdrop-filter:blur(8px);
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+}
+.dock[hidden]{display:none}
+.dock-actions{display:flex;gap:8px}
+.dock-btn{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:7px 14px;border:1px solid var(--text);background:var(--text);color:var(--void);cursor:pointer;
+}
+.dock-btn.ghost{background:none;color:var(--text)}
+.dock-btn:disabled{opacity:.4;cursor:not-allowed}
+.dock-btn:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
 
 /* register */
 .register{border:1px solid var(--line);background:var(--panel)}
@@ -322,6 +402,16 @@ h1{
 .warn-grid p{margin:0;font-size:13.5px;color:#33383600;color:#333836}
 .warn-grid b{color:#000;font-weight:700}
 
+@media print{
+  canvas.bg,.vignette,.hud,.titleblock,.procedure,.filing,.device,.console,.register,.manual,footer,.dock{display:none !important}
+  body{background:#fff;color:#000}
+  .wrap{padding:0;gap:0;max-width:none}
+  .doc{border:1px solid #000;background:#fff;color:#000;box-shadow:none}
+  .doc .paper-head{border-bottom:1px solid #000}
+  .doc-actions{display:none !important}
+  .stamp{border-color:#000;opacity:1}
+  .doc-note{color:#000;border-top:1px solid #000}
+}
 footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);text-align:center;line-height:2}
 
 @media (max-width:640px){
@@ -363,6 +453,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     <p class="deck">Seven cultivated species are held in superposition. You may file a question. The apparatus will not answer it. It will observe its own state, record what the state did, and issue a determination whose relationship to your question is nil. Determinations are final. Determinations are also meaningless. Both statements are operative.</p>
   </div>
 
+  <ol class="procedure" aria-label="Procedure">
+    <li><b>1</b> File the matter</li>
+    <li><b>2</b> Pull the lever or press Observe</li>
+    <li><b>3</b> Read the certificate — then disregard it</li>
+  </ol>
+
   <section class="paper filing" aria-labelledby="filingHead">
     <div class="paper-head">
       <b id="filingHead">Form QA-77/B · Application for a determination</b>
@@ -382,7 +478,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   </section>
 
   <section class="device">
-    <div class="rig">
+    <div class="stage" id="stage">
+      <div class="rig" id="rig">
+        <div class="case">
       <div class="shell">
         <div class="plate">
           <span class="brand">ATLAS<em>·</em>ELECTRONICS</span>
@@ -390,7 +488,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         </div>
 
         <div class="screen">
-          <div class="lcd">
+          <div class="lcd"><span class="sheen" aria-hidden="true"></span>
             <div class="lcd-row">
               <div class="flags">
                 <span class="flag" id="fZeno">ZENO</span>
@@ -428,10 +526,14 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <div class="grille" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
 
-      <button class="lever" id="lever" aria-label="Pull the lever to observe — drag it down or press it">
-        <span class="lever-mount"></span>
-        <span class="lever-arm"><span class="lever-ball"></span></span>
-      </button>
+        </div>
+
+        <button class="lever" id="lever" aria-label="Pull the lever to observe — drag it down or press it">
+          <span class="lever-mount"></span>
+          <span class="lever-arm"><span class="lever-ball"></span></span>
+        </button>
+      </div>
+      <span class="deskshadow" aria-hidden="true"></span>
     </div>
   </section>
 
@@ -453,6 +555,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <p class="doc-note"><b>Notice.</b> The determination above concerns the configuration of the apparatus at the instant of observation. It has no relationship of any kind to the matter you filed, and none can be constructed. The probabilities are exact and describe the apparatus only. No inference may be drawn. This office does not answer questions; it records that they were asked.</p>
       <div class="doc-actions">
         <button class="pbtn" id="bCopy">Issue certified copy</button>
+        <button class="pbtn ghost" id="bPrint">Print</button>
         <button class="pbtn ghost" id="bAppeal">Lodge an appeal</button>
       </div>
     </div>
@@ -525,7 +628,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     <div class="reg-wrap">
       <table class="reg" id="regTable">
         <thead>
-          <tr><th>Case</th><th>Matter</th><th>Determination</th><th>P(det.)</th><th>P(cfg.)</th><th>Filed</th><th></th></tr>
+          <tr><th>Case</th><th>Matter</th><th>Determination</th><th>P(det.)</th><th>P(cfg.)</th><th>Filed</th><th>Action</th></tr>
         </thead>
         <tbody id="regBody"></tbody>
       </table>
@@ -603,6 +706,14 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
     </div>
   </section>
+
+  <div class="dock" id="dock" hidden>
+    <span class="dock-status" id="dockStatus">No matter pending</span>
+    <span class="dock-actions">
+      <button class="dock-btn" id="dockObserve">Observe</button>
+      <button class="dock-btn ghost" id="dockTop">Apparatus</button>
+    </span>
+  </div>
 
   <footer>Office of Probabilistic Determinations · Apparatus QA-77 · a simulation, fabricated throughout<br>no stake · no payout · no credits · this office does not answer questions, it records that they were asked<br>be careful with your time — it is the one thing this machine can actually take from you</footer>
 </div>
@@ -919,7 +1030,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     cv.setAttribute("role", "img");
     cv.setAttribute("aria-label", "Reel " + (i+1) + ", not yet observed");
     return {el:c, cv:cv, ctx:cv.getContext("2d"), taxon:c.querySelector(".taxon"),
-            shown:0, px:8, mode:"normal", invert:false, n:i+1};
+            shown:0, px:8, mode:"normal", invert:false, n:i+1, angle:0, radius:40};
   });
   function sizeCells(){
     cellCtx.forEach(function(c){
@@ -928,6 +1039,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       c.cv.width = Math.floor(w*dpr); c.cv.height = Math.floor(w*dpr);
       c.cv.style.height = w + "px";
       c.px = w*dpr/GRID;
+      c.radius = Math.round(w*0.46);
+      c.el.style.setProperty("--drum", c.radius + "px");
       drawCell(c);
     });
   }
@@ -1098,23 +1211,43 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             ds:ds, pConfig:pConfig};
   }
 
+  /* The reels turn as drums: each face sits on a cylinder of radius r, and the
+     next species is swapped in while the current one is edge-on and invisible. */
+  function setDrum(c, deg){
+    c.angle = deg;
+    c.cv.style.transform = "translateZ(" + (-c.radius) + "px) rotateX(" + deg.toFixed(1) +
+                           "deg) translateZ(" + c.radius + "px)";
+  }
+  function restDrum(c, settle){
+    c.el.classList.toggle("settling", !!settle);
+    setDrum(c, 0);
+    if(settle) setTimeout(function(){ c.el.classList.remove("settling"); }, 260);
+  }
   function stepAnim(now){
     if(!anim) return;
-    var done = 0, i, elapsed = now - anim.t0;
+    var done = 0, i, c, elapsed = now - anim.t0, dt = Math.min(60, now - anim.last);
+    anim.last = now;
     for(i=0;i<3;i++){
+      c = cellCtx[i];
       if(anim.done[i]){ done++; continue; }
       if(elapsed >= anim.stops[i]){
         anim.done[i] = true; done++;
         setCell(i, anim.res.out[i], true);
+        setDrum(c, -14);
+        restDrum(c, true);
         clack();
         continue;
       }
-      if(now >= anim.next[i]){
-        var frac = elapsed/anim.stops[i];
-        anim.next[i] = now + 34 + 90*frac*frac;
-        setCell(i, (cellCtx[i].shown + 1 + ((Math.random()*3)|0)) % N, false);
+      /* spin down from full tilt: degrees per second, easing out */
+      var frac = elapsed/anim.stops[i];
+      var speed = 1500*(1 - frac*frac*0.72);
+      var next = c.angle - speed*dt/1000;
+      while(next <= -90){                       /* face has turned away: swap it */
+        next += 180;
+        setCell(i, (c.shown + 1 + ((Math.random()*3)|0)) % N, false);
         if(!anim.fast) tick();
       }
+      setDrum(c, next);
     }
     if(done === 3){
       var res = anim.res;
@@ -1161,7 +1294,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   }
 
   function setKeys(disabled){
-    ["bSpin","bBurst","bReset"].forEach(function(id){ el(id).disabled = disabled; });
+    ["bSpin","bBurst","bReset","dockObserve"].forEach(function(id){
+      var e = el(id); if(e) e.disabled = disabled;
+    });
     el("lever").disabled = disabled;
   }
 
@@ -1175,13 +1310,15 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     }
     var res = measure();
     if(reduced){
-      res.out.forEach(function(k,i){ setCell(i, k, true); });
+      res.out.forEach(function(k,i){ setCell(i, k, true); restDrum(cellCtx[i], false); });
       finish(res);
     }else{
       el("fMeas").classList.add("on");
       cellCtx.forEach(function(c){ c.el.classList.remove("locked"); });
-      anim = {t0:performance.now(), stops: fast ? [130,195,260] : [420,600,780],
-              res:res, next:[0,0,0], done:[false,false,false], fast:fast};
+      var t0 = performance.now();
+      cellCtx.forEach(function(c){ c.el.classList.remove("settling"); });
+      anim = {t0:t0, last:t0, stops: fast ? [200,290,380] : [560,760,980],
+              res:res, done:[false,false,false], fast:fast};
     }
   }
 
@@ -1192,6 +1329,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       ? "Case " + pend.ref + " pending determination"
       : "No matter pending";
     el("bWithdraw").disabled = !pend;
+    el("dockStatus").textContent = pend ? "Case " + pend.ref + " pending determination" : "No matter pending";
     el("bFile").textContent = pend ? "Refile (replaces)" : "File the matter";
     el("fCase").classList.toggle("on", !!pend);
     var q = el("question");
@@ -1225,6 +1363,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     S.cases.unshift(c);
     if(S.cases.length > 40) S.cases.length = 40;
     renderDoc(c);
+    revealDoc();
     renderRegister();
     renderFiling();
     save();
@@ -1234,6 +1373,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   }
 
   var shownCase = null;
+  function revealDoc(){
+    var d = el("doc"), r = d.getBoundingClientRect();
+    var visible = r.top >= 0 && r.bottom <= window.innerHeight;
+    if(visible) return;
+    d.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
+  }
   function renderDoc(c){
     shownCase = c;
     el("doc").hidden = false;
@@ -1265,7 +1410,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         '<td class="num">' + pct(c.pClass) + "</td>" +
         '<td class="num">' + pct(c.pConfig) + "</td>" +
         '<td class="num">' + stamp(c.issued).slice(11) + "</td>" +
-        '<td><button class="minibtn" data-appeal="' + i + '">Appeal</button></td>' +
+        '<td style="white-space:nowrap">' +
+          '<button class="minibtn" data-view="' + i + '">View</button> ' +
+          '<button class="minibtn" data-appeal="' + i + '">Appeal</button></td>' +
       "</tr>";
     }).join("");
   }
@@ -1589,7 +1736,10 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     if(e.key === "Enter" && !e.shiftKey){ e.preventDefault(); el("bFile").click(); }
   });
   el("bFile").addEventListener("click", function(){
-    if(fileMatter(qbox.value)) qbox.value = "";
+    if(fileMatter(qbox.value)){
+      qbox.value = "";
+      el("bSpin").focus();                 /* the next act is always the lever */
+    }
     renderFiling();
   });
   el("bWithdraw").addEventListener("click", function(){
@@ -1605,11 +1755,17 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     renderFiling();
   });
   el("regBody").addEventListener("click", function(e){
-    var btn = e.target.closest("[data-appeal]");
-    if(!btn) return;
-    var c = S.cases[+btn.dataset.appeal];
+    var view = e.target.closest("[data-view]"), app = e.target.closest("[data-appeal]");
+    if(view){
+      var vc = S.cases[+view.dataset.view];
+      if(vc){ renderDoc(vc); revealDoc(); }
+      return;
+    }
+    if(!app) return;
+    var c = S.cases[+app.dataset.appeal];
     if(c) fileMatter(c.q, c.ref);
   });
+  el("bPrint").addEventListener("click", function(){ window.print(); });
 
   el("bSpin").addEventListener("click", function(){ if(!busy) go(false); });
   el("bBurst").addEventListener("click", startBurst);
@@ -1701,6 +1857,48 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     lever.addEventListener("click", function(){
       if(swallowClick || busy || booting) return;
       go(false);
+    });
+  })();
+
+  /* When the apparatus scrolls away, its two essential controls follow you down. */
+  (function(){
+    var dock = el("dock"), device = document.querySelector(".device");
+    if(!("IntersectionObserver" in window) || !device) return;
+    new IntersectionObserver(function(entries){
+      dock.hidden = entries[0].isIntersecting;
+    }, {threshold:0.22}).observe(device);
+    el("dockObserve").addEventListener("click", function(){ if(!busy && !booting) go(false); });
+    el("dockTop").addEventListener("click", function(){
+      document.querySelector(".device").scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
+    });
+  })();
+
+  /* The case tilts toward the pointer. Small angles: presence, not a fairground ride. */
+  (function(){
+    var stage = el("stage"), rig = el("rig");
+    if(reduced || !stage) return;
+    var tX = 8, tY = 0, cX = 8, cY = 0, raf = null;
+    function tick(){
+      cX += (tX - cX)*0.14; cY += (tY - cY)*0.14;
+      rig.style.setProperty("--rx", cX.toFixed(2) + "deg");
+      rig.style.setProperty("--ry", cY.toFixed(2) + "deg");
+      rig.style.setProperty("--sheen", (50 - cY*2.0).toFixed(1) + "%");
+      stage.style.setProperty("--shadowY", (cX*0.7).toFixed(1) + "px");
+      stage.style.setProperty("--shadowS", (1 - Math.abs(cY)*0.012).toFixed(3));
+      raf = (Math.abs(tX-cX) > 0.04 || Math.abs(tY-cY) > 0.04) ? requestAnimationFrame(tick) : null;
+    }
+    function start(){ rig.classList.add("tracking"); if(!raf) raf = requestAnimationFrame(tick); }
+    rig.style.setProperty("--sheen", "50%");
+    stage.addEventListener("pointermove", function(e){
+      var r = stage.getBoundingClientRect();
+      tY = ((e.clientX - r.left)/r.width - 0.5) * 22;
+      tX = 8 - ((e.clientY - r.top)/r.height - 0.5) * 13;
+      start();
+    }, {passive:true});
+    stage.addEventListener("pointerleave", function(){
+      tX = 8; tY = 0;
+      rig.classList.remove("tracking");
+      if(!raf) raf = requestAnimationFrame(tick);
     });
   })();
 
