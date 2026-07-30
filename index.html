@@ -40,9 +40,10 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0}
+html{overflow-x:clip}
 body{
   background:var(--void);color:var(--text);font-family:var(--serif);font-size:16px;line-height:1.6;
-  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;overflow-x:clip;
 }
 canvas.bg{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0}
 #rain{opacity:.20}
@@ -128,6 +129,52 @@ h1{
 }
 .doc-note b{text-transform:uppercase;letter-spacing:.1em;font-size:10px}
 .doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---------- surfaces: grain, wear, light ---------- */
+:root{
+  --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.55'/></svg>");
+  --scuff:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='m'><feTurbulence type='fractalNoise' baseFrequency='0.012 0.5' numOctaves='2'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23m)' opacity='0.5'/></svg>");
+}
+/* every painted face carries the same paint grain and the same key light */
+.face::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+  background-image:var(--grain);background-size:140px 140px;
+  opacity:.055;mix-blend-mode:overlay;
+}
+.face::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+  background:rgba(0,0,0,var(--shade,0));
+}
+.face.front::before{background:rgba(0,0,0,var(--shadeF,0))}
+.face.back::before{background:rgba(0,0,0,var(--shadeB,.5))}
+.face.side.sl::before{background:rgba(0,0,0,var(--shadeL,.3))}
+.face.side.sr::before{background:rgba(0,0,0,var(--shadeR,.4))}
+.face.cap.ct::before{background:rgba(0,0,0,var(--shadeT,.1))}
+.face.cap.cb::before{background:rgba(0,0,0,var(--shadeD,.7))}
+/* worn paint along the edges of the shell */
+.cabinet::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:2;border-radius:5px;
+  background-image:var(--scuff);background-size:260px 260px;opacity:.05;mix-blend-mode:soft-light;
+}
+
+/* the floor it stands on */
+.floor{
+  position:absolute;left:50%;top:100%;width:1180px;height:1180px;margin-left:-590px;margin-top:-590px;
+  transform:rotateX(90deg);pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 24% 20% at 50% 50%, rgba(168,176,170,.30), rgba(168,176,170,0) 64%),
+    repeating-linear-gradient(0deg, rgba(172,180,174,.16) 0 1px, transparent 1px 78px),
+    repeating-linear-gradient(90deg, rgba(172,180,174,.16) 0 1px, transparent 1px 78px),
+    radial-gradient(ellipse 40% 34% at 50% 50%, rgba(96,104,99,.13), rgba(96,104,99,0) 70%);
+  -webkit-mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
+  mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
+}
+.contact{
+  position:absolute;left:50%;top:100%;width:520px;height:400px;margin-left:-260px;margin-top:-200px;
+  transform:rotateX(90deg);pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse 42% 40% at 50% 50%, rgba(0,0,0,.92), rgba(0,0,0,.55) 46%, rgba(0,0,0,0) 74%);
+  filter:blur(6px);
+}
 
 /* ---------- the cabinet ---------- */
 .device{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0 26px}
@@ -215,12 +262,17 @@ h1{
   text-transform:uppercase;color:var(--dim)}
 .viewbtns{display:flex;gap:6px;flex-wrap:wrap}
 
+/* panels sit above the paint shading; only the bodywork takes the key light */
+.cabinet > *{position:relative;z-index:3}
+.cabinet > .gloss{z-index:9}
+
 /* ---------- cabinet front: 74 x 30 x 26 in ---------- */
 .cabinet{
   transform-style:preserve-3d;display:flex;flex-direction:column;gap:0;
-  background:linear-gradient(176deg,#3A3F3E 0%,#313635 4%,#2C3130 62%,#222726 100%);
+  background:linear-gradient(176deg,#454B49 0%,#3B4140 4%,#353B39 62%,#272C2B 100%);
   border:1px solid #101413;border-radius:5px;padding:0;overflow:hidden;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.13), inset 0 -3px 14px rgba(0,0,0,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -3px 14px rgba(0,0,0,.5),
+             inset 0 0 70px rgba(0,0,0,.16);
 }
 .gloss{position:absolute;inset:0;border-radius:5px;pointer-events:none;z-index:9;
   background:linear-gradient(104deg,
@@ -240,6 +292,7 @@ h1{
 /* header nameplate */
 .nameplate{
   flex:none;position:relative;margin:0 13px 10px;padding:11px 13px 10px;border-radius:2px;
+  background-blend-mode:multiply;
   background:linear-gradient(180deg,#DFE0D5,#CBCCC0 60%,#BCBDB1);
   border:1px solid #14181700;border:1px solid #141817;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 3px 8px rgba(0,0,0,.55);
@@ -303,8 +356,9 @@ h1{
 .deck{position:relative;flex:none;height:86px;transform-style:preserve-3d;z-index:5}
 .deck-top{
   position:absolute;left:0;right:0;top:0;height:126px;transform-origin:center top;transform:rotateX(52deg);
-  background:linear-gradient(180deg,#4A504E,#383E3C 40%,#2B3130);
-  border-top:1px solid #5A605E;box-shadow:0 10px 20px -8px rgba(0,0,0,.8);
+  background:linear-gradient(180deg,#4E5452,#3A403E 40%,#2B3130);
+  border-top:1px solid #5F6563;
+  box-shadow:0 14px 26px -8px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.14);
   display:flex;align-items:center;gap:9px;padding:0 11px;
 }
 .deck-lip{position:absolute;left:0;right:0;top:78px;height:38px;transform:translateZ(99px);
@@ -344,7 +398,9 @@ h1{
   box-shadow:0 0 9px rgba(224,177,64,.6), inset 0 1px 0 rgba(255,255,255,.5)}
 
 /* record row: printer + claim tray */
-.recordrow{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:26px 13px 0;position:relative;z-index:4}
+.recordrow{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:42px 13px 0;position:relative;z-index:4}
+.recordrow::before{content:"";position:absolute;left:-13px;right:-13px;top:-42px;height:30px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,0))}
 .printer,.claimtray{position:relative;border-radius:2px;padding:0;border:0;background:none;text-align:left}
 .pr-label,.ct-label{display:block;font-family:var(--mono);font-size:6.5px;letter-spacing:.19em;
   text-transform:uppercase;color:#A6ADA9;margin-bottom:5px}
@@ -381,7 +437,7 @@ h1{
 /* service door */
 .servicedoor{
   flex:1;min-height:0;margin:12px 13px 0;border-radius:2px;position:relative;
-  background:linear-gradient(178deg,#2E3332,#242928 60%,#1C2120);
+  background:linear-gradient(178deg,#3A403E,#2E3433 60%,#242928);
   border:1px solid #141817;box-shadow:inset 0 1px 0 rgba(255,255,255,.07), inset 0 -3px 10px rgba(0,0,0,.5);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:14px;
 }
@@ -812,6 +868,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             <span class="lever-arm"><span class="lever-ball"></span></span>
           </button>
 
+          <span class="floor" aria-hidden="true"></span>
+          <span class="contact" aria-hidden="true"></span>
         </div>
       </div>
       <span class="deskshadow" aria-hidden="true"></span>
@@ -2234,7 +2292,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
      little momentum and then holds wherever you left it. */
   var view = (function(){
     var stage = el("stage"), rig = el("rig");
-    var yaw = -9, pitch = 7, vYaw = 0, vPitch = 0;
+    var yaw = -11, pitch = 14, vYaw = 0, vPitch = 0;
     var goal = null, raf = null, dragging = false, lastX = 0, lastY = 0, moved = false;
 
     function norm(a){ return ((a % 360) + 360) % 360; }
@@ -2242,13 +2300,33 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       el("viewHint").textContent = "Yaw " + Math.round(norm(yaw)) + "\u00B0 · pitch " +
         Math.round(pitch) + "\u00B0 · double-click to reset";
     }
+    /* The key light is fixed in the room, not to the cabinet, so turning the
+       machine moves the light across it exactly as it would in life. */
+    var LIGHT = (function(){
+      var v = [-0.42, -0.66, 0.62], m = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+      return [v[0]/m, v[1]/m, v[2]/m];
+    })();
+    var NORMALS = {
+      F:[0,0,1], B:[0,0,-1], L:[-1,0,0], R:[1,0,0], T:[0,-1,0], D:[0,1,0]
+    };
+    function shadeOf(n, yr, pr){
+      var cy = Math.cos(yr), sy = Math.sin(yr), cp = Math.cos(pr), sp = Math.sin(pr);
+      var x = n[0]*cy + n[2]*sy, z1 = -n[0]*sy + n[2]*cy, y = n[1];   /* rotateY */
+      var y2 = y*cp - z1*sp, z2 = y*sp + z1*cp;                        /* rotateX */
+      var d = x*LIGHT[0] + y2*LIGHT[1] + z2*LIGHT[2];
+      return Math.max(0, Math.min(0.52, 0.30 - d*0.34));               /* darkness, not light */
+    }
     function apply(){
       rig.style.setProperty("--py", yaw.toFixed(2) + "deg");
       rig.style.setProperty("--px", pitch.toFixed(2) + "deg");
-      /* the light sweeps across the case as it turns */
-      rig.style.setProperty("--sheen", (50 - Math.sin(yaw*Math.PI/180)*34).toFixed(1) + "%");
-      var facing = Math.cos(yaw*Math.PI/180);           /* 1 front on, -1 back on */
-      stage.style.setProperty("--shadowS", (0.78 + 0.22*Math.abs(facing)).toFixed(3));
+      var yr = yaw*Math.PI/180, pr = pitch*Math.PI/180, k;
+      for(k in NORMALS){
+        var sh = shadeOf(NORMALS[k], yr, pr);
+        if(k === "F") sh *= 0.5;                 /* the display face stays legible */
+        rig.style.setProperty("--shade" + k, sh.toFixed(3));
+      }
+      rig.style.setProperty("--sheen", (50 - Math.sin(yr)*34).toFixed(1) + "%");
+      stage.style.setProperty("--shadowS", (0.78 + 0.22*Math.abs(Math.cos(yr))).toFixed(3));
     }
     function running(){ if(!raf) raf = requestAnimationFrame(tick); }
     function tick(){
@@ -2300,23 +2378,23 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     }
     stage.addEventListener("pointerup", release);
     stage.addEventListener("pointercancel", release);
-    stage.addEventListener("dblclick", function(){ moveTo(-9, 7); });
+    stage.addEventListener("dblclick", function(){ moveTo(-11, 14); });
     stage.addEventListener("keydown", function(e){
       var step = e.shiftKey ? 22 : 8, used = true;
       if(e.key === "ArrowLeft") yaw -= step;
       else if(e.key === "ArrowRight") yaw += step;
       else if(e.key === "ArrowUp") pitch = Math.min(74, pitch + step);
       else if(e.key === "ArrowDown") pitch = Math.max(-74, pitch - step);
-      else if(e.key === "Home") { moveTo(-9, 7); }
+      else if(e.key === "Home") { moveTo(-11, 14); }
       else used = false;
       if(used){ e.preventDefault(); goal = goal || null; running(); }
     });
     apply();
     return {
-      front:function(){ moveTo(Math.round(yaw/360)*360 - 9, 7); },
-      back: function(){ moveTo(Math.round(yaw/360)*360 + 180, 4); },
-      side: function(){ moveTo(Math.round(yaw/360)*360 - 72, 6); },
-      reset:function(){ moveTo(-9, 7); }
+      front:function(){ moveTo(Math.round(yaw/360)*360 - 11, 14); },
+      back: function(){ moveTo(Math.round(yaw/360)*360 + 180, 12); },
+      side: function(){ moveTo(Math.round(yaw/360)*360 - 68, 13); },
+      reset:function(){ moveTo(-11, 14); }
     };
   })();
   el("vFront").addEventListener("click", view.front);
