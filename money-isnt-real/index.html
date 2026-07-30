@@ -1,0 +1,1136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why Money Isn't Real — a 2-minute stick figure explainer</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #07090c;
+    font-family: "Liberation Sans", "DejaVu Sans", system-ui, sans-serif;
+    color: #d8d3c6;
+  }
+  #stage {
+    position: relative;
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+  }
+  #wrap { position: relative; line-height: 0; }
+  canvas {
+    display: block;
+    width: min(96vw, calc((100vh - 96px) * 16 / 9));
+    height: auto;
+    background: #0f1216;
+    border-radius: 6px;
+    box-shadow: 0 24px 70px rgba(0,0,0,.6);
+    cursor: pointer;
+  }
+  #controls {
+    display: flex; align-items: center; gap: 14px;
+    width: min(96vw, calc((100vh - 96px) * 16 / 9));
+    font-size: 13px; letter-spacing: .04em;
+  }
+  button {
+    background: #1b2027; color: #e9e4d7; border: 1px solid #2e3641;
+    border-radius: 4px; padding: 7px 14px; font: inherit; cursor: pointer;
+    letter-spacing: .06em; text-transform: uppercase; font-size: 11px;
+  }
+  button:hover { background: #242b34; }
+  #scrub { flex: 1; accent-color: #f5c451; cursor: pointer; }
+  #time { font-variant-numeric: tabular-nums; opacity: .65; min-width: 88px; text-align: right; }
+  body.capture { background: #0f1216; }
+  body.capture #controls { display: none; }
+  body.capture canvas { width: 1920px; height: 1080px; border-radius: 0; box-shadow: none; }
+  body.capture #stage { display: block; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="wrap"><canvas id="c" width="1920" height="1080"></canvas></div>
+  <div id="controls">
+    <button id="play">Play</button>
+    <button id="restart">Restart</button>
+    <input id="scrub" type="range" min="0" max="120" step="0.01" value="0">
+    <span id="time">0:00 / 2:00</span>
+  </div>
+</div>
+<script>
+"use strict";
+/* =========================================================================
+   WHY MONEY ISN'T REAL — a 120 second stick-figure explainer.
+   Everything is drawn as a pure function of time, so headless frame capture
+   (render/capture.mjs) produces exactly what playback shows.
+   ========================================================================= */
+
+const W = 1920, H = 1080, DUR = 120;
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+
+/* ---------------------------------------------------------------- palette */
+const INK   = '#efe9db';
+const DIM   = '#8c8778';
+const GOLD  = '#f5c451';
+const TEAL  = '#5fd0c3';
+const RED   = '#ef6a5a';
+const BG    = '#0f1216';
+
+/* ------------------------------------------------------- deterministic rng
+   Hand-drawn "boil": jitter is reseeded 8 times a second, never per-frame,
+   so lines wobble like paper animation instead of buzzing.               */
+let BOIL = 0;
+function hash(a, b, c) {
+  const s = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453;
+  return s - Math.floor(s);
+}
+const n11 = (a, b, c) => hash(a, b, c) * 2 - 1;
+
+/* --------------------------------------------------------------- easing   */
+const clamp  = (v, a, b) => v < a ? a : v > b ? b : v;
+const ease   = t => (t = clamp(t, 0, 1)) < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const easeO  = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeI  = t => Math.pow(clamp(t, 0, 1), 3);
+const lerp   = (a, b, t) => a + (b - a) * t;
+const rad    = d => d * Math.PI / 180;
+
+/* Alpha envelope: 0 before `a`, 1 between, 0 after `b`, with soft edges. */
+function win(t, a, b, fi = .45, fo = .45) {
+  if (t <= a - fi || t >= b + fo) return 0;
+  if (t < a) return ease((t - a + fi) / fi);
+  if (t > b) return 1 - ease((t - b) / fo);
+  return 1;
+}
+/* Draw `fn` at alpha `a`, skipping the work entirely when invisible. */
+function A(a, fn) {
+  if (a <= .004) return;
+  ctx.save(); ctx.globalAlpha *= clamp(a, 0, 1); fn(); ctx.restore();
+}
+
+/* ------------------------------------------------------ rough ink drawing */
+function stroke(color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+
+function rline(x1, y1, x2, y2, amp = 1.7) {
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const segs = clamp(Math.round(len / 30), 2, 14);
+  const nx = -dy / len, ny = dx / len;
+  ctx.beginPath(); ctx.moveTo(x1, y1);
+  for (let i = 1; i <= segs; i++) {
+    const u = i / segs;
+    const k = i === segs ? 0 : n11(x1 * .07 + i * 3.1, y1 * .07 - i * 1.7, BOIL) * amp * Math.sin(Math.PI * u);
+    ctx.lineTo(x1 + dx * u + nx * k, y1 + dy * u + ny * k);
+  }
+  ctx.stroke();
+}
+function rpoly(pts, close = true, amp = 1.7) {
+  for (let i = 0; i < pts.length - (close ? 0 : 1); i++) {
+    const p = pts[i], q = pts[(i + 1) % pts.length];
+    rline(p[0], p[1], q[0], q[1], amp);
+  }
+}
+function rrect(x, y, w, h, amp = 1.7) {
+  rpoly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], true, amp);
+}
+function rarc(cx, cy, r, a0, a1, amp = 1.4) {
+  const span = a1 - a0, segs = clamp(Math.round(Math.abs(span) * r / 9), 14, 96);
+  ctx.beginPath();
+  for (let i = 0; i <= segs; i++) {
+    const a = a0 + span * i / segs;
+    const rr = r + n11(Math.cos(a) * 9, Math.sin(a) * 9, BOIL) * amp;
+    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke();
+}
+const rcircle = (cx, cy, r, amp = 1.4) => rarc(cx, cy, r, 0, Math.PI * 2, amp);
+
+function fillPoly(pts, color) {
+  ctx.fillStyle = color; ctx.beginPath();
+  pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+  ctx.closePath(); ctx.fill();
+}
+function dot(x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
+
+/* Partial-draw wrapper: `p` 0→1 reveals a shape left-to-right via clip. */
+function reveal(p, x, y, w, h, fn) {
+  if (p >= .999) return fn();
+  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w * clamp(p, 0, 1), h); ctx.clip(); fn(); ctx.restore();
+}
+
+function arrow(x1, y1, x2, y2, color = INK, w = 3, head = 15) {
+  stroke(color, w); rline(x1, y1, x2, y2, 1.2);
+  const a = Math.atan2(y2 - y1, x2 - x1);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(a - .38) * head, y2 - Math.sin(a - .38) * head);
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - Math.cos(a + .38) * head, y2 - Math.sin(a + .38) * head);
+  ctx.stroke();
+}
+/* Curved connector with an arrowhead, for the money-goes-around loops. */
+function curveArrow(x1, y1, x2, y2, bow, color = INK, w = 3) {
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+  const cx = mx - dy / len * bow, cy = my + dx / len * bow;
+  stroke(color, w);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.stroke();
+  const a = Math.atan2(y2 - cy, x2 - cx);
+  ctx.beginPath();
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a - .4) * 14, y2 - Math.sin(a - .4) * 14);
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a + .4) * 14, y2 - Math.sin(a + .4) * 14);
+  ctx.stroke();
+}
+function cross(cx, cy, r, color = RED, w = 6) {
+  stroke(color, w);
+  rline(cx - r, cy - r, cx + r, cy + r, 2);
+  rline(cx + r, cy - r, cx - r, cy + r, 2);
+}
+
+/* ------------------------------------------------------------------ type  */
+function text(str, x, y, {
+  size = 34, color = INK, align = 'center', weight = '400',
+  spacing = '0px', font = '"Liberation Sans","DejaVu Sans",sans-serif', baseline = 'alphabetic'
+} = {}) {
+  ctx.save();
+  ctx.font = `${weight} ${size}px ${font}`;
+  ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = baseline;
+  ctx.letterSpacing = spacing;
+  ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function measure(str, size, weight = '400', spacing = '0px') {
+  ctx.save();
+  ctx.font = `${weight} ${size}px "Liberation Sans","DejaVu Sans",sans-serif`;
+  ctx.letterSpacing = spacing;
+  const w = ctx.measureText(str).width;
+  ctx.restore();
+  return w;
+}
+function wrap(str, maxW, size, weight = '400') {
+  const words = str.split(' '); const lines = []; let cur = '';
+  for (const word of words) {
+    const trial = cur ? cur + ' ' + word : word;
+    if (measure(trial, size, weight) > maxW && cur) { lines.push(cur); cur = word; }
+    else cur = trial;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/* ------------------------------------------------------------ stick figure
+   Feet sit at (x, y). One unit ≈ 1px at scale 1; a figure is ~215px tall.
+   Angles are degrees: 0 → right, 90 → straight down, 270 → straight up.   */
+const SEG = { upperArm: 40, foreArm: 38, thigh: 50, shin: 48, neck: 26, headR: 25 };
+
+function limb(ox, oy, a1, l1, a2, l2, w) {
+  const ex = ox + Math.cos(rad(a1)) * l1, ey = oy + Math.sin(rad(a1)) * l1;
+  const hx = ex + Math.cos(rad(a2)) * l2, hy = ey + Math.sin(rad(a2)) * l2;
+  ctx.lineWidth = w; rline(ox, oy, ex, ey, 1.1); rline(ex, ey, hx, hy, 1.1);
+  return { x: hx, y: hy, ex, ey };
+}
+
+/* Returns anchor points (hands, head) so props can be attached to a pose. */
+function figure(o) {
+  const {
+    x, y, s = 1, color = INK, lean = 0, flip = false,
+    armL = [100, 100], armR = [80, 80],       // [shoulder, elbow] degrees
+    legL = [83, 88], legR = [97, 92],
+    head = 0,                                  // head tilt, degrees
+    face = 'plain',                            // plain | happy | sad | oh | none
+    lw = 5.5
+  } = o;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(flip ? -s : s, s);
+  ctx.rotate(rad(lean));
+  stroke(color, lw / s * 1);
+  ctx.lineWidth = lw;
+
+  const hipY = -(SEG.thigh + SEG.shin);
+  const shoulderY = hipY - 62;
+  const neckTop = shoulderY - SEG.neck;
+  const headCY = neckTop - SEG.headR + 4;
+
+  // spine + neck
+  rline(0, 0 + hipY, 0, shoulderY, 1.1);
+  rline(0, shoulderY, 0, neckTop + 6, 1.1);
+
+  // head
+  ctx.save();
+  ctx.translate(0, headCY); ctx.rotate(rad(head)); ctx.translate(0, -headCY);
+  rcircle(0, headCY, SEG.headR, 1.2);
+  if (face !== 'none') {
+    const eo = 9, ey = headCY - 5;
+    dot(-eo, ey, 2.9, color); dot(eo, ey, 2.9, color);
+    ctx.lineWidth = 3;
+    if (face === 'happy') rarc(0, headCY + 1, 11, rad(25), rad(155), .6);
+    else if (face === 'sad') rarc(0, headCY + 18, 11, rad(205), rad(335), .6);
+    else if (face === 'oh') { ctx.beginPath(); ctx.arc(0, headCY + 9, 5.5, 0, 6.2832); ctx.stroke(); }
+    else rline(-8, headCY + 10, 8, headCY + 10, .7);
+  }
+  ctx.restore();
+
+  // limbs
+  const hands = {
+    L: limb(0, shoulderY + 6, armL[0], SEG.upperArm, armL[1], SEG.foreArm, lw),
+    R: limb(0, shoulderY + 6, armR[0], SEG.upperArm, armR[1], SEG.foreArm, lw)
+  };
+  limb(0, hipY, legL[0], SEG.thigh, legL[1], SEG.shin, lw);
+  limb(0, hipY, legR[0], SEG.thigh, legR[1], SEG.shin, lw);
+
+  // Convert local anchors back to page space for prop attachment.
+  const m = ctx.getTransform();
+  const toPage = p => ({ x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f });
+  ctx.restore();
+  return {
+    handL: toPage(hands.L), handR: toPage(hands.R),
+    head: toPage({ x: 0, y: headCY }), top: toPage({ x: 0, y: headCY - SEG.headR })
+  };
+}
+
+/* Gentle idle: breathing sway so nobody is ever frozen. */
+const idle = (t, seed = 0) => ({
+  lean: Math.sin(t * 1.1 + seed) * .9,
+  bob: Math.sin(t * 2.2 + seed) * 1.6
+});
+
+/* ------------------------------------------------------------------ props */
+function banknote(x, y, w, h, {
+  rot = 0, denom = '100', color = INK, accent = GOLD, detail = true, alphaFill = '#161b21'
+} = {}) {
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(rad(rot));
+  ctx.fillStyle = alphaFill;
+  ctx.fillRect(-w / 2, -h / 2, w, h);
+  stroke(color, 3.4); rrect(-w / 2, -h / 2, w, h, 1.4);
+  if (detail) {
+    stroke(color, 1.6); rrect(-w / 2 + w * .05, -h / 2 + h * .09, w * .9, h * .82, 1);
+    // portrait: a little bust in an oval, not a face that can look sad
+    stroke(color, 2.2); rcircle(0, h * .02, h * .28, 1.1);
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(0, h * .02, h * .28, h * .28, 0, 0, 6.2832); ctx.clip();
+    ctx.lineWidth = 2;
+    rcircle(0, h * -.06, h * .10, .7);
+    rarc(0, h * .28, h * .20, rad(200), rad(340), .7);
+    ctx.restore();
+    text(denom, -w / 2 + w * .13, -h / 2 + h * .30, { size: h * .21, color: accent, align: 'center', weight: '700' });
+    text(denom, w / 2 - w * .13, h / 2 - h * .16, { size: h * .21, color: accent, align: 'center', weight: '700' });
+  }
+  ctx.restore();
+}
+function coin(x, y, r, label = '$', color = GOLD) {
+  stroke(color, 3.4); rcircle(x, y, r, 1.1); rcircle(x, y, r * .78, .9);
+  text(label, x, y + r * .34, { size: r * .95, color, weight: '700' });
+}
+function goldBar(x, y, w, h) {
+  // ingot: a small top face in perspective sitting on a tapered body
+  // front face (wider at the bottom) plus a top face skewed back and right
+  const t = w * .11, dy = h * .34, off = w * .13;
+  const fl = x - w / 2, fr = x + w / 2, tl = fl + t, tr = fr - t, ty = y - h / 2 + dy;
+  stroke(GOLD, 3.4);
+  rpoly([[fl, y + h / 2], [fr, y + h / 2], [tr, ty], [tl, ty]]);
+  rpoly([[tl, ty], [tr, ty], [tr - t * .6 + off, y - h / 2], [tl + t * .6 + off, y - h / 2]]);
+  stroke(GOLD, 1.8);
+  rline(fl + t * 2.6, y + h * .10, fr - t * 2.6, y + h * .10, .7);
+  rline(fl + t * 3.2, y + h * .30, fr - t * 3.2, y + h * .30, .7);
+}
+function coffeeCup(x, y, s = 1, steam = 0) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  stroke(INK, 3.2);
+  rpoly([[-17, -22], [17, -22], [12, 24], [-12, 24]]);
+  rline(-19, -22, 19, -22, 1);
+  ctx.lineWidth = 2.6;
+  rarc(19, -6, 11, rad(-80), rad(80), .8);
+  if (steam > 0) {
+    ctx.globalAlpha *= steam; stroke(DIM, 2.4);
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      for (let k = 0; k <= 12; k++) {
+        const p = k / 12, yy = -30 - p * 34;
+        const xx = i * 10 + Math.sin(p * 6 + i * 2 + BOIL * .5) * 6;
+        k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function fish(x, y, s = 1, color = TEAL) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(color, 3);
+  ctx.beginPath();
+  ctx.moveTo(-30, 0); ctx.quadraticCurveTo(0, -22, 30, 0);
+  ctx.quadraticCurveTo(0, 22, -30, 0); ctx.stroke();
+  rpoly([[-30, 0], [-48, -13], [-48, 13]], true, 1);
+  dot(18, -4, 2.8, color);
+  ctx.restore();
+}
+function shoe(x, y, s = 1, color = TEAL) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(color, 3);
+  ctx.beginPath();
+  ctx.moveTo(-30, 14); ctx.lineTo(-30, -6);
+  ctx.quadraticCurveTo(-28, -20, -12, -18);
+  ctx.quadraticCurveTo(-4, -17, 6, -4);
+  ctx.quadraticCurveTo(16, 6, 32, 8);
+  ctx.lineTo(32, 14); ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+function bread(x, y, s = 1) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(GOLD, 3);
+  ctx.beginPath();
+  ctx.moveTo(-34, 16); ctx.quadraticCurveTo(-38, -18, -8, -20);
+  ctx.quadraticCurveTo(30, -22, 34, 4); ctx.quadraticCurveTo(36, 16, 30, 16);
+  ctx.closePath(); ctx.stroke();
+  ctx.lineWidth = 2;
+  rline(-16, -19, -22, -6, .6); rline(0, -20, -6, -7, .6); rline(16, -18, 10, -6, .6);
+  ctx.restore();
+}
+function bubble(x, y, str, { size = 26, w = 300, tail = 'bl', color = INK } = {}) {
+  const lines = wrap(str, w - 44, size);
+  const h = lines.length * (size * 1.32) + 34;
+  const bw = Math.max(...lines.map(l => measure(l, size))) + 44;
+  ctx.fillStyle = 'rgba(15,18,22,.92)';
+  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - h, bw, h, 14); ctx.fill();
+  stroke(color, 2.6);
+  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - h, bw, h, 14); ctx.stroke();
+  const tx = tail === 'bl' ? x - bw * .22 : x + bw * .22;
+  ctx.fillStyle = 'rgba(15,18,22,.92)';
+  fillPoly([[tx - 12, y - 1], [tx + 12, y - 1], [tx + (tail === 'bl' ? -16 : 16), y + 22]], 'rgba(15,18,22,.95)');
+  rline(tx - 12, y, tx + (tail === 'bl' ? -16 : 16), y + 22, .8);
+  rline(tx + (tail === 'bl' ? -16 : 16), y + 22, tx + 12, y, .8);
+  lines.forEach((l, i) => text(l, x, y - h + 30 + i * size * 1.32, { size, color }));
+}
+/* Label with a leader line, used for the callouts on the banknote. */
+function callout(x, y, tx, ty, str, { size = 24, color = TEAL, align = 'left' } = {}) {
+  stroke(color, 2);
+  rline(x, y, tx, ty, 1);
+  dot(x, y, 4, color);
+  const pad = align === 'left' ? 14 : -14;
+  text(str, tx + pad, ty + 8, { size, color, align });
+}
+
+/* ------------------------------------------------------------- background */
+function backdrop(t) {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+  // faint dot grid — notebook feel without competing with the ink
+  ctx.fillStyle = 'rgba(255,255,255,.030)';
+  for (let x = 60; x < W; x += 60) for (let y = 60; y < H; y += 60) ctx.fillRect(x, y, 2, 2);
+  // vignette
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .95);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function ground(y, x1 = 120, x2 = W - 120, a = 1) {
+  A(a, () => { stroke('#2c333c', 4); rline(x1, y, x2, y, 2.4); });
+}
+
+/* ==========================================================================
+   NARRATION — single source of truth. capture.mjs reads window.CAPTIONS to
+   emit the .srt, so subtitles can never drift from what is on screen.
+   ========================================================================== */
+const CAPTIONS = [
+  [0.6, 3.6, "You hand over a piece of paper."],
+  [3.7, 6.9, "You get something real back. Why does that work?"],
+
+  [13.4, 17.4, "Start with the paper itself. It's cotton and linen, ink, and a number."],
+  [17.6, 21.4, "A hundred-dollar bill costs the U.S. government about nine cents to make."],
+  [21.6, 24.9, "Whatever you're being handed, it isn't nine cents of paper."],
+
+  [25.4, 29.4, "Before money, a trade needed a double coincidence of wants."],
+  [29.6, 33.4, "I have fish and want shoes — you must want fish, right now."],
+  [33.6, 39.9, "Money is the fix: a middle step everyone accepts, so trades stop needing luck."],
+
+  [40.4, 44.4, "For most of history that middle step was a thing: shells, salt, cattle, gold."],
+  [44.6, 48.4, "Gold can't feed you or heat your house."],
+  [48.6, 52.9, "It worked because it was scarce, hard to fake — and because everyone agreed."],
+
+  [53.4, 57.4, "Until 1971, dollars were still formally convertible into gold."],
+  [57.6, 61.4, "That August, President Nixon suspended it. The link was cut."],
+  [61.6, 67.9, "What's left is fiat money — Latin for 'let it be done'. It's worth something because we say so."],
+
+  [68.4, 72.4, "And most money was never printed at all."],
+  [72.6, 76.9, "The Bank of England puts it plainly: about 97% of money is bank deposits."],
+  [77.1, 82.9, "Numbers in a database. When a bank makes a loan, it types new money into existence."],
+
+  [83.4, 87.4, "So money is not real the way a rock is real."],
+  [87.6, 94.9, "It's real the way language, laws and borders are real: agreements with enormous consequences."],
+
+  [95.4, 99.4, "What holds it up isn't magic. Taxes are owed in it."],
+  [99.6, 103.4, "Law makes it settle debts. Its supply is limited and managed."],
+  [103.6, 106.4, "And underneath all of it — confidence."],
+
+  [106.8, 110.4, "Take the confidence away and you get Germany in 1923, or Zimbabwe in 2008."],
+  [110.6, 114.9, "The paper didn't change. The belief did."],
+
+  [115.4, 119.6, "Money isn't a thing we found. It's an agreement we renew every single day."]
+];
+
+/* Chapter labels shown top-left, [start, end, index, title]. */
+const CHAPTERS = [
+  [13, 25, 1, 'The paper'],
+  [25, 40, 2, 'The problem money solves'],
+  [40, 53, 3, 'When money was a thing'],
+  [53, 68, 4, 'The year the link was cut'],
+  [68, 83, 5, 'Money as a database'],
+  [83, 95, 6, 'A shared technology'],
+  [95, 106.5, 7, 'What holds it up'],
+  [106.5, 115, 8, 'When belief breaks']
+];
+
+/* ==========================================================================
+   SCENES
+   ========================================================================== */
+
+/* --- 1. Cold open: paper in, coffee out (0 – 7) -------------------------- */
+function sceneOpen(t) {
+  const gy = 800;
+  ground(gy, 380, 1540, win(t, .2, 7, .6, .4));
+  const iA = idle(t, 0), iB = idle(t, 1.7);
+
+  // Handoff timing
+  const give = ease((t - 1.2) / 1.5);          // note travels A → B
+  const back = ease((t - 3.2) / 1.4);          // coffee travels B → A
+  const reachA = clamp((t - .9) / .6, 0, 1) * (1 - clamp((t - 3.0) / .8, 0, 1));
+  const reachB = clamp((t - 1.6) / .6, 0, 1) * (1 - clamp((t - 4.4) / .8, 0, 1));
+
+  const aAlpha = win(t, .1, 7, .7, .4);
+  let A1, B1;
+  A(aAlpha, () => {
+    A1 = figure({
+      x: 680, y: gy + iA.bob, s: 1.45, lean: iA.lean,
+      armR: [lerp(95, 20, reachA), lerp(95, 5, reachA)],
+      armL: [118, 112], face: t > 4.2 ? 'happy' : 'plain'
+    });
+    B1 = figure({
+      x: 1250, y: gy + iB.bob, s: 1.45, flip: true, lean: -iB.lean,
+      armR: [lerp(95, 20, reachB), lerp(95, 5, reachB)],
+      armL: [118, 112], face: t > 2.9 ? 'happy' : 'plain'
+    });
+  });
+
+  // The note: from A's hand to B's hand.
+  if (A1 && B1) {
+    const nx = lerp(A1.handR.x + 42, B1.handR.x - 42, give);
+    const ny = lerp(A1.handR.y - 6, B1.handR.y - 6, give) - Math.sin(Math.PI * give) * 46;
+    A(win(t, .8, 6.9, .5, .4), () => banknote(nx, ny, 150, 82, { rot: lerp(-8, 6, give) + Math.sin(t * 2) * 2, denom: '20' }));
+    if (back > 0) {
+      const cx = lerp(B1.handR.x - 44, A1.handR.x + 44, back);
+      const cy = lerp(B1.handR.y - 10, A1.handR.y - 10, back) - Math.sin(Math.PI * back) * 40;
+      A(win(t, 3.2, 6.9, .3, .4), () => coffeeCup(cx, cy, 1.25, clamp((back - .7) / .3, 0, 1)));
+    }
+  }
+  // Question mark blooms over the handoff at the end of the beat.
+  A(win(t, 5.0, 6.8, .5, .3), () => {
+    const s = 1 + Math.sin(t * 3) * .03;
+    text('?', 960, 350 - s * 6, { size: 170, color: GOLD, weight: '700' });
+  });
+}
+
+/* --- 2. Title card (7 – 13) --------------------------------------------- */
+function sceneTitle(t) {
+  const a = win(t, .0, 5.6, .5, .5);
+  A(a, () => {
+    // two notes drifting in the corners, well clear of the type
+    A(.30, () => banknote(300, 800, 320, 172, { rot: -9 + Math.sin(t * .6) * 2.5, denom: '100' }));
+    A(.30, () => banknote(1610, 250, 300, 160, { rot: 11 + Math.sin(t * .5 + 2) * 2.5, denom: '100' }));
+
+    const p = easeO((t - .3) / 1.1);
+    const size = 112;
+    ctx.save(); ctx.globalAlpha *= p;
+    ctx.translate(960, 440 + (1 - p) * 22);
+    text('WHY MONEY', 0, 0, { size, weight: '700', spacing: '4px' });
+    text("ISN'T REAL", 0, size * 1.02, { size, weight: '700', spacing: '4px', color: GOLD });
+    ctx.restore();
+
+    const uw = 640, up = easeO((t - 1.3) / .9);
+    A(1, () => { stroke(GOLD, 5); rline(960 - uw / 2, 636, 960 - uw / 2 + uw * up, 636, 2.4); });
+    A(win(t, 1.9, 5.6, .6, .4), () =>
+      text('and what it actually is', 960, 706, { size: 38, color: DIM, spacing: '2px' }));
+  });
+}
+
+/* --- 3. The paper (13 – 25) --------------------------------------------- */
+function scenePaper(t) {
+  const cx = 960, cy = 500, nw = 660, nh = 330;
+  A(win(t, .1, 11.6, .6, .5), () => banknote(cx, cy, nw, nh, { denom: '100', rot: Math.sin(t * .6) * 1.2 }));
+
+  A(win(t, 1.3, 11.4, .5, .4), () =>
+    callout(cx - nw * .40, cy - nh * .38, 380, 300, 'cotton & linen', { align: 'right' }));
+  A(win(t, 2.2, 11.4, .5, .4), () =>
+    callout(cx - nw * .18, cy + nh * .44, 470, 760, 'ink', { align: 'right' }));
+  A(win(t, 3.0, 11.4, .5, .4), () =>
+    callout(cx + nw * .30, cy + nh * .30, 1500, 700, 'a number', { align: 'left' }));
+
+  // Price tag: what the object actually costs to produce.
+  A(win(t, 4.6, 11.4, .6, .4), () => {
+    const p = easeO((t - 4.6) / .8);
+    const label = 'COST TO MAKE:  ABOUT 9¢';
+    const bw = measure(label, 33, '700', '1px') + 76, bx = 1452, by = 186;
+    ctx.save(); ctx.globalAlpha *= p;
+    stroke(GOLD, 3); rrect(bx - bw / 2, by, bw, 92, 1.6);
+    text(label, bx, by + 60, { size: 33, color: GOLD, weight: '700', spacing: '1px' });
+    ctx.restore();
+  });
+
+  // The value floats off the paper.
+  A(win(t, 7.6, 11.5, .5, .4), () => {
+    const r = clamp((t - 7.8) / 2.4, 0, 1);
+    const yy = cy + 20 - easeO(r) * 250;
+    text('$100', cx, yy, { size: 100, color: GOLD, weight: '700' });
+    A(1 - r * .5, () => { stroke(GOLD, 2); rline(cx - 120, yy + 28, cx + 120, yy + 28, 1); });
+  });
+  A(win(t, 9.4, 11.5, .5, .4), () =>
+    text('the value was never in the paper', 960, 860, { size: 36, color: TEAL, spacing: '1px' }));
+}
+
+/* --- 4. Barter and the double coincidence of wants (25 – 40) ------------- */
+function sceneBarter(t) {
+  const gy = 830;
+  ground(gy, 260, 1660, win(t, .1, 14.6, .5, .4));
+  const iA = idle(t, .4), iB = idle(t, 2.1);
+  const solved = clamp((t - 8.2) / 1.0, 0, 1);   // money enters
+
+  let FA, FB;
+  A(win(t, .1, 14.6, .5, .4), () => {
+    FA = figure({
+      x: 500, y: gy + iA.bob, s: 1.3, lean: iA.lean,
+      armR: [lerp(50, 38, solved), lerp(18, 8, solved)], armL: [118, 118],
+      face: t > 3.4 && solved < .5 ? 'sad' : 'happy'
+    });
+    FB = figure({
+      x: 1420, y: gy + iB.bob, s: 1.3, flip: true, lean: -iB.lean,
+      armR: [lerp(50, 38, solved), lerp(18, 8, solved)], armL: [118, 118],
+      face: t > 3.4 && solved < .5 ? 'plain' : 'happy'
+    });
+  });
+
+  if (FA) A(win(t, .4, 14.6, .5, .4), () => fish(FA.handR.x + 48, FA.handR.y - 4, 1.25));
+  if (FB) A(win(t, .4, 14.6, .5, .4), () => shoe(FB.handR.x - 48, FB.handR.y - 4, 1.25));
+
+  A(win(t, 1.4, 7.9, .5, .5), () => bubble(540, 430, "I'll trade fish for shoes.", { w: 360, tail: 'bl' }));
+  A(win(t, 3.4, 7.9, .5, .5), () => bubble(1400, 430, "I don't want fish.", { w: 340, tail: 'br', color: RED }));
+
+  // Failed trade
+  A(win(t, 5.0, 7.9, .4, .4), () => {
+    arrow(730, 720, 1190, 720, DIM, 3);
+    cross(960, 720, 42, RED, 7);
+    text('the double coincidence of wants', 960, 250, { size: 34, color: RED, spacing: '1px' });
+  });
+
+  // Money arrives in the middle and unblocks the trade.
+  A(win(t, 8.2, 14.6, .5, .4), () => {
+    const drop = easeO((t - 8.2) / .9);
+    coin(960, lerp(180, 640, drop), 74, '$');
+  });
+  A(win(t, 9.6, 14.6, .5, .4), () => {
+    curveArrow(660, 690, 862, 660, 62, TEAL, 3);
+    curveArrow(1058, 660, 1262, 690, 62, TEAL, 3);
+    text('fish', 655, 600, { size: 26, color: DIM });
+    text('shoes', 1268, 600, { size: 26, color: DIM });
+  });
+  A(win(t, 11.0, 14.6, .5, .4), () =>
+    text('a middle step everybody accepts', 960, 250, { size: 36, color: TEAL, spacing: '1px' }));
+}
+
+/* --- 5. Commodity money (40 – 53) --------------------------------------- */
+function sceneCommodity(t) {
+  const gy = 596;
+  const items = [
+    { x: 420, label: 'cowrie shells', draw: () => {
+        stroke(GOLD, 3);
+        for (let i = 0; i < 3; i++) {
+          const ox = (i - 1) * 46, oy = i === 1 ? -22 : 0;
+          ctx.save(); ctx.translate(ox, oy);
+          rcircle(0, 0, 24, 1.2);
+          ctx.lineWidth = 2; rline(-11, 0, 11, 0, .8);
+          for (let k = -2; k <= 2; k++) rline(k * 5, -4, k * 5, 4, .5);
+          ctx.restore();
+        }
+      } },
+    { x: 780, label: 'salt', draw: () => {
+        stroke(TEAL, 3);
+        // a poured mound with a few grains beside it
+        ctx.beginPath();
+        ctx.moveTo(-62, 34);
+        ctx.bezierCurveTo(-30, 30, -24, -18, 0, -30);
+        ctx.bezierCurveTo(24, -18, 30, 30, 62, 34);
+        ctx.closePath(); ctx.stroke();
+        ctx.lineWidth = 2;
+        rline(-24, 18, -14, 6, .6); rline(6, 14, 16, 2, .6);
+        dot(-70, 30, 3.4, TEAL); dot(72, 26, 3.4, TEAL); dot(-64, 14, 3, TEAL);
+      } },
+    { x: 1140, label: 'cattle', draw: () => {
+        stroke(INK, 3);
+        rrect(-46, -18, 92, 46, 1.2);
+        rcircle(52, -14, 20, 1.1);
+        rline(44, -30, 62, -44, .8); rline(62, -30, 70, -44, .8);
+        rline(-30, 28, -30, 58, .8); rline(20, 28, 20, 58, .8);
+        rline(-46, -8, -74, -30, .8);
+      } },
+    { x: 1500, label: 'gold coins', draw: () => {
+        coin(-34, 6, 30, ''); coin(34, 6, 30, ''); coin(0, -36, 30, '');
+      } }
+  ];
+  items.forEach((it, i) => {
+    const a = win(t, .3 + i * .55, 12.6, .45, .4);
+    A(a, () => {
+      const p = easeO((t - (.3 + i * .55)) / .7);
+      ctx.save();
+      ctx.translate(it.x, gy - 116 + (1 - p) * 26); ctx.scale(1.35, 1.35);
+      it.draw();
+      ctx.restore();
+      stroke('#2c333c', 3); rline(it.x - 104, gy, it.x + 104, gy, 1.6);
+      text(it.label, it.x, gy + 52, { size: 28, color: DIM });
+    });
+  });
+
+  A(win(t, 4.4, 12.6, .5, .4), () =>
+    text('none of this is money by nature', 960, 250, { size: 40, color: INK, spacing: '1px' }));
+
+  A(win(t, 6.4, 12.6, .5, .4), () => {
+    const lines = ['scarce', 'hard to fake', 'lasts', 'everyone agreed'];
+    lines.forEach((l, i) => {
+      const a = win(t, 6.4 + i * .5, 12.6, .4, .4);
+      A(a, () => {
+        const x = 300 + i * 440;
+        stroke(i === 3 ? GOLD : TEAL, 2.6); rrect(x - 152, 748, 304, 78, 1.4);
+        text(l, x, 800, { size: 31, color: i === 3 ? GOLD : TEAL, weight: i === 3 ? '700' : '400' });
+      });
+    });
+  });
+}
+
+/* --- 6. 1971, the link is cut (53 – 68) --------------------------------- */
+function sceneCut(t) {
+  const y = 470;
+  const snap = clamp((t - 5.6) / .25, 0, 1);   // the moment the chain breaks
+  const drift = easeO((t - 5.85) / 2.2);
+
+  A(win(t, .2, 14.6, .5, .4), () => goldBar(430, y, 260, 150));
+  A(win(t, .2, 14.6, .5, .4), () =>
+    text('GOLD', 430, y + 140, { size: 30, color: GOLD, spacing: '3px' }));
+
+  // Chain links; after the snap they fall away.
+  A(win(t, .8, 14.6, .5, .4), () => {
+    const n = 9;
+    for (let i = 0; i < n; i++) {
+      const p = i / (n - 1);
+      let cx = lerp(590, 1330, p), cy = y + Math.sin(p * Math.PI) * 14;
+      if (snap > 0) {
+        const fall = easeI(clamp((t - 5.6 - Math.abs(p - .5) * .16) / .75, 0, 1));
+        cy += fall * (420 + Math.abs(p - .5) * 300);
+        cx += (p - .5) * fall * 130;
+        ctx.globalAlpha = clamp(1 - fall * 2.2, 0, 1);
+      }
+      stroke(DIM, 3.4);
+      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rad(i % 2 ? 0 : 90) + (snap ? rad(i * 34 * drift) : 0));
+      ctx.beginPath(); ctx.ellipse(0, 0, 22, 13, 0, 0, 6.2832); ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  });
+
+  // The note drifts free after the cut.
+  A(win(t, .2, 14.6, .5, .4), () => {
+    const nx = 1470 + (snap ? Math.sin(t * .9) * 26 * drift : 0);
+    const ny = y - (snap ? drift * 70 : 0) + Math.sin(t * 1.3) * 6;
+    banknote(nx, ny, 300, 160, { denom: '1', rot: snap ? Math.sin(t * .8) * 7 * drift : 0 });
+  });
+
+  // Scissors sweep in and cut.
+  A(win(t, 3.9, 6.4, .4, .5), () => {
+    const app = easeO((t - 3.9) / 1.4);
+    const sx = 960, sy = lerp(120, y - 6, app);
+    const open = snap > 0 ? lerp(26, 6, snap) : lerp(6, 26, clamp((t - 4.9) / .7, 0, 1));
+    ctx.save(); ctx.translate(sx, sy);
+    stroke(RED, 4.5);
+    // two blades crossing at the pivot: tips below, handles above
+    rline(0, 0, -open, 54, 1); rline(0, 0, 62, -78, 1);
+    rline(0, 0, open, 54, 1);  rline(0, 0, -62, -78, 1);
+    ctx.lineWidth = 3.4;
+    rcircle(-70, -92, 19, 1); rcircle(70, -92, 19, 1);
+    dot(0, 0, 5, RED);
+    ctx.restore();
+  });
+
+  A(win(t, 1.6, 5.25, .5, .25), () =>
+    text('convertible into gold', 960, 250, { size: 36, color: DIM, spacing: '1px' }));
+
+  A(win(t, 5.7, 14.6, .35, .4), () => {
+    const p = easeO((t - 5.7) / .5);
+    ctx.save(); ctx.globalAlpha *= p;
+    text('1971', 960, 270 - (1 - p) * 14, { size: 128, color: RED, weight: '700', spacing: '6px' });
+    ctx.restore();
+  });
+  A(win(t, 7.0, 14.6, .5, .4), () =>
+    text('Nixon suspends the gold window', 960, 340, { size: 32, color: DIM, spacing: '1px' }));
+
+  A(win(t, 9.4, 14.6, .5, .4), () => {
+    text('FIAT MONEY', 960, 780, { size: 68, color: GOLD, weight: '700', spacing: '5px' });
+    A(win(t, 10.4, 14.6, .5, .4), () =>
+      text('Latin: “let it be done”', 960, 846, { size: 32, color: DIM }));
+  });
+}
+
+/* --- 7. Money as a database (68 – 83) ----------------------------------- */
+function sceneLedger(t) {
+  // Bank
+  A(win(t, .1, 14.6, .5, .4), () => {
+    ctx.save(); ctx.translate(420, 470);
+    stroke(INK, 3.6);
+    rpoly([[-170, -70], [0, -150], [170, -70]], true, 1.4);      // roof
+    rline(-190, -70, 190, -70, 1.4);
+    for (let i = -2; i <= 2; i++) rline(i * 68, -60, i * 68, 130, 1.2);
+    rline(-190, 130, 190, 130, 1.4);
+    rline(-206, 160, 206, 160, 1.4);
+    text('BANK', 0, 222, { size: 28, color: GOLD, spacing: '4px' });
+    ctx.restore();
+  });
+
+  // Ledger screen with a line being typed into existence.
+  A(win(t, 1.2, 14.6, .5, .4), () => {
+    const x = 900, y = 300, w = 800, h = 300;
+    ctx.fillStyle = 'rgba(20,25,31,.9)'; ctx.fillRect(x, y, w, h);
+    stroke(INK, 3); rrect(x, y, w, h, 1.4);
+    stroke('#2c333c', 2); rline(x, y + 56, x + w, y + 56, 1);
+    text('LEDGER', x + 24, y + 38, { size: 24, color: DIM, align: 'left', spacing: '3px' });
+
+    const rows = [['ACCOUNT 0041', '  8,120.00'], ['ACCOUNT 0042', ' 12,455.10'], ['ACCOUNT 0043', '    940.00']];
+    rows.forEach((r, i) => {
+      A(win(t, 1.8 + i * .3, 14.6, .35, .4), () => {
+        text(r[0], x + 24, y + 108 + i * 52, { size: 27, color: DIM, align: 'left' });
+        text(r[1], x + w - 24, y + 108 + i * 52, { size: 27, color: INK, align: 'right' });
+      });
+    });
+
+    // New loan appears character by character.
+    A(win(t, 4.4, 14.6, .35, .4), () => {
+      const full = '+ 10,000.00';
+      const n = Math.floor(clamp((t - 4.6) / .07, 0, full.length));
+      text('ACCOUNT 0044', x + 24, y + 264, { size: 27, color: GOLD, align: 'left' });
+      text(full.slice(0, n) + (Math.floor(t * 3) % 2 && n < full.length ? '_' : ''),
+        x + w - 24, y + 264, { size: 27, color: GOLD, align: 'right' });
+    });
+  });
+  A(win(t, 6.2, 14.6, .5, .4), () =>
+    text('a loan does not move money — it creates it', 960, 668, { size: 34, color: GOLD, spacing: '1px' }));
+
+  // 97 / 3 split
+  A(win(t, 8.4, 14.6, .5, .4), () => {
+    const x = 300, y = 730, w = 1320, h = 70;
+    const p = easeO((t - 8.5) / 1.2);
+    ctx.fillStyle = '#1d3b39'; ctx.fillRect(x, y, w * .97 * p, h);
+    ctx.fillStyle = '#4a3a18'; ctx.fillRect(x + w * .97, y, w * .03 * p, h);
+    stroke(INK, 3); rrect(x, y, w, h, 1.2);
+    A(win(t, 9.4, 14.6, .4, .4), () => {
+      text('97%  bank deposits — just numbers', x + 26, y + 47, { size: 30, color: TEAL, align: 'left' });
+      text('3% cash', x + w, y + 122, { size: 26, color: GOLD, align: 'right' });
+      text('Bank of England, 2014 (UK money supply)', x, y + 122, { size: 22, color: DIM, align: 'left' });
+    });
+  });
+}
+
+/* --- 8. A shared technology (83 – 95) ----------------------------------- */
+function sceneSocial(t) {
+  const items = [
+    { label: 'language', draw: () => {
+        stroke(TEAL, 3.4);
+        ctx.beginPath(); ctx.roundRect(-70, -56, 140, 96, 18); ctx.stroke();
+        fillPoly([[-24, 40], [10, 40], [-40, 74]], BG);
+        rline(-24, 40, -40, 74, .8); rline(-40, 74, 10, 40, .8);
+        dot(-30, -8, 5, TEAL); dot(0, -8, 5, TEAL); dot(30, -8, 5, TEAL);
+      } },
+    { label: 'law', draw: () => {
+        stroke(TEAL, 3.4);
+        rline(0, -60, 0, 56, 1); rline(-70, -60, 70, -60, 1);
+        rline(-40, 56, 40, 56, 1);
+        rarc(-70, -60, 34, rad(0), rad(180), 1);
+        rarc(70, -60, 34, rad(0), rad(180), 1);
+        rline(-70, -60, -70, -46, .6); rline(70, -60, 70, -46, .6);
+      } },
+    { label: 'borders', draw: () => {
+        stroke(TEAL, 3.4);
+        ctx.setLineDash([14, 12]);
+        ctx.beginPath();
+        ctx.moveTo(-72, 60); ctx.quadraticCurveTo(-10, 10, -30, -30);
+        ctx.quadraticCurveTo(-44, -66, 40, -58); ctx.stroke();
+        ctx.setLineDash([]);
+        stroke('#3a434e', 2.4);
+        rpoly([[-96, 70], [96, 70], [96, -70], [-96, -70]], true, 1);
+      } },
+    { label: 'money', draw: () => banknote(0, 0, 190, 108, { denom: '5' }) }
+  ];
+  items.forEach((it, i) => {
+    A(win(t, .3 + i * .7, 11.6, .45, .4), () => {
+      const x = 380 + i * 400, y = 430;
+      const p = easeO((t - (.3 + i * .7)) / .7);
+      ctx.save(); ctx.translate(x, y + (1 - p) * 20); it.draw(); ctx.restore();
+      text(it.label, x, y + 140, { size: 28, color: i === 3 ? GOLD : DIM });
+    });
+  });
+
+  // Bracket tying the four together.
+  A(win(t, 4.2, 11.6, .5, .4), () => {
+    const p = easeO((t - 4.2) / .9);
+    stroke(DIM, 3);
+    const x1 = 300, x2 = 1620, y = 640;
+    rline(x1, y, lerp(x1, x2, p), y, 1.4);
+    if (p > .5) { rline(x1, y, x1, y - 22, 1); rline(x2, y, x2, y - 22, 1); rline(960, y, 960, y + 24, 1); }
+  });
+  A(win(t, 5.2, 11.6, .5, .4), () =>
+    text('none of these exist in nature', 960, 712, { size: 38, color: INK, spacing: '1px' }));
+  A(win(t, 6.6, 11.6, .5, .4), () =>
+    text('all of them exist because we agree they do', 960, 778, { size: 38, color: GOLD, spacing: '1px' }));
+}
+
+/* --- 9. What holds it up (95 – 106.5) ----------------------------------- */
+function sceneSupport(t) {
+  const deckY = 466, pillarTop = 478, pillarBot = 664, baseY = 786, crowdY = 890;
+  const pillars = [
+    { x: 470, l1: 'TAXES', l2: 'are owed in it' },
+    { x: 960, l1: 'LAW', l2: 'makes it settle debts' },
+    { x: 1450, l1: 'SUPPLY', l2: 'is limited & managed' }
+  ];
+
+  A(win(t, .2, 11.0, .5, .4), () => banknote(960, deckY - 92, 300, 160, { denom: '100' }));
+  A(win(t, 1.0, 11.0, .5, .4), () => { stroke(INK, 4); rline(300, deckY, 1620, deckY, 1.8); });
+
+  pillars.forEach((p, i) => {
+    A(win(t, 1.4 + i * .6, 11.0, .45, .4), () => {
+      const gp = easeO((t - (1.4 + i * .6)) / .7);
+      stroke(GOLD, 3.4);
+      rrect(p.x - 66, pillarTop, 132, (pillarBot - pillarTop) * gp, 1.4);
+      A(clamp((gp - .6) / .4, 0, 1), () => {
+        text(p.l1, p.x, pillarBot + 54, { size: 32, color: GOLD, weight: '700', spacing: '2px' });
+        text(p.l2, p.x, pillarBot + 94, { size: 26, color: DIM });
+      });
+    });
+  });
+
+  // Everything above rests on a crowd of people, each expecting the others.
+  A(win(t, 4.6, 11.0, .5, .4), () => { stroke(TEAL, 4); rline(300, baseY, 1620, baseY, 1.8); });
+  for (let i = 0; i < 10; i++) {
+    A(win(t, 4.8 + i * .09, 11.0, .35, .4), () => {
+      const x = 340 + i * 142, ph = t * 1.7 + i * 1.3;
+      figure({
+        x, y: crowdY + Math.sin(ph) * 1.6, s: .48, color: i % 3 === 1 ? TEAL : INK, lw: 5.5,
+        armL: [242 + Math.sin(ph) * 3, 254], armR: [298 - Math.sin(ph) * 3, 286],
+        face: 'happy'
+      });
+    });
+  }
+  A(win(t, 7.2, 11.0, .5, .4), () =>
+    text('CONFIDENCE', 960, 196, { size: 64, color: TEAL, weight: '700', spacing: '8px' }));
+  A(win(t, 8.0, 11.0, .5, .4), () =>
+    text('everyone expecting everyone else to keep accepting it', 960, 252, { size: 30, color: DIM }));
+}
+
+/* --- 10. When belief breaks (106.5 – 115) ------------------------------- */
+/* Manual grouping — never Intl, so headless capture can't drift by locale. */
+const commas = n => {
+  const s = Math.round(n).toString();
+  let out = '';
+  for (let i = 0; i < s.length; i++) out += (i && (s.length - i) % 3 === 0 ? ',' : '') + s[i];
+  return out;
+};
+
+function sceneBreak(t) {
+  const gy = 806;
+  ground(gy, 240, 1680, win(t, .1, 8.0, .5, .4));
+
+  // Figure pushing a barrow of cash toward one small loaf.
+  A(win(t, .2, 8.0, .5, .4), () => {
+    const push = easeO(clamp((t - .4) / 3.2, 0, 1));
+    const x = lerp(380, 720, push);
+    const step = Math.sin(t * 5) * 12;
+    figure({
+      x, y: gy, s: 1.05, lean: 8,
+      armL: [38, 30], armR: [44, 34],
+      legL: [83 + step, 92 + step * .4], legR: [97 - step, 92 - step * .4],
+      face: 'sad'
+    });
+    // barrow
+    ctx.save(); ctx.translate(x + 175, gy - 120);
+    stroke(INK, 3.4);
+    rpoly([[-95, -40], [95, -40], [70, 40], [-70, 40]], true, 1.3);
+    rline(-95, -40, -150, -66, 1); rline(95, -40, 150, -8, 1);
+    rcircle(58, 92, 44, 1.2);
+    rline(70, 40, 58, 92, 1); rline(-70, 40, -60, 96, 1);
+    // overflowing notes
+    for (let i = 0; i < 11; i++) {
+      const ox = -80 + (i % 6) * 30 + (i > 5 ? 16 : 0);
+      const oy = -52 - Math.floor(i / 6) * 26 - hash(i, 3, 1) * 12;
+      banknote(ox, oy, 62, 34, { rot: n11(i, 7, BOIL) * 26, denom: '', detail: false });
+    }
+    ctx.restore();
+  });
+  A(win(t, 1.4, 8.0, .5, .4), () => {
+    bread(1480, gy - 62, 1.4);
+    text('one loaf of bread', 1480, gy + 42, { size: 27, color: DIM });
+  });
+
+  // The price of that loaf in Weimar Germany, January → November 1923.
+  A(win(t, .6, 8.0, .5, .4), () =>
+    text('Germany, 1923', 960, 226, { size: 44, color: RED, weight: '700', spacing: '1px' }));
+  A(win(t, 1.6, 8.0, .5, .4), () => {
+    const p = ease(clamp((t - 1.8) / 3.0, 0, 1));
+    const price = 250 * Math.pow(200e9 / 250, p);       // 250 marks → 200 billion
+    text('price of one loaf, in marks', 960, 296, { size: 28, color: DIM });
+    text(commas(price), 960, 386, { size: 76, color: RED, weight: '700', spacing: '1px' });
+    text(p < .98 ? 'January 1923' : 'November 1923', 960, 436, { size: 26, color: DIM });
+  });
+  A(win(t, 5.4, 8.0, .5, .4), () =>
+    text('Zimbabwe, 2008: at the peak, prices doubled about every day',
+      960, 880, { size: 32, color: GOLD, spacing: '1px' }));
+}
+
+/* --- 11. Close (115 – 120) ---------------------------------------------- */
+function sceneClose(t) {
+  const gy = 840;
+  const a = win(t, .1, 4.4, .5, .5);
+  A(a, () => {
+    const shake = Math.sin(t * 3.4) * 3;                 // the handshake pumps a little
+    const iA = idle(t, .3), iB = idle(t, 1.9);
+    figure({ x: 884, y: gy + iA.bob, s: 1.0, lean: iA.lean, armR: [8 + shake, shake], armL: [120, 120], face: 'happy' });
+    figure({ x: 1036, y: gy + iB.bob, s: 1.0, flip: true, lean: -iB.lean, armR: [8 + shake, shake], armL: [120, 120], face: 'happy' });
+
+    // the note they both accept, glowing above the handshake
+    const cy = gy - 330, pulse = .5 + Math.sin(t * 2.2) * .16;
+    ctx.save();
+    const g = ctx.createRadialGradient(960, cy, 10, 960, cy, 190);
+    g.addColorStop(0, `rgba(245,196,81,${.30 * pulse + .12})`);
+    g.addColorStop(1, 'rgba(245,196,81,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(960, cy, 190, 0, 6.2832); ctx.fill();
+    ctx.restore();
+    banknote(960, cy, 210, 114, { denom: '1', rot: Math.sin(t * .8) * 1.6 });
+  });
+  A(win(t, .8, 4.6, .6, .5), () => {
+    text('AN AGREEMENT', 960, 300, { size: 82, color: GOLD, weight: '700', spacing: '6px' });
+    A(win(t, 1.8, 4.6, .6, .5), () =>
+      text('renewed every day, by everyone', 960, 366, { size: 36, color: DIM, spacing: '2px' }));
+  });
+}
+
+/* ==========================================================================
+   TIMELINE
+   ========================================================================== */
+const SCENES = [
+  [0, 7, sceneOpen],
+  [7, 13, sceneTitle],
+  [13, 25, scenePaper],
+  [25, 40, sceneBarter],
+  [40, 53, sceneCommodity],
+  [53, 68, sceneCut],
+  [68, 83, sceneLedger],
+  [83, 95, sceneSocial],
+  [95, 106.5, sceneSupport],
+  [106.5, 115, sceneBreak],
+  [115, 120, sceneClose]
+];
+
+/* --------------------------------------------------------- chrome overlays */
+function chapterLabel(t) {
+  for (const [a, b, n, title] of CHAPTERS) {
+    // windows are tuned so one label finishes fading out before the next starts
+    const al = win(t, a + .5, b - .5, .35, .35);
+    A(al * .95, () => {
+      stroke(GOLD, 3); rline(96, 92, 96, 132, 1);
+      text(String(n), 118, 112, { size: 22, color: GOLD, align: 'left', weight: '700' });
+      text(title.toUpperCase(), 146, 112, { size: 22, color: DIM, align: 'left', spacing: '3px' });
+    });
+  }
+}
+function captionBar(t) {
+  for (const [a, b, str] of CAPTIONS) {
+    const al = win(t, a, b, .28, .28);
+    if (al <= .004) continue;
+    A(al, () => {
+      const size = 40;
+      const lines = wrap(str, 1400, size);
+      const boxH = lines.length * size * 1.28 + 34;
+      const boxW = Math.min(1520, Math.max(...lines.map(l => measure(l, size))) + 90);
+      const y = 1080 - 44 - boxH;
+      ctx.fillStyle = 'rgba(8,10,13,.82)';
+      ctx.beginPath(); ctx.roundRect(960 - boxW / 2, y, boxW, boxH, 10); ctx.fill();
+      lines.forEach((l, i) =>
+        text(l, 960, y + 34 + i * size * 1.28, { size, color: '#f5f1e6' }));
+    });
+  }
+}
+function progressBar(t) {
+  ctx.fillStyle = 'rgba(255,255,255,.09)'; ctx.fillRect(0, H - 6, W, 6);
+  ctx.fillStyle = GOLD; ctx.fillRect(0, H - 6, W * clamp(t / DUR, 0, 1), 6);
+}
+
+/* ------------------------------------------------------------- main render */
+let SCALE = 1;                           // >1 renders above 1080p for capture
+function render(t) {
+  t = clamp(t, 0, DUR);
+  BOIL = Math.floor(t * 8);              // 8 fps line boil
+  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+  ctx.globalAlpha = 1;
+  backdrop(t);
+  for (const [a, b, fn] of SCENES) {
+    if (t >= a - .6 && t <= b + .6) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      fn(t - a);
+      ctx.restore();
+    }
+  }
+  chapterLabel(t);
+  captionBar(t);
+  progressBar(t);
+}
+
+/* --------------------------------------------------------------- playback */
+let playing = false, cur = 0, last = 0;
+const btnPlay = document.getElementById('play');
+const btnRestart = document.getElementById('restart');
+const scrub = document.getElementById('scrub');
+const timeEl = document.getElementById('time');
+const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+function frame(now) {
+  if (playing) {
+    const dt = (now - last) / 1000;
+    last = now;
+    cur += dt;
+    if (cur >= DUR) { cur = DUR; playing = false; btnPlay.textContent = 'Play'; }
+    render(cur);
+    scrub.value = cur;
+    timeEl.textContent = `${fmt(cur)} / 2:00`;
+  }
+  requestAnimationFrame(frame);
+}
+btnPlay.onclick = () => {
+  if (cur >= DUR) cur = 0;
+  playing = !playing;
+  last = performance.now();
+  btnPlay.textContent = playing ? 'Pause' : 'Play';
+};
+btnRestart.onclick = () => { cur = 0; render(0); scrub.value = 0; timeEl.textContent = `0:00 / 2:00`; };
+cv.onclick = () => btnPlay.onclick();
+scrub.oninput = () => { cur = parseFloat(scrub.value); render(cur); timeEl.textContent = `${fmt(cur)} / 2:00`; };
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); btnPlay.onclick(); }
+  if (e.code === 'ArrowRight') { cur = clamp(cur + 5, 0, DUR); render(cur); scrub.value = cur; }
+  if (e.code === 'ArrowLeft') { cur = clamp(cur - 5, 0, DUR); render(cur); scrub.value = cur; }
+});
+
+/* ------------------------------------------- headless capture entry points */
+window.CAPTIONS = CAPTIONS;
+window.DURATION = DUR;
+window.renderAt = t => { render(t); return true; };
+window.setScale = s => { SCALE = s; cv.width = W * s; cv.height = H * s; render(cur); };
+/* Capture reads frames straight off the canvas — far faster than screenshotting. */
+window.frameData = (t, mime, q) => { render(t); return cv.toDataURL(mime, q); };
+if (location.search.includes('capture')) document.body.classList.add('capture');
+
+render(0);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
