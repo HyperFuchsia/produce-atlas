@@ -268,6 +268,7 @@
     /* The one thing he would rather be doing. If he has not got a face on he
        puts one on first — you asked for the machine, not for a lecture about
        what he would need in order to play it. */
+    this.chat.onBlockout = function () { self.enterBlockout(); };
     this.chat.onSlots = function () {
       if (!self.face) self.becomeForm(NG.K.find('face'));
       /* He may have to become a face first, and the morph takes its time.
@@ -289,11 +290,16 @@
       self.dismissHand();
     };
 
+    this.blockout = null;
     this.buildBeing(5);
     this.renderer.setShadowSize(1024);
     this.resize();
     this.bindEvents();
     this.buildChips();
+    if (/[?&]blockout/.test(window.location.search)) {
+      const self2 = this;
+      setTimeout(function () { self2.enterBlockout(); }, 40);
+    }
   }
 
   App.prototype.buildBeing = function (subdiv) {
@@ -2187,6 +2193,95 @@
     document.body.classList.toggle('mute', !!why || !this.speech.enabled);
   };
 
+  /* ---- blockout ---------------------------------------------------------- */
+
+  /* Everything on the field at once, as one grey shape each, labelled. No
+     behaviour, no polish, nothing to look at twice. Reached with ?blockout on
+     the address, or by typing "blockout".
+
+     It is here so the next thing does not get modelled before it has been
+     stood in the room. */
+  App.prototype.enterBlockout = function () {
+    if (this.blockout) return;
+    this.blockout = [];
+    this.becomeForm(null, true);
+    this.enterPhase('free');
+    this.dismissSlots();
+    this._dismissHands();
+    for (let i = 0; i < this.props.length; i++) this.props[i].fading = true;
+
+    const floorY = this.renderer.floorY;
+    const scene = NG.BLOCK.SCENE(floorY);
+    const where = NG.BLOCK.WHERE(floorY);
+    const tags = $('tags');
+
+    for (let i = 0; i < scene.length; i++) {
+      const item = scene[i];
+      const parts = new (Object.getPrototypeOf({}).constructor)();
+      /* The builders take a Parts collector; make one the same way slots do. */
+      const p = { pos: [], col: [], mat: [], idx: [] };
+      p.add = function (positions, indices, colour) {
+        const base = p.pos.length / 3;
+        for (let k = 0; k < positions.length / 3; k++) {
+          p.pos.push(positions[k * 3], positions[k * 3 + 1], positions[k * 3 + 2]);
+          p.col.push(colour[0], colour[1], colour[2]);
+          p.mat.push(0);
+        }
+        for (let k = 0; k < indices.length; k++) p.idx.push(indices[k] + base);
+      };
+      item.build(p);
+      const positions = new Float32Array(p.pos);
+      const indices = new Uint32Array(p.idx);
+      const mesh = {
+        positions: positions,
+        normals: NG.G.computeNormals(positions, indices, positions.length / 3),
+        colors: new Float32Array(p.col),
+        mats: new Float32Array(p.mat),
+        indices: indices
+      };
+
+      const at = where[item.label] || [0, 0, 0];
+      const t = { handle: this.renderer.createProp(mesh), matrix: M.m4(),
+        local: M.m4(), world: true, grow: 1, target: 1, skin: 0 };
+      M.compose(t.local, at[0], at[1], at[2], 0, 0, 1);
+      this.attached.push(t);
+
+      const el = document.createElement('div');
+      el.className = 'caption';
+      const name = document.createElement('span');
+      name.className = 'name';
+      name.textContent = item.label;
+      const size = document.createElement('span');
+      size.className = 'size';
+      size.textContent = item.size;
+      el.appendChild(name);
+      el.appendChild(size);
+      tags.appendChild(el);
+
+      this.blockout.push({ el: el, at: [at[0], at[1] + 0.25, at[2]] });
+    }
+    /* Far enough back that a four and a half metre car and a twenty three
+       centimetre head are in the same picture. The normal zoom is clamped to
+       the subject; a diagram is not a subject. */
+    this.camera.targetDist = 46;
+    this.camera.dist = 46;
+    this.camera.pitch = 0.22;
+    this.chat.say(['Blockout. Everything that has been asked for, one shape each.',
+      'Say what to build properly and I will build that. Reload for the real one.']);
+  };
+
+  App.prototype.updateBlockout = function () {
+    if (!this.blockout) return;
+    for (let i = 0; i < this.blockout.length; i++) {
+      const b = this.blockout[i];
+      const at = this._toScreen(b.at);
+      if (!at) { b.el.style.display = 'none'; continue; }
+      b.el.style.display = '';
+      b.el.style.left = M.clamp(at.x, 70, this.cssW - 70) + 'px';
+      b.el.style.top = M.clamp(at.y, 26, this.cssH - 20) + 'px';
+    }
+  };
+
   App.prototype.buildChips = function () {
     const self = this;
     const host = $('chips');
@@ -3038,6 +3133,7 @@
 
     this.chat.update(dt);
     this.updateProps(dt);
+    this.updateBlockout();
     /* Cheap, and the only way anyone finds out the engine gave up. */
     this._voiceTick = (this._voiceTick || 0) + dt;
     if (this._voiceTick > 0.75) { this._voiceTick = 0; this._showVoiceState(); }

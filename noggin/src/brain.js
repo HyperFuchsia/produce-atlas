@@ -170,6 +170,10 @@
     const lesson = C.find(raw);
     if (lesson) return { lesson: lesson, lines: [] };
 
+    if (has(text, ['blockout', 'block out', 'mockup', 'mock up', 'greybox', 'grey box'])) {
+      return { blockout: true, lines: ['Right. Everything, as boxes.'] };
+    }
+
     /* The one thing he would rather be doing than this. Before the specimen
        lookup, or "fruit machine" is read as a request to become fruit. */
     if (has(text, SLOT_WORDS)) {
