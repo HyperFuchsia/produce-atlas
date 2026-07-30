@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Why Money Isn't Real — a 2-minute stick figure explainer</title>
+<title>Why Money Isn't Real — a 2-minute 3-D stick figure explainer</title>
 <style>
   :root { color-scheme: dark; }
   html, body {
@@ -13,12 +13,10 @@
     color: #d8d3c6;
   }
   #stage {
-    position: relative;
-    width: 100%; height: 100%;
+    position: relative; width: 100%; height: 100%;
     display: flex; align-items: center; justify-content: center;
     flex-direction: column; gap: 14px;
   }
-  #wrap { position: relative; line-height: 0; }
   canvas {
     display: block;
     width: min(96vw, calc((100vh - 96px) * 16 / 9));
@@ -49,7 +47,7 @@
 </head>
 <body>
 <div id="stage">
-  <div id="wrap"><canvas id="c" width="1920" height="1080"></canvas></div>
+  <canvas id="c" width="1920" height="1080"></canvas>
   <div id="controls">
     <button id="play">Play</button>
     <button id="restart">Restart</button>
@@ -60,8 +58,11 @@
 <script>
 "use strict";
 /* =========================================================================
-   WHY MONEY ISN'T REAL — a 120 second stick-figure explainer.
-   Everything is drawn as a pure function of time, so headless frame capture
+   WHY MONEY ISN'T REAL — 120 seconds, rendered by a small software 3-D
+   engine on a 2-D canvas: perspective camera, depth-sorted polygons, Lambert
+   shading, and hand-drawn ink strokes on real silhouette and crease edges.
+
+   Every frame is a pure function of time, so headless capture
    (render/capture.mjs) produces exactly what playback shows.
    ========================================================================= */
 
@@ -70,16 +71,17 @@ const cv = document.getElementById('c');
 const ctx = cv.getContext('2d');
 
 /* ---------------------------------------------------------------- palette */
-const INK   = '#efe9db';
-const DIM   = '#8c8778';
-const GOLD  = '#f5c451';
-const TEAL  = '#5fd0c3';
-const RED   = '#ef6a5a';
-const BG    = '#0f1216';
+const INK  = '#efe9db';
+const DIM  = '#8c8778';
+const GOLD = '#f5c451';
+const TEAL = '#5fd0c3';
+const RED  = '#ef6a5a';
+const BG   = '#0f1216';
+const BGRGB = [15, 18, 22];
 
 /* ------------------------------------------------------- deterministic rng
-   Hand-drawn "boil": jitter is reseeded 8 times a second, never per-frame,
-   so lines wobble like paper animation instead of buzzing.               */
+   Ink jitter is reseeded 8 times a second and keyed to an edge's identity,
+   so lines wobble like paper animation instead of buzzing every frame.    */
 let BOIL = 0;
 function hash(a, b, c) {
   const s = Math.sin(a * 127.1 + b * 311.7 + c * 74.7) * 43758.5453;
@@ -88,12 +90,13 @@ function hash(a, b, c) {
 const n11 = (a, b, c) => hash(a, b, c) * 2 - 1;
 
 /* --------------------------------------------------------------- easing   */
-const clamp  = (v, a, b) => v < a ? a : v > b ? b : v;
-const ease   = t => (t = clamp(t, 0, 1)) < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-const easeO  = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
-const easeI  = t => Math.pow(clamp(t, 0, 1), 3);
-const lerp   = (a, b, t) => a + (b - a) * t;
-const rad    = d => d * Math.PI / 180;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const ease  = t => (t = clamp(t, 0, 1)) < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+const easeO = t => 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+const easeI = t => Math.pow(clamp(t, 0, 1), 3);
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rad   = d => d * Math.PI / 180;
+const TAU   = Math.PI * 2;
 
 /* Alpha envelope: 0 before `a`, 1 between, 0 after `b`, with soft edges. */
 function win(t, a, b, fi = .45, fo = .45) {
@@ -102,98 +105,393 @@ function win(t, a, b, fi = .45, fo = .45) {
   if (t > b) return 1 - ease((t - b) / fo);
   return 1;
 }
-/* Draw `fn` at alpha `a`, skipping the work entirely when invisible. */
 function A(a, fn) {
   if (a <= .004) return;
   ctx.save(); ctx.globalAlpha *= clamp(a, 0, 1); fn(); ctx.restore();
 }
 
-/* ------------------------------------------------------ rough ink drawing */
-function stroke(color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+/* ========================================================== 3-D FOUNDATION */
+const V = (x, y, z) => ({ x, y, z });
+const vadd  = (a, b) => V(a.x + b.x, a.y + b.y, a.z + b.z);
+const vsub  = (a, b) => V(a.x - b.x, a.y - b.y, a.z - b.z);
+const vmul  = (a, s) => V(a.x * s, a.y * s, a.z * s);
+const vlerp = (a, b, t) => V(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t));
+const vdot  = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+const vcross = (a, b) => V(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
+const vlen  = a => Math.hypot(a.x, a.y, a.z);
+const vnorm = a => { const l = vlen(a) || 1; return V(a.x / l, a.y / l, a.z / l); };
 
-function rline(x1, y1, x2, y2, amp = 1.7) {
+/* Row-major 4x4. */
+function mMul(a, b) {
+  const o = new Array(16);
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+    let s = 0; for (let k = 0; k < 4; k++) s += a[r * 4 + k] * b[k * 4 + c];
+    o[r * 4 + c] = s;
+  }
+  return o;
+}
+const mI  = () => [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+const mT  = (x, y, z) => [1,0,0,x, 0,1,0,y, 0,0,1,z, 0,0,0,1];
+const mS  = (x, y, z) => [x,0,0,0, 0,y,0,0, 0,0,z,0, 0,0,0,1];
+const mRX = a => { const c = Math.cos(a), s = Math.sin(a); return [1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1]; };
+const mRY = a => { const c = Math.cos(a), s = Math.sin(a); return [c,0,s,0, 0,1,0,0, -s,0,c,0, 0,0,0,1]; };
+const mRZ = a => { const c = Math.cos(a), s = Math.sin(a); return [c,-s,0,0, s,c,0,0, 0,0,1,0, 0,0,0,1]; };
+const xp = (m, p) => V(m[0]*p.x + m[1]*p.y + m[2]*p.z + m[3],
+                       m[4]*p.x + m[5]*p.y + m[6]*p.z + m[7],
+                       m[8]*p.x + m[9]*p.y + m[10]*p.z + m[11]);
+const xd = (m, p) => V(m[0]*p.x + m[1]*p.y + m[2]*p.z,
+                       m[4]*p.x + m[5]*p.y + m[6]*p.z,
+                       m[8]*p.x + m[9]*p.y + m[10]*p.z);
+/* Places a unit-Y-axis mesh along a→b without scaling it. */
+function axisMat(a, b) {
+  const d = vsub(b, a), L = vlen(d) || 1e-6, y = vmul(d, 1 / L);
+  const up = Math.abs(y.y) > .95 ? V(1, 0, 0) : V(0, 1, 0);
+  const x = vnorm(vcross(up, y)), z = vcross(x, y);
+  return [x.x,y.x,z.x,a.x, x.y,y.y,z.y,a.y, x.z,y.z,z.z,a.z, 0,0,0,1];
+}
+
+/* -------------------------------------------------------------- mesh build
+   Each mesh precomputes its edge list with adjacent faces and a crease flag,
+   which is what lets the renderer ink only silhouettes and hard corners.  */
+const COS_CREASE = Math.cos(rad(45));
+function buildMesh(vs, fs) {
+  const verts = new Float64Array(vs.length * 3);
+  vs.forEach((p, i) => { verts[i*3] = p[0]; verts[i*3+1] = p[1]; verts[i*3+2] = p[2]; });
+  const faces = new Int32Array(fs.length * 3);
+  fs.forEach((f, i) => { faces[i*3] = f[0]; faces[i*3+1] = f[1]; faces[i*3+2] = f[2]; });
+  const nrm = fs.map(f => {
+    const a = V(...vs[f[0]]), b = V(...vs[f[1]]), c = V(...vs[f[2]]);
+    return vnorm(vcross(vsub(b, a), vsub(c, a)));
+  });
+  const em = new Map(), edges = [];
+  for (let fi = 0; fi < fs.length; fi++) for (let k = 0; k < 3; k++) {
+    const a = fs[fi][k], b = fs[fi][(k + 1) % 3];
+    const key = a < b ? a + ',' + b : b + ',' + a;
+    let e = em.get(key);
+    if (!e) { e = { a: Math.min(a,b), b: Math.max(a,b), f0: fi, f1: -1, crease: true, id: edges.length }; em.set(key, e); edges.push(e); }
+    else { e.f1 = fi; e.crease = vdot(nrm[e.f0], nrm[fi]) < COS_CREASE; }
+  }
+  const fe = fs.map(() => []);
+  edges.forEach(e => { fe[e.f0].push(e); if (e.f1 >= 0) fe[e.f1].push(e); });
+  return { verts, faces, nv: vs.length, nf: fs.length, edges, fe };
+}
+/* Stitches a stack of same-width vertex rings into a closed surface. */
+function ringSurface(vs, fs, rings, seg, botPole, topPole) {
+  if (botPole >= 0) for (let i = 0; i < seg; i++) fs.push([botPole, rings[0] + (i+1) % seg, rings[0] + i]);
+  for (let r = 0; r < rings.length - 1; r++) {
+    const Aa = rings[r], Bb = rings[r + 1];
+    for (let i = 0; i < seg; i++) {
+      const j = (i + 1) % seg;
+      fs.push([Aa + i, Aa + j, Bb + j], [Aa + i, Bb + j, Bb + i]);
+    }
+  }
+  if (topPole >= 0) {
+    const last = rings[rings.length - 1];
+    for (let i = 0; i < seg; i++) fs.push([topPole, last + i, last + (i+1) % seg]);
+  }
+}
+function capsuleMesh(L, r, seg = 12, cap = 4) {
+  const vs = [], fs = [], rings = [];
+  const bp = vs.length; vs.push([0, -r, 0]);
+  for (let j = 1; j <= cap; j++) {
+    const ph = j / cap * Math.PI / 2, y = -r * Math.cos(ph), rr = r * Math.sin(ph);
+    rings.push(vs.length);
+    for (let i = 0; i < seg; i++) { const a = i / seg * TAU; vs.push([Math.cos(a)*rr, y, Math.sin(a)*rr]); }
+  }
+  for (let k = 0; k < cap; k++) {
+    const ps = k / cap * Math.PI / 2, y = L + r * Math.sin(ps), rr = r * Math.cos(ps);
+    rings.push(vs.length);
+    for (let i = 0; i < seg; i++) { const a = i / seg * TAU; vs.push([Math.cos(a)*rr, y, Math.sin(a)*rr]); }
+  }
+  const tp = vs.length; vs.push([0, L + r, 0]);
+  ringSurface(vs, fs, rings, seg, bp, tp);
+  return buildMesh(vs, fs);
+}
+const capCache = new Map();
+function capsule(L, r, seg = 12) {
+  const k = L.toFixed(3) + '_' + r.toFixed(3) + '_' + seg;
+  let m = capCache.get(k);
+  if (!m) { m = capsuleMesh(L, r, seg); capCache.set(k, m); }
+  return m;
+}
+function tubeMesh(r0, r1, seg = 12) {           // unit height, y = 0..1
+  const vs = [], fs = [], rings = [];
+  [[0, r0], [1, r1]].forEach(([y, rr]) => {
+    rings.push(vs.length);
+    for (let i = 0; i < seg; i++) { const a = i / seg * TAU; vs.push([Math.cos(a)*rr, y, Math.sin(a)*rr]); }
+  });
+  const bp = vs.length; vs.push([0, 0, 0]);
+  const tp = vs.length; vs.push([0, 1, 0]);
+  ringSurface(vs, fs, rings, seg, -1, -1);
+  for (let i = 0; i < seg; i++) {
+    const j = (i + 1) % seg;
+    fs.push([bp, rings[0] + j, rings[0] + i], [tp, rings[1] + i, rings[1] + j]);
+  }
+  return buildMesh(vs, fs);
+}
+function sphereMesh(su = 14, sv = 9) {
+  const vs = [], fs = [], rings = [];
+  const bp = vs.length; vs.push([0, 1, 0]);
+  for (let v = 1; v < sv; v++) {
+    const ph = v / sv * Math.PI;
+    rings.push(vs.length);
+    for (let u = 0; u < su; u++) { const th = u / su * TAU; vs.push([Math.sin(ph)*Math.cos(th), Math.cos(ph), Math.sin(ph)*Math.sin(th)]); }
+  }
+  const tp = vs.length; vs.push([0, -1, 0]);
+  ringSurface(vs, fs, rings, su, tp, bp);
+  return buildMesh(vs, fs);
+}
+function boxMesh() {
+  const vs = [[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]];
+  const fs = [[4,5,6],[4,6,7],[1,0,3],[1,3,2],[0,4,7],[0,7,3],[5,1,2],[5,2,6],[3,7,6],[3,6,2],[0,1,5],[0,5,4]];
+  return buildMesh(vs, fs);
+}
+function discMesh(seg = 24) {
+  const vs = [[0,0,0]], fs = [];
+  for (let i = 0; i < seg; i++) { const a = i / seg * TAU; vs.push([Math.cos(a), 0, Math.sin(a)]); }
+  for (let i = 0; i < seg; i++) fs.push([0, 1 + i, 1 + (i + 1) % seg]);
+  return buildMesh(vs, fs);
+}
+function torusMesh(r, su = 16, sv = 8) {
+  const vs = [], fs = [];
+  for (let i = 0; i < su; i++) {
+    const a = i / su * TAU, cx = Math.cos(a), cz = Math.sin(a);
+    for (let j = 0; j < sv; j++) {
+      const b = j / sv * TAU, rr = 1 + r * Math.cos(b);
+      vs.push([cx * rr, r * Math.sin(b), cz * rr]);
+    }
+  }
+  const id = (i, j) => (i % su) * sv + (j % sv);
+  for (let i = 0; i < su; i++) for (let j = 0; j < sv; j++)
+    fs.push([id(i,j), id(i+1,j), id(i+1,j+1)], [id(i,j), id(i+1,j+1), id(i,j+1)]);
+  return buildMesh(vs, fs);
+}
+/* Ear-clipping, so any 2-D silhouette can become a solid. */
+function earClip(poly) {
+  const n = poly.length, idx = [...Array(n).keys()], tris = [];
+  let area = 0;
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i+1)%n]; area += a[0]*b[1] - b[0]*a[1]; }
+  if (area < 0) idx.reverse();
+  const cross = (o, a, b) => (a[0]-o[0])*(b[1]-o[1]) - (a[1]-o[1])*(b[0]-o[0]);
+  let guard = 0;
+  while (idx.length > 3 && guard++ < 4000) {
+    let clipped = false;
+    for (let i = 0; i < idx.length; i++) {
+      const p = poly[idx[(i - 1 + idx.length) % idx.length]], c = poly[idx[i]], q = poly[idx[(i + 1) % idx.length]];
+      if (cross(p, c, q) <= 0) continue;
+      let ok = true;
+      for (let k = 0; k < idx.length; k++) {
+        if (k === i || idx[k] === idx[(i-1+idx.length)%idx.length] || idx[k] === idx[(i+1)%idx.length]) continue;
+        const t = poly[idx[k]];
+        if (cross(p, c, t) >= 0 && cross(c, q, t) >= 0 && cross(q, p, t) >= 0) { ok = false; break; }
+      }
+      if (!ok) continue;
+      tris.push([idx[(i - 1 + idx.length) % idx.length], idx[i], idx[(i + 1) % idx.length]]);
+      idx.splice(i, 1); clipped = true; break;
+    }
+    if (!clipped) break;
+  }
+  if (idx.length === 3) tris.push([idx[0], idx[1], idx[2]]);
+  return tris;
+}
+function extrudeMesh(poly, depth) {
+  const n = poly.length, vs = [], fs = [], h = depth / 2;
+  poly.forEach(p => vs.push([p[0], p[1], h]));
+  poly.forEach(p => vs.push([p[0], p[1], -h]));
+  const tris = earClip(poly);
+  tris.forEach(t => fs.push([t[0], t[1], t[2]]));
+  tris.forEach(t => fs.push([t[2] + n, t[1] + n, t[0] + n]));
+  let area = 0;
+  for (let i = 0; i < n; i++) { const a = poly[i], b = poly[(i+1)%n]; area += a[0]*b[1] - b[0]*a[1]; }
+  /* Side walls must wind so their normals point away from the profile —
+     for a counter-clockwise polygon that is the reversed order. */
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    if (area > 0) fs.push([j, i, i + n], [j, i + n, j + n]);
+    else fs.push([i, j, j + n], [i, j + n, i + n]);
+  }
+  return buildMesh(vs, fs);
+}
+/* Curved primitives are dense enough that flat shading reads as a smooth
+   gradient rather than as facets. */
+const UNIT = {
+  box: boxMesh(), sph: sphereMesh(22, 14), sphLo: sphereMesh(13, 8),
+  cyl: tubeMesh(1, 1, 20), cylLo: tubeMesh(1, 1, 10), cone: tubeMesh(1, .03, 20),
+  disc: discMesh(26), torus: torusMesh(.28, 16, 8)
+};
+
+/* ------------------------------------------------------------- renderer */
+let VIEW = mI(), CAM = V(0, 0, 0), FOC = 1, Q = [];
+const LIGHT = vnorm(V(-.42, .86, .48));
+const NEAR = .07;
+function hex2rgb(h) { return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
+const RGB = {}; [INK, DIM, GOLD, TEAL, RED, BG].forEach(c => RGB[c] = hex2rgb(c));
+function rgbOf(c) { return RGB[c] || (RGB[c] = hex2rgb(c)); }
+function mixc(a, b, t) {
+  return `rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;
+}
+function beginScene(eye, target, fovDeg = 40) {
+  CAM = eye;
+  const z = vnorm(vsub(eye, target)), x = vnorm(vcross(V(0,1,0), z)), y = vcross(z, x);
+  VIEW = [x.x,x.y,x.z,-vdot(x,eye), y.x,y.y,y.z,-vdot(y,eye), z.x,z.y,z.z,-vdot(z,eye), 0,0,0,1];
+  FOC = (H / 2) / Math.tan(rad(fovDeg) / 2);
+  Q = [];
+}
+const toView = p => xp(VIEW, p);
+const proj = v => { const d = -v.z; return { x: W/2 + v.x*FOC/d, y: H/2 - v.y*FOC/d, d }; };
+/* Screen position of a world point, or null when it is behind the camera. */
+function at2d(p) { const v = toView(p); return v.z > -NEAR ? null : proj(v); }
+function clipTri(a, b, c) {
+  const pts = [a, b, c], ins = pts.map(p => p.z <= -NEAR), n = ins.filter(Boolean).length;
+  if (n === 3) return [[a, b, c]];
+  if (n === 0) return [];
+  const out = [];
+  for (let i = 0; i < 3; i++) {
+    const p = pts[i], q = pts[(i+1)%3];
+    if (ins[i]) out.push(p);
+    if (ins[i] !== ins[(i+1)%3]) {
+      const t = (-NEAR - p.z) / (q.z - p.z);
+      out.push(V(p.x + (q.x-p.x)*t, p.y + (q.y-p.y)*t, -NEAR));
+    }
+  }
+  const tris = [];
+  for (let i = 1; i + 1 < out.length; i++) tris.push([out[0], out[i], out[i+1]]);
+  return tris;
+}
+function clipSeg(A, B) {
+  if (A.z > -NEAR && B.z > -NEAR) return null;
+  let a = A, b = B;
+  if (A.z > -NEAR) { const t = (-NEAR - B.z) / (A.z - B.z); a = V(B.x+(A.x-B.x)*t, B.y+(A.y-B.y)*t, -NEAR); }
+  else if (B.z > -NEAR) { const t = (-NEAR - A.z) / (B.z - A.z); b = V(A.x+(B.x-A.x)*t, A.y+(B.y-A.y)*t, -NEAR); }
+  return [proj(a), proj(b)];
+}
+let SEEDN = 0;
+function draw(m, mat, o = {}) {
+  /* Fills stay dark and low-contrast on purpose: form is carried by the ink
+     silhouettes and by occlusion, which also keeps facets off curved shapes. */
+  const col = o.color || INK, rgb = rgbOf(col);
+  const amb = (o.amb === undefined ? .14 : o.amb) * .80;
+  const lit = (o.lit === undefined ? .46 : o.lit) * .42;
+  const seed = o.seed === undefined ? (SEEDN += 37) : o.seed;
+  const wv = [], vv = [];
+  for (let i = 0; i < m.nv; i++) {
+    const x = m.verts[i*3], y = m.verts[i*3+1], z = m.verts[i*3+2];
+    const p = V(mat[0]*x + mat[1]*y + mat[2]*z + mat[3],
+                mat[4]*x + mat[5]*y + mat[6]*z + mat[7],
+                mat[8]*x + mat[9]*y + mat[10]*z + mat[11]);
+    wv.push(p); vv.push(toView(p));
+  }
+  const facing = new Array(m.nf);
+  for (let f = 0; f < m.nf; f++) {
+    const i0 = m.faces[f*3], i1 = m.faces[f*3+1], i2 = m.faces[f*3+2];
+    const a = wv[i0], b = wv[i1], c = wv[i2];
+    const n = vnorm(vcross(vsub(b, a), vsub(c, a)));
+    const ctr = V((a.x+b.x+c.x)/3, (a.y+b.y+c.y)/3, (a.z+b.z+c.z)/3);
+    facing[f] = vdot(n, vsub(CAM, ctr)) > 0;
+    if (!facing[f]) continue;
+    const fill = o.flat || mixc(BGRGB, rgb, amb + lit * Math.max(0, vdot(n, LIGHT)));
+    for (const tri of clipTri(vv[i0], vv[i1], vv[i2])) {
+      const p = tri.map(proj);
+      Q.push({ d: (p[0].d + p[1].d + p[2].d) / 3, k: 0, p, fill, al: o.alpha });
+    }
+  }
+  if (o.noEdge) return;
+  const ew = o.edgeW === undefined ? 2.3 : o.edgeW;
+  const ec = o.edge || col;
+  for (let f = 0; f < m.nf; f++) {
+    if (!facing[f]) continue;
+    for (const e of m.fe[f]) {
+      const other = e.f0 === f ? e.f1 : e.f0;
+      const sil = other < 0 || !facing[other];
+      if (!(sil || (e.crease && facing[other] && e.f0 === f))) continue;
+      const s = clipSeg(vv[e.a], vv[e.b]);
+      if (!s) continue;
+      Q.push({ d: (s[0].d + s[1].d) / 2 * .984, k: 1, pa: s[0], pb: s[1], col: ec, w: ew, seed: seed + e.id, al: o.alpha });
+    }
+  }
+}
+/* A free-standing 3-D line, depth-sorted with everything else. */
+function line3d(a, b, col, w = 2, al = 1, bias = .99) {
+  const s = clipSeg(toView(a), toView(b));
+  if (!s) return;
+  Q.push({ d: (s[0].d + s[1].d) / 2 * bias, k: 2, pa: s[0], pb: s[1], col, w, al });
+}
+function rlineSeed(x1, y1, x2, y2, amp, seed) {
   const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
-  const segs = clamp(Math.round(len / 30), 2, 14);
+  const segs = clamp(Math.round(len / 36), 2, 7);
   const nx = -dy / len, ny = dx / len;
   ctx.beginPath(); ctx.moveTo(x1, y1);
   for (let i = 1; i <= segs; i++) {
     const u = i / segs;
-    const k = i === segs ? 0 : n11(x1 * .07 + i * 3.1, y1 * .07 - i * 1.7, BOIL) * amp * Math.sin(Math.PI * u);
-    ctx.lineTo(x1 + dx * u + nx * k, y1 + dy * u + ny * k);
+    const k = i === segs ? 0 : n11(seed * 1.7 + i * 3.1, seed * .7 - i * 1.3, BOIL) * amp * Math.sin(Math.PI * u);
+    ctx.lineTo(x1 + dx*u + nx*k, y1 + dy*u + ny*k);
   }
   ctx.stroke();
 }
-function rpoly(pts, close = true, amp = 1.7) {
-  for (let i = 0; i < pts.length - (close ? 0 : 1); i++) {
-    const p = pts[i], q = pts[(i + 1) % pts.length];
-    rline(p[0], p[1], q[0], q[1], amp);
+function flush() {
+  Q.sort((a, b) => b.d - a.d);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  const base = ctx.globalAlpha;               // respect the scene's crossfade
+  let al = -1;
+  const setAl = v => { const x = base * (v === undefined ? 1 : v); if (x !== al) { ctx.globalAlpha = al = x; } };
+  for (const it of Q) {
+    setAl(it.al);
+    if (it.k === 3) {
+      ctx.save(); ctx.transform(it.tf[0], it.tf[1], it.tf[2], it.tf[3], it.tf[4], it.tf[5]);
+      it.fn(); ctx.restore();
+    } else if (it.k === 0) {
+      ctx.fillStyle = it.fill; ctx.beginPath();
+      ctx.moveTo(it.p[0].x, it.p[0].y); ctx.lineTo(it.p[1].x, it.p[1].y); ctx.lineTo(it.p[2].x, it.p[2].y);
+      ctx.closePath(); ctx.fill();
+    } else if (it.k === 1) {
+      ctx.strokeStyle = it.col; ctx.lineWidth = it.w;
+      rlineSeed(it.pa.x, it.pa.y, it.pb.x, it.pb.y, 1.5, it.seed);
+    } else {
+      ctx.strokeStyle = it.col; ctx.lineWidth = it.w;
+      ctx.beginPath(); ctx.moveTo(it.pa.x, it.pa.y); ctx.lineTo(it.pb.x, it.pb.y); ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = base;
+}
+/* Draws 2-D content onto a 3-D quad (note faces, signs, the ledger). Queued
+   with a depth like everything else, so a surface can occlude its own print. */
+function quadText(o, u, v, lw, lh, fn) {
+  const po = at2d(o), pu = at2d(vadd(o, u)), pv = at2d(vadd(o, v));
+  if (!po || !pu || !pv) return;
+  const ax = pu.x - po.x, ay = pu.y - po.y, bx = pv.x - po.x, by = pv.y - po.y;
+  if (ax * by - ay * bx <= 0) return;                    // facing away
+  Q.push({ k: 3, d: Math.min(po.d, pu.d, pv.d) * .972, tf: [ax/lw, ay/lw, bx/lh, by/lh, po.x, po.y], fn });
+}
+
+/* -------------------------------------------------------------- scenery  */
+function groundGrid(half = 15, fade = 22) {
+  const col = '#54677c';
+  for (let i = -half; i <= half; i++) {
+    for (const [a, b] of [[V(i,0,-half), V(i,0,half)], [V(-half,0,i), V(half,0,i)]]) {
+      const s = clipSeg(toView(a), toView(b));
+      if (!s) continue;
+      const f = clamp(1 - Math.min(s[0].d, s[1].d) / fade, 0, 1);
+      if (f > .03) Q.push({ d: 1e7, k: 2, pa: s[0], pb: s[1], col, w: 1.7, al: f * f * .7 });
+    }
   }
 }
-function rrect(x, y, w, h, amp = 1.7) {
-  rpoly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], true, amp);
+function shadow(x, z, r, al = .55) {
+  draw(UNIT.disc, mMul(mT(x, .004, z), mS(r, 1, r)), { flat: '#080a0d', noEdge: true, alpha: al });
 }
-function rarc(cx, cy, r, a0, a1, amp = 1.4) {
-  const span = a1 - a0, segs = clamp(Math.round(Math.abs(span) * r / 9), 14, 96);
-  ctx.beginPath();
-  for (let i = 0; i <= segs; i++) {
-    const a = a0 + span * i / segs;
-    const rr = r + n11(Math.cos(a) * 9, Math.sin(a) * 9, BOIL) * amp;
-    const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
-    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-  }
-  ctx.stroke();
-}
-const rcircle = (cx, cy, r, amp = 1.4) => rarc(cx, cy, r, 0, Math.PI * 2, amp);
-
-function fillPoly(pts, color) {
-  ctx.fillStyle = color; ctx.beginPath();
-  pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
-  ctx.closePath(); ctx.fill();
-}
-function dot(x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
-
-/* Partial-draw wrapper: `p` 0→1 reveals a shape left-to-right via clip. */
-function reveal(p, x, y, w, h, fn) {
-  if (p >= .999) return fn();
-  ctx.save(); ctx.beginPath(); ctx.rect(x, y, w * clamp(p, 0, 1), h); ctx.clip(); fn(); ctx.restore();
-}
-
-function arrow(x1, y1, x2, y2, color = INK, w = 3, head = 15) {
-  stroke(color, w); rline(x1, y1, x2, y2, 1.2);
-  const a = Math.atan2(y2 - y1, x2 - x1);
-  ctx.beginPath();
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - Math.cos(a - .38) * head, y2 - Math.sin(a - .38) * head);
-  ctx.moveTo(x2, y2);
-  ctx.lineTo(x2 - Math.cos(a + .38) * head, y2 - Math.sin(a + .38) * head);
-  ctx.stroke();
-}
-/* Curved connector with an arrowhead, for the money-goes-around loops. */
-function curveArrow(x1, y1, x2, y2, bow, color = INK, w = 3) {
-  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-  const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
-  const cx = mx - dy / len * bow, cy = my + dx / len * bow;
-  stroke(color, w);
-  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.stroke();
-  const a = Math.atan2(y2 - cy, x2 - cx);
-  ctx.beginPath();
-  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a - .4) * 14, y2 - Math.sin(a - .4) * 14);
-  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a + .4) * 14, y2 - Math.sin(a + .4) * 14);
-  ctx.stroke();
-}
-function cross(cx, cy, r, color = RED, w = 6) {
-  stroke(color, w);
-  rline(cx - r, cy - r, cx + r, cy + r, 2);
-  rline(cx + r, cy - r, cx - r, cy + r, 2);
+function backdrop() {
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W/2, H*.44, H*.28, W/2, H*.5, H*1.0);
+  g.addColorStop(0, 'rgba(38,46,58,.30)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 }
 
 /* ------------------------------------------------------------------ type  */
 function text(str, x, y, {
   size = 34, color = INK, align = 'center', weight = '400',
-  spacing = '0px', font = '"Liberation Sans","DejaVu Sans",sans-serif', baseline = 'alphabetic'
+  spacing = '0px', baseline = 'alphabetic'
 } = {}) {
   ctx.save();
-  ctx.font = `${weight} ${size}px ${font}`;
+  ctx.font = `${weight} ${size}px "Liberation Sans","DejaVu Sans",sans-serif`;
   ctx.fillStyle = color; ctx.textAlign = align; ctx.textBaseline = baseline;
   ctx.letterSpacing = spacing;
   ctx.fillText(str, x, y);
@@ -208,7 +506,7 @@ function measure(str, size, weight = '400', spacing = '0px') {
   return w;
 }
 function wrap(str, maxW, size, weight = '400') {
-  const words = str.split(' '); const lines = []; let cur = '';
+  const words = str.split(' '), lines = []; let cur = '';
   for (const word of words) {
     const trial = cur ? cur + ' ' + word : word;
     if (measure(trial, size, weight) > maxW && cur) { lines.push(cur); cur = word; }
@@ -217,213 +515,230 @@ function wrap(str, maxW, size, weight = '400') {
   if (cur) lines.push(cur);
   return lines;
 }
-
-/* ------------------------------------------------------------ stick figure
-   Feet sit at (x, y). One unit ≈ 1px at scale 1; a figure is ~215px tall.
-   Angles are degrees: 0 → right, 90 → straight down, 270 → straight up.   */
-const SEG = { upperArm: 40, foreArm: 38, thigh: 50, shin: 48, neck: 26, headR: 25 };
-
-function limb(ox, oy, a1, l1, a2, l2, w) {
-  const ex = ox + Math.cos(rad(a1)) * l1, ey = oy + Math.sin(rad(a1)) * l1;
-  const hx = ex + Math.cos(rad(a2)) * l2, hy = ey + Math.sin(rad(a2)) * l2;
-  ctx.lineWidth = w; rline(ox, oy, ex, ey, 1.1); rline(ex, ey, hx, hy, 1.1);
-  return { x: hx, y: hy, ex, ey };
+function stroke2(color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
+function rline(x1, y1, x2, y2, amp = 1.7, seed = 3) { stroke2(ctx.strokeStyle, ctx.lineWidth); rlineSeed(x1, y1, x2, y2, amp, seed); }
+function rrect(x, y, w, h, amp = 1.6, seed = 5) {
+  rlineSeed(x, y, x+w, y, amp, seed); rlineSeed(x+w, y, x+w, y+h, amp, seed+1);
+  rlineSeed(x+w, y+h, x, y+h, amp, seed+2); rlineSeed(x, y+h, x, y, amp, seed+3);
 }
-
-/* Returns anchor points (hands, head) so props can be attached to a pose. */
-function figure(o) {
-  const {
-    x, y, s = 1, color = INK, lean = 0, flip = false,
-    armL = [100, 100], armR = [80, 80],       // [shoulder, elbow] degrees
-    legL = [83, 88], legR = [97, 92],
-    head = 0,                                  // head tilt, degrees
-    face = 'plain',                            // plain | happy | sad | oh | none
-    lw = 5.5
-  } = o;
-
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(flip ? -s : s, s);
-  ctx.rotate(rad(lean));
-  stroke(color, lw / s * 1);
-  ctx.lineWidth = lw;
-
-  const hipY = -(SEG.thigh + SEG.shin);
-  const shoulderY = hipY - 62;
-  const neckTop = shoulderY - SEG.neck;
-  const headCY = neckTop - SEG.headR + 4;
-
-  // spine + neck
-  rline(0, 0 + hipY, 0, shoulderY, 1.1);
-  rline(0, shoulderY, 0, neckTop + 6, 1.1);
-
-  // head
-  ctx.save();
-  ctx.translate(0, headCY); ctx.rotate(rad(head)); ctx.translate(0, -headCY);
-  rcircle(0, headCY, SEG.headR, 1.2);
-  if (face !== 'none') {
-    const eo = 9, ey = headCY - 5;
-    dot(-eo, ey, 2.9, color); dot(eo, ey, 2.9, color);
-    ctx.lineWidth = 3;
-    if (face === 'happy') rarc(0, headCY + 1, 11, rad(25), rad(155), .6);
-    else if (face === 'sad') rarc(0, headCY + 18, 11, rad(205), rad(335), .6);
-    else if (face === 'oh') { ctx.beginPath(); ctx.arc(0, headCY + 9, 5.5, 0, 6.2832); ctx.stroke(); }
-    else rline(-8, headCY + 10, 8, headCY + 10, .7);
-  }
-  ctx.restore();
-
-  // limbs
-  const hands = {
-    L: limb(0, shoulderY + 6, armL[0], SEG.upperArm, armL[1], SEG.foreArm, lw),
-    R: limb(0, shoulderY + 6, armR[0], SEG.upperArm, armR[1], SEG.foreArm, lw)
-  };
-  limb(0, hipY, legL[0], SEG.thigh, legL[1], SEG.shin, lw);
-  limb(0, hipY, legR[0], SEG.thigh, legR[1], SEG.shin, lw);
-
-  // Convert local anchors back to page space for prop attachment.
-  const m = ctx.getTransform();
-  const toPage = p => ({ x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f });
-  ctx.restore();
-  return {
-    handL: toPage(hands.L), handR: toPage(hands.R),
-    head: toPage({ x: 0, y: headCY }), top: toPage({ x: 0, y: headCY - SEG.headR })
-  };
+function dot2(x, y, r, color) { ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+function cross2(cx, cy, r, color = RED, w = 7) {
+  stroke2(color, w); rlineSeed(cx-r, cy-r, cx+r, cy+r, 2, 11); rlineSeed(cx+r, cy-r, cx-r, cy+r, 2, 12);
 }
-
-/* Gentle idle: breathing sway so nobody is ever frozen. */
-const idle = (t, seed = 0) => ({
-  lean: Math.sin(t * 1.1 + seed) * .9,
-  bob: Math.sin(t * 2.2 + seed) * 1.6
-});
-
-/* ------------------------------------------------------------------ props */
-function banknote(x, y, w, h, {
-  rot = 0, denom = '100', color = INK, accent = GOLD, detail = true, alphaFill = '#161b21'
-} = {}) {
-  ctx.save();
-  ctx.translate(x, y); ctx.rotate(rad(rot));
-  ctx.fillStyle = alphaFill;
-  ctx.fillRect(-w / 2, -h / 2, w, h);
-  stroke(color, 3.4); rrect(-w / 2, -h / 2, w, h, 1.4);
-  if (detail) {
-    stroke(color, 1.6); rrect(-w / 2 + w * .05, -h / 2 + h * .09, w * .9, h * .82, 1);
-    // portrait: a little bust in an oval, not a face that can look sad
-    stroke(color, 2.2); rcircle(0, h * .02, h * .28, 1.1);
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(0, h * .02, h * .28, h * .28, 0, 0, 6.2832); ctx.clip();
-    ctx.lineWidth = 2;
-    rcircle(0, h * -.06, h * .10, .7);
-    rarc(0, h * .28, h * .20, rad(200), rad(340), .7);
-    ctx.restore();
-    text(denom, -w / 2 + w * .13, -h / 2 + h * .30, { size: h * .21, color: accent, align: 'center', weight: '700' });
-    text(denom, w / 2 - w * .13, h / 2 - h * .16, { size: h * .21, color: accent, align: 'center', weight: '700' });
-  }
-  ctx.restore();
-}
-function coin(x, y, r, label = '$', color = GOLD) {
-  stroke(color, 3.4); rcircle(x, y, r, 1.1); rcircle(x, y, r * .78, .9);
-  text(label, x, y + r * .34, { size: r * .95, color, weight: '700' });
-}
-function goldBar(x, y, w, h) {
-  // ingot: a small top face in perspective sitting on a tapered body
-  // front face (wider at the bottom) plus a top face skewed back and right
-  const t = w * .11, dy = h * .34, off = w * .13;
-  const fl = x - w / 2, fr = x + w / 2, tl = fl + t, tr = fr - t, ty = y - h / 2 + dy;
-  stroke(GOLD, 3.4);
-  rpoly([[fl, y + h / 2], [fr, y + h / 2], [tr, ty], [tl, ty]]);
-  rpoly([[tl, ty], [tr, ty], [tr - t * .6 + off, y - h / 2], [tl + t * .6 + off, y - h / 2]]);
-  stroke(GOLD, 1.8);
-  rline(fl + t * 2.6, y + h * .10, fr - t * 2.6, y + h * .10, .7);
-  rline(fl + t * 3.2, y + h * .30, fr - t * 3.2, y + h * .30, .7);
-}
-function coffeeCup(x, y, s = 1, steam = 0) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
-  stroke(INK, 3.2);
-  rpoly([[-17, -22], [17, -22], [12, 24], [-12, 24]]);
-  rline(-19, -22, 19, -22, 1);
-  ctx.lineWidth = 2.6;
-  rarc(19, -6, 11, rad(-80), rad(80), .8);
-  if (steam > 0) {
-    ctx.globalAlpha *= steam; stroke(DIM, 2.4);
-    for (let i = -1; i <= 1; i++) {
-      ctx.beginPath();
-      for (let k = 0; k <= 12; k++) {
-        const p = k / 12, yy = -30 - p * 34;
-        const xx = i * 10 + Math.sin(p * 6 + i * 2 + BOIL * .5) * 6;
-        k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
-      }
-      ctx.stroke();
-    }
-  }
-  ctx.restore();
-}
-function fish(x, y, s = 1, color = TEAL) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(color, 3);
+function arrow2(x1, y1, x2, y2, color = INK, w = 3, head = 15) {
+  stroke2(color, w); rlineSeed(x1, y1, x2, y2, 1.2, 21);
+  const a = Math.atan2(y2 - y1, x2 - x1);
   ctx.beginPath();
-  ctx.moveTo(-30, 0); ctx.quadraticCurveTo(0, -22, 30, 0);
-  ctx.quadraticCurveTo(0, 22, -30, 0); ctx.stroke();
-  rpoly([[-30, 0], [-48, -13], [-48, 13]], true, 1);
-  dot(18, -4, 2.8, color);
-  ctx.restore();
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a-.38)*head, y2 - Math.sin(a-.38)*head);
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a+.38)*head, y2 - Math.sin(a+.38)*head);
+  ctx.stroke();
 }
-function shoe(x, y, s = 1, color = TEAL) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(color, 3);
+function curveArrow(x1, y1, x2, y2, bow, color = INK, w = 3) {
+  const mx = (x1+x2)/2, my = (y1+y2)/2, dx = x2-x1, dy = y2-y1, len = Math.hypot(dx,dy) || 1;
+  const cx = mx - dy/len*bow, cy = my + dx/len*bow;
+  stroke2(color, w);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(cx, cy, x2, y2); ctx.stroke();
+  const a = Math.atan2(y2-cy, x2-cx);
   ctx.beginPath();
-  ctx.moveTo(-30, 14); ctx.lineTo(-30, -6);
-  ctx.quadraticCurveTo(-28, -20, -12, -18);
-  ctx.quadraticCurveTo(-4, -17, 6, -4);
-  ctx.quadraticCurveTo(16, 6, 32, 8);
-  ctx.lineTo(32, 14); ctx.closePath(); ctx.stroke();
-  ctx.restore();
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a-.4)*14, y2 - Math.sin(a-.4)*14);
+  ctx.moveTo(x2, y2); ctx.lineTo(x2 - Math.cos(a+.4)*14, y2 - Math.sin(a+.4)*14);
+  ctx.stroke();
 }
-function bread(x, y, s = 1) {
-  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); stroke(GOLD, 3);
-  ctx.beginPath();
-  ctx.moveTo(-34, 16); ctx.quadraticCurveTo(-38, -18, -8, -20);
-  ctx.quadraticCurveTo(30, -22, 34, 4); ctx.quadraticCurveTo(36, 16, 30, 16);
-  ctx.closePath(); ctx.stroke();
-  ctx.lineWidth = 2;
-  rline(-16, -19, -22, -6, .6); rline(0, -20, -6, -7, .6); rline(16, -18, 10, -6, .6);
-  ctx.restore();
-}
-function bubble(x, y, str, { size = 26, w = 300, tail = 'bl', color = INK } = {}) {
+function bubble(x, y, str, { size = 26, w = 320, tail = 'bl', color = INK } = {}) {
   const lines = wrap(str, w - 44, size);
   const h = lines.length * (size * 1.32) + 34;
   const bw = Math.max(...lines.map(l => measure(l, size))) + 44;
-  ctx.fillStyle = 'rgba(15,18,22,.92)';
-  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - h, bw, h, 14); ctx.fill();
-  stroke(color, 2.6);
-  ctx.beginPath(); ctx.roundRect(x - bw / 2, y - h, bw, h, 14); ctx.stroke();
-  const tx = tail === 'bl' ? x - bw * .22 : x + bw * .22;
-  ctx.fillStyle = 'rgba(15,18,22,.92)';
-  fillPoly([[tx - 12, y - 1], [tx + 12, y - 1], [tx + (tail === 'bl' ? -16 : 16), y + 22]], 'rgba(15,18,22,.95)');
-  rline(tx - 12, y, tx + (tail === 'bl' ? -16 : 16), y + 22, .8);
-  rline(tx + (tail === 'bl' ? -16 : 16), y + 22, tx + 12, y, .8);
+  ctx.fillStyle = 'rgba(13,16,20,.93)';
+  ctx.beginPath(); ctx.roundRect(x - bw/2, y - h, bw, h, 14); ctx.fill();
+  stroke2(color, 2.6);
+  ctx.beginPath(); ctx.roundRect(x - bw/2, y - h, bw, h, 14); ctx.stroke();
+  const tx = tail === 'bl' ? x - bw*.22 : x + bw*.22, tp = tail === 'bl' ? -16 : 16;
+  ctx.fillStyle = 'rgba(13,16,20,.95)';
+  ctx.beginPath(); ctx.moveTo(tx-12, y-1); ctx.lineTo(tx+12, y-1); ctx.lineTo(tx+tp, y+22); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(tx-12, y); ctx.lineTo(tx+tp, y+22); ctx.lineTo(tx+12, y); ctx.stroke();
   lines.forEach((l, i) => text(l, x, y - h + 30 + i * size * 1.32, { size, color }));
 }
-/* Label with a leader line, used for the callouts on the banknote. */
-function callout(x, y, tx, ty, str, { size = 24, color = TEAL, align = 'left' } = {}) {
-  stroke(color, 2);
-  rline(x, y, tx, ty, 1);
-  dot(x, y, 4, color);
-  const pad = align === 'left' ? 14 : -14;
-  text(str, tx + pad, ty + 8, { size, color, align });
+function callout(p, tx, ty, str, { size = 26, color = TEAL, align = 'left' } = {}) {
+  if (!p) return;
+  stroke2(color, 2);
+  ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tx, ty); ctx.stroke();
+  dot2(p.x, p.y, 4.5, color);
+  text(str, tx + (align === 'left' ? 14 : -14), ty + 8, { size, color, align });
 }
 
-/* ------------------------------------------------------------- background */
-function backdrop(t) {
-  ctx.fillStyle = BG;
-  ctx.fillRect(0, 0, W, H);
-  // faint dot grid — notebook feel without competing with the ink
-  ctx.fillStyle = 'rgba(255,255,255,.030)';
-  for (let x = 60; x < W; x += 60) for (let y = 60; y < H; y += 60) ctx.fillRect(x, y, 2, 2);
-  // vignette
-  const g = ctx.createRadialGradient(W / 2, H / 2, H * .3, W / 2, H / 2, H * .95);
-  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+/* ================================================================= MODELS */
+const NOTE = { w: .34, h: .152, d: .006 };
+function note3d(mat, { denom = '100', color = INK, faceText = true } = {}) {
+  draw(UNIT.box, mMul(mat, mS(NOTE.w, NOTE.h, NOTE.d)), { color, amb: .16, lit: .40 });
+  if (!faceText) return;
+  const z = NOTE.d / 2 + .0008;
+  for (const s of [1, -1]) {
+    const o = xp(mat, V(-NOTE.w/2 * s, NOTE.h/2, z * s));
+    const u = vsub(xp(mat, V(NOTE.w/2 * s, NOTE.h/2, z * s)), o);
+    const v = vsub(xp(mat, V(-NOTE.w/2 * s, -NOTE.h/2, z * s)), o);
+    quadText(o, u, v, 340, 152, () => {
+      ctx.strokeStyle = color; ctx.lineWidth = 3;
+      ctx.strokeRect(18, 14, 304, 124);
+      ctx.strokeStyle = color; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(170, 76, 34, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(170, 64, 13, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(170, 106, 26, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+      if (denom) {
+        text(denom, 62, 56, { size: 40, color: GOLD, weight: '700' });
+        text(denom, 278, 124, { size: 40, color: GOLD, weight: '700' });
+      }
+    });
+  }
 }
-function ground(y, x1 = 120, x2 = W - 120, a = 1) {
-  A(a, () => { stroke('#2c333c', 4); rline(x1, y, x2, y, 2.4); });
+function coin3d(mat, r = .13, th = .022, label = '$') {
+  draw(UNIT.cyl, mMul(mat, mMul(mT(0, -th/2, 0), mS(r, th, r))), { color: GOLD, amb: .17, lit: .5 });
+  const o = xp(mat, V(-r, th/2 + .001, r));
+  const u = vsub(xp(mat, V(r, th/2 + .001, r)), o);
+  const v = vsub(xp(mat, V(-r, th/2 + .001, -r)), o);
+  quadText(o, u, v, 100, 100, () => {
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(50, 50, 38, 0, TAU); ctx.stroke();
+    text(label, 50, 68, { size: 54, color: GOLD, weight: '700' });
+  });
+}
+const INGOT = (() => {
+  const w = .19, d = .09, w2 = .15, d2 = .065, h = .11;
+  const vs = [[-w,0,-d],[w,0,-d],[w,0,d],[-w,0,d],[-w2,h,-d2],[w2,h,-d2],[w2,h,d2],[-w2,h,d2]];
+  const fs = [[0,3,2],[0,2,1],[4,5,6],[4,6,7],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]];
+  return buildMesh(vs, fs);
+})();
+const CHAIN = torusMesh(.30, 12, 6);
+function chainLink(c, roll, r = .048, alpha = 1) {
+  draw(CHAIN, mMul(mT(c.x, c.y, c.z), mMul(mRX(roll), mMul(mRZ(Math.PI/2), mS(r, r, r)))),
+    { color: INK, amb: .19, lit: .34, edgeW: 1.9, alpha });
+}
+function limbDir(pitch, yaw, side) {
+  const p = rad(pitch), y = rad(yaw);
+  return V(Math.sin(p) * Math.cos(y) * side, -Math.cos(p), Math.sin(p) * Math.sin(y));
+}
+/* A 3-D stick figure. Feet at `pos`; limbs posed by [pitch, yaw] pairs in
+   degrees, where pitch 0 is straight down and yaw 90 points along local +Z. */
+function figure3d(o) {
+  const { pos, yaw = 0, s = 1, color = INK, lo = false, face = 'plain', lean = 0 } = o;
+  const M = mMul(mT(pos.x, pos.y, pos.z), mMul(mRY(rad(yaw)), mMul(mRX(rad(lean)), mS(s, s, s))));
+  const seg = lo ? 10 : 16;
+  const P = p => xp(M, p), D = d => xd(M, d);
+  const sk = (a, b, r) => draw(capsule(vlen(vsub(b, a)), r * s, seg), axisMat(a, b), { color, amb: .19, lit: .30, seed: 11 });
+  const hip = P(V(0, .90, 0)), sh = P(V(0, 1.45, 0));
+  sk(hip, sh, .058);
+  sk(sh, P(V(0, 1.53, 0)), .038);
+  const arms = [[1, o.armR || [13, 0, 15, 0]], [-1, o.armL || [13, 0, 15, 0]]];
+  const hands = {};
+  for (const [side, a] of arms) {
+    const o1 = P(V(side * .17, 1.43, 0));
+    const e = vadd(o1, vmul(D(limbDir(a[0], a[1], side)), .29 * s));
+    const h = vadd(e, vmul(D(limbDir(a[2], a[3], side)), .27 * s));
+    sk(o1, e, .037); sk(e, h, .034);
+    hands[side > 0 ? 'R' : 'L'] = h;
+  }
+  const legs = [[1, o.legR || [4, 0, 2, 0]], [-1, o.legL || [4, 0, 2, 0]]];
+  for (const [side, a] of legs) {
+    const o1 = P(V(side * .10, .92, 0));
+    const k = vadd(o1, vmul(D(limbDir(a[0], a[1], side)), .45 * s));
+    const f = vadd(k, vmul(D(limbDir(a[2], a[3], side)), .45 * s));
+    sk(o1, k, .049); sk(k, f, .043);
+    draw(UNIT.box, mMul(mT(f.x, f.y - .02 * s, f.z), mMul(mRY(rad(yaw)), mS(.10*s, .045*s, .19*s))), { color, amb: .15, lit: .45, seed: 21 });
+  }
+  const headC = P(V(0, 1.665, 0)), hr = .118 * s;
+  draw(lo ? UNIT.sphLo : UNIT.sph, mMul(mT(headC.x, headC.y, headC.z), mS(hr, hr, hr)), { color, amb: .19, lit: .30, seed: 31 });
+  const fwd = vnorm(D(V(0, 0, 1))), right = vnorm(D(V(1, 0, 0))), up = V(0, 1, 0);
+  if (!lo && face !== 'none') faceMarks(headC, hr, fwd, right, up, face, color);
+  return { hands, head: headC, fwd, top: vadd(headC, V(0, hr, 0)) };
+}
+function faceMarks(c, r, fwd, right, up, expr, color) {
+  const toCam = vnorm(vsub(CAM, c));
+  const f = vdot(fwd, toCam);
+  if (f < .12) return;
+  const al = clamp((f - .12) / .3, 0, 1);
+  const pt = (a, b, d) => at2d(vadd(c, vadd(vmul(fwd, r * d), vadd(vmul(right, r * a), vmul(up, r * b)))));
+  const eL = pt(.34, .18, .90), eR = pt(-.34, .18, .90);
+  if (!eL || !eR) return;
+  const px = r * FOC / Math.max(.2, vlen(vsub(CAM, c)));
+  ctx.save(); ctx.globalAlpha *= al;
+  dot2(eL.x, eL.y, Math.max(1.6, px * .13), color);
+  dot2(eR.x, eR.y, Math.max(1.6, px * .13), color);
+  const curve = expr === 'happy' ? -1 : expr === 'sad' ? 1 : 0;
+  ctx.strokeStyle = color; ctx.lineWidth = Math.max(1.6, px * .055); ctx.lineCap = 'round';
+  ctx.beginPath();
+  if (expr === 'oh') {
+    const m = pt(0, -.26, .90);
+    if (m) ctx.arc(m.x, m.y, Math.max(2, px * .12), 0, TAU);
+  } else {
+    for (let k = 0; k <= 8; k++) {
+      const u = k / 8 * 2 - 1;
+      const p = pt(u * .32, -.24 + curve * .14 * (1 - u*u), .88);
+      if (!p) { ctx.restore(); return; }
+      k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y);
+    }
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+/* Side profiles, extruded into solids — the 2-D silhouettes carry over. */
+const FISH = extrudeMesh([
+  [.34,0],[.24,.10],[.04,.15],[-.14,.11],[-.26,.04],
+  [-.44,.16],[-.36,0],[-.44,-.16],[-.26,-.04],[-.14,-.11],[.04,-.15],[.24,-.10]
+], .12);
+const SHOE = extrudeMesh([
+  [-.24,-.11],[-.24,.09],[-.19,.16],[-.07,.14],[.05,.03],[.18,-.04],[.31,-.06],[.31,-.11]
+], .15);
+const BREAD = extrudeMesh([[-.20,-.08],[-.22,.04],[-.14,.11],[.04,.12],[.18,.07],[.21,-.02],[.19,-.08]], .17);
+function plinth(x, z, r = .21, h = .40) {
+  draw(UNIT.cyl, mMul(mT(x, 0, z), mS(r, h, r)), { color: DIM, amb: .09, lit: .18, edgeW: 1.7 });
+  shadow(x, z, r * 1.3, .5);
+  return V(x, h, z);
+}
+/* Caption for a 3-D object, placed on the ground just in front of it. */
+function groundLabel(x, z, str, o = {}) {
+  const p = at2d(V(x, .01, z + .40));
+  if (p) text(str, p.x, p.y, { size: o.size || 27, color: o.color || DIM });
+}
+function bank3d(m) {
+  const p = (x, y, z) => mMul(m, mT(x, y, z));
+  draw(UNIT.box, mMul(p(0, .07, 0), mS(2.3, .14, 1.5)), { color: INK, amb: .13, lit: .40 });
+  draw(UNIT.box, mMul(p(0, .21, 0), mS(2.05, .14, 1.3)), { color: INK, amb: .13, lit: .40 });
+  draw(UNIT.box, mMul(p(0, .95, -.35), mS(1.7, 1.35, .55)), { color: INK, amb: .12, lit: .36 });
+  for (let i = -2; i <= 2; i++)
+    draw(UNIT.cyl, mMul(p(i * .42, .28, .42), mS(.075, 1.34, .075)), { color: INK, amb: .14, lit: .48, edgeW: 2 });
+  draw(UNIT.box, mMul(p(0, 1.68, 0), mS(2.1, .12, 1.4)), { color: INK, amb: .13, lit: .42 });
+  const roof = buildMesh(
+    [[-1.05,0,-.7],[1.05,0,-.7],[1.05,0,.7],[-1.05,0,.7],[0,.52,-.7],[0,.52,.7]],
+    [[0,3,2],[0,2,1],[0,1,4],[1,5,4],[1,2,5],[2,3,5],[3,0,4],[3,4,5]]
+  );
+  draw(roof, p(0, 1.74, 0), { color: INK, amb: .12, lit: .42 });
+  const o = xp(m, V(-.62, 1.60, .71)), u = vsub(xp(m, V(.62, 1.60, .71)), o), v = vsub(xp(m, V(-.62, 1.40, .71)), o);
+  quadText(o, u, v, 124, 20, () => text('BANK', 62, 16, { size: 17, color: GOLD, spacing: '3px', weight: '700' }));
+  shadow(m[3], m[11], 1.6, .5);
+}
+/* Wheelbarrow, front (+X) first. HANDLE is where the pusher's hands go. */
+const HANDLE = V(-.92, .95, .17);
+function barrow3d(m, notes) {
+  const p = (x, y, z) => mMul(m, mT(x, y, z));
+  const bar = (a, b, r, col) => {
+    const L = vlen(vsub(b, a));
+    draw(UNIT.cyl, mMul(mMul(m, axisMat(a, b)), mS(r, L, r)), { color: col || INK, amb: .16, lit: .34, edgeW: 2 });
+  };
+  const tray = buildMesh(
+    [[-.36,0,-.19],[.36,0,-.19],[.36,0,.19],[-.36,0,.19],[-.45,.28,-.27],[.45,.28,-.27],[.45,.28,.27],[-.45,.28,.27]],
+    [[0,3,2],[0,2,1],[0,1,5],[0,5,4],[1,2,6],[1,6,5],[2,3,7],[2,7,6],[3,0,4],[3,4,7]]
+  );
+  draw(tray, p(0, .44, 0), { color: INK, amb: .13, lit: .30 });
+  for (const s of [-1, 1]) {
+    bar(V(-.32, .50, s * .17), V(HANDLE.x, HANDLE.y, s * HANDLE.z), .022);
+    bar(V(-.26, .44, s * .17), V(-.26, .10, s * .17), .020);
+  }
+  draw(UNIT.cyl, mMul(p(.50, .18, 0), mMul(mRX(rad(90)), mS(.18, .08, .18))), { color: INK, amb: .16, lit: .34, edgeW: 2 });
+  for (let i = 0; i < notes; i++) {
+    const a = hash(i, 1, 5), b = hash(i, 2, 5), c = hash(i, 3, 5);
+    note3d(mMul(p(-.30 + a * .66, .70 + c * .14, -.19 + b * .38),
+      mMul(mRY(rad(n11(i,4,1) * 120)), mMul(mRX(rad(n11(i,5,2) * 55)), mS(.55, .55, .55)))),
+      { denom: '', faceText: false });
+  }
 }
 
 /* ==========================================================================
@@ -466,8 +781,6 @@ const CAPTIONS = [
 
   [115.4, 119.6, "Money isn't a thing we found. It's an agreement we renew every single day."]
 ];
-
-/* Chapter labels shown top-left, [start, end, index, title]. */
 const CHAPTERS = [
   [13, 25, 1, 'The paper'],
   [25, 40, 2, 'The problem money solves'],
@@ -485,531 +798,434 @@ const CHAPTERS = [
 
 /* --- 1. Cold open: paper in, coffee out (0 – 7) -------------------------- */
 function sceneOpen(t) {
-  const gy = 800;
-  ground(gy, 380, 1540, win(t, .2, 7, .6, .4));
-  const iA = idle(t, 0), iB = idle(t, 1.7);
-
-  // Handoff timing
-  const give = ease((t - 1.2) / 1.5);          // note travels A → B
-  const back = ease((t - 3.2) / 1.4);          // coffee travels B → A
+  const p = ease(clamp(t / 7, 0, 1));
+  beginScene(V(lerp(1.5, .5, p), lerp(1.85, 1.62, p), lerp(4.4, 3.5, p)), V(0, 1.12, 0), 40);
+  groundGrid();
+  const give = ease((t - 1.2) / 1.5), back = ease((t - 3.2) / 1.4);
   const reachA = clamp((t - .9) / .6, 0, 1) * (1 - clamp((t - 3.0) / .8, 0, 1));
   const reachB = clamp((t - 1.6) / .6, 0, 1) * (1 - clamp((t - 4.4) / .8, 0, 1));
-
-  const aAlpha = win(t, .1, 7, .7, .4);
-  let A1, B1;
-  A(aAlpha, () => {
-    A1 = figure({
-      x: 680, y: gy + iA.bob, s: 1.45, lean: iA.lean,
-      armR: [lerp(95, 20, reachA), lerp(95, 5, reachA)],
-      armL: [118, 112], face: t > 4.2 ? 'happy' : 'plain'
-    });
-    B1 = figure({
-      x: 1250, y: gy + iB.bob, s: 1.45, flip: true, lean: -iB.lean,
-      armR: [lerp(95, 20, reachB), lerp(95, 5, reachB)],
-      armL: [118, 112], face: t > 2.9 ? 'happy' : 'plain'
-    });
+  const sway = s => Math.sin(t * 1.1 + s) * 1.2;
+  shadow(-.85, 0, .30); shadow(.85, 0, .30);
+  const FA = figure3d({
+    pos: V(-.85, 0, 0), yaw: 90, lean: sway(0),
+    armR: [lerp(14, 74, reachA), lerp(0, 90, reachA), lerp(16, 88, reachA), lerp(0, 90, reachA)],
+    face: t > 4.2 ? 'happy' : 'plain'
   });
-
-  // The note: from A's hand to B's hand.
-  if (A1 && B1) {
-    const nx = lerp(A1.handR.x + 42, B1.handR.x - 42, give);
-    const ny = lerp(A1.handR.y - 6, B1.handR.y - 6, give) - Math.sin(Math.PI * give) * 46;
-    A(win(t, .8, 6.9, .5, .4), () => banknote(nx, ny, 150, 82, { rot: lerp(-8, 6, give) + Math.sin(t * 2) * 2, denom: '20' }));
-    if (back > 0) {
-      const cx = lerp(B1.handR.x - 44, A1.handR.x + 44, back);
-      const cy = lerp(B1.handR.y - 10, A1.handR.y - 10, back) - Math.sin(Math.PI * back) * 40;
-      A(win(t, 3.2, 6.9, .3, .4), () => coffeeCup(cx, cy, 1.25, clamp((back - .7) / .3, 0, 1)));
-    }
+  const FB = figure3d({
+    pos: V(.85, 0, 0), yaw: -90, lean: sway(1.7),
+    armR: [lerp(14, 74, reachB), lerp(0, 90, reachB), lerp(16, 88, reachB), lerp(0, 90, reachB)],
+    face: t > 2.9 ? 'happy' : 'plain'
+  });
+  const a = FA.hands.R, b = FB.hands.R;
+  if (win(t, .8, 6.9, .5, .4) > 0) {
+    const c = vlerp(a, b, give);
+    c.y += Math.sin(Math.PI * give) * .16;
+    note3d(mMul(mT(c.x, c.y, c.z), mMul(mRY(rad(lerp(-22, -8, give))), mRZ(rad(Math.sin(t*2)*7)))), { denom: '20' });
   }
-  // Question mark blooms over the handoff at the end of the beat.
-  A(win(t, 5.0, 6.8, .5, .3), () => {
-    const s = 1 + Math.sin(t * 3) * .03;
-    text('?', 960, 350 - s * 6, { size: 170, color: GOLD, weight: '700' });
-  });
+  if (back > 0 && win(t, 3.2, 6.9, .3, .4) > 0) {
+    const c = vlerp(b, a, back);
+    c.y += Math.sin(Math.PI * back) * .14;
+    draw(UNIT.cyl, mMul(mT(c.x, c.y - .05, c.z), mS(.052, .12, .052)), { color: INK, amb: .16, lit: .5 });
+    draw(UNIT.torus, mMul(mT(c.x + .07, c.y + .02, c.z), mMul(mRY(rad(90)), mS(.034, .034, .034))), { color: INK, amb: .16, lit: .5, edgeW: 1.8 });
+  }
+  flush();
+  A(win(t, 5.0, 6.8, .5, .3), () => text('?', 960, 300, { size: 170, color: GOLD, weight: '700' }));
 }
 
 /* --- 2. Title card (7 – 13) --------------------------------------------- */
 function sceneTitle(t) {
+  const ang = rad(18) + t * .12;
+  beginScene(V(Math.sin(ang) * 3.4, 1.45, Math.cos(ang) * 3.4), V(0, 1.25, 0), 42);
   const a = win(t, .0, 5.6, .5, .5);
+  for (let i = 0; i < 7; i++) {
+    const s = 1 + (i % 3) * .5, ph = t * .35 + i * 1.7;
+    const c = V(Math.sin(i * 2.4) * 1.55, .55 + (i % 4) * .48, Math.cos(i * 1.9) * 1.15);
+    note3d(mMul(mT(c.x, c.y + Math.sin(ph) * .05, c.z),
+      mMul(mRY(ph * .7), mMul(mRX(Math.sin(ph * .9) * .8), mS(s * .8, s * .8, s * .8)))),
+      { denom: '100', faceText: i % 2 === 0 });
+  }
+  flush();
   A(a, () => {
-    // two notes drifting in the corners, well clear of the type
-    A(.30, () => banknote(300, 800, 320, 172, { rot: -9 + Math.sin(t * .6) * 2.5, denom: '100' }));
-    A(.30, () => banknote(1610, 250, 300, 160, { rot: 11 + Math.sin(t * .5 + 2) * 2.5, denom: '100' }));
-
-    const p = easeO((t - .3) / 1.1);
-    const size = 112;
+    const p = easeO((t - .3) / 1.1), size = 112;
     ctx.save(); ctx.globalAlpha *= p;
     ctx.translate(960, 440 + (1 - p) * 22);
     text('WHY MONEY', 0, 0, { size, weight: '700', spacing: '4px' });
     text("ISN'T REAL", 0, size * 1.02, { size, weight: '700', spacing: '4px', color: GOLD });
     ctx.restore();
-
     const uw = 640, up = easeO((t - 1.3) / .9);
-    A(1, () => { stroke(GOLD, 5); rline(960 - uw / 2, 636, 960 - uw / 2 + uw * up, 636, 2.4); });
-    A(win(t, 1.9, 5.6, .6, .4), () =>
-      text('and what it actually is', 960, 706, { size: 38, color: DIM, spacing: '2px' }));
+    stroke2(GOLD, 5); rlineSeed(960 - uw/2, 636, 960 - uw/2 + uw * up, 636, 2.4, 3);
+    A(win(t, 1.9, 5.6, .6, .4), () => text('and what it actually is', 960, 706, { size: 38, color: DIM, spacing: '2px' }));
   });
 }
 
 /* --- 3. The paper (13 – 25) --------------------------------------------- */
 function scenePaper(t) {
-  const cx = 960, cy = 500, nw = 660, nh = 330;
-  A(win(t, .1, 11.6, .6, .5), () => banknote(cx, cy, nw, nh, { denom: '100', rot: Math.sin(t * .6) * 1.2 }));
-
-  A(win(t, 1.3, 11.4, .5, .4), () =>
-    callout(cx - nw * .40, cy - nh * .38, 380, 300, 'cotton & linen', { align: 'right' }));
-  A(win(t, 2.2, 11.4, .5, .4), () =>
-    callout(cx - nw * .18, cy + nh * .44, 470, 760, 'ink', { align: 'right' }));
-  A(win(t, 3.0, 11.4, .5, .4), () =>
-    callout(cx + nw * .30, cy + nh * .30, 1500, 700, 'a number', { align: 'left' }));
-
-  // Price tag: what the object actually costs to produce.
+  const yaw = rad(-26) + Math.sin(t * .34) * .30;
+  beginScene(V(Math.sin(t * .12) * .35, 1.34, 1.55), V(0, 1.25, 0), 40);
+  const M = mMul(mT(0, 1.25, 0), mMul(mRY(yaw), mMul(mRZ(Math.sin(t * .5) * .05), mS(1.6, 1.6, 1.6))));
+  const lift = win(t, 7.6, 11.5, .5, .4) ? easeO((t - 7.8) / 2.4) : 0;
+  note3d(M, { denom: lift > .5 ? '' : '100' });
+  flush();
+  const P = p => at2d(xp(M, p));
+  A(win(t, 1.3, 11.4, .5, .4), () => callout(P(V(-.12, .05, .004)), 360, 300, 'cotton & linen', { align: 'right' }));
+  A(win(t, 2.2, 11.4, .5, .4), () => callout(P(V(-.02, -.055, .004)), 470, 800, 'ink', { align: 'right' }));
+  A(win(t, 3.0, 11.4, .5, .4), () => callout(P(V(.115, -.045, .004)), 1520, 760, 'a number', { align: 'left' }));
   A(win(t, 4.6, 11.4, .6, .4), () => {
-    const p = easeO((t - 4.6) / .8);
-    const label = 'COST TO MAKE:  ABOUT 9¢';
+    const p = easeO((t - 4.6) / .8), label = 'COST TO MAKE:  ABOUT 9¢';
     const bw = measure(label, 33, '700', '1px') + 76, bx = 1452, by = 186;
     ctx.save(); ctx.globalAlpha *= p;
-    stroke(GOLD, 3); rrect(bx - bw / 2, by, bw, 92, 1.6);
+    stroke2(GOLD, 3); rrect(bx - bw/2, by, bw, 92, 1.6, 41);
     text(label, bx, by + 60, { size: 33, color: GOLD, weight: '700', spacing: '1px' });
     ctx.restore();
   });
-
-  // The value floats off the paper.
   A(win(t, 7.6, 11.5, .5, .4), () => {
-    const r = clamp((t - 7.8) / 2.4, 0, 1);
-    const yy = cy + 20 - easeO(r) * 250;
-    text('$100', cx, yy, { size: 100, color: GOLD, weight: '700' });
-    A(1 - r * .5, () => { stroke(GOLD, 2); rline(cx - 120, yy + 28, cx + 120, yy + 28, 1); });
+    const yy = 560 - lift * 250;
+    text('$100', 960, yy, { size: 100, color: GOLD, weight: '700' });
+    A(1 - lift * .5, () => { stroke2(GOLD, 2); rlineSeed(840, yy + 28, 1080, yy + 28, 1, 51); });
   });
   A(win(t, 9.4, 11.5, .5, .4), () =>
-    text('the value was never in the paper', 960, 860, { size: 36, color: TEAL, spacing: '1px' }));
+    text('the value was never in the paper', 960, 880, { size: 36, color: TEAL, spacing: '1px' }));
 }
 
 /* --- 4. Barter and the double coincidence of wants (25 – 40) ------------- */
 function sceneBarter(t) {
-  const gy = 830;
-  ground(gy, 260, 1660, win(t, .1, 14.6, .5, .4));
-  const iA = idle(t, .4), iB = idle(t, 2.1);
-  const solved = clamp((t - 8.2) / 1.0, 0, 1);   // money enters
-
-  let FA, FB;
-  A(win(t, .1, 14.6, .5, .4), () => {
-    FA = figure({
-      x: 500, y: gy + iA.bob, s: 1.3, lean: iA.lean,
-      armR: [lerp(50, 38, solved), lerp(18, 8, solved)], armL: [118, 118],
-      face: t > 3.4 && solved < .5 ? 'sad' : 'happy'
-    });
-    FB = figure({
-      x: 1420, y: gy + iB.bob, s: 1.3, flip: true, lean: -iB.lean,
-      armR: [lerp(50, 38, solved), lerp(18, 8, solved)], armL: [118, 118],
-      face: t > 3.4 && solved < .5 ? 'plain' : 'happy'
-    });
+  const dr = ease(clamp(t / 15, 0, 1));
+  beginScene(V(lerp(-.9, .9, dr), 1.72, 4.5), V(0, 1.05, 0), 42);
+  groundGrid();
+  const solved = clamp((t - 8.2) / 1.0, 0, 1);
+  const sway = s => Math.sin(t * 1.1 + s) * 1.1;
+  shadow(-1.15, 0, .30); shadow(1.15, 0, .30);
+  const FA = figure3d({
+    pos: V(-1.15, 0, 0), yaw: 74, lean: sway(.4),
+    armR: [lerp(58, 46, solved), 88, lerp(22, 14, solved), 86],
+    face: t > 3.4 && solved < .5 ? 'sad' : 'happy'
   });
-
-  if (FA) A(win(t, .4, 14.6, .5, .4), () => fish(FA.handR.x + 48, FA.handR.y - 4, 1.25));
-  if (FB) A(win(t, .4, 14.6, .5, .4), () => shoe(FB.handR.x - 48, FB.handR.y - 4, 1.25));
-
-  A(win(t, 1.4, 7.9, .5, .5), () => bubble(540, 430, "I'll trade fish for shoes.", { w: 360, tail: 'bl' }));
-  A(win(t, 3.4, 7.9, .5, .5), () => bubble(1400, 430, "I don't want fish.", { w: 340, tail: 'br', color: RED }));
-
-  // Failed trade
-  A(win(t, 5.0, 7.9, .4, .4), () => {
-    arrow(730, 720, 1190, 720, DIM, 3);
-    cross(960, 720, 42, RED, 7);
-    text('the double coincidence of wants', 960, 250, { size: 34, color: RED, spacing: '1px' });
+  const FB = figure3d({
+    pos: V(1.15, 0, 0), yaw: -74, lean: sway(2.1),
+    armR: [lerp(58, 46, solved), 88, lerp(22, 14, solved), 86],
+    face: t > 3.4 && solved < .5 ? 'plain' : 'happy'
   });
-
-  // Money arrives in the middle and unblocks the trade.
-  A(win(t, 8.2, 14.6, .5, .4), () => {
+  const hA = FA.hands.R, hB = FB.hands.R;
+  draw(FISH, mMul(mT(hA.x + .20, hA.y - .02, hA.z), mMul(mRY(rad(16)), mS(1.15, 1.15, 1.15))), { color: TEAL, amb: .18, lit: .34 });
+  draw(SHOE, mMul(mT(hB.x - .20, hB.y - .04, hB.z), mMul(mRY(rad(-16)), mS(1.15, 1.15, 1.15))), { color: TEAL, amb: .18, lit: .34 });
+  if (solved > 0) {
     const drop = easeO((t - 8.2) / .9);
-    coin(960, lerp(180, 640, drop), 74, '$');
+    coin3d(mMul(mT(0, lerp(2.4, 1.20, drop), 0), mMul(mRZ(rad(90)), mRY(t * 1.6))), .15, .026, '$');
+  }
+  flush();
+  const hd = at2d(FA.top), hd2 = at2d(FB.top);
+  A(win(t, 1.4, 7.9, .5, .5), () => hd && bubble(hd.x - 40, hd.y - 30, "I'll trade fish for shoes.", { w: 360, tail: 'bl' }));
+  A(win(t, 3.4, 7.9, .5, .5), () => hd2 && bubble(hd2.x + 40, hd2.y - 30, "I don't want fish.", { w: 340, tail: 'br', color: RED }));
+  A(win(t, 5.0, 7.9, .4, .4), () => {
+    arrow2(740, 720, 1180, 720, DIM, 3);
+    cross2(960, 720, 42, RED, 7);
   });
   A(win(t, 9.6, 14.6, .5, .4), () => {
-    curveArrow(660, 690, 862, 660, 62, TEAL, 3);
-    curveArrow(1058, 660, 1262, 690, 62, TEAL, 3);
-    text('fish', 655, 600, { size: 26, color: DIM });
-    text('shoes', 1268, 600, { size: 26, color: DIM });
+    curveArrow(700, 700, 880, 660, 58, TEAL, 3);
+    curveArrow(1040, 660, 1220, 700, 58, TEAL, 3);
   });
-  A(win(t, 11.0, 14.6, .5, .4), () =>
-    text('a middle step everybody accepts', 960, 250, { size: 36, color: TEAL, spacing: '1px' }));
 }
 
 /* --- 5. Commodity money (40 – 53) --------------------------------------- */
 function sceneCommodity(t) {
-  const gy = 596;
-  const items = [
-    { x: 420, label: 'cowrie shells', draw: () => {
-        stroke(GOLD, 3);
-        for (let i = 0; i < 3; i++) {
-          const ox = (i - 1) * 46, oy = i === 1 ? -22 : 0;
-          ctx.save(); ctx.translate(ox, oy);
-          rcircle(0, 0, 24, 1.2);
-          ctx.lineWidth = 2; rline(-11, 0, 11, 0, .8);
-          for (let k = -2; k <= 2; k++) rline(k * 5, -4, k * 5, 4, .5);
-          ctx.restore();
-        }
-      } },
-    { x: 780, label: 'salt', draw: () => {
-        stroke(TEAL, 3);
-        // a poured mound with a few grains beside it
-        ctx.beginPath();
-        ctx.moveTo(-62, 34);
-        ctx.bezierCurveTo(-30, 30, -24, -18, 0, -30);
-        ctx.bezierCurveTo(24, -18, 30, 30, 62, 34);
-        ctx.closePath(); ctx.stroke();
-        ctx.lineWidth = 2;
-        rline(-24, 18, -14, 6, .6); rline(6, 14, 16, 2, .6);
-        dot(-70, 30, 3.4, TEAL); dot(72, 26, 3.4, TEAL); dot(-64, 14, 3, TEAL);
-      } },
-    { x: 1140, label: 'cattle', draw: () => {
-        stroke(INK, 3);
-        rrect(-46, -18, 92, 46, 1.2);
-        rcircle(52, -14, 20, 1.1);
-        rline(44, -30, 62, -44, .8); rline(62, -30, 70, -44, .8);
-        rline(-30, 28, -30, 58, .8); rline(20, 28, 20, 58, .8);
-        rline(-46, -8, -74, -30, .8);
-      } },
-    { x: 1500, label: 'gold coins', draw: () => {
-        coin(-34, 6, 30, ''); coin(34, 6, 30, ''); coin(0, -36, 30, '');
-      } }
-  ];
-  items.forEach((it, i) => {
-    const a = win(t, .3 + i * .55, 12.6, .45, .4);
-    A(a, () => {
-      const p = easeO((t - (.3 + i * .55)) / .7);
-      ctx.save();
-      ctx.translate(it.x, gy - 116 + (1 - p) * 26); ctx.scale(1.35, 1.35);
-      it.draw();
-      ctx.restore();
-      stroke('#2c333c', 3); rline(it.x - 104, gy, it.x + 104, gy, 1.6);
-      text(it.label, it.x, gy + 52, { size: 28, color: DIM });
-    });
-  });
-
+  const p = ease(clamp((t - .5) / 11, 0, 1));
+  beginScene(V(lerp(-1.5, 1.5, p), 1.30, 3.3), V(lerp(-1.1, 1.1, p), .62, 0), 46);
+  groundGrid();
+  const xs = [-1.95, -.65, .65, 1.95];
+  const tops = xs.map((x, i) => (win(t, .3 + i * .55, 12.6, .45, .4) > 0 ? plinth(x, 0) : null));
+  const app = i => easeO((t - (.3 + i * .55)) / .7);
+  if (tops[0]) {
+    const y = tops[0].y + .05 + (1 - app(0)) * .2;
+    for (let i = 0; i < 3; i++)
+      draw(UNIT.sph, mMul(mT(xs[0] + (i-1) * .11, y + (i === 1 ? .07 : 0), (i-1) * .05), mS(.075, .045, .075)), { color: GOLD, amb: .19, lit: .34 });
+  }
+  if (tops[1]) {
+    const y = tops[1].y + (1 - app(1)) * .2;
+    draw(UNIT.cone, mMul(mT(xs[1], y, 0), mS(.20, .28, .20)), { color: TEAL, amb: .18, lit: .34 });
+  }
+  if (tops[2]) {
+    const y = tops[2].y + (1 - app(2)) * .2, x = xs[2];
+    draw(UNIT.box, mMul(mT(x - .03, y + .26, 0), mS(.40, .19, .17)), { color: INK, amb: .16, lit: .34 });
+    draw(UNIT.box, mMul(mT(x + .23, y + .30, 0), mS(.14, .13, .12)), { color: INK, amb: .16, lit: .34 });
+    for (const [dx, dz] of [[-.15,-.06],[-.15,.06],[.11,-.06],[.11,.06]])
+      draw(UNIT.cyl, mMul(mT(x + dx, y, dz), mS(.018, .17, .018)), { color: INK, amb: .18, lit: .32, edgeW: 1.8 });
+    for (const s of [-1, 1])
+      draw(UNIT.cyl, mMul(mT(x + .25, y + .37, s * .05), mMul(mRZ(rad(s * 30)), mS(.012, .09, .012))), { color: INK, amb: .18, lit: .32, edgeW: 1.8 });
+  }
+  if (tops[3]) {
+    const y = tops[3].y + (1 - app(3)) * .2;
+    for (let i = 0; i < 3; i++)
+      coin3d(mMul(mT(xs[3] + (i-1) * .09, y + .016 + i * .03, (i-1) * .035), mI()), .09, .028, '');
+  }
+  flush();
+  xs.forEach((x, i) => A(win(t, .3 + i * .55, 12.6, .45, .4), () =>
+    groundLabel(x, 0, ['cowrie shells','salt','cattle','gold coins'][i])));
   A(win(t, 4.4, 12.6, .5, .4), () =>
-    text('none of this is money by nature', 960, 250, { size: 40, color: INK, spacing: '1px' }));
-
-  A(win(t, 6.4, 12.6, .5, .4), () => {
-    const lines = ['scarce', 'hard to fake', 'lasts', 'everyone agreed'];
-    lines.forEach((l, i) => {
-      const a = win(t, 6.4 + i * .5, 12.6, .4, .4);
-      A(a, () => {
-        const x = 300 + i * 440;
-        stroke(i === 3 ? GOLD : TEAL, 2.6); rrect(x - 152, 748, 304, 78, 1.4);
-        text(l, x, 800, { size: 31, color: i === 3 ? GOLD : TEAL, weight: i === 3 ? '700' : '400' });
-      });
-    });
-  });
+    text('none of this is money by nature', 960, 235, { size: 40, spacing: '1px' }));
+  ['scarce', 'hard to fake', 'lasts', 'everyone agreed'].forEach((l, i) =>
+    A(win(t, 6.4 + i * .5, 12.6, .4, .4), () => {
+      const x = 300 + i * 440, gold = i === 3;
+      stroke2(gold ? GOLD : TEAL, 2.6); rrect(x - 152, 792, 304, 78, 1.4, 61 + i);
+      text(l, x, 844, { size: 31, color: gold ? GOLD : TEAL, weight: gold ? '700' : '400' });
+    }));
 }
 
 /* --- 6. 1971, the link is cut (53 – 68) --------------------------------- */
 function sceneCut(t) {
-  const y = 470;
-  const snap = clamp((t - 5.6) / .25, 0, 1);   // the moment the chain breaks
+  const p = ease(clamp((t - 3) / 6, 0, 1));
+  beginScene(V(Math.sin(t * .10) * .35, 1.32, lerp(2.7, 2.25, p)), V(0, 1.19, 0), 44);
+  const snap = clamp((t - 5.6) / .25, 0, 1);
   const drift = easeO((t - 5.85) / 2.2);
-
-  A(win(t, .2, 14.6, .5, .4), () => goldBar(430, y, 260, 150));
-  A(win(t, .2, 14.6, .5, .4), () =>
-    text('GOLD', 430, y + 140, { size: 30, color: GOLD, spacing: '3px' }));
-
-  // Chain links; after the snap they fall away.
-  A(win(t, .8, 14.6, .5, .4), () => {
-    const n = 9;
-    for (let i = 0; i < n; i++) {
-      const p = i / (n - 1);
-      let cx = lerp(590, 1330, p), cy = y + Math.sin(p * Math.PI) * 14;
-      if (snap > 0) {
-        const fall = easeI(clamp((t - 5.6 - Math.abs(p - .5) * .16) / .75, 0, 1));
-        cy += fall * (420 + Math.abs(p - .5) * 300);
-        cx += (p - .5) * fall * 130;
-        ctx.globalAlpha = clamp(1 - fall * 2.2, 0, 1);
-      }
-      stroke(DIM, 3.4);
-      ctx.save(); ctx.translate(cx, cy); ctx.rotate(rad(i % 2 ? 0 : 90) + (snap ? rad(i * 34 * drift) : 0));
-      ctx.beginPath(); ctx.ellipse(0, 0, 22, 13, 0, 0, 6.2832); ctx.stroke();
-      ctx.restore();
-      ctx.globalAlpha = 1;
+  draw(INGOT, mMul(mT(-1.02, 1.13, 0), mRY(rad(14))), { color: GOLD, amb: .18, lit: .42 });
+  const n = 12;
+  for (let i = 0; i < n; i++) {
+    const u = i / (n - 1);
+    let c = V(lerp(-.86, .90, u), 1.20 - Math.sin(u * Math.PI) * .035, 0), al = 1;
+    if (snap > 0) {
+      const fall = easeI(clamp((t - 5.6 - Math.abs(u - .5) * .16) / .75, 0, 1));
+      c = V(c.x + (u - .5) * fall * .5, c.y - fall * 1.6, c.z + n11(i, 2, 1) * fall * .3);
+      al = clamp(1 - fall * 2.0, 0, 1);
     }
-  });
-
-  // The note drifts free after the cut.
-  A(win(t, .2, 14.6, .5, .4), () => {
-    const nx = 1470 + (snap ? Math.sin(t * .9) * 26 * drift : 0);
-    const ny = y - (snap ? drift * 70 : 0) + Math.sin(t * 1.3) * 6;
-    banknote(nx, ny, 300, 160, { denom: '1', rot: snap ? Math.sin(t * .8) * 7 * drift : 0 });
-  });
-
-  // Scissors sweep in and cut.
-  A(win(t, 3.9, 6.4, .4, .5), () => {
+    if (al > .02) chainLink(c, (i % 2 ? 0 : Math.PI / 2) + (snap ? drift * i : 0), .062, al);
+  }
+  const nx = 1.06 + (snap ? Math.sin(t * .9) * .05 * drift : 0);
+  const ny = 1.20 + (snap ? drift * .22 : 0);
+  note3d(mMul(mT(nx, ny, 0), mMul(mRY(rad(-14)), mMul(mRZ(snap ? Math.sin(t * .8) * .13 * drift : 0), mS(1.15, 1.15, 1.15)))), { denom: '1' });
+  if (win(t, 3.9, 6.4, .4, .5) > 0) {
     const app = easeO((t - 3.9) / 1.4);
-    const sx = 960, sy = lerp(120, y - 6, app);
-    const open = snap > 0 ? lerp(26, 6, snap) : lerp(6, 26, clamp((t - 4.9) / .7, 0, 1));
-    ctx.save(); ctx.translate(sx, sy);
-    stroke(RED, 4.5);
-    // two blades crossing at the pivot: tips below, handles above
-    rline(0, 0, -open, 54, 1); rline(0, 0, 62, -78, 1);
-    rline(0, 0, open, 54, 1);  rline(0, 0, -62, -78, 1);
-    ctx.lineWidth = 3.4;
-    rcircle(-70, -92, 19, 1); rcircle(70, -92, 19, 1);
-    dot(0, 0, 5, RED);
-    ctx.restore();
+    const sy = lerp(2.1, 1.30, app);
+    const open = snap > 0 ? lerp(rad(26), rad(7), snap) : lerp(rad(7), rad(26), clamp((t - 4.9) / .7, 0, 1));
+    for (const s of [-1, 1]) {
+      const piv = V(0, sy, 0);
+      const tip = vadd(piv, V(Math.sin(open) * s * .30, -.30, 0));
+      const han = vadd(piv, V(-Math.sin(open) * s * .30, .34, 0));
+      /* the box is centred on its own origin, so shift it half its length
+         along the axis to run from the pivot to the end point */
+      const bar = (a, b, w, d) => {
+        const L = vlen(vsub(b, a));
+        draw(UNIT.box, mMul(axisMat(a, b), mMul(mT(0, L / 2, 0), mS(w, L, d))), { color: RED, amb: .20, lit: .38 });
+      };
+      bar(piv, tip, .028, .062);
+      bar(piv, han, .032, .032);
+      draw(UNIT.torus, mMul(mT(han.x, han.y, han.z), mMul(mRX(rad(90)), mS(.066, .066, .066))), { color: RED, amb: .20, lit: .38, edgeW: 2.1 });
+    }
+  }
+  flush();
+  A(win(t, .2, 14.6, .5, .4), () => {
+    const g = at2d(V(-1.02, 1.02, 0));
+    if (g) text('GOLD', g.x, g.y + 52, { size: 30, color: GOLD, spacing: '3px' });
   });
-
-  A(win(t, 1.6, 5.25, .5, .25), () =>
-    text('convertible into gold', 960, 250, { size: 36, color: DIM, spacing: '1px' }));
-
+  A(win(t, 1.6, 5.25, .5, .25), () => text('convertible into gold', 960, 250, { size: 36, color: DIM, spacing: '1px' }));
   A(win(t, 5.7, 14.6, .35, .4), () => {
-    const p = easeO((t - 5.7) / .5);
-    ctx.save(); ctx.globalAlpha *= p;
-    text('1971', 960, 270 - (1 - p) * 14, { size: 128, color: RED, weight: '700', spacing: '6px' });
+    const q = easeO((t - 5.7) / .5);
+    ctx.save(); ctx.globalAlpha *= q;
+    text('1971', 960, 270 - (1 - q) * 14, { size: 128, color: RED, weight: '700', spacing: '6px' });
     ctx.restore();
   });
-  A(win(t, 7.0, 14.6, .5, .4), () =>
-    text('Nixon suspends the gold window', 960, 340, { size: 32, color: DIM, spacing: '1px' }));
-
+  A(win(t, 7.0, 14.6, .5, .4), () => text('Nixon suspends the gold window', 960, 340, { size: 32, color: DIM, spacing: '1px' }));
   A(win(t, 9.4, 14.6, .5, .4), () => {
-    text('FIAT MONEY', 960, 780, { size: 68, color: GOLD, weight: '700', spacing: '5px' });
-    A(win(t, 10.4, 14.6, .5, .4), () =>
-      text('Latin: “let it be done”', 960, 846, { size: 32, color: DIM }));
+    text('FIAT MONEY', 960, 800, { size: 68, color: GOLD, weight: '700', spacing: '5px' });
+    A(win(t, 10.4, 14.6, .5, .4), () => text('Latin: “let it be done”', 960, 866, { size: 32, color: DIM }));
   });
 }
 
 /* --- 7. Money as a database (68 – 83) ----------------------------------- */
 function sceneLedger(t) {
-  // Bank
-  A(win(t, .1, 14.6, .5, .4), () => {
-    ctx.save(); ctx.translate(420, 470);
-    stroke(INK, 3.6);
-    rpoly([[-170, -70], [0, -150], [170, -70]], true, 1.4);      // roof
-    rline(-190, -70, 190, -70, 1.4);
-    for (let i = -2; i <= 2; i++) rline(i * 68, -60, i * 68, 130, 1.2);
-    rline(-190, 130, 190, 130, 1.4);
-    rline(-206, 160, 206, 160, 1.4);
-    text('BANK', 0, 222, { size: 28, color: GOLD, spacing: '4px' });
-    ctx.restore();
-  });
-
-  // Ledger screen with a line being typed into existence.
-  A(win(t, 1.2, 14.6, .5, .4), () => {
-    const x = 900, y = 300, w = 800, h = 300;
-    ctx.fillStyle = 'rgba(20,25,31,.9)'; ctx.fillRect(x, y, w, h);
-    stroke(INK, 3); rrect(x, y, w, h, 1.4);
-    stroke('#2c333c', 2); rline(x, y + 56, x + w, y + 56, 1);
-    text('LEDGER', x + 24, y + 38, { size: 24, color: DIM, align: 'left', spacing: '3px' });
-
-    const rows = [['ACCOUNT 0041', '  8,120.00'], ['ACCOUNT 0042', ' 12,455.10'], ['ACCOUNT 0043', '    940.00']];
-    rows.forEach((r, i) => {
-      A(win(t, 1.8 + i * .3, 14.6, .35, .4), () => {
-        text(r[0], x + 24, y + 108 + i * 52, { size: 27, color: DIM, align: 'left' });
-        text(r[1], x + w - 24, y + 108 + i * 52, { size: 27, color: INK, align: 'right' });
-      });
+  const p = ease(clamp(t / 15, 0, 1));
+  beginScene(V(lerp(2.1, -.6, p), lerp(1.9, 1.75, p), lerp(4.9, 4.3, p)), V(lerp(.2, -.5, p), 1.15, 0), 44);
+  groundGrid();
+  bank3d(mT(-1.9, 0, -.5));
+  /* Floating ledger panel: a real 3-D slab with its rows drawn onto the face. */
+  const PM = mMul(mT(1.35, 1.55, .35), mRY(rad(-24)));
+  draw(UNIT.box, mMul(PM, mS(1.65, .92, .035)), { color: INK, amb: .10, lit: .30, flat: '#161c23' });
+  draw(UNIT.box, mMul(PM, mS(1.65, .92, .034)), { color: INK, noEdge: true, alpha: 0 });
+  const o = xp(PM, V(-.825, .46, .019)), u = vsub(xp(PM, V(.825, .46, .019)), o), v = vsub(xp(PM, V(-.825, -.46, .019)), o);
+  quadText(o, u, v, 660, 368, () => {
+    stroke2('#2c333c', 2);
+    ctx.beginPath(); ctx.moveTo(0, 56); ctx.lineTo(660, 56); ctx.stroke();
+    text('LEDGER', 22, 38, { size: 24, color: DIM, align: 'left', spacing: '3px' });
+    [['ACCOUNT 0041', '8,120.00'], ['ACCOUNT 0042', '12,455.10'], ['ACCOUNT 0043', '940.00']].forEach((r, i) => {
+      if (win(t, 1.8 + i * .3, 14.6, .35, .4) <= 0) return;
+      text(r[0], 22, 108 + i * 52, { size: 27, color: DIM, align: 'left' });
+      text(r[1], 638, 108 + i * 52, { size: 27, color: INK, align: 'right' });
     });
-
-    // New loan appears character by character.
-    A(win(t, 4.4, 14.6, .35, .4), () => {
-      const full = '+ 10,000.00';
-      const n = Math.floor(clamp((t - 4.6) / .07, 0, full.length));
-      text('ACCOUNT 0044', x + 24, y + 264, { size: 27, color: GOLD, align: 'left' });
-      text(full.slice(0, n) + (Math.floor(t * 3) % 2 && n < full.length ? '_' : ''),
-        x + w - 24, y + 264, { size: 27, color: GOLD, align: 'right' });
-    });
+    if (win(t, 4.4, 14.6, .35, .4) > 0) {
+      const full = '+ 10,000.00', k = Math.floor(clamp((t - 4.6) / .07, 0, full.length));
+      text('ACCOUNT 0044', 22, 288, { size: 27, color: GOLD, align: 'left' });
+      text(full.slice(0, k) + (Math.floor(t * 3) % 2 && k < full.length ? '_' : ''), 638, 288, { size: 27, color: GOLD, align: 'right' });
+    }
   });
+  flush();
   A(win(t, 6.2, 14.6, .5, .4), () =>
-    text('a loan does not move money — it creates it', 960, 668, { size: 34, color: GOLD, spacing: '1px' }));
-
-  // 97 / 3 split
+    text('a loan does not move money — it creates it', 960, 232, { size: 34, color: GOLD, spacing: '1px' }));
+  /* The 97 / 3 split reads as a flat infographic — legibility beats geometry. */
   A(win(t, 8.4, 14.6, .5, .4), () => {
-    const x = 300, y = 730, w = 1320, h = 70;
-    const p = easeO((t - 8.5) / 1.2);
-    ctx.fillStyle = '#1d3b39'; ctx.fillRect(x, y, w * .97 * p, h);
-    ctx.fillStyle = '#4a3a18'; ctx.fillRect(x + w * .97, y, w * .03 * p, h);
-    stroke(INK, 3); rrect(x, y, w, h, 1.2);
+    const g = easeO((t - 8.5) / 1.2), x = 300, y = 688, w = 1320, h = 64;
+    ctx.fillStyle = '#1d3b39'; ctx.fillRect(x, y, w * .97 * g, h);
+    ctx.fillStyle = '#4a3a18'; ctx.fillRect(x + w * .97, y, w * .03 * g, h);
+    stroke2(INK, 2.6); rrect(x, y, w, h, 1.2, 81);
     A(win(t, 9.4, 14.6, .4, .4), () => {
-      text('97%  bank deposits — just numbers', x + 26, y + 47, { size: 30, color: TEAL, align: 'left' });
-      text('3% cash', x + w, y + 122, { size: 26, color: GOLD, align: 'right' });
-      text('Bank of England, 2014 (UK money supply)', x, y + 122, { size: 22, color: DIM, align: 'left' });
+      text('97%  bank deposits — just numbers', x + 24, y + 43, { size: 30, color: TEAL, align: 'left' });
+      text('3% cash', x + w, y + 106, { size: 26, color: GOLD, align: 'right' });
+      text('Bank of England, 2014 (UK money supply)', x + w, y + 142, { size: 22, color: DIM, align: 'right' });
     });
   });
 }
 
 /* --- 8. A shared technology (83 – 95) ----------------------------------- */
 function sceneSocial(t) {
-  const items = [
-    { label: 'language', draw: () => {
-        stroke(TEAL, 3.4);
-        ctx.beginPath(); ctx.roundRect(-70, -56, 140, 96, 18); ctx.stroke();
-        fillPoly([[-24, 40], [10, 40], [-40, 74]], BG);
-        rline(-24, 40, -40, 74, .8); rline(-40, 74, 10, 40, .8);
-        dot(-30, -8, 5, TEAL); dot(0, -8, 5, TEAL); dot(30, -8, 5, TEAL);
-      } },
-    { label: 'law', draw: () => {
-        stroke(TEAL, 3.4);
-        rline(0, -60, 0, 56, 1); rline(-70, -60, 70, -60, 1);
-        rline(-40, 56, 40, 56, 1);
-        rarc(-70, -60, 34, rad(0), rad(180), 1);
-        rarc(70, -60, 34, rad(0), rad(180), 1);
-        rline(-70, -60, -70, -46, .6); rline(70, -60, 70, -46, .6);
-      } },
-    { label: 'borders', draw: () => {
-        stroke(TEAL, 3.4);
-        ctx.setLineDash([14, 12]);
-        ctx.beginPath();
-        ctx.moveTo(-72, 60); ctx.quadraticCurveTo(-10, 10, -30, -30);
-        ctx.quadraticCurveTo(-44, -66, 40, -58); ctx.stroke();
-        ctx.setLineDash([]);
-        stroke('#3a434e', 2.4);
-        rpoly([[-96, 70], [96, 70], [96, -70], [-96, -70]], true, 1);
-      } },
-    { label: 'money', draw: () => banknote(0, 0, 190, 108, { denom: '5' }) }
-  ];
-  items.forEach((it, i) => {
-    A(win(t, .3 + i * .7, 11.6, .45, .4), () => {
-      const x = 380 + i * 400, y = 430;
-      const p = easeO((t - (.3 + i * .7)) / .7);
-      ctx.save(); ctx.translate(x, y + (1 - p) * 20); it.draw(); ctx.restore();
-      text(it.label, x, y + 140, { size: 28, color: i === 3 ? GOLD : DIM });
-    });
+  const ang = rad(-14) + t * .04;
+  beginScene(V(Math.sin(ang) * 4.3, 2.05, Math.cos(ang) * 4.3), V(0, 1.02, 0), 44);
+  groundGrid();
+  const xs = [-2.2, -.73, .73, 2.2];
+  const labels = ['language', 'law', 'borders', 'money'];
+  xs.forEach((x, i) => {
+    if (win(t, .3 + i * .7, 11.6, .45, .4) <= 0) return;
+    const top = plinth(x, 0, .20, .38);
+    const rise = (1 - easeO((t - (.3 + i * .7)) / .7)) * .2;
+    const y = top.y + rise;
+    if (i === 0) {
+      draw(UNIT.cone, mMul(mT(x - .04, y, .04), mMul(mRZ(rad(196)), mS(.07, .18, .07))), { color: TEAL, amb: .18, lit: .32, edgeW: 2 });
+      draw(UNIT.sph, mMul(mT(x, y + .30, 0), mS(.29, .20, .21)), { color: TEAL, amb: .18, lit: .32 });
+      for (let k = -1; k <= 1; k++) {
+        const q = at2d(V(x + k * .10, y + .32, .20));
+        if (q) dot2(q.x, q.y, 5, TEAL);
+      }
+    } else if (i === 1) {
+      draw(UNIT.cyl, mMul(mT(x, y, 0), mS(.028, .52, .028)), { color: TEAL, amb: .15, lit: .5, edgeW: 2 });
+      draw(UNIT.box, mMul(mT(x, y + .52, 0), mS(.72, .028, .05)), { color: TEAL, amb: .15, lit: .5 });
+      for (const s of [-1, 1]) {
+        draw(UNIT.cyl, mMul(mT(x + s * .32, y + .40, 0), mS(.002, .12, .002)), { color: TEAL, edgeW: 1.6, amb: .3, lit: .3 });
+        draw(UNIT.cyl, mMul(mT(x + s * .32, y + .36, 0), mS(.13, .035, .13)), { color: TEAL, amb: .15, lit: .5, edgeW: 1.9 });
+      }
+    } else if (i === 2) {
+      draw(UNIT.box, mMul(mT(x, y + .02, 0), mS(.66, .035, .50)), { color: '#3a434e', amb: .16, lit: .4 });
+      for (let k = 0; k < 7; k++) {
+        const u0 = k / 7, u1 = u0 + .45 / 7;
+        const f = u => V(x - .28 + u * .58, y + .05, -.20 + Math.sin(u * 3.2) * .18);
+        line3d(f(u0), f(u1), TEAL, 3.4);
+      }
+    } else {
+      note3d(mMul(mT(x, y + .16, 0), mMul(mRY(rad(-8)), mS(1.15, 1.15, 1.15))), { denom: '5' });
+    }
   });
-
-  // Bracket tying the four together.
-  A(win(t, 4.2, 11.6, .5, .4), () => {
-    const p = easeO((t - 4.2) / .9);
-    stroke(DIM, 3);
-    const x1 = 300, x2 = 1620, y = 640;
-    rline(x1, y, lerp(x1, x2, p), y, 1.4);
-    if (p > .5) { rline(x1, y, x1, y - 22, 1); rline(x2, y, x2, y - 22, 1); rline(960, y, 960, y + 24, 1); }
-  });
-  A(win(t, 5.2, 11.6, .5, .4), () =>
-    text('none of these exist in nature', 960, 712, { size: 38, color: INK, spacing: '1px' }));
-  A(win(t, 6.6, 11.6, .5, .4), () =>
-    text('all of them exist because we agree they do', 960, 778, { size: 38, color: GOLD, spacing: '1px' }));
+  flush();
+  xs.forEach((x, i) => A(win(t, .3 + i * .7, 11.6, .45, .4), () =>
+    groundLabel(x, 0, labels[i], { size: 28, color: i === 3 ? GOLD : DIM })));
+  A(win(t, 5.2, 11.6, .5, .4), () => text('none of these exist in nature', 960, 806, { size: 38, spacing: '1px' }));
+  A(win(t, 6.6, 11.6, .5, .4), () => text('all of them exist because we agree they do', 960, 872, { size: 38, color: GOLD, spacing: '1px' }));
 }
 
 /* --- 9. What holds it up (95 – 106.5) ----------------------------------- */
 function sceneSupport(t) {
-  const deckY = 466, pillarTop = 478, pillarBot = 664, baseY = 786, crowdY = 890;
-  const pillars = [
-    { x: 470, l1: 'TAXES', l2: 'are owed in it' },
-    { x: 960, l1: 'LAW', l2: 'makes it settle debts' },
-    { x: 1450, l1: 'SUPPLY', l2: 'is limited & managed' }
-  ];
-
-  A(win(t, .2, 11.0, .5, .4), () => banknote(960, deckY - 92, 300, 160, { denom: '100' }));
-  A(win(t, 1.0, 11.0, .5, .4), () => { stroke(INK, 4); rline(300, deckY, 1620, deckY, 1.8); });
-
-  pillars.forEach((p, i) => {
-    A(win(t, 1.4 + i * .6, 11.0, .45, .4), () => {
-      const gp = easeO((t - (1.4 + i * .6)) / .7);
-      stroke(GOLD, 3.4);
-      rrect(p.x - 66, pillarTop, 132, (pillarBot - pillarTop) * gp, 1.4);
-      A(clamp((gp - .6) / .4, 0, 1), () => {
-        text(p.l1, p.x, pillarBot + 54, { size: 32, color: GOLD, weight: '700', spacing: '2px' });
-        text(p.l2, p.x, pillarBot + 94, { size: 26, color: DIM });
-      });
-    });
-  });
-
-  // Everything above rests on a crowd of people, each expecting the others.
-  A(win(t, 4.6, 11.0, .5, .4), () => { stroke(TEAL, 4); rline(300, baseY, 1620, baseY, 1.8); });
-  for (let i = 0; i < 10; i++) {
-    A(win(t, 4.8 + i * .09, 11.0, .35, .4), () => {
-      const x = 340 + i * 142, ph = t * 1.7 + i * 1.3;
-      figure({
-        x, y: crowdY + Math.sin(ph) * 1.6, s: .48, color: i % 3 === 1 ? TEAL : INK, lw: 5.5,
-        armL: [242 + Math.sin(ph) * 3, 254], armR: [298 - Math.sin(ph) * 3, 286],
-        face: 'happy'
-      });
+  const ang = rad(-20) + t * .055;
+  beginScene(V(Math.sin(ang) * 7.9, lerp(1.6, 2.5, ease(clamp(t / 10, 0, 1))), Math.cos(ang) * 7.9), V(0, 2.25, 0), 44);
+  groundGrid();
+  const BASE = 2.02, PT = 2.10, PB = 3.05, DECK = 3.12;
+  /* the crowd, arms up, holding the whole structure */
+  for (let i = 0; i < 9; i++) {
+    if (win(t, 4.8 + i * .09, 11.0, .35, .4) <= 0) continue;
+    const x = -3.2 + i * .8, ph = t * 1.7 + i * 1.3;
+    shadow(x, .1, .22, .45);
+    figure3d({
+      pos: V(x, 0, .1), yaw: 8 + n11(i, 3, 0) * 16, s: 1.0, lo: true,
+      color: i % 3 === 1 ? TEAL : INK,
+      armL: [172 + Math.sin(ph) * 3, 0, 176, 0], armR: [172 - Math.sin(ph) * 3, 0, 176, 0],
+      face: 'none'
     });
   }
-  A(win(t, 7.2, 11.0, .5, .4), () =>
-    text('CONFIDENCE', 960, 196, { size: 64, color: TEAL, weight: '700', spacing: '8px' }));
-  A(win(t, 8.0, 11.0, .5, .4), () =>
-    text('everyone expecting everyone else to keep accepting it', 960, 252, { size: 30, color: DIM }));
+  /* Built bottom-up, and each pillar arrives as the narration names it. */
+  if (win(t, .2, 11.0, .5, .4) > 0)
+    draw(UNIT.box, mMul(mT(0, BASE, 0), mS(7.2, .14, 1.5)), { color: TEAL, amb: .13, lit: .40 });
+  const pillars = [[-2.2, 'TAXES', 'are owed in it'], [0, 'LAW', 'makes it settle debts'], [2.2, 'SUPPLY', 'is limited & managed']];
+  const PIN = [.5, 4.3, 6.0];
+  pillars.forEach(([x], i) => {
+    if (win(t, PIN[i], 11.0, .45, .4) <= 0) return;
+    const g = easeO((t - PIN[i]) / .7);
+    draw(UNIT.cyl, mMul(mT(x, PT, 0), mS(.30, (PB - PT) * g, .30)), { color: GOLD, amb: .15, lit: .48 });
+  });
+  if (win(t, 1.0, 11.0, .5, .4) > 0)
+    draw(UNIT.box, mMul(mT(0, DECK, 0), mS(6.0, .14, 1.4)), { color: INK, amb: .13, lit: .42 });
+  if (win(t, .2, 11.0, .5, .4) > 0)
+    note3d(mMul(mT(0, DECK + .38, 0), mMul(mRY(rad(-14)), mS(2.4, 2.4, 2.4))), { denom: '100' });
+  flush();
+  /* Pillar captions ride on chips below the base slab, clear of the crowd. */
+  pillars.forEach(([x, l1, l2], i) => A(win(t, PIN[i], 11.0, .45, .4), () => {
+    const p = at2d(V(x, BASE - .30, .95));
+    if (!p) return;
+    const w = Math.max(measure(l1, 30, '700', '2px'), measure(l2, 24)) + 44;
+    ctx.fillStyle = 'rgba(10,13,17,.88)';
+    ctx.beginPath(); ctx.roundRect(p.x - w/2, p.y - 34, w, 84, 9); ctx.fill();
+    text(l1, p.x, p.y, { size: 30, color: GOLD, weight: '700', spacing: '2px' });
+    text(l2, p.x, p.y + 34, { size: 24, color: DIM });
+  }));
+  A(win(t, 7.2, 11.0, .5, .4), () => text('CONFIDENCE', 960, 196, { size: 64, color: TEAL, weight: '700', spacing: '8px' }));
+  A(win(t, 8.0, 11.0, .5, .4), () => text('everyone expecting everyone else to keep accepting it', 960, 252, { size: 30, color: DIM }));
 }
 
 /* --- 10. When belief breaks (106.5 – 115) ------------------------------- */
-/* Manual grouping — never Intl, so headless capture can't drift by locale. */
 const commas = n => {
   const s = Math.round(n).toString();
   let out = '';
   for (let i = 0; i < s.length; i++) out += (i && (s.length - i) % 3 === 0 ? ',' : '') + s[i];
   return out;
 };
-
 function sceneBreak(t) {
-  const gy = 806;
-  ground(gy, 240, 1680, win(t, .1, 8.0, .5, .4));
-
-  // Figure pushing a barrow of cash toward one small loaf.
-  A(win(t, .2, 8.0, .5, .4), () => {
-    const push = easeO(clamp((t - .4) / 3.2, 0, 1));
-    const x = lerp(380, 720, push);
-    const step = Math.sin(t * 5) * 12;
-    figure({
-      x, y: gy, s: 1.05, lean: 8,
-      armL: [38, 30], armR: [44, 34],
-      legL: [83 + step, 92 + step * .4], legR: [97 - step, 92 - step * .4],
-      face: 'sad'
-    });
-    // barrow
-    ctx.save(); ctx.translate(x + 175, gy - 120);
-    stroke(INK, 3.4);
-    rpoly([[-95, -40], [95, -40], [70, 40], [-70, 40]], true, 1.3);
-    rline(-95, -40, -150, -66, 1); rline(95, -40, 150, -8, 1);
-    rcircle(58, 92, 44, 1.2);
-    rline(70, 40, 58, 92, 1); rline(-70, 40, -60, 96, 1);
-    // overflowing notes
-    for (let i = 0; i < 11; i++) {
-      const ox = -80 + (i % 6) * 30 + (i > 5 ? 16 : 0);
-      const oy = -52 - Math.floor(i / 6) * 26 - hash(i, 3, 1) * 12;
-      banknote(ox, oy, 62, 34, { rot: n11(i, 7, BOIL) * 26, denom: '', detail: false });
-    }
-    ctx.restore();
+  const push = easeO(clamp((t - .4) / 3.4, 0, 1));
+  const x = lerp(-2.3, .1, push);
+  beginScene(V(x * .5 + .4, 1.62, 4.2), V(x * .5 + .3, .95, 0), 42);
+  groundGrid();
+  const step = Math.sin(t * 5) * 22;
+  shadow(x - 1.15, 0, .28);
+  /* arms run straight down the handles — the pose a pusher actually holds */
+  figure3d({
+    pos: V(x - 1.15, 0, 0), yaw: 90, lean: 10,
+    armR: [26, 90, 26, 90], armL: [26, 90, 26, 90],
+    legR: [4 + step, 90, 2 + step * .4, 90], legL: [4 - step, 90, 2 - step * .4, 90],
+    face: 'sad'
   });
-  A(win(t, 1.4, 8.0, .5, .4), () => {
-    bread(1480, gy - 62, 1.4);
-    text('one loaf of bread', 1480, gy + 42, { size: 27, color: DIM });
-  });
-
-  // The price of that loaf in Weimar Germany, January → November 1923.
-  A(win(t, .6, 8.0, .5, .4), () =>
-    text('Germany, 1923', 960, 226, { size: 44, color: RED, weight: '700', spacing: '1px' }));
+  shadow(x + .2, 0, .5, .45);
+  barrow3d(mT(x, 0, 0), 12);
+  const bp = plinth(2.55, .1, .18, .34);
+  draw(BREAD, mMul(mT(bp.x, bp.y + .12, bp.z), mRY(rad(-18))), { color: GOLD, amb: .19, lit: .38 });
+  flush();
+  A(win(t, 1.4, 8.0, .5, .4), () => groundLabel(2.55, .1, 'one loaf of bread', { size: 26 }));
+  A(win(t, .6, 8.0, .5, .4), () => text('Germany, 1923', 1440, 226, { size: 44, color: RED, weight: '700', spacing: '1px' }));
   A(win(t, 1.6, 8.0, .5, .4), () => {
-    const p = ease(clamp((t - 1.8) / 3.0, 0, 1));
-    const price = 250 * Math.pow(200e9 / 250, p);       // 250 marks → 200 billion
-    text('price of one loaf, in marks', 960, 296, { size: 28, color: DIM });
-    text(commas(price), 960, 386, { size: 76, color: RED, weight: '700', spacing: '1px' });
-    text(p < .98 ? 'January 1923' : 'November 1923', 960, 436, { size: 26, color: DIM });
+    const q = ease(clamp((t - 1.8) / 3.0, 0, 1));
+    text('price of one loaf, in marks', 1440, 292, { size: 28, color: DIM });
+    text(commas(250 * Math.pow(200e9 / 250, q)), 1440, 376, { size: 64, color: RED, weight: '700', spacing: '1px' });
+    text(q < .98 ? 'January 1923' : 'November 1923', 1440, 424, { size: 26, color: DIM });
   });
   A(win(t, 5.4, 8.0, .5, .4), () =>
-    text('Zimbabwe, 2008: at the peak, prices doubled about every day',
-      960, 880, { size: 32, color: GOLD, spacing: '1px' }));
+    text('Zimbabwe, 2008: at the peak, prices doubled about every day', 960, 892, { size: 32, color: GOLD, spacing: '1px' }));
 }
 
 /* --- 11. Close (115 – 120) ---------------------------------------------- */
 function sceneClose(t) {
-  const gy = 840;
-  const a = win(t, .1, 4.4, .5, .5);
-  A(a, () => {
-    const shake = Math.sin(t * 3.4) * 3;                 // the handshake pumps a little
-    const iA = idle(t, .3), iB = idle(t, 1.9);
-    figure({ x: 884, y: gy + iA.bob, s: 1.0, lean: iA.lean, armR: [8 + shake, shake], armL: [120, 120], face: 'happy' });
-    figure({ x: 1036, y: gy + iB.bob, s: 1.0, flip: true, lean: -iB.lean, armR: [8 + shake, shake], armL: [120, 120], face: 'happy' });
-
-    // the note they both accept, glowing above the handshake
-    const cy = gy - 330, pulse = .5 + Math.sin(t * 2.2) * .16;
-    ctx.save();
-    const g = ctx.createRadialGradient(960, cy, 10, 960, cy, 190);
-    g.addColorStop(0, `rgba(245,196,81,${.30 * pulse + .12})`);
-    g.addColorStop(1, 'rgba(245,196,81,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(960, cy, 190, 0, 6.2832); ctx.fill();
+  const p = ease(clamp(t / 4.8, 0, 1));
+  beginScene(V(Math.sin(t * .12) * .6, lerp(1.55, 2.05, p), lerp(3.6, 5.3, p)), V(0, 1.15, 0), 42);
+  groundGrid();
+  const shake = Math.sin(t * 3.4) * 4;
+  shadow(-.42, 0, .28); shadow(.42, 0, .28);
+  figure3d({ pos: V(-.42, 0, 0), yaw: 62, armR: [66 + shake, 88, 76 + shake, 88], face: 'happy' });
+  figure3d({ pos: V(.42, 0, 0), yaw: -62, armR: [66 - shake, 88, 76 - shake, 88], face: 'happy' });
+  const nc = V(0, 1.64, 0);
+  note3d(mMul(mT(nc.x, nc.y, nc.z), mMul(mRY(Math.sin(t * .5) * .3), mS(1.35, 1.35, 1.35))), { denom: '1' });
+  flush();
+  const g = at2d(nc);
+  if (g) {
+    const pulse = .5 + Math.sin(t * 2.2) * .16;
+    const grd = ctx.createRadialGradient(g.x, g.y, 8, g.x, g.y, 230);
+    grd.addColorStop(0, `rgba(245,196,81,${.24 * pulse + .10})`);
+    grd.addColorStop(1, 'rgba(245,196,81,0)');
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = grd; ctx.beginPath(); ctx.arc(g.x, g.y, 230, 0, TAU); ctx.fill();
     ctx.restore();
-    banknote(960, cy, 210, 114, { denom: '1', rot: Math.sin(t * .8) * 1.6 });
-  });
+  }
   A(win(t, .8, 4.6, .6, .5), () => {
-    text('AN AGREEMENT', 960, 300, { size: 82, color: GOLD, weight: '700', spacing: '6px' });
-    A(win(t, 1.8, 4.6, .6, .5), () =>
-      text('renewed every day, by everyone', 960, 366, { size: 36, color: DIM, spacing: '2px' }));
+    text('AN AGREEMENT', 960, 250, { size: 82, color: GOLD, weight: '700', spacing: '6px' });
+    A(win(t, 1.8, 4.6, .6, .5), () => text('renewed every day, by everyone', 960, 316, { size: 36, color: DIM, spacing: '2px' }));
   });
 }
 
@@ -1017,26 +1233,16 @@ function sceneClose(t) {
    TIMELINE
    ========================================================================== */
 const SCENES = [
-  [0, 7, sceneOpen],
-  [7, 13, sceneTitle],
-  [13, 25, scenePaper],
-  [25, 40, sceneBarter],
-  [40, 53, sceneCommodity],
-  [53, 68, sceneCut],
-  [68, 83, sceneLedger],
-  [83, 95, sceneSocial],
-  [95, 106.5, sceneSupport],
-  [106.5, 115, sceneBreak],
-  [115, 120, sceneClose]
+  [0, 7, sceneOpen], [7, 13, sceneTitle], [13, 25, scenePaper], [25, 40, sceneBarter],
+  [40, 53, sceneCommodity], [53, 68, sceneCut], [68, 83, sceneLedger], [83, 95, sceneSocial],
+  [95, 106.5, sceneSupport], [106.5, 115, sceneBreak], [115, 120, sceneClose]
 ];
 
 /* --------------------------------------------------------- chrome overlays */
 function chapterLabel(t) {
   for (const [a, b, n, title] of CHAPTERS) {
-    // windows are tuned so one label finishes fading out before the next starts
-    const al = win(t, a + .5, b - .5, .35, .35);
-    A(al * .95, () => {
-      stroke(GOLD, 3); rline(96, 92, 96, 132, 1);
+    A(win(t, a + .5, b - .5, .35, .35) * .95, () => {
+      stroke2(GOLD, 3); rlineSeed(96, 92, 96, 132, 1, 91);
       text(String(n), 118, 112, { size: 22, color: GOLD, align: 'left', weight: '700' });
       text(title.toUpperCase(), 146, 112, { size: 22, color: DIM, align: 'left', spacing: '3px' });
     });
@@ -1047,15 +1253,13 @@ function captionBar(t) {
     const al = win(t, a, b, .28, .28);
     if (al <= .004) continue;
     A(al, () => {
-      const size = 40;
-      const lines = wrap(str, 1400, size);
+      const size = 40, lines = wrap(str, 1400, size);
       const boxH = lines.length * size * 1.28 + 34;
       const boxW = Math.min(1520, Math.max(...lines.map(l => measure(l, size))) + 90);
       const y = 1080 - 44 - boxH;
       ctx.fillStyle = 'rgba(8,10,13,.82)';
-      ctx.beginPath(); ctx.roundRect(960 - boxW / 2, y, boxW, boxH, 10); ctx.fill();
-      lines.forEach((l, i) =>
-        text(l, 960, y + 34 + i * size * 1.28, { size, color: '#f5f1e6' }));
+      ctx.beginPath(); ctx.roundRect(960 - boxW/2, y, boxW, boxH, 10); ctx.fill();
+      lines.forEach((l, i) => text(l, 960, y + 34 + i * size * 1.28, { size, color: '#f5f1e6' }));
     });
   }
 }
@@ -1065,21 +1269,20 @@ function progressBar(t) {
 }
 
 /* ------------------------------------------------------------- main render */
-let SCALE = 1;                           // >1 renders above 1080p for capture
+let SCALE = 1;
 function render(t) {
   t = clamp(t, 0, DUR);
-  BOIL = Math.floor(t * 8);              // 8 fps line boil
+  BOIL = Math.floor(t * 8);
+  SEEDN = 0;
   ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
   ctx.globalAlpha = 1;
-  backdrop(t);
+  backdrop();
   for (const [a, b, fn] of SCENES) {
-    if (t >= a - .6 && t <= b + .6) {
-      ctx.save();
-      ctx.globalAlpha = 1;
-      fn(t - a);
-      ctx.restore();
-    }
+    if (t < a - .6 || t > b + .6) continue;
+    const fade = clamp(Math.min(t - (a - .6), (b + .6) - t) / .6, 0, 1);
+    ctx.save(); ctx.globalAlpha = fade; fn(t - a); ctx.restore();
   }
+  ctx.globalAlpha = 1;
   chapterLabel(t);
   captionBar(t);
   progressBar(t);
@@ -1088,30 +1291,23 @@ function render(t) {
 /* --------------------------------------------------------------- playback */
 let playing = false, cur = 0, last = 0;
 const btnPlay = document.getElementById('play');
-const btnRestart = document.getElementById('restart');
 const scrub = document.getElementById('scrub');
 const timeEl = document.getElementById('time');
 const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
-
 function frame(now) {
   if (playing) {
-    const dt = (now - last) / 1000;
-    last = now;
-    cur += dt;
+    cur += (now - last) / 1000; last = now;
     if (cur >= DUR) { cur = DUR; playing = false; btnPlay.textContent = 'Play'; }
-    render(cur);
-    scrub.value = cur;
-    timeEl.textContent = `${fmt(cur)} / 2:00`;
+    render(cur); scrub.value = cur; timeEl.textContent = `${fmt(cur)} / 2:00`;
   }
   requestAnimationFrame(frame);
 }
 btnPlay.onclick = () => {
   if (cur >= DUR) cur = 0;
-  playing = !playing;
-  last = performance.now();
+  playing = !playing; last = performance.now();
   btnPlay.textContent = playing ? 'Pause' : 'Play';
 };
-btnRestart.onclick = () => { cur = 0; render(0); scrub.value = 0; timeEl.textContent = `0:00 / 2:00`; };
+document.getElementById('restart').onclick = () => { cur = 0; render(0); scrub.value = 0; timeEl.textContent = '0:00 / 2:00'; };
 cv.onclick = () => btnPlay.onclick();
 scrub.oninput = () => { cur = parseFloat(scrub.value); render(cur); timeEl.textContent = `${fmt(cur)} / 2:00`; };
 window.addEventListener('keydown', e => {
@@ -1125,7 +1321,6 @@ window.CAPTIONS = CAPTIONS;
 window.DURATION = DUR;
 window.renderAt = t => { render(t); return true; };
 window.setScale = s => { SCALE = s; cv.width = W * s; cv.height = H * s; render(cur); };
-/* Capture reads frames straight off the canvas — far faster than screenshotting. */
 window.frameData = (t, mime, q) => { render(t); return cv.toDataURL(mime, q); };
 if (location.search.includes('capture')) document.body.classList.add('capture');
 
