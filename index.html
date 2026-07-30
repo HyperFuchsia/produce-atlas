@@ -162,10 +162,10 @@ h1{
   position:absolute;left:50%;top:100%;width:1180px;height:1180px;margin-left:-590px;margin-top:-590px;
   transform:rotateX(90deg);pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 24% 20% at 50% 50%, rgba(168,176,170,.30), rgba(168,176,170,0) 64%),
-    repeating-linear-gradient(0deg, rgba(172,180,174,.16) 0 1px, transparent 1px 78px),
-    repeating-linear-gradient(90deg, rgba(172,180,174,.16) 0 1px, transparent 1px 78px),
-    radial-gradient(ellipse 40% 34% at 50% 50%, rgba(96,104,99,.13), rgba(96,104,99,0) 70%);
+    radial-gradient(ellipse 22% 18% at 50% 50%, rgba(178,186,180,.42), rgba(178,186,180,0) 62%),
+    repeating-linear-gradient(0deg, rgba(184,192,186,.22) 0 1px, transparent 1px 72px),
+    repeating-linear-gradient(90deg, rgba(184,192,186,.22) 0 1px, transparent 1px 72px),
+    radial-gradient(ellipse 42% 36% at 50% 50%, rgba(104,112,107,.2), rgba(104,112,107,0) 72%);
   -webkit-mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
   mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
 }
@@ -173,11 +173,19 @@ h1{
   position:absolute;left:50%;top:100%;width:520px;height:400px;margin-left:-260px;margin-top:-200px;
   transform:rotateX(90deg);pointer-events:none;z-index:1;
   background:radial-gradient(ellipse 42% 40% at 50% 50%, rgba(0,0,0,.92), rgba(0,0,0,.55) 46%, rgba(0,0,0,0) 74%);
-  filter:blur(6px);
+  filter:blur(7px);
 }
 
 /* ---------- the cabinet ---------- */
-.device{display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0 26px}
+.device{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0 44px}
+.device::before{
+  content:"";position:absolute;left:50%;top:-40px;width:1500px;height:calc(100% + 80px);
+  transform:translateX(-50%);pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 30% 34% at 50% 42%, rgba(126,136,130,.07), rgba(126,136,130,0) 72%),
+    radial-gradient(ellipse 46% 56% at 50% 46%, rgba(8,10,10,.95) 0%, rgba(8,10,10,.82) 40%, rgba(8,10,10,0) 74%);
+}
+.device > *{position:relative;z-index:1}
 .stage{
   position:relative;width:100%;height:calc(var(--cab-h) * var(--fit,1));
   display:flex;justify-content:center;
