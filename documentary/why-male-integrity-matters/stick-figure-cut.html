@@ -33,39 +33,39 @@
 
   *{box-sizing:border-box}
   body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1000px;margin:0 auto;padding:28px 18px 72px}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 18px 72px}
 
   header{margin-bottom:18px}
-  .eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+  .eyebrow{font-size:.75rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
   h1{font-family:var(--serif);font-weight:400;font-size:1.9rem;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
   .sub{margin:0;color:var(--soft);font-size:.92rem}
 
   .stage{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:3px;overflow:hidden}
   canvas{display:block;width:100%;height:auto}
 
-  .chip{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;color:var(--mute);background:color-mix(in srgb,var(--paper) 82%,transparent);padding:3px 7px;border-radius:2px}
-  .badge{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:.66rem;color:var(--mute);font-variant-numeric:tabular-nums}
+  .chip{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:.8rem;letter-spacing:.08em;color:var(--mute);background:color-mix(in srgb,var(--paper) 82%,transparent);padding:3px 7px;border-radius:2px}
+  .badge{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:.8rem;color:var(--mute);font-variant-numeric:tabular-nums}
 
   .caption{min-height:64px;display:flex;align-items:center;padding:14px 18px;border:1px solid var(--line);border-top:0;background:var(--panel);border-radius:0 0 3px 3px}
-  .caption p{margin:0;font-family:var(--serif);font-size:1.12rem;line-height:1.4;text-wrap:balance}
+  .caption p{margin:0;font-family:var(--serif);font-size:1.28rem;line-height:1.4;text-wrap:balance}
   .caption p:empty::before{content:"·";color:var(--mute)}
 
   .bar{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
-  button{font-family:var(--sans);font-size:.84rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:7px 13px;cursor:pointer;transition:border-color 120ms ease,color 120ms ease}
+  button{font-family:var(--sans);font-size:.9rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:7px 13px;cursor:pointer;transition:border-color 120ms ease,color 120ms ease}
   button:hover{border-color:var(--accent);color:var(--accent)}
   button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   #play{min-width:88px;font-weight:600}
 
   .scrub{flex:1 1 220px;display:flex;align-items:center;gap:10px}
   input[type=range]{flex:1;accent-color:var(--accent);height:20px}
-  .clock{font-family:var(--mono);font-size:.78rem;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .clock{font-family:var(--mono);font-size:.85rem;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
 
   .segs{display:flex;gap:2px;margin-top:12px}
   .segs button{padding:0;height:12px;border-radius:1px;border:0;background:var(--line);flex-grow:1;flex-basis:0;min-width:0}
   .segs button:hover{background:var(--accent)}
   .segs button.on{background:var(--accent)}
 
-  .notes{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);color:var(--soft);font-size:.88rem}
+  .notes{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);color:var(--soft);font-size:.95rem}
   .notes h2{font-family:var(--serif);font-weight:400;font-size:1.05rem;color:var(--ink);margin:0 0 8px}
   .notes p{margin:0 0 10px;max-width:66ch}
   .notes code{font-family:var(--mono);font-size:.82em;background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:1px 5px}
@@ -77,9 +77,9 @@
 
 <div class="wrap">
   <header>
-    <p class="eyebrow">Stick figure cut · low-production informational version</p>
+    <p class="eyebrow">Animated documentary · stick figure edition</p>
     <h1>Why Male Integrity Matters</h1>
-    <p class="sub">The full 15-minute structure, drawn as simply as it can be drawn. 20 scenes, real durations, narration as captions.</p>
+    <p class="sub">Twenty scenes. Fifteen minutes. Press play.</p>
   </header>
 
   <div class="stage">
@@ -103,10 +103,10 @@
   <div class="segs" id="segs" role="group" aria-label="Jump to scene"></div>
 
   <div class="notes">
-    <h2>What this is</h2>
-    <p>A watchable rough cut, not the film. Every figure is drawn from line segments in real time — no assets, no video, nothing pre-rendered. It runs the real 900-second timeline with the real scene durations, so it plays at the pace the finished documentary would play at.</p>
-    <p>Use it to feel the shape: where the argument turns, where a scene runs long, where the silence sits. The cinematic version is specified in <code>SCREENPLAY.md</code>.</p>
-    <p><kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> skip scene · click the strip above to jump.</p>
+    <h2>About this film</h2>
+    <p>Fifteen minutes, played straight through. Every figure is drawn from line segments in real time — there is no video file and no image inside this page, only instructions for making marks. Narration appears as captions beneath the picture.</p>
+    <p>The full cinematic version — camera, lighting, score, sound design — is specified scene by scene in <code>SCREENPLAY.md</code>, with the look-dev reference in <code>VISUAL-BIBLE.md</code>.</p>
+    <p><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> skip a scene · click the strip above to jump anywhere.</p>
   </div>
 </div>
 
@@ -149,12 +149,19 @@
     g.beginPath(); g.arc(x,y,r,0,Math.PI*2);
     if(fill) g.fill(); else g.stroke();
   }
+  // Type scale. The canvas is 1920 wide and displays at roughly 1140 CSS px,
+  // so on-canvas type renders at about 0.59x. MIN is the smallest size that
+  // still lands above 20 CSS px on screen; nothing is allowed below it.
+  var TXT = { min:H*0.036, note:H*0.038, body:H*0.044, key:H*0.052, big:H*0.075, huge:H*0.105 };
+
   function label(txt,x,y,size,col,align){
-    g.fillStyle=col||P.ink; g.font='500 '+(size||30)+'px ui-sans-serif,system-ui,sans-serif';
+    var sz = Math.max(size||TXT.body, TXT.min);
+    g.fillStyle=col||P.ink; g.font='500 '+sz+'px ui-sans-serif,system-ui,sans-serif';
     g.textAlign=align||'center'; g.textBaseline='middle'; g.fillText(txt,x,y);
   }
   function serif(txt,x,y,size,col,align,sp){
-    g.fillStyle=col||P.ink; g.font=(size||60)+'px Georgia,serif';
+    var sz = Math.max(size||TXT.big, TXT.min);
+    g.fillStyle=col||P.ink; g.font=sz+'px Georgia,serif';
     g.textAlign=align||'center'; g.textBaseline='middle';
     if(sp){ g.letterSpacing = sp+'px'; }
     g.fillText(txt,x,y);
@@ -277,7 +284,7 @@
     line(pts[3][0],yt,x1,yb,P.dim,4);
     g.setLineDash([14,12]); line(pts[1][0],yt,pts[2][0],yb,P.accent,5); g.setLineDash([]);
     g.restore();
-    if(t>27) label('one member, left unmaintained',W*0.5,H*0.78,36,P.accent);
+    if(t>27) label('one member, left unmaintained',W*0.5,H*0.78,TXT.key,P.accent);
     if(t>4&&t<18) label('not an argument that men matter more than women',W*0.5,H*0.60,38,P.dim);
   };
 
@@ -305,25 +312,32 @@
 
   S[5]=function(t,d){
     bg();
-    var names=['biological','neurological','psychological','emotional','ethical','moral','relational','occupational','environmental','sovereign'];
-    var cx=W*0.5, cy=H*0.48, R=H*0.30, n=10;
-    var shown=clamp(Math.floor(seg(t,2,40)*n)+1,0,n);
+    // Ten labels will not fit legibly around a ring, so the names live in a
+    // readable column on the left and the lattice is built on the right.
+    var names=['biological','neurological','psychological','emotional','ethical',
+               'moral','relational','occupational','environmental','sovereign'];
+    var n=10, cx=W*0.70, cy=H*0.50, R=H*0.30;
+    var shown=clamp(Math.floor(seg(t,2,42)*n)+1,0,n);
+    var dimmed=t>46;
     var pts=[];
     for(var i=0;i<n;i++){ var a=(i/n)*6.283-1.5708; pts.push([cx+Math.cos(a)*R, cy+Math.sin(a)*R]); }
-    var dimmed = t>46;
     for(var i2=0;i2<shown;i2++) for(var j=i2+1;j<shown;j++){
-      var isDim = dimmed && (i2===0||j===0);
-      g.globalAlpha = isDim?0.10:0.30;
-      line(pts[i2][0],pts[i2][1],pts[j][0],pts[j][1],P.accent, isDim?2:(dimmed?4:2.5));
+      var isDim=dimmed&&(i2===0||j===0);
+      g.globalAlpha=isDim?0.10:0.32;
+      line(pts[i2][0],pts[i2][1],pts[j][0],pts[j][1],P.accent,isDim?2:(dimmed?5:3));
       g.globalAlpha=1;
     }
-    for(var k=0;k<shown;k++){
-      var off = dimmed&&k===0;
-      circle(pts[k][0],pts[k][1],16,off?P.dim:P.accent,true);
-      var lx=pts[k][0]+(pts[k][0]-cx)*0.30, ly=pts[k][1]+(pts[k][1]-cy)*0.30;
-      label(names[k],lx,ly,26,off?P.dim:P.ink);
+    for(var k=0;k<n;k++){
+      if(k<shown){
+        var off=dimmed&&k===0;
+        circle(pts[k][0],pts[k][1],18,off?P.dim:P.accent,true);
+      }
+      var ly=H*0.17+k*H*0.068;
+      var active=k<shown, faded=dimmed&&k===0;
+      label(names[k], W*0.06, ly, TXT.note, faded?P.dim:(active?P.ink:P.dim), 'left');
+      if(active && !faded) circle(W*0.045,ly,9,P.accent,true);
     }
-    if(dimmed) label('the others take the load',cx,cy,32,P.ink);
+    if(dimmed) label('the others take the load', cx, H*0.92, TXT.body, P.ink);
   };
 
   S[6]=function(t,d){
@@ -350,7 +364,7 @@
       g.fillRect(0,H-(H*seg(t,29,36)),W,H); g.globalAlpha=1;
       label('the terms, not the command',W*0.5,H*0.16,34,P.dim);
     }
-    if(t>=37) label('what he has to work with',W*0.5,H*0.13,38,P.accent);
+    if(t>=37) label('what he has to work with',W*0.5,H*0.13,TXT.key,P.accent);
   };
 
   S[7]=function(t,d){
@@ -376,7 +390,7 @@
     g.stroke(); g.setLineDash([]);
     if(t>22){
       g.globalAlpha=seg(t,22,26);
-      label('biology does not guarantee morality',W*0.5,H*0.90,40,P.accent);
+      label('biology does not guarantee morality',W*0.5,H*0.90,TXT.key,P.accent);
       g.globalAlpha=1;
     } else label('one day, repeated',W*0.5,H*0.90,34,P.dim);
   };
@@ -406,7 +420,7 @@
       g.restore();
       if(r>0.6) label('other faces of the same structure, unread',W*0.5,H*0.90,34,P.dim);
     }
-    if(t>38) label('not noise — information',W*0.5,H*0.12,38,P.accent);
+    if(t>38) label('not noise — information',W*0.5,H*0.12,TXT.key,P.accent);
   };
 
   S[9]=function(t,d){
@@ -424,7 +438,7 @@
     branch(W*0.5,H*0.20,H*0.16,0,5,k*5.4);
     if(t>30){
       g.globalAlpha=seg(t,30,36);
-      label('a delta and a lung solve the same problem',W*0.5,H*0.90,36,P.ink);
+      label('a delta and a lung solve the same problem',W*0.5,H*0.90,TXT.body,P.ink);
       g.globalAlpha=1;
     } else label('downstream of everything above it',W*0.5,H*0.90,34,P.dim);
   };
@@ -444,7 +458,7 @@
              fig(W*0.60,y+H*0.115,H*0.085,{col:P.dim,armL:0.3,armR:-0.3}); }
     }
     line(W*0.295,H*0.16,W*0.295,H*0.16+k*H*0.145,P.accent,5);
-    if(t>27) label('every room teaches something it never wrote down',W*0.5,H*0.92,36,P.accent);
+    if(t>27) label('every room teaches something it never wrote down',W*0.5,H*0.92,TXT.key,P.accent);
   };
 
   S[11]=function(t,d){
@@ -498,7 +512,7 @@
     var pct = Math.round(34*n/Math.max(1,carriers));
     label(pct+'%',W*0.5,H*0.20,72,pct>70?P.accent:P.dim);
     label('load per person',W*0.5,H*0.27,30,P.dim);
-    if(t>36) label('they do not fail immediately — they fatigue',W*0.5,H*0.92,38,P.accent);
+    if(t>36) label('they do not fail immediately — they fatigue',W*0.5,H*0.92,TXT.key,P.accent);
     else if(t>28) label('the load does not disappear. it transfers.',W*0.5,H*0.92,36,P.dim);
   };
 
@@ -506,14 +520,16 @@
     bg();
     var y=H*0.70; ground(y);
     var k=t/d;
-    // structures accumulate behind a walking figure
-    var built=[[0.10,'fire',3],[0.20,'field',7],[0.30,'wall',12],[0.40,'road',17],[0.50,'press',23],[0.60,'rail',29],[0.72,'grid',35],[0.84,'port',41]];
+    // Structures accumulate behind a walking figure, each taller than the last,
+    // so the frame fills as the civilization does.
+    var built=[[0.09,'fire',3,0.07],[0.19,'field',7,0.11],[0.29,'wall',12,0.20],[0.39,'road',17,0.15],
+               [0.50,'press',23,0.28],[0.61,'rail',29,0.24],[0.72,'grid',35,0.44],[0.85,'port',41,0.36]];
     built.forEach(function(b){
       if(t<b[2]) return;
       var a=clamp((t-b[2])/3,0,1); g.globalAlpha=a;
-      var x=W*b[0];
-      rect(x-W*0.035,y-H*0.16,W*0.07,H*0.16,P.dim);
-      label(b[1],x,y+H*0.05,26,P.dim);
+      var x=W*b[0], bh=H*b[3];
+      rect(x-W*0.038,y-bh,W*0.076,bh,P.dim);
+      label(b[1],x,y+H*0.06,TXT.min,P.dim);
       g.globalAlpha=1;
     });
     walker(W*(0.08+0.80*k), y, H*0.20, t*5, {});
@@ -524,7 +540,7 @@
       line((x1+x2)/2,y+H*0.09,x2,y+H*0.14,P.accent,3);
     }
     label('trust, underneath all of it',W*0.5,y+H*0.22,32,P.accent);
-    if(t>30) label('every promise that holds is a cost never incurred',W*0.5,H*0.12,36,P.ink);
+    if(t>30) label('every promise that holds is a cost never incurred',W*0.5,H*0.12,TXT.body,P.ink);
   };
 
   S[14]=function(t,d){
@@ -541,7 +557,7 @@
     label('the person',W*0.32,H*0.86,32,P.dim);
     label('the conditions',W*0.68,H*0.86,32,P.dim);
     if(tip) label('the other hand does not move to catch it',W*0.5,H*0.20,34,P.accent);
-    if(t>38) label('explaining is not excusing',W*0.5,H*0.20,44,P.accent);
+    if(t>38) label('explaining is not excusing',W*0.5,H*0.20,TXT.key,P.accent);
   };
 
   S[15]=function(t,d){
@@ -558,9 +574,9 @@
     // the hopper, still counting
     rect(W*0.84,H*0.46,W*0.10,H*0.22,P.dim);
     var cnt=Math.floor(t*7);
-    label(String(cnt),W*0.89,H*0.57,40,P.accent);
+    label(String(cnt),W*0.89,H*0.57,TXT.key,P.accent);
     label('still counting',W*0.89,H*0.72,26,P.dim);
-    if(t>33) label('dignity does not begin when a person becomes useful',W*0.5,H*0.88,36,P.accent);
+    if(t>33) label('dignity does not begin when a person becomes useful',W*0.5,H*0.88,TXT.key,P.accent);
     else label('measured, stamped, routed',W*0.5,H*0.88,34,P.dim);
   };
 
@@ -586,8 +602,8 @@
     }
     if(t<11) label('"do you want to become a real man?"',W*0.5,H*0.16,42,P.ink);
     else if(t<20) label('earned · withheld · revoked',W*0.5,H*0.16,38,P.dim);
-    else if(t<32) label('there are no walls',W*0.5,H*0.16,42,P.accent);
-    else label('the gate was never real',W*0.5,H*0.16,42,P.accent);
+    else if(t<32) label('there are no walls',W*0.5,H*0.16,TXT.key,P.accent);
+    else label('the gate was never real',W*0.5,H*0.16,TXT.key,P.accent);
   };
 
   S[17]=function(t,d){
@@ -606,7 +622,7 @@
     var seasons=['spring','summer','autumn','winter'];
     label(seasons[Math.floor(t*1.1)%4],W*0.10,H*0.14,30,P.dim,'left');
     label(Math.round(lerp(0,50,k))+' years',W*0.90,H*0.14,30,P.dim,'right');
-    if(t>30) label('not certified — tended',W*0.5,H*0.92,38,P.accent);
+    if(t>30) label('not certified — tended',W*0.5,H*0.92,TXT.key,P.accent);
   };
 
   S[18]=function(t,d){
@@ -624,7 +640,7 @@
     tree2(W*0.5,mid+8, H*0.12,0,5,k,P.accent);
     label('river delta',W*0.06,H*0.10,30,P.green,'left');
     label('bronchi',W*0.06,H*0.92,30,P.accent,'left');
-    if(t>25) label('protect an environment, protect a nervous system',W*0.5,mid+H*0.44,36,P.ink);
+    if(t>25) label('protect an environment, protect a nervous system',W*0.5,mid+H*0.44,TXT.body,P.ink);
   };
 
   S[19]=function(t,d){
@@ -646,7 +662,7 @@
     });
     if(scale<0.9){ line(W*0.06,y,W*0.94,y,P.dim,3); }
     g.restore();
-    if(t>30) label('they are load-bearing',W*0.5,H*0.16,46,P.accent);
+    if(t>30) label('they are load-bearing',W*0.5,H*0.16,TXT.key,P.accent);
     else label('ordinary, and everywhere',W*0.5,H*0.16,36,P.dim);
   };
 
@@ -716,12 +732,40 @@
   });
   var segBtns=Array.prototype.slice.call(segsEl.children);
 
+  function endCard(){
+    bg();
+    line(W*0.5-W*0.13,H*0.585,W*0.5+W*0.13,H*0.585,P.accent,5);
+    serif('VIRDIGNITY',W*0.5,H*0.46,H*0.10,P.ink,'center',14);
+    label('why male integrity matters',W*0.5,H*0.67,TXT.note,P.dim);
+    label('an animated documentary · 20 scenes · 15 minutes',W*0.5,H*0.74,TXT.min,P.dim);
+  }
+
   var lastCap=null;
   function render(force){
     readPalette();
-    var i=sceneAt(time), s=SCENES[i], lt=time-starts[i];
     g.setTransform(1,0,0,1,0,0);
+
+    if(time>=TOTAL){
+      endCard();
+      if(lastCap!==null){ capEl.textContent=''; lastCap=null; }
+      chipEl.textContent='END';
+      badgeEl.textContent=fmt(TOTAL)+' / '+fmt(TOTAL);
+      clockEl.textContent=fmt(TOTAL);
+      if(force||!dragging) scrubEl.value=String(TOTAL);
+      segBtns.forEach(function(b){ b.classList.remove('on'); });
+      return;
+    }
+
+    var i=sceneAt(time), s=SCENES[i], lt=time-starts[i];
     (S[s.n]||function(){bg();})(lt,s.d);
+
+    // Dip-to-ground dissolve at every scene boundary, so the piece plays as
+    // one continuous film rather than twenty snapped-together panels.
+    var FADE=0.45, dip=0;
+    if(lt<FADE) dip=1-lt/FADE;
+    else if(lt>s.d-FADE) dip=1-(s.d-lt)/FADE;
+    if(dip>0){ g.globalAlpha=clamp(dip,0,1); bg(); g.globalAlpha=1; }
+
     var caption='';
     for(var k=0;k<s.c.length;k++) if(lt>=s.c[k][0]) caption=s.c[k][1];
     if(caption!==lastCap){ capEl.textContent=caption; lastCap=caption; }
