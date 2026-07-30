@@ -6,7 +6,7 @@
 <title>QA-77 — The Quantum Fruit Machine</title>
 <style>
 :root{
-  --thick:27px; /* nominal case depth, drawn as a stacked rim */
+  --depth:58px;
   --void:#0A0C0C;
   --panel:rgba(15,18,18,.86);
   --line:#242A28;
@@ -129,46 +129,112 @@ h1{
 .doc-note b{text-transform:uppercase;letter-spacing:.1em;font-size:10px}
 .doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 
-/* ---------- device: a real box, not a card ---------- */
-.device{display:flex;justify-content:center;padding:16px 0 42px}
-.stage{position:relative;width:min(716px,100%);perspective:1600px;perspective-origin:50% 38%}
+/* ---------- device: a solid, orbitable object ---------- */
+.device{display:flex;flex-direction:column;align-items:center;gap:12px;padding:22px 0 30px}
+.stage{
+  position:relative;width:min(716px,100%);
+  perspective:1700px;perspective-origin:50% 42%;
+  cursor:grab;touch-action:none;
+}
+.stage.grabbing{cursor:grabbing}
+.stage:focus-visible{outline:2px solid var(--bright);outline-offset:8px;border-radius:4px}
 .rig{
-  position:relative;display:flex;align-items:stretch;
-  transform-style:preserve-3d;
-  transform:rotateX(var(--rx,8deg)) rotateY(var(--ry,0deg));
-  transition:transform .55s cubic-bezier(.2,.8,.3,1);
+  position:relative;display:flex;align-items:stretch;transform-style:preserve-3d;
+  padding-right:58px;
+  transform:rotateX(var(--px,7deg)) rotateY(var(--py,-9deg));
 }
-.rig.tracking{transition:none}
-.case{position:relative;flex:1;min-width:0;transform-style:preserve-3d}
+.box{position:relative;flex:1;min-width:0;transform-style:preserve-3d}
+.face{backface-visibility:hidden}
+.face.front{position:relative;z-index:1}
+.face.back{
+  position:absolute;inset:0;border-radius:13px;overflow:hidden;
+  transform:translateZ(calc(-1 * var(--depth))) rotateY(180deg);
+  background:linear-gradient(168deg,#3A403E 0%,#282D2C 46%,#161A19 100%);
+  border:1px solid #0E1211;
+  display:flex;flex-direction:column;justify-content:space-between;gap:10px;padding:22px 26px;
+  font-family:var(--mono);color:#98A09D;
+}
+.rating{display:flex;flex-direction:column;gap:3px;font-size:9px;letter-spacing:.14em;text-transform:uppercase;line-height:1.6}
+.rating b{font-size:12px;letter-spacing:.24em;color:#D3D9D7;font-weight:700;margin-bottom:3px}
+.rating .rule{height:1px;background:#4A514E;margin:5px 0;width:180px}
+.backtop{display:flex;justify-content:space-between;gap:26px;flex-wrap:wrap}
+.compliance{display:flex;flex-direction:column;gap:3px;font-size:8px;letter-spacing:.13em;
+  text-transform:uppercase;line-height:1.7;text-align:right;color:#7E8683;align-items:flex-end}
+.compliance .mark{
+  width:34px;height:34px;border:1.5px solid #7E8683;border-radius:50%;display:grid;place-items:center;
+  font-size:11px;letter-spacing:.06em;color:#AEB6B3;margin-bottom:5px;
+}
+.compliance .rule{height:1px;background:#4A514E;width:120px;margin:4px 0}
+.hatch{
+  align-self:stretch;height:40%;border:1px solid #171B1A;border-radius:7px;position:relative;
+  background:linear-gradient(180deg,#343938,#242928 62%,#1E2322);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08), inset 0 -3px 7px rgba(0,0,0,.45),
+             0 1px 0 rgba(255,255,255,.05);
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:9px;
+}
+.hatch-grip{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);width:76px;height:9px;border-radius:4px;
+  background:repeating-linear-gradient(90deg,rgba(0,0,0,.45) 0 3px,rgba(255,255,255,.06) 3px 6px);
+}
+.hatch-label{font-size:7.5px;letter-spacing:.16em;text-transform:uppercase;color:#6E7673}
+.screw{
+  position:absolute;width:11px;height:11px;border-radius:50%;
+  background:radial-gradient(circle at 36% 32%,#5A615E,#2B302F 62%,#171B1A);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.5);
+}
+.screw::after{content:"";position:absolute;left:2px;right:2px;top:5px;height:1px;background:#121615}
+.screw.s1{top:12px;left:12px}.screw.s2{top:12px;right:12px}
+.screw.s3{bottom:12px;left:12px}.screw.s4{bottom:12px;right:12px}
+
+.face.side{top:0;bottom:0;width:var(--depth);position:absolute;
+  background:linear-gradient(180deg,#474D4B,#2C3130 46%,#141817)}
+.face.side.sl{left:0;transform-origin:left center;transform:rotateY(90deg)}
+.face.side.sr{right:0;transform-origin:right center;transform:rotateY(-90deg)}
+.grip{position:absolute;inset:22% 3px;border-radius:3px;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.34) 0 2px,rgba(255,255,255,.05) 2px 5px)}
+.boss{position:absolute;top:50%;left:2px;right:2px;height:104px;transform:translateY(-50%);border-radius:5px;
+  background:linear-gradient(180deg,#4E5452,#23292700);
+  background:linear-gradient(180deg,#4E5452,#232927);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -2px 5px rgba(0,0,0,.5)}
+.face.cap{left:0;right:0;height:var(--depth);position:absolute;
+  background:linear-gradient(90deg,#2F3433,#4A504E 42%,#262B2A)}
+.face.cap.ct{top:0;transform-origin:center top;transform:rotateX(-90deg)}
+.face.cap.cb{bottom:0;transform-origin:center bottom;transform:rotateX(90deg);
+  background:linear-gradient(90deg,#191D1C,#272C2B 42%,#161A19)}
+.vent{position:absolute;top:50%;left:32%;right:32%;height:5px;transform:translateY(-50%);border-radius:3px;
+  background:repeating-linear-gradient(90deg,#12161500 0 4px,rgba(0,0,0,.5) 4px 7px);
+  background:repeating-linear-gradient(90deg,transparent 0 4px,rgba(0,0,0,.5) 4px 7px)}
+.feet{position:absolute;top:50%;left:8%;right:8%;height:7px;transform:translateY(-50%);
+  background:linear-gradient(90deg,#0D100F 0 46px,transparent 46px calc(100% - 46px),#0D100F calc(100% - 46px))}
+
 .deskshadow{
-  position:absolute;left:6%;right:6%;bottom:-6px;height:44px;border-radius:50%;
-  background:radial-gradient(ellipse at center,rgba(0,0,0,.85),rgba(0,0,0,0) 70%);
-  filter:blur(9px);transform:translateY(var(--shadowY,0px)) scaleX(var(--shadowS,1));
-  pointer-events:none;
+  position:absolute;left:8%;right:8%;bottom:-14px;height:40px;border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(0,0,0,.8),rgba(0,0,0,0) 70%);
+  filter:blur(10px);transform:scaleX(var(--shadowS,1));pointer-events:none;
 }
+.viewbar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  width:min(716px,100%);font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);
+}
+.viewbtns{display:flex;gap:6px;flex-wrap:wrap}
+
 .shell{
-  position:relative;z-index:1;transform-style:preserve-3d;
-  width:100%;
+  width:100%;transform-style:preserve-3d;
   background:linear-gradient(180deg,var(--shell-hi) 0%,var(--shell) 14%,var(--shell) 78%,var(--shell-lo) 100%);
   border:1px solid #101312;border-radius:13px;padding:16px 18px 18px;
   display:flex;flex-direction:column;gap:13px;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 6px rgba(0,0,0,.5),
-    0 2px 0 #2A2F2E, 0 4px 0 #282D2C, 0 6px 0 #262B2A, 0 8px 0 #242928,
-    0 10px 0 #222726, 0 12px 0 #202524, 0 14px 0 #1E2322, 0 16px 0 #1C2120,
-    0 18px 0 #1A1F1E, 0 20px 0 #181D1C, 0 22px 0 #161B1A, 0 24px 0 #141918,
-    0 26px 0 #121716, 0 27px 1px #0E1211,
-    0 34px 30px -14px rgba(0,0,0,.75), 0 46px 60px -30px rgba(0,0,0,.95);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2), inset 0 -2px 6px rgba(0,0,0,.5),
+             0 34px 30px -18px rgba(0,0,0,.6);
 }
-.shell::before{
-  content:"";position:absolute;inset:0;border-radius:13px;pointer-events:none;z-index:0;
+.gloss{
+  position:absolute;inset:0;border-radius:13px;pointer-events:none;z-index:2;
   background:linear-gradient(104deg,
     rgba(255,255,255,0) calc(var(--sheen,50%) - 34%),
-    rgba(255,255,255,.055) calc(var(--sheen,50%) - 8%),
-    rgba(255,255,255,.015) calc(var(--sheen,50%) + 6%),
+    rgba(255,255,255,.06) calc(var(--sheen,50%) - 8%),
+    rgba(255,255,255,.018) calc(var(--sheen,50%) + 6%),
     rgba(255,255,255,0) calc(var(--sheen,50%) + 28%));
 }
-.shell > *{position:relative;z-index:1}
 .plate{display:flex;justify-content:space-between;align-items:center;gap:12px}
 .brand{font-family:var(--mono);font-size:11.5px;letter-spacing:.22em;color:#D3D8D6;font-weight:700;white-space:nowrap}
 .brand em{font-style:normal;color:#8C918F}
@@ -239,18 +305,23 @@ h1{
 .grille{display:flex;gap:4px}
 .grille i{width:4px;height:4px;border-radius:50%;background:#161918;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 
-.lever{position:relative;width:66px;border:0;padding:0;background:none;flex:none;cursor:grab;touch-action:none;transform-style:preserve-3d}
+.lever{
+  position:absolute;top:50%;right:-52px;
+  width:80px;height:340px;margin-top:-170px;
+  border:0;padding:0;background:none;cursor:grab;touch-action:none;
+  transform:translateZ(5px);transform-style:preserve-3d;
+}
 .lever.dragging{cursor:grabbing}
 .lever-mount{
-  position:absolute;left:0;top:50%;transform:translateY(-50%);width:30px;height:98px;border-radius:0 6px 6px 0;
+  position:absolute;left:0;top:50%;transform:translateY(-50%);width:42px;height:104px;border-radius:0 6px 6px 0;
   background:linear-gradient(180deg,var(--shell-hi),var(--shell) 30%,var(--shell-lo));
   border:1px solid #101312;border-left:0;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset -2px 0 5px rgba(0,0,0,.5);
 }
-.lever-mount::after{content:"";position:absolute;left:7px;top:14px;bottom:14px;width:12px;border-radius:6px;background:linear-gradient(180deg,#0A0C0C,#161A19);box-shadow:inset 0 2px 4px rgba(0,0,0,.85)}
+.lever-mount::after{content:"";position:absolute;left:19px;top:14px;bottom:14px;width:12px;border-radius:6px;background:linear-gradient(180deg,#0A0C0C,#161A19);box-shadow:inset 0 2px 4px rgba(0,0,0,.85)}
 .lever-arm{
-  position:absolute;left:12px;top:50%;width:11px;height:150px;transform-origin:50% 100%;z-index:1;
-  transform:translateY(-100%) rotate(0deg) translateZ(16px);border-radius:5px;
+  position:absolute;left:24px;top:50%;width:11px;height:150px;transform-origin:50% 100%;z-index:1;
+  transform:translateY(-100%) rotate(0deg);border-radius:5px;
   background:linear-gradient(90deg,#565C5A,#C9CFCC 38%,#666C6A 78%,#414645);
   transition:transform .5s cubic-bezier(.2,.85,.3,1);
 }
@@ -259,7 +330,7 @@ h1{
   background:radial-gradient(circle at 34% 30%,#6E7472,#2A2E2D 52%,#0D0F0F 100%);
   box-shadow:0 3px 8px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.12);
 }
-.lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg) translateZ(16px)}
+.lever.pulled .lever-arm{transform:translateY(-100%) rotate(74deg)}
 .lever:focus-visible{outline:2px solid var(--bright);outline-offset:4px;border-radius:8px}
 .lever:disabled{cursor:not-allowed}
 
@@ -478,10 +549,44 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   </section>
 
   <section class="device">
-    <div class="stage" id="stage">
+    <div class="stage" id="stage" tabindex="0" role="group" aria-label="Apparatus QA-77 — drag or use arrow keys to turn it">
       <div class="rig" id="rig">
-        <div class="case">
-      <div class="shell">
+        <div class="box" id="box">
+
+          <div class="face back" aria-hidden="true">
+            <div class="backtop">
+              <div class="rating">
+                <b>ATLAS · ELECTRONICS</b>
+                <span>QA-77 determination apparatus</span>
+                <span>Serial 0000771 · Rev 4</span>
+                <span>7-state · one payline · unitary</span>
+                <span class="rule"></span>
+                <span>Contains no user-serviceable parts.</span>
+                <span>This device does not answer questions.</span>
+              </div>
+              <div class="compliance">
+                <span class="mark">QA</span>
+                <span>Made under licence to the</span>
+                <span>Office of Probabilistic</span>
+                <span>Determinations</span>
+                <span class="rule"></span>
+                <span>Not a measuring instrument</span>
+                <span>Not for use in evidence</span>
+              </div>
+            </div>
+            <div class="hatch">
+              <span class="hatch-grip"></span>
+              <span class="hatch-label">Cells · 2 × 1.5V · remove before storage</span>
+            </div>
+            <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
+          </div>
+
+          <div class="face side sl" aria-hidden="true"><span class="grip"></span></div>
+          <div class="face side sr" aria-hidden="true"><span class="boss"></span></div>
+          <div class="face cap ct" aria-hidden="true"><span class="vent"></span></div>
+          <div class="face cap cb" aria-hidden="true"><span class="feet"></span></div>
+
+      <div class="shell face front">
         <div class="plate">
           <span class="brand">ATLAS<em>·</em>ELECTRONICS</span>
           <span class="model">QA-77 determination apparatus<br>7-state · one payline · unitary</span>
@@ -524,16 +629,27 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
           <span class="keyhint"><b>space</b> observe · <b>B</b> burst<br><b>S</b> sound · <b>R</b> reset</span>
         </div>
         <div class="grille" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <span class="gloss" aria-hidden="true"></span>
       </div>
+
+          <button class="lever" id="lever" aria-label="Pull the lever to observe — drag it down or press it">
+            <span class="lever-mount"></span>
+            <span class="lever-arm"><span class="lever-ball"></span></span>
+          </button>
 
         </div>
-
-        <button class="lever" id="lever" aria-label="Pull the lever to observe — drag it down or press it">
-          <span class="lever-mount"></span>
-          <span class="lever-arm"><span class="lever-ball"></span></span>
-        </button>
       </div>
       <span class="deskshadow" aria-hidden="true"></span>
+    </div>
+
+    <div class="viewbar">
+      <span class="viewhint" id="viewHint">Drag the apparatus to turn it · arrow keys when focused</span>
+      <span class="viewbtns">
+        <button class="minibtn" id="vFront">Front</button>
+        <button class="minibtn" id="vBack">Back</button>
+        <button class="minibtn" id="vLeft">Side</button>
+        <button class="minibtn" id="vReset">Reset view</button>
+      </span>
     </div>
   </section>
 
@@ -1873,34 +1989,99 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     });
   })();
 
-  /* The case tilts toward the pointer. Small angles: presence, not a fairground ride. */
-  (function(){
+  /* Orbit. Drag the apparatus to turn it through a full circle; it carries a
+     little momentum and then holds wherever you left it. */
+  var view = (function(){
     var stage = el("stage"), rig = el("rig");
-    if(reduced || !stage) return;
-    var tX = 8, tY = 0, cX = 8, cY = 0, raf = null;
-    function tick(){
-      cX += (tX - cX)*0.14; cY += (tY - cY)*0.14;
-      rig.style.setProperty("--rx", cX.toFixed(2) + "deg");
-      rig.style.setProperty("--ry", cY.toFixed(2) + "deg");
-      rig.style.setProperty("--sheen", (50 - cY*2.0).toFixed(1) + "%");
-      stage.style.setProperty("--shadowY", (cX*0.7).toFixed(1) + "px");
-      stage.style.setProperty("--shadowS", (1 - Math.abs(cY)*0.012).toFixed(3));
-      raf = (Math.abs(tX-cX) > 0.04 || Math.abs(tY-cY) > 0.04) ? requestAnimationFrame(tick) : null;
+    var yaw = -9, pitch = 7, vYaw = 0, vPitch = 0;
+    var goal = null, raf = null, dragging = false, lastX = 0, lastY = 0, moved = false;
+
+    function norm(a){ return ((a % 360) + 360) % 360; }
+    function showAngle(){
+      el("viewHint").textContent = "Yaw " + Math.round(norm(yaw)) + "\u00B0 · pitch " +
+        Math.round(pitch) + "\u00B0 · double-click to reset";
     }
-    function start(){ rig.classList.add("tracking"); if(!raf) raf = requestAnimationFrame(tick); }
-    rig.style.setProperty("--sheen", "50%");
-    stage.addEventListener("pointermove", function(e){
-      var r = stage.getBoundingClientRect();
-      tY = ((e.clientX - r.left)/r.width - 0.5) * 22;
-      tX = 8 - ((e.clientY - r.top)/r.height - 0.5) * 13;
-      start();
-    }, {passive:true});
-    stage.addEventListener("pointerleave", function(){
-      tX = 8; tY = 0;
-      rig.classList.remove("tracking");
-      if(!raf) raf = requestAnimationFrame(tick);
+    function apply(){
+      rig.style.setProperty("--py", yaw.toFixed(2) + "deg");
+      rig.style.setProperty("--px", pitch.toFixed(2) + "deg");
+      /* the light sweeps across the case as it turns */
+      rig.style.setProperty("--sheen", (50 - Math.sin(yaw*Math.PI/180)*34).toFixed(1) + "%");
+      var facing = Math.cos(yaw*Math.PI/180);           /* 1 front on, -1 back on */
+      stage.style.setProperty("--shadowS", (0.78 + 0.22*Math.abs(facing)).toFixed(3));
+    }
+    function running(){ if(!raf) raf = requestAnimationFrame(tick); }
+    function tick(){
+      if(goal){
+        yaw += (goal.yaw - yaw)*0.16;
+        pitch += (goal.pitch - pitch)*0.16;
+        if(Math.abs(goal.yaw - yaw) < 0.15 && Math.abs(goal.pitch - pitch) < 0.15){
+          yaw = goal.yaw; pitch = goal.pitch; goal = null;
+        }
+      }else if(!dragging){
+        yaw += vYaw; pitch += vPitch;
+        vYaw *= 0.93; vPitch *= 0.93;
+        if(Math.abs(vYaw) < 0.03) vYaw = 0;
+        if(Math.abs(vPitch) < 0.03) vPitch = 0;
+      }
+      pitch = Math.max(-74, Math.min(74, pitch));
+      apply();
+      if(goal || dragging || vYaw || vPitch){ raf = requestAnimationFrame(tick); }
+      else{
+        raf = null;
+        if(moved) showAngle();
+      }
+    }
+    function moveTo(y, p){ goal = {yaw:y, pitch:p}; vYaw = vPitch = 0; running(); }
+
+    stage.addEventListener("pointerdown", function(e){
+      if(e.target.closest("button, textarea, a, .lever")) return;   /* controls come first */
+      dragging = true; moved = false; lastX = e.clientX; lastY = e.clientY;
+      goal = null; vYaw = vPitch = 0;
+      stage.classList.add("grabbing");
+      try{ stage.setPointerCapture(e.pointerId); }catch(err){}
+      running();
     });
+    stage.addEventListener("pointermove", function(e){
+      if(!dragging) return;
+      var dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      if(Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+      yaw += dx*0.38; pitch -= dy*0.30;
+      vYaw = dx*0.30; vPitch = -dy*0.24;
+      running();
+    });
+    function release(){
+      if(!dragging) return;
+      dragging = false;
+      stage.classList.remove("grabbing");
+      if(moved) showAngle();
+      running();
+    }
+    stage.addEventListener("pointerup", release);
+    stage.addEventListener("pointercancel", release);
+    stage.addEventListener("dblclick", function(){ moveTo(-9, 7); });
+    stage.addEventListener("keydown", function(e){
+      var step = e.shiftKey ? 22 : 8, used = true;
+      if(e.key === "ArrowLeft") yaw -= step;
+      else if(e.key === "ArrowRight") yaw += step;
+      else if(e.key === "ArrowUp") pitch = Math.min(74, pitch + step);
+      else if(e.key === "ArrowDown") pitch = Math.max(-74, pitch - step);
+      else if(e.key === "Home") { moveTo(-9, 7); }
+      else used = false;
+      if(used){ e.preventDefault(); goal = goal || null; running(); }
+    });
+    apply();
+    return {
+      front:function(){ moveTo(Math.round(yaw/360)*360 - 9, 7); },
+      back: function(){ moveTo(Math.round(yaw/360)*360 + 180, 4); },
+      side: function(){ moveTo(Math.round(yaw/360)*360 - 72, 6); },
+      reset:function(){ moveTo(-9, 7); }
+    };
   })();
+  el("vFront").addEventListener("click", view.front);
+  el("vBack").addEventListener("click", view.back);
+  el("vLeft").addEventListener("click", view.side);
+  el("vReset").addEventListener("click", view.reset);
 
   /* Inline glossary: every instrument on the panel explains itself. */
   var DEFS = {

@@ -78,11 +78,21 @@ label and figure. No colour is used to carry meaning anywhere.
 
 ### The apparatus
 
-The case is a physical object rather than a card: a perspective stage with
-pointer-parallax tilt, an extruded body drawn as a stacked rim, a screen recessed
-behind a raised bezel, keys that travel in Z when pressed, and a specular highlight
-that tracks across both the case and the LCD glass as it turns. A desk shadow shifts
-and narrows with the tilt.
+A fully modelled object you can turn through a complete circle. Six faces are built
+in CSS 3D — front, back, both sides and both caps, 58px deep — so it holds up from
+any angle. **Drag it to orbit**, with momentum, or use the arrow keys when it has
+focus, or the Front / Back / Side / Reset presets; double-click returns it to the
+default three-quarter view. The current yaw and pitch are reported under the device.
+
+The back is worth turning to: a moulded rating plate (`SERIAL 0000771 · CONTAINS NO
+USER-SERVICEABLE PARTS · THIS DEVICE DOES NOT ANSWER QUESTIONS`), a compliance mark
+reading *not a measuring instrument, not for use in evidence*, a ribbed battery hatch
+and four slotted screws. From behind you can see the front keys standing proud past
+the far edge.
+
+The screen is recessed behind a raised bezel, the keys travel in Z when pressed, the
+lever is mounted on the right and swings on its own housing, and a specular highlight
+sweeps across the case and the LCD glass as the object turns.
 
 The reels are true drums. Each face sits on a cylinder — `translateZ(-r) rotateX(a)
 translateZ(r)`, so the rest pose is the identity transform and nothing is magnified
