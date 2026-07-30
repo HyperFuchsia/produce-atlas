@@ -1,0 +1,855 @@
+<title>Why Male Integrity Matters — Scene Guide</title>
+
+<style>
+  :root {
+    --ground:   #E7E9EB;
+    --surface:  #F3F5F6;
+    --line:     #C9CFD4;
+    --ink:      #182028;
+    --ink-soft: #55636E;
+    --ink-mute: #7E8B95;
+    --ember:    #B4551F;
+    --ember-lt: #C7622F;
+    --verd:     #2F6B5E;
+    --frame-bg: #131A20;
+
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Times New Roman', serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+
+    --fs-xs: 0.7rem;
+    --fs-sm: 0.85rem;
+    --fs-md: 1rem;
+    --fs-lg: 1.2rem;
+    --fs-xl: 1.75rem;
+    --fs-2xl: 2.6rem;
+
+    --rail: 22px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground:   #10161B;
+      --surface:  #182028;
+      --line:     #2C3841;
+      --ink:      #DCE3E8;
+      --ink-soft: #A2B0BA;
+      --ink-mute: #74838E;
+      --ember:    #F2A65A;
+      --ember-lt: #E08C42;
+      --verd:     #5E9E8C;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #10161B;
+    --surface:  #182028;
+    --line:     #2C3841;
+    --ink:      #DCE3E8;
+    --ink-soft: #A2B0BA;
+    --ink-mute: #74838E;
+    --ember:    #F2A65A;
+    --ember-lt: #E08C42;
+    --verd:     #5E9E8C;
+  }
+
+  :root[data-theme="light"] {
+    --ground:   #E7E9EB;
+    --surface:  #F3F5F6;
+    --line:     #C9CFD4;
+    --ink:      #182028;
+    --ink-soft: #55636E;
+    --ink-mute: #7E8B95;
+    --ember:    #B4551F;
+    --ember-lt: #C7622F;
+    --verd:     #2F6B5E;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: var(--fs-md);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 20px 96px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead { padding: 72px 0 36px; }
+
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 0 0 20px;
+  }
+
+  .filament-rule {
+    height: 2px;
+    background: linear-gradient(90deg, var(--ember), color-mix(in srgb, var(--ember) 20%, transparent));
+    margin-bottom: 22px;
+    max-width: 220px;
+  }
+
+  h1 {
+    font-size: var(--fs-2xl);
+    line-height: 1.08;
+    font-weight: 400;
+    letter-spacing: -0.015em;
+    margin: 0 0 18px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-size: var(--fs-lg);
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+    max-width: 60ch;
+  }
+
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--sans);
+    font-size: var(--fs-sm);
+    color: var(--ink-soft);
+    padding: 0;
+    margin: 0;
+    list-style: none;
+  }
+  .facts b {
+    font-weight: 600;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- timeline ---------- */
+
+  .timeline-shell {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--ground);
+    padding: 14px 0 12px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .timeline {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 0;
+  }
+
+  .seg {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    height: 14px;
+    border-radius: 1px;
+    cursor: pointer;
+    background: var(--line);
+    transition: background 140ms ease, transform 140ms ease;
+    transform-origin: bottom;
+  }
+  .seg:hover, .seg:focus-visible { background: var(--ember); transform: scaleY(1.5); }
+  .seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .seg[data-act="1"] { background: color-mix(in srgb, var(--ember) 55%, var(--line)); }
+  .seg[data-act="2"] { background: color-mix(in srgb, var(--ink-mute) 60%, var(--line)); }
+  .seg[data-act="3"] { background: color-mix(in srgb, var(--verd) 62%, var(--line)); }
+  .seg[data-act="4"] { background: color-mix(in srgb, var(--ember) 30%, var(--line)); }
+  .seg.is-current { background: var(--ember); }
+
+  .timeline-legend {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: var(--fs-xs);
+    color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- act headers ---------- */
+
+  .act {
+    position: relative;
+    padding: 56px 0 12px var(--rail);
+    margin-left: 6px;
+  }
+  .act::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: color-mix(in srgb, var(--ember) 35%, transparent);
+  }
+  .act h2 {
+    font-family: var(--sans);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--ember);
+    margin: 0 0 6px;
+  }
+  .act p {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: var(--fs-sm);
+    font-family: var(--sans);
+  }
+
+  /* ---------- scenes ---------- */
+
+  .scenes {
+    position: relative;
+    margin: 0 0 0 6px;
+    padding: 0 0 0 var(--rail);
+    list-style: none;
+  }
+  .scenes::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 34px;
+    width: 2px;
+    background: color-mix(in srgb, var(--ember) 35%, transparent);
+  }
+
+  .scene {
+    position: relative;
+    padding: 26px 0 30px;
+    scroll-margin-top: 78px;
+  }
+  .scene + .scene { border-top: 1px solid var(--line); }
+
+  .scene::before {
+    content: "";
+    position: absolute;
+    left: calc(-1 * var(--rail) - 3px);
+    top: 40px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ember);
+  }
+
+  .scene-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 14px;
+    font-family: var(--mono);
+    font-size: var(--fs-xs);
+    color: var(--ink-mute);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 8px;
+  }
+  .scene-no { color: var(--ember); font-weight: 700; }
+  .register {
+    font-family: var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.66rem;
+    color: var(--ink-mute);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1px 6px;
+  }
+
+  .scene h3 {
+    font-size: var(--fs-xl);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+
+  .frame {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--frame-bg);
+    border-radius: 2px;
+    margin-bottom: 16px;
+  }
+
+  .onscreen {
+    font-family: var(--sans);
+    font-size: var(--fs-sm);
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+  }
+
+  .narration {
+    margin: 0;
+    padding: 2px 0 2px 16px;
+    border-left: 2px solid var(--ember);
+    font-size: var(--fs-lg);
+    line-height: 1.45;
+    color: var(--ink);
+  }
+  .narration span {
+    display: block;
+    font-family: var(--sans);
+    font-size: var(--fs-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 6px;
+  }
+
+  /* ---------- footer ---------- */
+
+  .colophon {
+    margin: 64px 0 0 6px;
+    padding: 24px 0 0 var(--rail);
+    border-top: 1px solid var(--line);
+    font-family: var(--sans);
+    font-size: var(--fs-sm);
+    color: var(--ink-soft);
+  }
+  .colophon p { margin: 0 0 10px; max-width: 62ch; }
+  .colophon code {
+    font-family: var(--mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 1px 5px;
+  }
+
+  @media (max-width: 560px) {
+    :root { --fs-2xl: 2rem; --fs-xl: 1.4rem; --rail: 16px; }
+    .masthead { padding-top: 48px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+    .seg:hover, .seg:focus-visible { transform: none; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Animated documentary · Scene guide</p>
+    <div class="filament-rule"></div>
+    <h1>Why Male Integrity Matters</h1>
+    <p class="standfirst">Twenty scenes, fifteen minutes. What happens on screen, and what is said over it.</p>
+    <ul class="facts">
+      <li><b>15:00</b> runtime</li>
+      <li><b>20</b> scenes</li>
+      <li><b>~1,733</b> words of narration</li>
+      <li><b>88s</b> of deliberate silence</li>
+      <li>Closes on <b>Virdignity</b></li>
+    </ul>
+  </header>
+
+  <div class="timeline-shell">
+    <div class="timeline" id="timeline" role="group" aria-label="Jump to scene"></div>
+    <div class="timeline-legend"><span>0:00</span><span>7:30</span><span>15:00</span></div>
+  </div>
+
+  <main id="content"></main>
+
+  <footer class="colophon">
+    <p>An illustrated companion to the production documents. Each frame below is a simplified diagram of the scene's key image — not a final board.</p>
+    <p>Full screenplay: <code>SCREENPLAY.md</code> · Look-dev reference: <code>VISUAL-BIBLE.md</code></p>
+    <p>The warm line running down the left edge of this page is the film's own motif: one continuous filament present in every scene, named only at the end.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var BG = "#131A20", EM = "#F2A65A", EM2 = "#C7622F", SL = "#8FA3B0", SL2 = "#3E4F5C", VD = "#5E9E8C";
+
+  function frame(inner) {
+    return '<svg class="frame" viewBox="0 0 239 100" role="img" preserveAspectRatio="xMidYMid meet">' +
+           '<rect width="239" height="100" fill="' + BG + '"/>' + inner + '</svg>';
+  }
+
+  // Hand-placed window coordinates for the opening city — scattered, never gridded.
+  var WIN = [[18,66],[27,58],[41,71],[52,62],[63,74],[71,55],[88,68],[97,60],[106,76],[119,57],[128,70],[141,63],[150,75],[163,59],[171,72],[186,65],[197,57],[209,71],[218,61],[229,74]];
+
+  var SVG = {};
+
+  SVG[1] = function () {
+    var w = WIN.map(function (p, i) {
+      return '<rect x="' + p[0] + '" y="' + p[1] + '" width="2" height="2.6" fill="' + EM + '" opacity="' + (0.55 + (i % 4) * 0.15) + '"/>';
+    }).join("");
+    return frame(
+      '<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#182028"/><stop offset="1" stop-color="#3A2E38"/></linearGradient></defs>' +
+      '<rect width="239" height="100" fill="url(#sky)"/>' +
+      '<g fill="#0C1216">' +
+      '<rect x="12" y="52" width="24" height="48"/><rect x="38" y="60" width="20" height="40"/>' +
+      '<rect x="60" y="48" width="26" height="52"/><rect x="84" y="62" width="22" height="38"/>' +
+      '<rect x="110" y="52" width="24" height="48"/><rect x="136" y="58" width="22" height="42"/>' +
+      '<rect x="160" y="50" width="26" height="50"/><rect x="188" y="60" width="20" height="40"/>' +
+      '<rect x="206" y="54" width="28" height="46"/></g>' + w +
+      '<rect x="0" y="70" width="239" height="16" fill="' + SL + '" opacity="0.10"/>' +
+      '<rect x="0" y="76" width="239" height="10" fill="' + SL + '" opacity="0.08"/>'
+    );
+  };
+
+  SVG[2] = function () {
+    var cells = "", i, x, y;
+    for (i = 0; i < 6; i++) {
+      x = 22 + (i % 3) * 68; y = i < 3 ? 20 : 56;
+      cells += '<rect x="' + x + '" y="' + y + '" width="52" height="28" fill="#0C1216" stroke="' + SL2 + '" stroke-width="0.6"/>';
+      cells += '<rect x="' + x + '" y="' + y + '" width="52" height="28" fill="' + EM + '" opacity="0.10"/>';
+    }
+    return frame(
+      cells +
+      '<circle cx="40" cy="30" r="4" fill="' + EM + '"/>' +
+      '<path d="M36 34 L30 44 M44 34 L50 44" stroke="' + EM + '" stroke-width="0.8" opacity="0.7"/>' +
+      '<circle cx="112" cy="34" r="6" fill="' + EM + '" opacity="0.5"/>' +
+      '<rect x="176" y="26" width="20" height="1" fill="' + EM + '"/>' +
+      '<rect x="176" y="30" width="14" height="1" fill="' + EM + '" opacity="0.6"/>' +
+      '<rect x="30" y="70" width="30" height="1" fill="' + EM + '" opacity="0.8"/>' +
+      '<circle cx="112" cy="70" r="3" fill="' + EM + '" opacity="0.6"/>' +
+      '<path d="M170 76 h30" stroke="' + SL + '" stroke-width="0.8"/>' +
+      '<path d="M170 76 l6 -4 l4 8 l5 -10 l4 6 h11" stroke="' + SL + '" stroke-width="0.7" fill="none" opacity="0.9"/>'
+    );
+  };
+
+  SVG[3] = function () {
+    return frame(
+      '<g stroke="' + EM + '" stroke-width="0.8" fill="none" opacity="0.85">' +
+      '<path d="M40 68 L199 68"/><path d="M40 68 L60 34 L100 34 L120 68"/>' +
+      '<path d="M120 68 L140 34 L180 34 L199 68"/>' +
+      '<path d="M60 34 L80 68 M100 34 L120 68 M140 34 L160 68 M180 34 L199 68"/>' +
+      '<path d="M100 34 L140 34"/></g>' +
+      '<path d="M80 68 L100 34" stroke="' + EM + '" stroke-width="1.1" stroke-dasharray="3 3" fill="none"/>' +
+      '<circle cx="90" cy="51" r="6" fill="none" stroke="' + EM + '" stroke-width="0.4" opacity="0.5"/>'
+    );
+  };
+
+  SVG[4] = function () {
+    return frame(
+      '<g fill="' + SL + '" opacity="0.9">' +
+      '<rect x="86" y="24" width="66" height="9"/><rect x="110" y="33" width="18" height="34"/>' +
+      '<rect x="86" y="67" width="66" height="9"/></g>' +
+      '<path d="M110 44 L128 46" stroke="' + BG + '" stroke-width="1.6"/>' +
+      '<path d="M110 44 L118 45 L124 45.6 L128 46" stroke="#E24B2E" stroke-width="0.8" fill="none"/>' +
+      '<rect x="0" y="76" width="239" height="1.2" fill="' + EM + '" opacity="0.75"/>' +
+      '<text x="86" y="90" font-family="Georgia, serif" font-size="9" fill="' + SL + '" opacity="0.75" letter-spacing="1.5">integer</text>'
+    );
+  };
+
+  SVG[5] = function () {
+    var n = 10, pts = [], i, j, edges = "", nodes = "";
+    for (i = 0; i < n; i++) {
+      var a = (i / n) * Math.PI * 2 - Math.PI / 2;
+      pts.push([119.5 + Math.cos(a) * 34, 50 + Math.sin(a) * 34]);
+    }
+    for (i = 0; i < n; i++) {
+      for (j = i + 1; j < n; j++) {
+        var dim = (i === 0 || j === 0);
+        edges += '<line x1="' + pts[i][0].toFixed(1) + '" y1="' + pts[i][1].toFixed(1) +
+                 '" x2="' + pts[j][0].toFixed(1) + '" y2="' + pts[j][1].toFixed(1) +
+                 '" stroke="' + EM + '" stroke-width="' + (dim ? 0.3 : 0.7) + '" opacity="' + (dim ? 0.12 : 0.4) + '"/>';
+      }
+    }
+    for (i = 0; i < n; i++) {
+      nodes += '<circle cx="' + pts[i][0].toFixed(1) + '" cy="' + pts[i][1].toFixed(1) + '" r="' + (i === 0 ? 3 : 3.4) +
+               '" fill="' + EM + '" opacity="' + (i === 0 ? 0.2 : 1) + '"/>';
+    }
+    return frame(edges + nodes);
+  };
+
+  SVG[6] = function () {
+    return frame(
+      '<path d="M104 82 Q92 66 96 48 Q100 26 122 22 Q146 20 152 42 Q156 60 148 72 L146 82 Z" fill="none" stroke="' + SL2 + '" stroke-width="1"/>' +
+      '<circle cx="106" cy="46" r="2.4" fill="' + EM + '"/>' +
+      '<path d="M106 46 Q118 40 126 34" stroke="' + EM + '" stroke-width="1.2" fill="none"/>' +
+      '<g stroke="' + EM + '" stroke-width="0.6" fill="none" opacity="0.75">' +
+      '<path d="M126 34 l8 -6 M126 34 l9 2 M126 34 l4 -10 M134 28 l6 -4 M134 28 l5 4 M135 36 l8 1 M135 36 l6 6"/></g>' +
+      '<circle cx="128" cy="56" r="7" fill="#8C2F1E" opacity="0.55"/>' +
+      '<circle cx="128" cy="56" r="3.4" fill="#C7442A" opacity="0.85"/>' +
+      '<path d="M126 63 Q124 76 120 90" stroke="' + VD + '" stroke-width="0.8" fill="none" opacity="0.8"/>' +
+      '<g fill="' + EM + '" opacity="0.35">' +
+      '<circle cx="70" cy="40" r="1.4"/><circle cx="182" cy="62" r="1.4"/><circle cx="86" cy="76" r="1.1"/><circle cx="170" cy="30" r="1.1"/></g>'
+    );
+  };
+
+  SVG[7] = function () {
+    var rooms = "", i;
+    for (i = 0; i < 7; i++) {
+      rooms += '<rect x="' + (10 + i * 32) + '" y="52" width="28" height="30" fill="none" stroke="' + SL2 + '" stroke-width="0.7"/>';
+      rooms += '<rect x="' + (14 + i * 32) + '" y="70" width="8" height="8" fill="' + (i === 0 || i === 6 ? "#9BB8CC" : EM) + '" opacity="0.7"/>';
+    }
+    return frame(
+      rooms +
+      '<path d="M6 34 Q60 16 119 20 Q170 24 200 36 Q218 42 234 44" stroke="' + EM + '" stroke-width="1.4" fill="none"/>' +
+      '<path d="M6 34 Q60 16 119 20" stroke="' + EM + '" stroke-width="1.4" fill="none" opacity="1"/>' +
+      '<circle cx="234" cy="44" r="1.8" fill="' + EM + '" opacity="0.5"/>'
+    );
+  };
+
+  SVG[8] = function () {
+    var cols = "", i;
+    for (i = 0; i < 16; i++) {
+      cols += '<rect x="' + (14 + i * 14) + '" y="' + (78 - ((i % 5) * 4 + 8)) + '" width="3" height="' + ((i % 5) * 4 + 8) + '" fill="' + SL + '" opacity="0.45"/>';
+    }
+    return frame(
+      cols +
+      '<rect x="14" y="30" width="150" height="3" fill="' + SL + '" opacity="0.9"/>' +
+      '<rect x="14" y="40" width="196" height="3" fill="' + SL + '" opacity="0.9"/>' +
+      '<circle cx="164" cy="31.5" r="2.6" fill="' + EM + '"/>' +
+      '<line x1="164" y1="24" x2="164" y2="49" stroke="' + EM + '" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.6"/>' +
+      '<line x1="210" y1="24" x2="210" y2="49" stroke="' + SL + '" stroke-width="0.5" stroke-dasharray="2 2" opacity="0.4"/>' +
+      '<rect x="196" y="14" width="34" height="72" fill="' + SL + '" opacity="0.05"/>' +
+      '<line x1="196" y1="14" x2="196" y2="86" stroke="' + SL + '" stroke-width="0.5" opacity="0.35"/>'
+    );
+  };
+
+  SVG[9] = function () {
+    return frame(
+      '<circle cx="119" cy="14" r="3" fill="' + VD + '"/>' +
+      '<g stroke="' + VD + '" fill="none" stroke-linecap="round">' +
+      '<path d="M119 17 L119 40" stroke-width="2.4"/>' +
+      '<path d="M119 40 L96 58 M119 40 L142 58" stroke-width="1.8"/>' +
+      '<path d="M96 58 L80 74 M96 58 L104 78 M142 58 L158 74 M142 58 L134 78" stroke-width="1.2"/>' +
+      '<path d="M80 74 L68 86 M80 74 L82 88 M104 78 L98 90 M104 78 L112 90 M158 74 L170 86 M158 74 L156 88 M134 78 L140 90 M134 78 L128 90" stroke-width="0.7"/>' +
+      '</g>' +
+      '<path d="M119 17 L119 40 L142 58 L158 74 L170 86" stroke="' + EM + '" stroke-width="0.8" fill="none" opacity="0.9"/>'
+    );
+  };
+
+  SVG[10] = function () {
+    var floors = [["#E8A24E", 0.55], ["#D8B26A", 0.4], ["#B9C7D2", 0.5], ["#9FB4C4", 0.45], ["#7FA3C4", 0.5]], out = "", i;
+    for (i = 0; i < 5; i++) {
+      var y = 14 + i * 15;
+      out += '<rect x="62" y="' + y + '" width="116" height="13" fill="' + floors[i][0] + '" opacity="' + floors[i][1] + '"/>';
+      out += '<rect x="62" y="' + y + '" width="116" height="13" fill="none" stroke="' + SL2 + '" stroke-width="0.5"/>';
+      out += '<rect x="' + (72 + (i % 3) * 20) + '" y="' + (y + 6) + '" width="3" height="7" fill="#0C1216" opacity="0.8"/>';
+      out += '<rect x="' + (110 + (i % 2) * 26) + '" y="' + (y + 6) + '" width="3" height="7" fill="#0C1216" opacity="0.8"/>';
+    }
+    return frame(
+      out +
+      '<rect x="62" y="89" width="116" height="3" fill="' + SL2 + '"/>' +
+      '<rect x="66" y="14" width="1.4" height="78" fill="' + EM + '" opacity="0.9"/>' +
+      '<g fill="' + EM + '" opacity="0.9">' +
+      '<rect x="66" y="20" width="8" height="1"/><rect x="66" y="35" width="8" height="1"/>' +
+      '<rect x="66" y="50" width="8" height="1"/><rect x="66" y="65" width="8" height="1"/>' +
+      '<rect x="66" y="80" width="8" height="1"/></g>'
+    );
+  };
+
+  SVG[11] = function () {
+    return frame(
+      '<rect x="20" y="14" width="199" height="72" fill="#1E2830"/>' +
+      '<path d="M40 40 q4 -10 10 -10 q6 0 6 8 v14 h-4 v-12 q0 -5 -3 -5 q-4 0 -5 8 z" fill="' + EM2 + '" opacity="0.75"/>' +
+      '<g stroke="' + SL + '" stroke-width="0.7" opacity="0.55">' +
+      '<path d="M76 34 h8 M76 40 h8 M76 46 h6"/>' +
+      '<path d="M96 34 l3 4 l-3 4 M104 34 l3 4 l-3 4"/>' +
+      '<path d="M132 32 h20 M132 38 h20 M132 44 h14"/>' +
+      '<path d="M172 32 h24 M172 38 h24 M172 44 h24 M172 50 h16"/></g>' +
+      '<path d="M20 62 L64 58 L108 66 L152 60 L196 66 L219 62" stroke="' + EM + '" stroke-width="1.6" fill="none"/>' +
+      '<g stroke="' + EM + '" stroke-width="0.6" opacity="0.8">' +
+      '<path d="M64 58 l-3 -5 M64 58 l4 -4 M108 66 l-4 5 M108 66 l3 5 M152 60 l-3 -5 M152 60 l4 -4"/></g>'
+    );
+  };
+
+  SVG[12] = function () {
+    return frame(
+      '<g stroke="' + SL2 + '" stroke-width="0.9" fill="none">' +
+      '<path d="M22 66 L217 66"/><path d="M22 66 L46 32 L94 32 L118 66"/>' +
+      '<path d="M118 66 L142 32 L192 32 L217 66"/><path d="M94 32 L142 32"/></g>' +
+      '<g stroke-width="1.6" fill="none" stroke-linecap="round">' +
+      '<path d="M22 66 L46 32" stroke="#FFF3E0"/><path d="M46 32 L70 66" stroke="#FFF3E0"/>' +
+      '<path d="M142 32 L166 66" stroke="' + EM + '"/><path d="M192 32 L217 66" stroke="' + EM + '"/>' +
+      '<path d="M22 66 L70 66" stroke="' + EM + '"/></g>' +
+      '<g stroke="' + SL2 + '" stroke-width="1.6" opacity="0.35" fill="none">' +
+      '<path d="M70 66 L94 32"/><path d="M94 32 L118 66"/><path d="M118 66 L142 32"/></g>' +
+      '<g stroke="' + EM + '" stroke-width="0.6" opacity="0.6">' +
+      '<path d="M40 22 v6 M70 22 v6 M100 22 v6 M130 22 v6 M160 22 v6 M190 22 v6"/></g>' +
+      '<text x="180" y="86" font-family="ui-monospace, monospace" font-size="9" fill="' + EM + '">88%</text>'
+    );
+  };
+
+  SVG[13] = function () {
+    return frame(
+      '<path d="M0 100 L92 46 L147 46 L239 100 Z" fill="#28323B"/>' +
+      '<g stroke="' + SL + '" stroke-width="0.8" opacity="0.85" fill="none">' +
+      '<rect x="26" y="52" width="14" height="26"/><rect x="52" y="46" width="18" height="26"/>' +
+      '<rect x="168" y="48" width="16" height="26"/><rect x="196" y="54" width="18" height="30"/>' +
+      '<path d="M78 44 v-14 M78 30 h-8 M78 30 h8"/><path d="M158 42 v-16 M158 26 h-7 M158 26 h7"/></g>' +
+      '<path d="M119 46 L119 100" stroke="' + EM + '" stroke-width="0.9" opacity="0.5"/>' +
+      '<rect x="0" y="86" width="239" height="1" fill="' + SL2 + '" opacity="0.6"/>' +
+      '<g stroke="' + EM + '" stroke-width="0.8" fill="none" opacity="0.9">' +
+      '<path d="M0 94 L239 94"/><path d="M0 94 L20 88 L44 94 L68 88 L92 94 L116 88 L140 94 L164 88 L188 94 L212 88 L236 94"/></g>' +
+      '<rect x="0" y="30" width="239" height="16" fill="' + EM + '" opacity="0.06"/>'
+    );
+  };
+
+  SVG[14] = function () {
+    return frame(
+      '<g fill="#C08B62" opacity="0.9">' +
+      '<path d="M36 62 q10 -10 26 -10 h22 q6 0 6 5 q0 5 -6 5 h-16 q14 0 14 5 q0 5 -12 5 h-24 q-12 0 -10 -10 z"/>' +
+      '<path d="M203 62 q-10 -10 -26 -10 h-22 q-6 0 -6 5 q0 5 6 5 h16 q-14 0 -14 5 q0 5 12 5 h24 q12 0 10 -10 z"/></g>' +
+      '<rect x="60" y="40" width="16" height="13" rx="1.5" fill="#2A3540"/>' +
+      '<rect x="163" y="40" width="16" height="13" rx="1.5" fill="#2A3540"/>' +
+      '<path d="M0 58 L239 58" stroke="' + EM + '" stroke-width="0.6" opacity="0.45"/>' +
+      '<text x="52" y="88" font-family="ui-sans-serif, sans-serif" font-size="7" fill="' + SL + '" letter-spacing="1.2">THE PERSON</text>' +
+      '<text x="146" y="88" font-family="ui-sans-serif, sans-serif" font-size="7" fill="' + SL + '" letter-spacing="1.2">CONDITIONS</text>'
+    );
+  };
+
+  SVG[15] = function () {
+    var figs = "", toks = "", i;
+    for (i = 0; i < 6; i++) {
+      var x = 26 + i * 26;
+      figs += '<circle cx="' + x + '" cy="36" r="3.4" fill="' + SL + '" opacity="0.75"/>';
+      figs += '<rect x="' + (x - 3.4) + '" y="41" width="6.8" height="15" rx="2" fill="' + SL + '" opacity="0.55"/>';
+      toks += '<rect x="' + (x - 2) + '" y="66" width="4" height="4" fill="' + EM + '" opacity="' + (0.35 + i * 0.1) + '"/>';
+    }
+    return frame(
+      '<rect x="10" y="58" width="180" height="3" fill="' + SL2 + '"/>' + figs +
+      '<g stroke="' + EM + '" stroke-width="0.5" opacity="0.5">' +
+      '<path d="M26 20 v10 M52 20 v10 M78 20 v10 M104 20 v10 M130 20 v10 M156 20 v10"/></g>' + toks +
+      '<path d="M196 62 L214 62 L208 84 L202 84 Z" fill="none" stroke="' + SL2 + '" stroke-width="0.9"/>' +
+      '<rect x="203" y="76" width="4" height="4" fill="' + EM + '" opacity="0.8"/>' +
+      '<rect x="203" y="71" width="4" height="4" fill="' + EM + '" opacity="0.6"/>' +
+      '<text x="196" y="94" font-family="ui-monospace, monospace" font-size="7" fill="' + SL + '" opacity="0.7">…counting</text>'
+    );
+  };
+
+  SVG[16] = function () {
+    var q = "", i;
+    for (i = 0; i < 9; i++) {
+      q += '<rect x="' + (30 + i * 9) + '" y="' + (62 - (i % 2)) + '" width="3.4" height="12" rx="1.5" fill="' + SL + '" opacity="' + (0.8 - i * 0.06) + '"/>';
+    }
+    return frame(
+      '<defs><linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#1B2530"/><stop offset="0.72" stop-color="#4A3A32"/><stop offset="1" stop-color="#22282C"/></linearGradient></defs>' +
+      '<rect width="239" height="100" fill="url(#dusk)"/>' +
+      '<rect x="0" y="74" width="239" height="1.2" fill="' + EM + '" opacity="0.85"/>' +
+      '<g fill="#141A20">' +
+      '<rect x="126" y="26" width="7" height="48"/><rect x="160" y="26" width="7" height="48"/>' +
+      '<rect x="122" y="20" width="49" height="8"/></g>' +
+      '<rect x="133" y="30" width="27" height="44" fill="' + EM + '" opacity="0.16"/>' +
+      '<path d="M133 30 L120 74 M160 30 L173 74" stroke="' + EM + '" stroke-width="0.4" opacity="0.3"/>' + q +
+      '<rect x="196" y="62" width="3.4" height="12" rx="1.5" fill="' + EM + '"/>' +
+      '<path d="M186 80 q8 -4 14 -6" stroke="' + EM + '" stroke-width="0.4" stroke-dasharray="2 2" fill="none" opacity="0.6"/>'
+    );
+  };
+
+  SVG[17] = function () {
+    function tree(cx, scale, op) {
+      var h = 40 * scale;
+      return '<g opacity="' + op + '"><path d="M' + cx + ' 84 L' + cx + ' ' + (84 - h) + '" stroke="#6B5138" stroke-width="' + (1 + scale * 1.6) + '"/>' +
+             '<circle cx="' + cx + '" cy="' + (84 - h - 4 * scale) + '" r="' + (10 * scale) + '" fill="' + VD + '" opacity="0.5"/></g>';
+    }
+    return frame(
+      '<rect x="0" y="84" width="239" height="16" fill="#25201A"/>' +
+      tree(70, 0.45, 0.45) + tree(112, 0.75, 0.65) + tree(166, 1.15, 0.95) +
+      '<rect x="196" y="52" width="34" height="32" fill="none" stroke="' + SL2 + '" stroke-width="0.7"/>' +
+      '<rect x="206" y="64" width="14" height="20" fill="' + EM + '" opacity="0.35"/>' +
+      '<g fill="' + SL + '" opacity="0.8">' +
+      '<circle cx="52" cy="74" r="2.4"/><rect x="49.6" y="77" width="4.8" height="8" rx="2"/></g>' +
+      '<g fill="' + SL + '" opacity="0.5">' +
+      '<circle cx="140" cy="74" r="2.4"/><rect x="137.6" y="77" width="4.8" height="8" rx="2"/></g>' +
+      '<path d="M40 88 q14 4 30 2" stroke="' + EM + '" stroke-width="0.6" fill="none" opacity="0.7"/>'
+    );
+  };
+
+  SVG[18] = function () {
+    function branch(y, dir, color) {
+      var s = dir;
+      return '<g stroke="' + color + '" fill="none" stroke-linecap="round">' +
+        '<path d="M119 ' + y + ' L119 ' + (y + 16 * s) + '" stroke-width="2.2"/>' +
+        '<path d="M119 ' + (y + 16 * s) + ' L98 ' + (y + 28 * s) + ' M119 ' + (y + 16 * s) + ' L140 ' + (y + 28 * s) + '" stroke-width="1.5"/>' +
+        '<path d="M98 ' + (y + 28 * s) + ' L84 ' + (y + 40 * s) + ' M98 ' + (y + 28 * s) + ' L104 ' + (y + 42 * s) +
+        ' M140 ' + (y + 28 * s) + ' L154 ' + (y + 40 * s) + ' M140 ' + (y + 28 * s) + ' L134 ' + (y + 42 * s) + '" stroke-width="0.9"/></g>';
+    }
+    return frame(
+      branch(48, -1, VD) + branch(52, 1, "#C4726A") +
+      '<rect x="0" y="49.4" width="239" height="1.2" fill="' + EM + '" opacity="0.8"/>' +
+      '<text x="10" y="20" font-family="ui-sans-serif, sans-serif" font-size="7" fill="' + VD + '" letter-spacing="1.2">RIVER DELTA</text>' +
+      '<text x="10" y="94" font-family="ui-sans-serif, sans-serif" font-size="7" fill="#C4726A" letter-spacing="1.2">BRONCHI</text>'
+    );
+  };
+
+  SVG[19] = function () {
+    var people = "", i;
+    for (i = 0; i < 22; i++) {
+      var x = 16 + (i * 47) % 210, y = 58 + ((i * 29) % 34);
+      people += '<circle cx="' + x + '" cy="' + y + '" r="1.5" fill="' + EM + '" opacity="' + (0.5 + (i % 3) * 0.2) + '"/>';
+    }
+    return frame(
+      '<defs><linearGradient id="morn" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#8FA9BC"/><stop offset="1" stop-color="#D3B189"/></linearGradient></defs>' +
+      '<rect width="239" height="100" fill="url(#morn)" opacity="0.28"/>' +
+      '<g fill="#0F161B" opacity="0.85">' +
+      '<rect x="12" y="14" width="36" height="34"/><rect x="56" y="20" width="30" height="28"/>' +
+      '<rect x="150" y="16" width="34" height="32"/><rect x="192" y="22" width="34" height="26"/></g>' +
+      '<rect x="0" y="50" width="239" height="50" fill="#0F161B" opacity="0.25"/>' +
+      '<path d="M0 54 L239 54" stroke="' + SL + '" stroke-width="0.5" opacity="0.35"/>' +
+      '<path d="M0 92 L239 92" stroke="' + SL + '" stroke-width="0.5" opacity="0.35"/>' + people +
+      '<path d="M0 68 L239 62" stroke="' + EM + '" stroke-width="1" opacity="0.9"/>'
+    );
+  };
+
+  SVG[20] = function () {
+    return frame(
+      '<rect width="239" height="100" fill="#0B0F12"/>' +
+      '<rect x="70" y="62" width="99" height="1.4" fill="' + EM + '"/>' +
+      '<text x="119.5" y="52" text-anchor="middle" font-family="Georgia, serif" font-size="15" fill="#E4DED6" letter-spacing="4">VIRDIGNITY</text>'
+    );
+  };
+
+  var ACTS = [
+    { n: 1, title: "Act I — The Question", range: "0:00 – 4:00", blurb: "A sleeping city, the ordinary men who hold it up, and the word the film turns on." },
+    { n: 2, title: "Act II — The Organism and Its Conditions", range: "4:00 – 7:50", blurb: "Ethical capacity has a physical address — and the body is downstream of everything around it." },
+    { n: 3, title: "Act III — The Ethical Ecology", range: "7:50 – 11:05", blurb: "How trust is built, what happens when it thins, and who ends up carrying the difference." },
+    { n: 4, title: "Act IV — Worth, Identity, and What Remains", range: "11:05 – 15:00", blurb: "Dignity mistaken for accounting, a gate with no walls, and the way back to the opening shot." }
+  ];
+
+  var SCENES = [
+    { n: 1, act: 1, t: "Before Anyone Is Awake", start: "0:00", dur: 50, reg: "Volumetric real",
+      on: "One unbroken descent over a city at 5:10 a.m. Six hundred and forty lit windows, hand-placed, in a body of cold blue.",
+      say: "What if one of civilization's greatest foundations has been hiding in plain sight?" },
+    { n: 2, act: 1, t: "The Ordinary", start: "0:50", dur: 50, reg: "Painted",
+      on: "Six lives, joined by whip-pans that never cut: a welder, a father at 3 a.m., a teacher, a researcher, a son in a hospital room.",
+      say: "Civilization is not carried by the exceptional. It is carried by the ordinary, repeated, across billions of days." },
+    { n: 3, act: 1, t: "What This Is, And What It Is Not", start: "1:40", dur: 40, reg: "Tableau",
+      on: "The film's only fully static shot. Behind the title, a hairline truss draws itself — with one member dashed instead of solid.",
+      say: "It is not an argument that men matter more than women. That argument is false, and this film has no use for it." },
+    { n: 4, act: 1, t: "The Word", start: "2:20", dur: 45, reg: "Diagrammatic",
+      on: "Carved stone becomes a number line becomes a steel beam. Push into a hairline crack until the grain of the metal fills the frame.",
+      say: "Integrity is not a claim of goodness. It is a condition of wholeness." },
+    { n: 5, act: 1, t: "Ten Ways To Be Whole", start: "3:05", dur: 55, reg: "Diagrammatic",
+      on: "Ten luminous nodes build a geodesic. One dims — and the remaining connections visibly thicken to take its load.",
+      say: "Damage any one of them, and the others begin to carry its weight." },
+    { n: 6, act: 2, t: "Every Decision Passes Through A Body", start: "4:00", dur: 50, reg: "Anatomical",
+      on: "A single unbroken journey inward along one nerve: cortex, amygdala, vagus, the endocrine tide, then inflammation dimming everything.",
+      say: "None of this makes a man good. All of it determines what he has to work with." },
+    { n: 7, act: 2, t: "The Unglamorous Things", start: "4:50", dur: 45, reg: "Diorama",
+      on: "Twenty-four hours as a 30-metre miniature set, shot tilt-shift in one lateral track. Above it, the circadian ribbon sags.",
+      say: "Biology does not decide the answer. It decides how much capacity a man brings to the question." },
+    { n: 8, act: 2, t: "What We Measure", start: "5:35", dur: 45, reg: "Diagrammatic",
+      on: "Data as terrain you fly through. Then the whole landscape rotates 90° to reveal it was one face of something much larger.",
+      say: "None of this is a competition. Women carry burdens these particular numbers do not show." },
+    { n: 9, act: 2, t: "Downstream", start: "6:20", dur: 45, reg: "Volumetric real",
+      on: "One continuous move from a droplet on a pine needle to a delta seen from orbit — which unmistakably resembles a lung.",
+      say: "Health is not only a property of a person. It is a property of a place." },
+    { n: 10, act: 2, t: "Every Room Teaches", start: "7:05", dur: 45, reg: "Cutaway",
+      on: "A building with its front wall removed. Five institutions stacked vertically, each lit by its own quality of light.",
+      say: "Every institution transmits a curriculum it never wrote down." },
+    { n: 11, act: 3, t: "Cooperation Was Never Free", start: "7:50", dur: 50, reg: "Painted",
+      on: "A 25-metre wall travelling from ochre handprints to cuneiform receipts to a database schema. A crack is filled, not hidden.",
+      say: "Take those away, and cooperation does not become difficult. It becomes irrational." },
+    { n: 12, act: 3, t: "The Transfer", start: "8:40", dur: 50, reg: "Diagrammatic",
+      on: "The centrepiece. Members stop carrying but stay standing. Peak stress climbs 34% → 88% while the bridge looks completely fine.",
+      say: "Remove some of them, and the load does not disappear. It transfers." },
+    { n: 13, act: 3, t: "Trust Is Infrastructure", start: "9:30", dur: 50, reg: "Volumetric real",
+      on: "Twelve thousand years in one forward dolly at eye level and walking pace. Beneath it all, a buried lattice, glowing.",
+      say: "Every promise that holds is an audit not performed, a lock not bought, a court date never scheduled." },
+    { n: 14, act: 3, t: "Both Hands", start: "10:20", dur: 45, reg: "Tableau",
+      on: "Two hands, two identical weights, one soft source. One weight begins to slip — and the other hand does not move to catch it.",
+      say: "Explaining is not excusing." },
+    { n: 15, act: 4, t: "The Accounting", start: "11:05", dur: 45, reg: "Industrial",
+      on: "A well-run hall measures each person, stamps a token, routes the token, and keeps counting after everyone has walked out.",
+      say: "Dignity does not begin at the moment a person becomes useful. If it did, it would not be dignity. It would be a wage." },
+    { n: 16, act: 4, t: "The Gate", start: "11:50", dur: 45, reg: "Surreal",
+      on: "A monument at dusk, taken seriously — until the camera arcs and reveals no walls. One man steps out of the queue and walks around it.",
+      say: "The gate was never real. Somebody has just been charging admission." },
+    { n: 17, act: 4, t: "Tending", start: "12:35", dur: 40, reg: "Painted",
+      on: "One locked-off frame for forty seconds while fifty years pass inside it. The man ages within a single repeated gesture.",
+      say: "A man is not a thing to be certified. He is a thing to be tended." },
+    { n: 18, act: 4, t: "There Was Never A Boundary", start: "13:15", dur: 40, reg: "Volumetric real",
+      on: "Six morphs, not dissolves: delta into bronchi, lightning into dendrite, canopy into alveoli, terminator into iris.",
+      say: "Protect an environment and you are protecting a nervous system." },
+    { n: 19, act: 4, t: "The Return", start: "13:55", dur: 40, reg: "Painted",
+      on: "The opening descent run exactly in reverse — same city, same streets, morning, full of people. The lit windows are gone.",
+      say: "They are not remarkable. They are load-bearing." },
+    { n: 20, act: 4, t: "Virdignity", start: "14:35", dur: 25, reg: "Tableau",
+      on: "The void, empty for thirteen seconds. Then the warm line that has been in every scene draws itself, is named, and goes out.",
+      say: "Male integrity is not only about men. It is one indispensable thread in the fabric of humanity itself." }
+  ];
+
+  // ---- timeline ----
+  var tl = document.getElementById("timeline");
+  SCENES.forEach(function (s) {
+    var b = document.createElement("button");
+    b.className = "seg";
+    b.type = "button";
+    b.style.flex = s.dur + " 0 0";
+    b.dataset.act = String(s.act);
+    b.dataset.scene = String(s.n);
+    b.title = s.start + " — " + s.n + ". " + s.t;
+    b.setAttribute("aria-label", "Scene " + s.n + ", " + s.t + ", at " + s.start);
+    b.addEventListener("click", function () {
+      var el = document.getElementById("scene-" + s.n);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    tl.appendChild(b);
+  });
+
+  // ---- scenes ----
+  var main = document.getElementById("content");
+  var html = "";
+  ACTS.forEach(function (a) {
+    html += '<section class="act"><h2>' + a.title + " · " + a.range + "</h2><p>" + a.blurb + "</p></section>";
+    html += '<ol class="scenes">';
+    SCENES.filter(function (s) { return s.act === a.n; }).forEach(function (s) {
+      var mins = Math.floor(s.dur / 60), secs = s.dur % 60;
+      var dur = mins > 0 ? mins + "m " + secs + "s" : s.dur + "s";
+      html +=
+        '<li class="scene" id="scene-' + s.n + '">' +
+          '<div class="scene-meta">' +
+            '<span class="scene-no">SCENE ' + (s.n < 10 ? "0" + s.n : s.n) + '</span>' +
+            '<span>' + s.start + '</span><span>' + dur + '</span>' +
+            '<span class="register">' + s.reg + '</span>' +
+          '</div>' +
+          '<h3>' + s.t + '</h3>' +
+          SVG[s.n]() +
+          '<p class="onscreen">' + s.on + '</p>' +
+          '<blockquote class="narration"><span>Narration</span>' + s.say + '</blockquote>' +
+        '</li>';
+    });
+    html += "</ol>";
+  });
+  main.innerHTML = html;
+
+  // ---- current-scene highlight ----
+  var segs = Array.prototype.slice.call(tl.children);
+  var nodes = SCENES.map(function (s) { return document.getElementById("scene-" + s.n); });
+
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var idx = nodes.indexOf(e.target);
+        if (idx < 0) return;
+        segs.forEach(function (sg, i) { sg.classList.toggle("is-current", i === idx); });
+      });
+    }, { rootMargin: "-80px 0px -60% 0px", threshold: 0 });
+    nodes.forEach(function (n) { if (n) io.observe(n); });
+  }
+})();
+</script>
