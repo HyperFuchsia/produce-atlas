@@ -174,8 +174,13 @@ var _ik = [0, 0];   // scratch: solved joint position
 function ik2(au, av, bu, bv, l1, l2, dir, out){
   var du = bu - au, dv = bv - av;
   var d  = Math.sqrt(du*du + dv*dv);
-  if (d < 1e-4) d = 1e-4;
-  var dm = Math.min(d, (l1 + l2) * 0.999);
+  // Target sitting on the root: the direction is undefined as well as the
+  // distance, so hang the chain downward rather than collapsing it to a point.
+  if (d < 1e-4) { du = 0; dv = -1; d = 1; }
+  // A two-bone chain has an inner reach limit as well as an outer one: it can
+  // never fold closer to the root than |l1-l2|.
+  var inner = Math.abs(l1 - l2) * 1.001 + 1e-6;
+  var dm = clamp(d, inner, (l1 + l2) * 0.999);
   var a  = (l1*l1 - l2*l2 + dm*dm) / (2 * dm);
   var hh = Math.sqrt(Math.max(0, l1*l1 - a*a));
   var uu = du / d, uv = dv / d;

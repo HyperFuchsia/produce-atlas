@@ -1,0 +1,45 @@
+<title>scene bench</title>
+<canvas id="c" width="1920" height="1080"></canvas>
+<style>body{margin:0;background:#333}canvas{width:100%;height:auto;display:block}</style>
+<script>var cv=document.getElementById('c'), g=cv.getContext('2d');</script>
+<script src="bench-prelude.js"></script>
+<script src="bench-scenes.js"></script>
+<script src="anim-core.js"></script>
+<script>var S={};</script>
+<script src="scenes/cluster-1.js"></script>
+<script src="scenes/cluster-2.js"></script>
+<script src="scenes/cluster-3.js"></script>
+<script src="scenes/cluster-4.js"></script>
+<script src="scenes/cluster-5.js"></script>
+<script src="scenes/cluster-6.js"></script>
+<script src="scenes/cluster-7.js"></script>
+<script>
+window.__scene=function(n,t,opts){
+  opts=opts||{};
+  g.setTransform(1,0,0,1,0,0);
+  if(!S[n]){ bg(); label('scene '+n+' not implemented',960,440,56,P.dim); return 'missing'; }
+  var d=SCENES[n-1].d;
+  try{ S[n](t,d); }
+  catch(e){ bg(); label('THREW: '+e.message,960,440,44,P.accent); return 'error: '+e.message; }
+  // caption band + safe-area guides (guides only, not part of the film)
+  if(opts.guides!==false){
+    g.save();
+    g.setTransform(1,0,0,1,0,0);
+    g.fillStyle='rgba(200,60,40,0.13)'; g.fillRect(0,912,1920,1080-912);
+    g.strokeStyle='rgba(200,60,40,0.55)'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(0,912); g.lineTo(1920,912); g.stroke();
+    g.strokeStyle='rgba(40,90,200,0.30)'; g.lineWidth=2; g.strokeRect(96,72,1728,840);
+    g.restore();
+  }
+  // the real caption, so text length can be judged
+  if(opts.caption!==false){
+    var c=''; var arr=SCENES[n-1].c;
+    for(var k=0;k<arr.length;k++) if(t>=arr[k][0]) c=arr[k][1];
+    if(c){ g.save(); g.setTransform(1,0,0,1,0,0);
+      g.fillStyle=P.paper; g.fillRect(0,912,1920,168);
+      g.fillStyle=P.ink; g.font='500 45px Georgia,serif'; g.textAlign='center'; g.textBaseline='middle';
+      g.fillText(c.length>78?c.slice(0,78)+'…':c,960,996); g.restore(); }
+  }
+  return 'ok';
+};
+</script>

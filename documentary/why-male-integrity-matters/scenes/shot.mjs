@@ -1,0 +1,11 @@
+import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+const [scene, t, out, guides] = [process.argv[2], Number(process.argv[3]), process.argv[4]||'out.png', process.argv[5]!=='noguides'];
+const b=await chromium.launch();
+const p=await b.newPage({viewport:{width:1400,height:820}});
+const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.on('console',m=>{if(m.type()==='error')errs.push(m.text())});
+await p.goto('file:///tmp/claude-0/-home-user-produce-atlas/3d69d08b-38a0-5d3f-9132-14b486913d92/scratchpad/bench.html');
+await p.waitForTimeout(350);
+const r=await p.evaluate(([n,tt,gd])=>window.__scene(Number(n),tt,{guides:gd}),[scene,t,guides]);
+await p.locator('canvas').screenshot({path:out});
+console.log('scene',scene,'t='+t,'->',r, errs.length?('| ERRORS: '+errs.join(' | ')):'');
+await b.close();
