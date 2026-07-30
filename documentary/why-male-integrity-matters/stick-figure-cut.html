@@ -1318,6 +1318,32 @@
   });
   var segBtns=Array.prototype.slice.call(segsEl.children);
 
+  // When exporting to a video file there is no DOM underneath the picture, so
+  // the narration has to live in the frame itself.
+  var BURN=/[?&]burn=1/.test(location.search);
+  function burnCaption(txt){
+    if(!txt) return;
+    var size=H*0.042, maxW=W*0.84, words=txt.split(' '), lines=[], cur='';
+    g.font='500 '+size+'px Georgia,serif'; g.textAlign='center'; g.textBaseline='middle';
+    for(var i=0;i<words.length;i++){
+      var test=cur?cur+' '+words[i]:words[i];
+      if(g.measureText(test).width>maxW && cur){ lines.push(cur); cur=words[i]; }
+      else cur=test;
+    }
+    if(cur) lines.push(cur);
+    lines=lines.slice(-3);
+    var lh=size*1.32, blockH=lines.length*lh, base=H*0.935-blockH+lh/2;
+    g.save();
+    g.fillStyle=P.paper; g.globalAlpha=0.82;
+    g.fillRect(0,base-lh*0.85,W,blockH+lh*0.5);
+    g.globalAlpha=1;
+    for(var L=0;L<lines.length;L++){
+      g.fillStyle=P.ink;
+      g.fillText(lines[L],W*0.5,base+L*lh);
+    }
+    g.restore();
+  }
+
   function endCard(){
     bg();
     line(W*0.5-W*0.13,H*0.585,W*0.5+W*0.13,H*0.585,P.accent,5);
@@ -1354,6 +1380,7 @@
 
     var caption='';
     for(var k=0;k<s.c.length;k++) if(lt>=s.c[k][0]) caption=s.c[k][1];
+    if(BURN) burnCaption(caption);
     if(caption!==lastCap){ capEl.textContent=caption; lastCap=caption; }
     chipEl.textContent='SCENE '+(s.n<10?'0'+s.n:s.n)+' · '+s.t.toUpperCase();
     badgeEl.textContent=fmt(time)+' / '+fmt(TOTAL);
@@ -1410,6 +1437,24 @@
     if(e.code==='ArrowRight'){ e.preventDefault(); document.getElementById('next').click(); }
     if(e.code==='ArrowLeft'){ e.preventDefault(); document.getElementById('prev').click(); }
   });
+
+  // Hook used by the offline renderer that produces the downloadable MP4.
+  window.__film={
+    duration:TOTAL,
+    canvas:cv,
+    start:function(){
+      initAudio();
+      if(AC&&AC.state==='suspended') AC.resume();
+      curAmb=-1; lastAudioT=-1; time=0; playing=true; playBtn.textContent='Pause';
+    },
+    audioStream:function(){
+      if(!AC) return null;
+      var dest=AC.createMediaStreamDestination();
+      comp.connect(dest);
+      return dest.stream;
+    },
+    time:function(){ return time; }
+  };
 
   render(true);
   requestAnimationFrame(loop);
