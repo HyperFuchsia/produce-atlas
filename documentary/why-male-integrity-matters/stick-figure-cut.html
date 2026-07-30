@@ -112,7 +112,8 @@
   <div class="notes">
     <h2>About this film</h2>
     <p>Fifteen minutes, played straight through, with score and sound. Nothing here is a file: every figure is drawn from line segments and every sound is built from oscillators and filtered noise, all generated while it plays. That is why the whole film is one portable page.</p>
-    <p>The score follows the documentary's own architecture — a felt piano motif that stays unresolved for fifteen minutes, a pulse that enters at the biology sequence and slows as the day wears down, a microtonal string cluster over the load transfer, and a final chord that resolves only on the last note. Three passages are scored as silence on purpose; the audio drops out completely and comes back.</p>
+    <p>The score is written in D minor and follows the documentary's own architecture: a bass, a sustained string or choir pad, and a melodic line moving through a real chord progression. A felt-piano motif stays unresolved for fifteen minutes and lands on its major third only in the final bar. A pulse enters at the biology sequence and slows as the day wears down. The load transfer is a string cluster that adds a voice and drifts further out of tune with each pass.</p>
+    <p>Everything plays into a generated convolution reverb, and each scene sets its own send — a long tail in the cave, almost none on the open plain, a dead room in the office — so the space changes when the place does. Three passages are scored as silence on purpose; the audio drops out completely and comes back.</p>
     <p>Sound starts when you press play, because browsers only allow it after a click. <kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> skip a scene · click the strip above to jump anywhere.</p>
   </div>
 </div>
@@ -718,28 +719,55 @@
   SCENES.forEach(function(s){ starts.push(TOTAL); TOTAL+=s.d; });
 
   // ================= AUDIO =================
-  // Everything is synthesised. There are no sound files anywhere in this page —
-  // the score and the effects are generated from oscillators and filtered noise
-  // at playback time, which is why it stays one portable document.
+  // Everything is synthesised at playback time. There are no sound files: the
+  // score and every effect are built from oscillators and filtered noise, run
+  // through a generated convolution reverb so they sit in a room rather than
+  // arriving dry at the ear.
 
-  var AC=null, master, busMus, busSfx, busAmb, noiseBuf, ambA, ambB, drone=[],
-      curAmb=-1, audioOn=true, userVol=0.9;
+  var AC=null, masterIn, comp, busMus, busSfx, busAmb,
+      sendMus, sendSfx, sendAmb, conv, revGain,
+      noiseBuf, ambA, ambB, drone=[],
+      curAmb=-1, audioOn=true, userVol=0.9, OUT=2.2;   // OUT drives the master into the limiter
 
-  var N={ D1:36.71,D2:73.42,A2:110,C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,
-          Bb3:233.08,C4:261.63,D4:293.66,E4:329.63,F4:349.23,Fs4:369.99,G4:392,A4:440,
-          C5:523.25,D5:587.33,F5:698.46,A5:880 };
+  // D minor / dorian throughout. The final scene resolves to D major.
+  var F_={ D1:36.71,A1:55,Bb1:58.27,C2:65.41,D2:73.42,E2:82.41,F2:87.31,G2:98,A2:110,Bb2:116.54,
+           C3:130.81,D3:146.83,E3:164.81,F3:174.61,Fs3:185,G3:196,A3:220,Bb3:233.08,
+           C4:261.63,D4:293.66,E4:329.63,F4:349.23,Fs4:369.99,G4:392,A4:440,Bb4:466.16,
+           C5:523.25,D5:587.33,E5:659.26,F5:698.46,A5:880,D6:1174.7 };
+
+  var CH={ Dm:[F_.D3,F_.F3,F_.A3], Dm9:[F_.D3,F_.F3,F_.A3,F_.E4], Bb:[F_.Bb2,F_.D3,F_.F3],
+           F:[F_.F2,F_.A2,F_.C3], Am:[F_.A2,F_.C3,F_.E3], Gm:[F_.G2,F_.Bb2,F_.D3],
+           C:[F_.C3,F_.E3,F_.G3], Dmaj:[F_.D3,F_.Fs3,F_.A3] };
 
   function initAudio(){
     if(AC) return;
-    var Ctx = window.AudioContext||window.webkitAudioContext;
+    var Ctx=window.AudioContext||window.webkitAudioContext;
     if(!Ctx){ audioOn=false; return; }
-    AC = new Ctx();
-    master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);
-    busMus=AC.createGain(); busMus.gain.value=0.42; busMus.connect(master);
-    busSfx=AC.createGain(); busSfx.gain.value=0.5;  busSfx.connect(master);
-    busAmb=AC.createGain(); busAmb.gain.value=0.30; busAmb.connect(master);
+    AC=new Ctx();
 
-    // Pink-ish noise — the raw material for wind, water, rooms and machines.
+    // Set high enough to catch true peaks but not so low that the quiet scenes
+    // get pulled up into the loud ones — the film's dynamics are the point.
+    comp=AC.createDynamicsCompressor();
+    comp.threshold.value=-8; comp.knee.value=12; comp.ratio.value=3;
+    comp.attack.value=0.004; comp.release.value=0.25;
+    comp.connect(AC.destination);
+    masterIn=AC.createGain(); masterIn.gain.value=0.9; masterIn.connect(comp);
+
+    // Reverb: an impulse response built from decaying noise with a handful of
+    // early reflections, softened so tails do not hiss.
+    conv=AC.createConvolver(); conv.buffer=makeIR(3.4,2.6);
+    var revLP=AC.createBiquadFilter(); revLP.type='lowpass'; revLP.frequency.value=3400;
+    var revHP=AC.createBiquadFilter(); revHP.type='highpass'; revHP.frequency.value=150;
+    revGain=AC.createGain(); revGain.gain.value=1;
+    conv.connect(revHP); revHP.connect(revLP); revLP.connect(revGain); revGain.connect(masterIn);
+
+    busMus=AC.createGain(); busMus.gain.value=0.40; busMus.connect(masterIn);
+    busSfx=AC.createGain(); busSfx.gain.value=0.46; busSfx.connect(masterIn);
+    busAmb=AC.createGain(); busAmb.gain.value=0.28; busAmb.connect(masterIn);
+    sendMus=AC.createGain(); sendMus.gain.value=0.3; busMus.connect(sendMus); sendMus.connect(conv);
+    sendSfx=AC.createGain(); sendSfx.gain.value=0.3; busSfx.connect(sendSfx); sendSfx.connect(conv);
+    sendAmb=AC.createGain(); sendAmb.gain.value=0.1; busAmb.connect(sendAmb); sendAmb.connect(conv);
+
     var n=Math.floor(AC.sampleRate*3);
     noiseBuf=AC.createBuffer(1,n,AC.sampleRate);
     var d=noiseBuf.getChannelData(0), b0=0,b1=0,b2=0;
@@ -750,11 +778,29 @@
     }
     ambA=makeAmbLayer(); ambB=makeAmbLayer();
     for(var k=0;k<2;k++){
-      var o=AC.createOscillator(), gn=AC.createGain();
-      o.type='sine'; o.frequency.value=55; gn.gain.value=0;
-      o.connect(gn); gn.connect(busAmb); o.start();
-      drone.push({o:o,g:gn});
+      var o=AC.createOscillator(), sub=AC.createGain(), lp=AC.createBiquadFilter();
+      o.type='sine'; o.frequency.value=55; sub.gain.value=0;
+      lp.type='lowpass'; lp.frequency.value=220;
+      o.connect(lp); lp.connect(sub); sub.connect(busAmb); o.start();
+      drone.push({o:o,g:sub});
     }
+  }
+
+  function makeIR(sec,decay){
+    var len=Math.floor(AC.sampleRate*sec), buf=AC.createBuffer(2,len,AC.sampleRate);
+    for(var ch=0;ch<2;ch++){
+      var d=buf.getChannelData(ch);
+      for(var i=0;i<len;i++){
+        var t=i/len;
+        d[i]=(Math.random()*2-1)*Math.pow(1-t,decay);
+      }
+      // a few discrete early reflections give the tail a sense of size
+      [0.011,0.019,0.031,0.047,0.068].forEach(function(ms,k){
+        var idx=Math.floor(ms*AC.sampleRate*(1+ch*0.06));
+        if(idx<len) d[idx]+=(k%2?-1:1)*0.5/(k+1);
+      });
+    }
+    return buf;
   }
   function makeAmbLayer(){
     var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
@@ -763,306 +809,489 @@
     src.connect(f); f.connect(gn); gn.connect(busAmb); src.start();
     return {f:f,g:gn};
   }
+  function panner(p){
+    if(!AC.createStereoPanner) return null;
+    var sp=AC.createStereoPanner(); sp.pan.value=p||0; return sp;
+  }
+  function toBus(node,bus,pan){
+    var sp=pan!==undefined?panner(pan):null;
+    if(sp){ node.connect(sp); sp.connect(bus); } else node.connect(bus);
+  }
 
-  // ---- instruments ----
-  function piano(f,when,dur,vel){
-    var o=AC.createOscillator(), o2=AC.createOscillator(), g2=AC.createGain(),
-        gn=AC.createGain(), lp=AC.createBiquadFilter();
-    o.type='triangle'; o.frequency.value=f;
-    o2.type='sine'; o2.frequency.value=f*2.004; g2.gain.value=0.22;
-    lp.type='lowpass'; lp.frequency.value=Math.min(9000,f*7);
-    o.connect(gn); o2.connect(g2); g2.connect(gn); gn.connect(lp); lp.connect(busMus);
-    var v=vel||0.5;
-    gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.exponentialRampToValueAtTime(v,when+0.014);
-    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
-    o.start(when); o2.start(when); o.stop(when+dur+0.05); o2.stop(when+dur+0.05);
+  // ---------- instruments ----------
+
+  // Felt piano: additive partials with independent decay rates (upper partials
+  // die first), slight inharmonicity, and a hammer transient.
+  var PART=[[1,1,1],[2,0.42,0.60],[3,0.19,0.44],[4,0.11,0.33],[5,0.06,0.25],[6,0.035,0.20],[8,0.02,0.15]];
+  function piano(f,when,dur,vel,pan){
+    var out=AC.createGain(), lp=AC.createBiquadFilter();
+    lp.type='lowpass'; lp.frequency.setValueAtTime(Math.min(11000,f*11),when);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(400,f*3.2),when+dur*0.7);
+    out.connect(lp); toBus(lp,busMus,pan);
+    var v=vel||0.4;
+    PART.forEach(function(p){
+      var o=AC.createOscillator(), gn=AC.createGain();
+      o.type='sine';
+      o.frequency.value=f*p[0]*(1+0.0007*p[0]*p[0]);
+      var pv=v*p[1], pd=Math.max(0.12,dur*p[2]);
+      gn.gain.setValueAtTime(0.0001,when);
+      gn.gain.exponentialRampToValueAtTime(Math.max(0.0002,pv),when+0.005+0.0015*p[0]);
+      gn.gain.exponentialRampToValueAtTime(0.0001,when+pd);
+      o.connect(gn); gn.connect(out);
+      o.start(when); o.stop(when+pd+0.08);
+    });
+    noiseBurst(when,0.024,f*5,1.6,v*0.16,out);
   }
-  function bow(f,when,dur,vel,type,bright){
+
+  // Bowed ensemble: three detuned voices, vibrato, bow noise, slow swell.
+  function strings(f,when,dur,vel,pan,bright){
+    var out=AC.createGain(), lp=AC.createBiquadFilter();
+    lp.type='lowpass'; lp.Q.value=0.9;
+    lp.frequency.setValueAtTime(f*1.6,when);
+    lp.frequency.linearRampToValueAtTime(f*(bright||3.0),when+dur*0.4);
+    out.connect(lp); toBus(lp,busMus,pan);
+    var v=vel||0.10;
+    var lfo=AC.createOscillator(), lfoG=AC.createGain();
+    lfo.type='sine'; lfo.frequency.value=4.6+Math.random()*0.8;
+    lfoG.gain.setValueAtTime(0,when);
+    lfoG.gain.linearRampToValueAtTime(f*0.006,when+Math.min(1.2,dur*0.5));
+    lfo.connect(lfoG); lfo.start(when); lfo.stop(when+dur+0.1);
+    [-0.16,0,0.19].forEach(function(det,k){
+      var o=AC.createOscillator(), gn=AC.createGain();
+      o.type='sawtooth'; o.frequency.value=f;
+      o.detune.value=det*7;
+      lfoG.connect(o.frequency);
+      var pv=v*(k===1?1:0.62);
+      gn.gain.setValueAtTime(0.0001,when);
+      gn.gain.linearRampToValueAtTime(pv,when+Math.min(0.85,dur*0.38));
+      gn.gain.setValueAtTime(pv,when+dur*0.70);
+      gn.gain.linearRampToValueAtTime(0.0001,when+dur);
+      o.connect(gn); gn.connect(out);
+      o.start(when); o.stop(when+dur+0.08);
+    });
+    noiseBurst(when,Math.min(0.3,dur*0.25),f*3,1.1,v*0.10,out);
+  }
+
+  // Wordless mixed choir / soft pad.
+  function choir(f,when,dur,vel,pan){
+    var out=AC.createGain(), bp=AC.createBiquadFilter();
+    bp.type='bandpass'; bp.frequency.value=f*2.4; bp.Q.value=1.6;
+    out.connect(bp); toBus(bp,busMus,pan);
+    var v=vel||0.07;
+    [0,1,2].forEach(function(k){
+      var o=AC.createOscillator(), gn=AC.createGain();
+      o.type=k===2?'triangle':'sine';
+      o.frequency.value=f*(k===2?2:1);
+      o.detune.value=(k-1)*9;
+      gn.gain.setValueAtTime(0.0001,when);
+      gn.gain.linearRampToValueAtTime(v*(k===2?0.4:1),when+dur*0.35);
+      gn.gain.setValueAtTime(v*(k===2?0.4:1),when+dur*0.62);
+      gn.gain.linearRampToValueAtTime(0.0001,when+dur);
+      o.connect(gn); gn.connect(out);
+      o.start(when); o.stop(when+dur+0.08);
+    });
+  }
+
+  // Restrained French horn.
+  function horn(f,when,dur,vel,pan){
     var o=AC.createOscillator(), gn=AC.createGain(), lp=AC.createBiquadFilter();
-    o.type=type||'sawtooth'; o.frequency.value=f;
-    lp.type='lowpass'; lp.frequency.value=f*(bright||2.6); lp.Q.value=0.8;
-    o.connect(lp); lp.connect(gn); gn.connect(busMus);
-    var v=vel||0.14, a=Math.min(0.7,dur*0.35);
+    o.type='sawtooth'; o.frequency.value=f;
+    lp.type='lowpass'; lp.Q.value=2.4;
+    lp.frequency.setValueAtTime(f*1.4,when);
+    lp.frequency.linearRampToValueAtTime(f*3.4,when+dur*0.3);
+    lp.frequency.linearRampToValueAtTime(f*1.6,when+dur);
+    o.connect(lp); lp.connect(gn); toBus(gn,busMus,pan);
+    var v=vel||0.09;
     gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.linearRampToValueAtTime(v,when+a);
-    gn.gain.setValueAtTime(v,when+dur*0.72);
+    gn.gain.linearRampToValueAtTime(v,when+dur*0.22);
+    gn.gain.setValueAtTime(v,when+dur*0.7);
     gn.gain.linearRampToValueAtTime(0.0001,when+dur);
-    o.start(when); o.stop(when+dur+0.05);
+    o.start(when); o.stop(when+dur+0.08);
   }
-  function glass(f,when,dur,vel){
+
+  // Bass flute / clarinet — mostly sine with a breath layer.
+  function wind(f,when,dur,vel,pan){
+    var out=AC.createGain(), lp=AC.createBiquadFilter();
+    lp.type='lowpass'; lp.frequency.value=f*4;
+    out.connect(lp); toBus(lp,busMus,pan);
+    var v=vel||0.12;
     var o=AC.createOscillator(), gn=AC.createGain();
     o.type='sine'; o.frequency.value=f;
-    o.connect(gn); gn.connect(busMus);
-    var v=vel||0.16;
+    var o2=AC.createOscillator(), g2=AC.createGain();
+    o2.type='triangle'; o2.frequency.value=f*3; g2.gain.value=0.06;
     gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.exponentialRampToValueAtTime(v,when+0.006);
-    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
-    o.start(when); o.stop(when+dur+0.05);
-  }
-  function drum(when,vel){
-    var o=AC.createOscillator(), gn=AC.createGain();
-    o.type='sine'; o.frequency.setValueAtTime(96,when);
-    o.frequency.exponentialRampToValueAtTime(42,when+0.16);
-    o.connect(gn); gn.connect(busMus);
-    var v=vel||0.34;
-    gn.gain.setValueAtTime(v,when);
-    gn.gain.exponentialRampToValueAtTime(0.0001,when+0.42);
-    o.start(when); o.stop(when+0.5);
-    noiseHit(when,0.09,260,1.2,v*0.35,busMus);
-  }
-  function metal(f,when,dur,vel){
-    var o=AC.createOscillator(), gn=AC.createGain(), bp=AC.createBiquadFilter();
-    o.type='square'; o.frequency.value=f;
-    bp.type='bandpass'; bp.frequency.value=f*3.1; bp.Q.value=7;
-    o.connect(bp); bp.connect(gn); gn.connect(busMus);
-    var v=vel||0.10;
-    gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.exponentialRampToValueAtTime(v,when+0.004);
-    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
-    o.start(when); o.stop(when+dur+0.03);
+    gn.gain.linearRampToValueAtTime(v,when+0.10);
+    gn.gain.setValueAtTime(v,when+dur*0.75);
+    gn.gain.linearRampToValueAtTime(0.0001,when+dur);
+    o.connect(gn); gn.connect(out); o2.connect(g2); g2.connect(out);
+    o.start(when); o2.start(when); o.stop(when+dur+0.05); o2.stop(when+dur+0.05);
+    noiseBurst(when,Math.min(0.4,dur),f*2.2,2.2,v*0.13,out);
   }
 
-  // ---- effect primitives ----
-  function noiseHit(when,dur,freq,q,vel,bus,type){
-    var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
-    var f=AC.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq; f.Q.value=q||1;
-    var gn=AC.createGain();
-    src.connect(f); f.connect(gn); gn.connect(bus||busSfx);
+  // Struck glass / vibraphone.
+  function glass(f,when,dur,vel,pan){
+    var out=AC.createGain(); toBus(out,busMus,pan);
+    [[1,1],[2.76,0.28],[5.4,0.10]].forEach(function(p){
+      var o=AC.createOscillator(), gn=AC.createGain();
+      o.type='sine'; o.frequency.value=f*p[0];
+      var pv=(vel||0.13)*p[1];
+      gn.gain.setValueAtTime(0.0001,when);
+      gn.gain.exponentialRampToValueAtTime(Math.max(0.0002,pv),when+0.004);
+      gn.gain.exponentialRampToValueAtTime(0.0001,when+dur*(p[0]===1?1:0.5));
+      o.connect(gn); gn.connect(out);
+      o.start(when); o.stop(when+dur+0.05);
+    });
+  }
+
+  // Frame drum: pitch-dropping membrane plus a skin transient and body tone.
+  function drum(when,vel,pan){
+    var out=AC.createGain(); toBus(out,busMus,pan);
     var v=vel||0.3;
+    var o=AC.createOscillator(), gn=AC.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(128,when);
+    o.frequency.exponentialRampToValueAtTime(46,when+0.13);
+    gn.gain.setValueAtTime(v,when);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+0.55);
+    o.connect(gn); gn.connect(out); o.start(when); o.stop(when+0.6);
+    var o2=AC.createOscillator(), g2=AC.createGain();
+    o2.type='triangle'; o2.frequency.value=196;
+    g2.gain.setValueAtTime(v*0.16,when);
+    g2.gain.exponentialRampToValueAtTime(0.0001,when+0.20);
+    o2.connect(g2); g2.connect(out); o2.start(when); o2.stop(when+0.25);
+    noiseBurst(when,0.07,320,1.0,v*0.30,out);
+  }
+
+  // Prepared piano — a screw between the strings.
+  function metal(f,when,dur,vel,pan){
+    var out=AC.createGain(); toBus(out,busMus,pan);
+    var o=AC.createOscillator(), gn=AC.createGain(), bp=AC.createBiquadFilter();
+    o.type='square'; o.frequency.value=f;
+    bp.type='bandpass'; bp.frequency.value=f*3.4; bp.Q.value=6;
+    o.connect(bp); bp.connect(gn); gn.connect(out);
+    var v=vel||0.09;
     gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.exponentialRampToValueAtTime(v,when+Math.min(0.02,dur*0.2));
+    gn.gain.exponentialRampToValueAtTime(v,when+0.003);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o.stop(when+dur+0.03);
+    noiseBurst(when,0.03,f*6,3,v*0.5,out);
+  }
+
+  function noiseBurst(when,dur,freq,q,vel,dest,type){
+    var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+    src.playbackRate.value=0.8+Math.random()*0.5;
+    var f=AC.createBiquadFilter(); f.type=type||'bandpass';
+    f.frequency.value=freq; f.Q.value=q||1;
+    var gn=AC.createGain();
+    src.connect(f); f.connect(gn); gn.connect(dest||busSfx);
+    var v=vel||0.2;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(Math.max(0.0002,v),when+Math.min(0.02,dur*0.25));
     gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
     src.start(when); src.stop(when+dur+0.05);
   }
-  function sweep(when,dur,f0,f1,q,vel,bus){
+
+  // ---------- effect primitives ----------
+  function nz(when,dur,freq,q,vel,pan,type){
+    var out=AC.createGain(); toBus(out,busSfx,pan===undefined?0:pan);
+    noiseBurst(when,dur,freq,q,vel,out,type);
+  }
+  function sweep(when,dur,f0,f1,q,vel,pan){
     var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
     var f=AC.createBiquadFilter(); f.type='bandpass'; f.Q.value=q||3;
     f.frequency.setValueAtTime(f0,when);
     f.frequency.exponentialRampToValueAtTime(Math.max(30,f1),when+dur);
     var gn=AC.createGain();
-    src.connect(f); f.connect(gn); gn.connect(bus||busSfx);
-    var v=vel||0.25;
+    src.connect(f); f.connect(gn); toBus(gn,busSfx,pan===undefined?0:pan);
+    var v=vel||0.22;
     gn.gain.setValueAtTime(0.0001,when);
     gn.gain.linearRampToValueAtTime(v,when+dur*0.3);
     gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
     src.start(when); src.stop(when+dur+0.05);
   }
-  function blip(when,f0,f1,dur,vel,type){
+  function blip(when,f0,f1,dur,vel,type,pan){
     var o=AC.createOscillator(), gn=AC.createGain();
     o.type=type||'sine'; o.frequency.setValueAtTime(f0,when);
     o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),when+dur);
-    o.connect(gn); gn.connect(busSfx);
-    var v=vel||0.2;
+    o.connect(gn); toBus(gn,busSfx,pan===undefined?0:pan);
+    var v=vel||0.18;
     gn.gain.setValueAtTime(0.0001,when);
-    gn.gain.exponentialRampToValueAtTime(v,when+0.005);
+    gn.gain.exponentialRampToValueAtTime(Math.max(0.0002,v),when+0.005);
     gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
     o.start(when); o.stop(when+dur+0.03);
   }
+  function rnd(a,b){ return a+Math.random()*(b-a); }
 
   var FX={
-    kettle:  function(w){ sweep(w,3.2,300,1900,6,0.16); },
-    bus:     function(w){ noiseHit(w,1.6,150,0.8,0.20); blip(w,70,52,1.2,0.10,'sawtooth'); },
-    door:    function(w){ blip(w,120,44,0.22,0.42); noiseHit(w,0.10,900,1.4,0.16); },
-    weld:    function(w){ for(var i=0;i<14;i++) noiseHit(w+i*0.055+Math.random()*0.02,0.05,2400+Math.random()*1800,2,0.13); },
-    monitor: function(w){ blip(w,880,880,0.10,0.12,'sine'); },
-    radiator:function(w){ noiseHit(w,0.14,420,6,0.16); noiseHit(w+0.22,0.10,380,6,0.11); },
-    compress:function(w){ blip(w,58,58,1.4,0.09,'sawtooth'); },
-    chisel:  function(w){ noiseHit(w,0.07,2600,3,0.30); blip(w,520,240,0.5,0.14,'triangle'); },
-    shatter: function(w){ for(var i=0;i<10;i++) noiseHit(w+i*0.018,0.28,2600+Math.random()*3200,4,0.13); },
-    ring:    function(w){ metal(660,w,1.6,0.13); },
-    creak:   function(w){ sweep(w,1.4,320,140,9,0.16); },
-    heart:   function(w){ blip(w,64,40,0.20,0.30); blip(w+0.31,58,36,0.16,0.20); },
-    tick:    function(w){ noiseHit(w,0.02,5200,3,0.10); },
-    drip:    function(w){ blip(w,1500,700,0.13,0.22,'sine'); },
-    key:     function(w){ noiseHit(w,0.03,2800,4,0.13); },
-    printer: function(w){ for(var i=0;i<7;i++) noiseHit(w+i*0.09,0.06,900,3,0.10); },
-    scrape:  function(w){ sweep(w,0.7,900,300,5,0.18); },
-    relay:   function(w){ noiseHit(w,0.03,1700,6,0.24); blip(w+0.02,300,90,0.22,0.14,'square'); },
-    stamp:   function(w){ blip(w,180,50,0.16,0.40); noiseHit(w,0.16,700,1.5,0.22); },
-    token:   function(w){ metal(1180,w,0.5,0.10); },
-    flap:    function(w){ for(var i=0;i<6;i++) noiseHit(w+i*0.035,0.025,1500,5,0.09); },
-    foot:    function(w){ noiseHit(w,0.07,240,2,0.14); },
-    bell:    function(w){ glass(N.A5,w,1.5,0.10); glass(N.D5,w,1.8,0.07); },
-    saw:     function(w){ for(var i=0;i<5;i++) sweep(w+i*0.42,0.36,700,1500,3,0.12); },
-    bird:    function(w){ blip(w,2600,3400,0.07,0.09); blip(w+0.11,3100,2500,0.06,0.07); },
-    breath:  function(w){ sweep(w,2.4,300,900,1.4,0.24); },
-    gust:    function(w){ sweep(w,3.0,180,520,0.9,0.26); },
-    press:   function(w){ blip(w,150,60,0.24,0.30); noiseHit(w+0.05,0.20,600,2,0.16); },
-    quill:   function(w){ for(var i=0;i<5;i++) noiseHit(w+i*0.07,0.05,3400,4,0.07); },
-    stylus:  function(w){ noiseHit(w,0.05,1400,5,0.14); },
-    subload: function(w){ blip(w,52,34,2.4,0.26,'sine'); },
-    crowd:   function(w){ sweep(w,3.4,300,700,0.7,0.14); }
+    kettle:  function(w){ sweep(w,3.6,280,2100,7,0.15,0.3); nz(w+3.4,0.5,1800,3,0.07,0.3); },
+    bus:     function(w){ blip(w,74,50,1.9,0.11,'sawtooth',-0.5); nz(w,1.7,180,0.7,0.13,-0.5);
+                          nz(w+1.5,0.7,900,1.2,0.09,-0.3); },
+    door:    function(w){ nz(w,0.05,1800,3,0.13,0.2); blip(w+0.03,140,42,0.30,0.40,'sine',0.2);
+                          nz(w+0.03,0.22,320,1.1,0.16,0.2); },
+    weld:    function(w){ for(var i=0;i<22;i++) nz(w+i*0.041+rnd(0,0.018),rnd(0.02,0.06),rnd(1800,5200),rnd(2,5),rnd(0.05,0.13),rnd(-0.3,0.3)); },
+    monitor: function(w){ blip(w,932,932,0.09,0.10,'sine',0.35); blip(w+0.005,1864,1864,0.06,0.03,'sine',0.35); },
+    radiator:function(w){ nz(w,0.10,430,9,0.14,-0.35); nz(w+0.26,0.08,392,9,0.09,-0.35); nz(w+0.44,0.06,470,9,0.05,-0.35); },
+    compress:function(w){ blip(w,58,56,2.0,0.07,'sawtooth',0.4); nz(w,2.0,240,1.4,0.05,0.4); },
+    chisel:  function(w){ nz(w,0.05,3200,4,0.26,-0.15); blip(w,620,260,0.42,0.12,'triangle',-0.15); },
+    shatter: function(w){ for(var i=0;i<14;i++) nz(w+i*0.016+rnd(0,0.01),rnd(0.14,0.34),rnd(2400,6400),rnd(4,9),rnd(0.05,0.12),rnd(-0.6,0.6)); },
+    ring:    function(w){ glass(F_.A4,w,2.2,0.09,0); glass(F_.E5,w+0.01,1.6,0.05,0.2); },
+    creak:   function(w){ sweep(w,1.8,340,120,11,0.14,rnd(-0.4,0.4)); },
+    heart:   function(w){ blip(w,62,38,0.22,0.26,'sine',0); nz(w,0.09,120,1.2,0.10,0);
+                          blip(w+0.33,56,34,0.17,0.17,'sine',0); },
+    tick:    function(w){ nz(w,0.015,5600,4,0.08,rnd(-0.4,0.4)); },
+    drip:    function(w){ blip(w,1700,620,0.11,0.20,'sine',rnd(-0.5,0.5)); },
+    key:     function(w){ for(var i=0;i<4;i++) nz(w+i*rnd(0.06,0.13),0.022,rnd(2400,3600),5,0.10,0.25); },
+    printer: function(w){ for(var i=0;i<9;i++) nz(w+i*0.085,0.05,rnd(750,1100),4,0.08,-0.4); },
+    scrape:  function(w){ sweep(w,0.8,1100,280,6,0.15,rnd(-0.3,0.3)); },
+    relay:   function(w){ nz(w,0.02,2100,7,0.20,rnd(-0.5,0.5)); blip(w+0.015,320,80,0.26,0.12,'square',0); },
+    stamp:   function(w){ nz(w,0.03,3000,3,0.14,0.15); blip(w+0.02,200,44,0.20,0.36,'sine',0.15);
+                          nz(w+0.02,0.24,620,1.4,0.18,0.15); },
+    token:   function(w){ glass(rnd(1000,1400),w,0.55,0.08,rnd(-0.4,0.4)); },
+    flap:    function(w){ for(var i=0;i<9;i++) nz(w+i*0.032,0.02,rnd(1200,1900),6,0.07,0.4); },
+    foot:    function(w){ nz(w,0.055,rnd(180,300),2.2,0.12,rnd(-0.5,0.5)); },
+    bell:    function(w){ glass(F_.A5,w,2.4,0.09,0.3); glass(F_.D5,w+0.02,2.8,0.06,0.3); },
+    saw:     function(w){ for(var i=0;i<5;i++){ sweep(w+i*0.44,0.22,600,1700,4,0.11,-0.25);
+                          sweep(w+i*0.44+0.24,0.18,1700,600,4,0.08,-0.25); } },
+    bird:    function(w){ var p=rnd(-0.6,0.6);
+                          blip(w,2700,3500,0.06,0.08,'sine',p); blip(w+0.09,3300,2600,0.05,0.06,'sine',p);
+                          blip(w+0.17,2900,3200,0.04,0.04,'sine',p); },
+    breath:  function(w){ sweep(w,2.6,280,1000,1.5,0.20,0); sweep(w+2.4,2.0,900,260,1.5,0.13,0); },
+    gust:    function(w){ sweep(w,3.6,160,560,0.8,0.24,rnd(-0.5,0.5)); },
+    press:   function(w){ blip(w,160,54,0.26,0.28,'sine',-0.2); nz(w+0.04,0.22,640,2,0.15,-0.2); },
+    quill:   function(w){ for(var i=0;i<7;i++) nz(w+i*rnd(0.05,0.1),0.04,rnd(3000,4200),5,0.05,0.2); },
+    stylus:  function(w){ nz(w,0.045,1500,6,0.12,-0.1); nz(w+0.06,0.03,1200,6,0.06,-0.1); },
+    subload: function(w){ blip(w,54,32,2.8,0.24,'sine',0); nz(w,2.4,90,1.0,0.10,0); },
+    crowd:   function(w){ sweep(w,4.0,300,760,0.6,0.12,rnd(-0.3,0.3)); }
   };
 
-  // Per-scene ambience beds: filter centre, resonance, level, and sub-drone pitches.
+  // Ambience beds. rv is the reverb send for the whole scene, which is how the
+  // rooms differ: a cave tail, a dead office, an open plain with no reflections.
   var AMB={
-    1:{f:170,q:0.5,g:0.55,dr:[41,82],dg:0.055}, 2:{f:520,q:0.7,g:0.30,dr:[110],dg:0.025},
-    3:{f:300,q:0.5,g:0.08,dr:[],dg:0},          4:{f:950,q:0.9,g:0.20,dr:[73],dg:0.03},
-    5:{f:1500,q:1.3,g:0.16,dr:[147],dg:0.025},  6:{f:250,q:0.6,g:0.44,dr:[55,110],dg:0.06},
-    7:{f:430,q:0.7,g:0.32,dr:[73],dg:0.03},     8:{f:2100,q:0.5,g:0.15,dr:[110],dg:0.04},
-    9:{f:1250,q:0.9,g:0.64,dr:[],dg:0},         10:{f:720,q:0.6,g:0.34,dr:[120],dg:0.04},
-    11:{f:340,q:0.5,g:0.42,dr:[73,110],dg:0.05},12:{f:150,q:0.7,g:0.30,dr:[36.7,73.4],dg:0.075},
-    13:{f:620,q:0.5,g:0.48,dr:[73],dg:0.04},    14:{f:200,q:0.4,g:0.12,dr:[],dg:0},
-    15:{f:840,q:1.5,g:0.50,dr:[55],dg:0.06},    16:{f:260,q:0.4,g:0.58,dr:[],dg:0},
-    17:{f:1700,q:0.8,g:0.36,dr:[],dg:0},        18:{f:900,q:0.7,g:0.40,dr:[110],dg:0.03},
-    19:{f:660,q:0.5,g:0.50,dr:[],dg:0},         20:{f:200,q:0.5,g:0.08,dr:[],dg:0}
+    1:{f:170,q:0.5,g:0.55,dr:[41,82],dg:0.055,rv:0.30}, 2:{f:520,q:0.7,g:0.30,dr:[110],dg:0.025,rv:0.26},
+    3:{f:300,q:0.5,g:0.08,dr:[],dg:0,rv:0.50},          4:{f:950,q:0.9,g:0.20,dr:[73],dg:0.03,rv:0.62},
+    5:{f:1500,q:1.3,g:0.16,dr:[147],dg:0.025,rv:0.44},  6:{f:250,q:0.6,g:0.44,dr:[55,110],dg:0.06,rv:0.34},
+    7:{f:430,q:0.7,g:0.32,dr:[73],dg:0.03,rv:0.20},     8:{f:2100,q:0.5,g:0.15,dr:[110],dg:0.04,rv:0.46},
+    9:{f:1250,q:0.9,g:0.64,dr:[],dg:0,rv:0.28},         10:{f:720,q:0.6,g:0.34,dr:[120],dg:0.04,rv:0.10},
+    11:{f:340,q:0.5,g:0.42,dr:[73,110],dg:0.05,rv:0.72},12:{f:150,q:0.7,g:0.30,dr:[36.7,73.4],dg:0.075,rv:0.22},
+    13:{f:620,q:0.5,g:0.48,dr:[73],dg:0.04,rv:0.34},    14:{f:200,q:0.4,g:0.12,dr:[],dg:0,rv:0.38},
+    15:{f:840,q:1.5,g:0.50,dr:[55],dg:0.06,rv:0.52},    16:{f:260,q:0.4,g:0.58,dr:[],dg:0,rv:0.16},
+    17:{f:1700,q:0.8,g:0.36,dr:[],dg:0,rv:0.24},        18:{f:900,q:0.7,g:0.40,dr:[110],dg:0.03,rv:0.36},
+    19:{f:660,q:0.5,g:0.50,dr:[],dg:0,rv:0.22},         20:{f:200,q:0.5,g:0.08,dr:[],dg:0,rv:0.55}
   };
 
-  // One-shot effects, keyed to what is happening on screen.
   var SFX={
-    1:[[9,'kettle'],[22,'bus'],[44,'door']],
-    2:[[1,'weld'],[4,'weld'],[10,'compress'],[19,'radiator'],[27,'compress'],[36,'monitor'],[41,'monitor']],
-    3:[[18,'tick']],
-    4:[[1,'chisel'],[2.4,'chisel'],[3.8,'chisel'],[13,'shatter'],[21,'ring'],[36,'creak']],
+    1:[[9,'kettle'],[22,'bus'],[31,'tick'],[44,'door']],
+    2:[[1,'weld'],[4.4,'weld'],[10,'compress'],[13,'tick'],[19,'radiator'],[23,'tick'],[27,'compress'],
+       [31,'key'],[36,'monitor'],[41,'monitor'],[45,'monitor']],
+    3:[[18,'tick'],[27,'tick']],
+    4:[[1,'chisel'],[2.5,'chisel'],[4,'chisel'],[13,'shatter'],[21,'ring'],[31,'creak'],[38,'creak']],
     5:[[3,'tick'],[9,'tick'],[15,'tick'],[21,'tick'],[27,'tick'],[33,'tick'],[39,'tick'],[46,'creak']],
-    6:[[2,'heart'],[9,'heart'],[16,'heart'],[24,'heart'],[32,'breath'],[41,'heart']],
-    7:[[1,'tick'],[8,'radiator'],[16,'key'],[24,'compress'],[33,'tick']],
-    8:[[10,'tick'],[14,'tick'],[18,'tick'],[22,'tick'],[26,'tick'],[30,'tick'],[34,'tick']],
-    9:[[1,'drip'],[3,'drip'],[6,'drip'],[12,'gust'],[24,'breath'],[34,'breath']],
-    10:[[3,'saw'],[10,'radiator'],[16,'key'],[19,'printer'],[25,'scrape'],[33,'tick']],
-    11:[[2,'chisel'],[9,'stylus'],[15,'stylus'],[21,'chisel'],[27,'quill'],[33,'press'],[40,'key'],[44,'key']],
-    12:[[1,'subload'],[10,'relay'],[16,'relay'],[22,'relay'],[28,'relay'],[34,'creak'],[38,'creak']],
-    13:[[2,'crowd'],[12,'foot'],[20,'press'],[27,'crowd'],[34,'bus'],[42,'bell']],
-    14:[[3,'tick'],[19,'creak'],[27,'breath'],[38,'tick']],
-    15:[[1,'stamp'],[6,'token'],[9,'stamp'],[13,'token'],[17,'stamp'],[21,'token'],[26,'flap'],[31,'stamp'],[35,'token'],[40,'flap']],
-    16:[[2,'gust'],[13,'gust'],[24,'gust'],[31,'foot'],[33,'foot'],[35,'foot'],[37,'foot'],[39,'foot']],
-    17:[[2,'bird'],[7,'saw'],[13,'bird'],[19,'gust'],[25,'bird'],[32,'bird']],
-    18:[[2,'breath'],[11,'gust'],[20,'breath'],[30,'breath']],
-    19:[[2,'foot'],[5,'bell'],[9,'bird'],[13,'foot'],[17,'crowd'],[26,'bus'],[33,'bird']],
+    6:[[2,'heart'],[9,'heart'],[16,'heart'],[24,'heart'],[31,'breath'],[41,'heart'],[47,'heart']],
+    7:[[1,'tick'],[8,'radiator'],[16,'key'],[21,'foot'],[24,'compress'],[33,'tick'],[40,'tick']],
+    8:[[10,'tick'],[13,'tick'],[16,'tick'],[19,'tick'],[22,'tick'],[25,'tick'],[28,'tick'],[31,'tick'],[34,'tick'],[37,'tick']],
+    9:[[1,'drip'],[2.6,'drip'],[5,'drip'],[8,'drip'],[13,'gust'],[24,'breath'],[34,'breath'],[41,'gust']],
+    10:[[3,'saw'],[10,'radiator'],[16,'key'],[19,'printer'],[25,'scrape'],[30,'key'],[36,'tick']],
+    11:[[2,'chisel'],[6,'chisel'],[10,'stylus'],[15,'stylus'],[21,'chisel'],[27,'quill'],[33,'press'],
+        [38,'press'],[42,'key'],[46,'key']],
+    12:[[1,'subload'],[10,'relay'],[16,'relay'],[22,'relay'],[28,'relay'],[33,'creak'],[37,'creak']],
+    13:[[2,'crowd'],[9,'foot'],[13,'foot'],[20,'press'],[26,'crowd'],[33,'bus'],[40,'bell'],[46,'crowd']],
+    14:[[3,'tick'],[14,'breath'],[19,'creak'],[27,'breath'],[38,'tick']],
+    15:[[1,'stamp'],[5,'token'],[8,'stamp'],[11,'token'],[15,'stamp'],[18,'token'],[22,'flap'],
+        [26,'stamp'],[29,'token'],[33,'stamp'],[37,'token'],[41,'flap']],
+    16:[[2,'gust'],[12,'gust'],[21,'gust'],[31,'foot'],[32.5,'foot'],[34,'foot'],[35.5,'foot'],
+        [37,'foot'],[38.5,'foot'],[40,'foot'],[41.5,'foot']],
+    17:[[2,'bird'],[7,'saw'],[12,'bird'],[17,'gust'],[22,'bird'],[27,'saw'],[33,'bird'],[37,'bird']],
+    18:[[2,'breath'],[10,'gust'],[19,'breath'],[28,'breath'],[35,'breath']],
+    19:[[2,'foot'],[4,'bell'],[7,'bird'],[10,'foot'],[13,'crowd'],[17,'foot'],[25,'bus'],[31,'bird'],[36,'foot']],
     20:[]
   };
 
-  // Score. One bar per scene, looped, per the film's score architecture.
-  var MUS={
-    1:{bpm:15,bar:[{n:N.D3,i:'p',d:3.6,v:0.42},{n:null},{n:N.A3,i:'p',d:3.0,v:0.30},{n:null},
-                   {n:N.D2,i:'p',d:4.2,v:0.34},{n:null},{n:null},{n:null}]},
-    2:{bpm:15,bar:[{n:N.D3,i:'p',d:3.4,v:0.38},{n:N.D3,i:'b',d:4.0,v:0.10},{n:N.A3,i:'p',d:3.0,v:0.28},
-                   {n:N.F3,i:'b',d:4.0,v:0.09},{n:N.D2,i:'p',d:4.0,v:0.30},{n:null},{n:N.A2,i:'b',d:5.0,v:0.08},{n:null}]},
-    3:{bpm:12,bar:[{n:N.D2,i:'b',d:8.0,v:0.09},{n:null},{n:null},{n:null}]},
-    4:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.26},{n:N.A4,i:'g',d:0.7,v:0.07},{n:null},{n:N.D5,i:'g',d:0.6,v:0.05},
-                   {n:N.D3,i:'d',d:0,v:0.20},{n:N.A4,i:'g',d:0.7,v:0.06},{n:null},{n:null}]},
-    5:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.22},{n:N.D5,i:'g',d:0.8,v:0.07},{n:N.A4,i:'g',d:0.8,v:0.06},{n:null},
-                   {n:N.D3,i:'d',d:0,v:0.18},{n:N.F5,i:'g',d:0.8,v:0.06},{n:null},{n:N.C5,i:'g',d:0.7,v:0.05}]},
-    6:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.24},{n:N.D4,i:'b',d:2.4,v:0.10,t:'triangle'},{n:null},{n:null},
-                   {n:N.D3,i:'d',d:0,v:0.18},{n:N.F4,i:'b',d:2.4,v:0.09,t:'triangle'},{n:null},{n:null}]},
-    7:{bpm:54,bar:[{n:N.D3,i:'d',d:0,v:0.20},{n:null},{n:N.E4,i:'b',d:2.6,v:0.08,t:'triangle'},{n:null},
-                   {n:N.D3,i:'d',d:0,v:0.15},{n:null},{n:null},{n:null}]},
-    8:{bpm:8,bar:[{n:N.A2,i:'b',d:14,v:0.07}]},
-    9:{bpm:40,bar:[{n:N.D4,i:'b',d:2.6,v:0.11,t:'sine'},{n:N.A4,i:'g',d:1.2,v:0.06},{n:N.F4,i:'b',d:2.6,v:0.09,t:'sine'},{n:null},
-                   {n:N.C4,i:'b',d:2.6,v:0.09,t:'sine'},{n:N.D5,i:'g',d:1.2,v:0.05},{n:null},{n:null}]},
-    10:{bpm:96,bar:[{n:N.D3,i:'m',d:0.3,v:0.07},{n:null},{n:N.A3,i:'m',d:0.3,v:0.05},{n:null},
-                    {n:N.F3,i:'m',d:0.3,v:0.06},{n:null},{n:null},{n:N.C4,i:'m',d:0.3,v:0.04}]},
-    11:{bpm:60,bar:[{n:N.D2,i:'d',d:0,v:0.28},{n:N.D3,i:'b',d:3.0,v:0.10},{n:null},{n:N.A2,i:'d',d:0,v:0.16},
-                    {n:N.F3,i:'b',d:3.0,v:0.08},{n:null}]},
-    12:{bpm:30,bar:[{n:N.D2,i:'b',d:4.4,v:0.10},{n:N.D2*1.03,i:'b',d:4.4,v:0.08},{n:N.A2,i:'b',d:4.4,v:0.09},
-                    {n:N.A2*1.026,i:'b',d:4.4,v:0.07},{n:N.D3,i:'b',d:4.4,v:0.07},{n:N.D3*1.02,i:'b',d:4.4,v:0.06}]},
-    13:{bpm:62,bar:[{n:N.D3,i:'p',d:2.2,v:0.36},{n:N.A3,i:'p',d:1.6,v:0.22},{n:N.D4,i:'p',d:2.0,v:0.26},{n:N.C4,i:'b',d:3.2,v:0.11},
-                    {n:N.F3,i:'p',d:2.2,v:0.30},{n:N.A3,i:'p',d:1.6,v:0.20},{n:N.D3,i:'b',d:4.0,v:0.12},{n:null}]},
-    14:{bpm:36,bar:[{n:N.D3,i:'b',d:3.2,v:0.13},{n:N.F3,i:'b',d:2.6,v:0.11},{n:N.E3,i:'b',d:3.0,v:0.10},{n:null}]},
-    15:{bpm:104,bar:[{n:N.D3,i:'m',d:0.22,v:0.10},{n:N.D3,i:'m',d:0.18,v:0.05},{n:N.A3,i:'m',d:0.22,v:0.08},{n:null},
-                     {n:N.D3,i:'m',d:0.22,v:0.09},{n:N.C4,i:'m',d:0.18,v:0.06},{n:N.A3,i:'m',d:0.22,v:0.07},{n:N.F3,i:'m',d:0.2,v:0.05}]},
-    16:{bpm:20,bar:[{n:N.D3,i:'b',d:6.0,v:0.11,t:'triangle'},{n:N.A3,i:'b',d:6.0,v:0.08,t:'triangle'},
-                    {n:N.F3,i:'b',d:6.0,v:0.07,t:'triangle'},{n:null}]},
-    17:{bpm:52,bar:[{n:N.D3,i:'p',d:2.6,v:0.38},{n:N.F3,i:'p',d:2.0,v:0.24},{n:N.A3,i:'p',d:2.4,v:0.28},{n:N.D3,i:'b',d:3.6,v:0.11},
-                    {n:N.C4,i:'p',d:2.2,v:0.24},{n:N.A3,i:'p',d:1.8,v:0.20},{n:null},{n:null}]},
-    18:{bpm:44,bar:[{n:N.D3,i:'b',d:3.4,v:0.13},{n:N.A3,i:'b',d:3.4,v:0.11},{n:N.D4,i:'b',d:3.4,v:0.09},
-                    {n:N.F4,i:'b',d:3.4,v:0.08},{n:N.C4,i:'b',d:3.4,v:0.08},{n:null}]},
-    19:{bpm:58,bar:[{n:N.D3,i:'p',d:2.4,v:0.40},{n:N.A3,i:'p',d:1.8,v:0.26},{n:N.D4,i:'p',d:2.2,v:0.30},{n:N.F4,i:'b',d:3.4,v:0.11},
-                    {n:N.C4,i:'p',d:2.2,v:0.26},{n:N.A3,i:'p',d:1.8,v:0.22},{n:N.D3,i:'b',d:4.4,v:0.12},{n:null}]},
-    20:{bpm:24,bar:[{n:N.D3,i:'p',d:4.0,v:0.44},{n:N.A3,i:'p',d:3.6,v:0.34},{n:N.D4,i:'p',d:3.6,v:0.32},
-                    {n:N.Fs4,i:'p',d:6.0,v:0.30}]}
+  // ---------- score ----------
+  // Each cue is a looping progression with a bass, a sustained pad and a melodic
+  // line, so the music has harmony and voice leading rather than isolated notes.
+  var CUE={
+    dawn:   {bpm:50,bpb:4,prog:[CH.Dm,CH.Dm,CH.Bb,CH.Bb],pad:'str',padV:0.035,bass:0.07,
+             mel:[{b:0,n:F_.D4,d:3.0,v:0.34,i:'pf'},{b:5,n:F_.A4,d:2.4,v:0.22,i:'pf'},
+                  {b:10,n:F_.D4,d:2.6,v:0.20,i:'pf'},{b:13,n:F_.C4,d:2.0,v:0.15,i:'pf'}]},
+    lives:  {bpm:50,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.Dm],pad:'str',padV:0.045,bass:0.07,
+             mel:[{b:0,n:F_.D4,d:2.8,v:0.30,i:'pf'},{b:4,n:F_.F4,d:2.4,v:0.24,i:'pf'},
+                  {b:7,n:F_.A4,d:3.0,v:0.22,i:'pf'},{b:11,n:F_.G4,d:2.2,v:0.18,i:'pf'},
+                  {b:14,n:F_.F4,d:2.6,v:0.16,i:'pf'}]},
+    state:  {bpm:34,bpb:4,prog:[CH.Dm,CH.Dm],pad:'str',padV:0.05,bass:0.05,mel:[]},
+    pulse:  {bpm:62,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.Am],pad:'str',padV:0.030,bass:0.06,perc:[0,2],percV:0.20,
+             mel:[{b:1,n:F_.A4,d:0.7,v:0.09,i:'gl'},{b:3,n:F_.D5,d:0.6,v:0.06,i:'gl'},
+                  {b:6,n:F_.F4,d:1.6,v:0.11,i:'wd'},{b:9,n:F_.A4,d:0.7,v:0.07,i:'gl'},
+                  {b:12,n:F_.D4,d:2.0,v:0.10,i:'wd'},{b:15,n:F_.C5,d:0.6,v:0.05,i:'gl'}]},
+    body:   {bpm:62,bpb:4,prog:[CH.Dm,CH.Dm,CH.Gm,CH.Dm],pad:'str',padV:0.040,bass:0.07,perc:[0],percV:0.24,
+             mel:[{b:2,n:F_.D4,d:2.2,v:0.12,i:'wd'},{b:6,n:F_.F4,d:2.0,v:0.10,i:'wd'},
+                  {b:10,n:F_.G4,d:2.2,v:0.10,i:'wd'},{b:14,n:F_.F4,d:2.4,v:0.09,i:'wd'}]},
+    tired:  {bpm:54,bpb:4,prog:[CH.Dm,CH.Dm,CH.Bb,CH.Bb],pad:'str',padV:0.038,bass:0.06,perc:[0],percV:0.16,
+             mel:[{b:3,n:F_.E4,d:2.6,v:0.09,i:'wd'},{b:11,n:F_.D4,d:3.0,v:0.08,i:'wd'}]},
+    cold:   {bpm:26,bpb:4,prog:[CH.Am,CH.Am],pad:'str',padV:0.042,bass:0.0,mel:[]},
+    water:  {bpm:44,bpb:4,prog:[CH.F,CH.C,CH.Dm,CH.Bb],pad:'str',padV:0.040,bass:0.06,
+             mel:[{b:0,n:F_.C5,d:1.8,v:0.13,i:'wd'},{b:3,n:F_.A4,d:1.2,v:0.08,i:'gl'},
+                  {b:5,n:F_.G4,d:1.8,v:0.11,i:'wd'},{b:8,n:F_.F4,d:2.2,v:0.12,i:'wd'},
+                  {b:11,n:F_.A4,d:1.2,v:0.07,i:'gl'},{b:13,n:F_.D5,d:2.0,v:0.10,i:'wd'}]},
+    rooms:  {bpm:96,bpb:4,prog:[CH.Dm,CH.Dm,CH.Gm,CH.Gm],pad:'str',padV:0.026,bass:0.05,
+             mel:[{b:0,n:F_.D4,d:0.30,v:0.07,i:'mt'},{b:2,n:F_.A4,d:0.30,v:0.05,i:'mt'},
+                  {b:3,n:F_.F4,d:0.28,v:0.04,i:'mt'},{b:5,n:F_.D4,d:0.30,v:0.06,i:'mt'},
+                  {b:8,n:F_.G4,d:0.30,v:0.06,i:'mt'},{b:11,n:F_.Bb4,d:0.28,v:0.04,i:'mt'},
+                  {b:13,n:F_.D5,d:0.26,v:0.04,i:'mt'}]},
+    fire:   {bpm:60,bpb:6,prog:[CH.Dm,CH.Dm,CH.Bb,CH.F],pad:'choir',padV:0.045,bass:0.08,perc:[0,3],percV:0.26,
+             mel:[{b:2,n:F_.D4,d:2.4,v:0.10,i:'wd'},{b:8,n:F_.F4,d:2.2,v:0.09,i:'wd'},
+                  {b:14,n:F_.A4,d:2.6,v:0.09,i:'wd'},{b:20,n:F_.G4,d:2.4,v:0.08,i:'wd'}]},
+    cluster:{bpm:30,bpb:4,prog:[CH.Dm],cluster:true},
+    theme:  {bpm:62,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.C],pad:'str',padV:0.055,bass:0.09,horn:true,
+             mel:[{b:0,n:F_.D4,d:1.9,v:0.36,i:'pf'},{b:2,n:F_.A4,d:1.4,v:0.24,i:'pf'},
+                  {b:3,n:F_.D5,d:2.2,v:0.26,i:'pf'},{b:6,n:F_.C5,d:1.6,v:0.22,i:'pf'},
+                  {b:8,n:F_.A4,d:2.0,v:0.26,i:'pf'},{b:10,n:F_.F4,d:1.6,v:0.20,i:'pf'},
+                  {b:12,n:F_.G4,d:1.8,v:0.22,i:'pf'},{b:14,n:F_.E4,d:2.4,v:0.18,i:'pf'}]},
+    viola:  {bpm:38,bpb:4,prog:[CH.Dm,CH.Dm],pad:null,bass:0,
+             mel:[{b:0,n:F_.D4,d:2.6,v:0.15,i:'st'},{b:3,n:F_.F4,d:2.0,v:0.13,i:'st'},
+                  {b:5,n:F_.E4,d:2.4,v:0.12,i:'st'},{b:7,n:F_.D4,d:3.0,v:0.11,i:'st'}]},
+    machine:{bpm:104,bpb:4,prog:[CH.Dm,CH.Dm,CH.Dm,CH.Dm],pad:null,bass:0.05,
+             mel:[{b:0,n:F_.D4,d:0.22,v:0.10,i:'mt'},{b:1,n:F_.D4,d:0.16,v:0.05,i:'mt'},
+                  {b:2,n:F_.A4,d:0.22,v:0.08,i:'mt'},{b:4,n:F_.D4,d:0.22,v:0.09,i:'mt'},
+                  {b:5,n:F_.C5,d:0.16,v:0.06,i:'mt'},{b:6,n:F_.A4,d:0.22,v:0.07,i:'mt'},
+                  {b:7,n:F_.F4,d:0.20,v:0.05,i:'mt'},{b:8,n:F_.D4,d:0.22,v:0.09,i:'mt'},
+                  {b:10,n:F_.A4,d:0.22,v:0.07,i:'mt'},{b:12,n:F_.D4,d:0.22,v:0.08,i:'mt'},
+                  {b:14,n:F_.F4,d:0.20,v:0.05,i:'mt'},{b:12.5,n:F_.D3,d:3.2,v:0.10,i:'st'}]},
+    sacred: {bpm:26,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.Dm],pad:'choir',padV:0.060,bass:0.06,mel:[]},
+    warm:   {bpm:52,bpb:4,prog:[CH.F,CH.C,CH.Dm,CH.Bb],pad:'str',padV:0.048,bass:0.08,
+             mel:[{b:0,n:F_.C5,d:2.2,v:0.34,i:'pf'},{b:2,n:F_.A4,d:1.6,v:0.22,i:'pf'},
+                  {b:4,n:F_.G4,d:2.0,v:0.26,i:'pf'},{b:6,n:F_.E4,d:1.8,v:0.20,i:'pf'},
+                  {b:8,n:F_.F4,d:2.4,v:0.28,i:'pf'},{b:10,n:F_.A4,d:1.6,v:0.20,i:'pf'},
+                  {b:12,n:F_.D5,d:2.6,v:0.24,i:'pf'},{b:14,n:F_.C5,d:2.0,v:0.18,i:'pf'}]},
+    open:   {bpm:44,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.C],pad:'choir',padV:0.055,bass:0.07,
+             mel:[{b:0,n:F_.D4,d:3.0,v:0.13,i:'st'},{b:4,n:F_.F4,d:2.8,v:0.12,i:'st'},
+                  {b:8,n:F_.A4,d:3.0,v:0.12,i:'st'},{b:12,n:F_.G4,d:3.2,v:0.10,i:'st'}]},
+    full:   {bpm:58,bpb:4,prog:[CH.Dm,CH.Bb,CH.F,CH.C],pad:'str',padV:0.058,bass:0.09,horn:true,
+             mel:[{b:0,n:F_.D4,d:2.0,v:0.38,i:'pf'},{b:2,n:F_.A4,d:1.5,v:0.26,i:'pf'},
+                  {b:3,n:F_.D5,d:2.2,v:0.28,i:'pf'},{b:6,n:F_.C5,d:1.7,v:0.24,i:'pf'},
+                  {b:8,n:F_.A4,d:2.0,v:0.28,i:'pf'},{b:10,n:F_.F4,d:1.6,v:0.22,i:'pf'},
+                  {b:12,n:F_.G4,d:1.9,v:0.24,i:'pf'},{b:14,n:F_.D4,d:2.6,v:0.22,i:'pf'}]},
+    final:  {bpm:22,bpb:4,prog:[CH.Dm,CH.Dmaj],pad:'str',padV:0.050,bass:0.07,
+             mel:[{b:0,n:F_.D4,d:4.0,v:0.42,i:'pf'},{b:2,n:F_.A4,d:3.4,v:0.32,i:'pf'},
+                  {b:4,n:F_.D5,d:3.4,v:0.30,i:'pf'},{b:6,n:F_.Fs4,d:7.0,v:0.34,i:'pf'}]}
   };
+  var CUEMAP={1:'dawn',2:'lives',3:'state',4:'pulse',5:'pulse',6:'body',7:'tired',8:'cold',9:'water',
+              10:'rooms',11:'fire',12:'cluster',13:'theme',14:'viola',15:'machine',16:'sacred',
+              17:'warm',18:'open',19:'full',20:'final'};
 
-  // The film's budgeted silences: scene number, local start, local end.
   var SILENCE=[[12,40,47],[16,25,31],[19,18,24]];
+  function inSilence(n,lt){
+    for(var i=0;i<SILENCE.length;i++)
+      if(n===SILENCE[i][0]&&lt>=SILENCE[i][1]&&lt<=SILENCE[i][2]) return true;
+    return false;
+  }
 
-  function playNote(ev,when){
-    if(ev.i==='p') piano(ev.n,when,ev.d,ev.v);
-    else if(ev.i==='b') bow(ev.n,when,ev.d,ev.v,ev.t);
-    else if(ev.i==='g') glass(ev.n,when,ev.d,ev.v);
-    else if(ev.i==='d') drum(when,ev.v);
-    else if(ev.i==='m') metal(ev.n,when,ev.d,ev.v);
+  function playInst(i,f,when,dur,vel,pan){
+    if(i==='pf') piano(f,when,dur,vel,pan);
+    else if(i==='st') strings(f,when,dur,vel,pan);
+    else if(i==='wd') wind(f,when,dur,vel,pan);
+    else if(i==='gl') glass(f,when,dur,vel,pan);
+    else if(i==='mt') metal(f,when,dur,vel,pan);
+    else if(i==='hn') horn(f,when,dur,vel,pan);
+  }
+  function padChord(chord,when,dur,vel,type){
+    chord.forEach(function(f,k){
+      var pan=(k-(chord.length-1)/2)*0.35;
+      if(type==='choir') choir(f,when,dur,vel,pan);
+      else strings(f,when,dur,vel*(k===0?1:0.8),pan,2.4);
+    });
   }
 
   var schedTo=0, lastAudioT=-1;
+
   function audioTick(filmT,dt,rate,isPlaying){
     if(!AC||!audioOn) return;
     var i=sceneAt(Math.min(filmT,TOTAL-0.001)), s=SCENES[i], lt=filmT-starts[i];
+    var a=AMB[s.n]||{f:400,q:0.6,g:0.2,dr:[],dg:0,rv:0.3};
 
-    // ambience follows the scene
     if(i!==curAmb){
-      var a=AMB[s.n]||{f:400,q:0.6,g:0.2,dr:[],dg:0};
-      var t0=AC.currentTime, XF=0.5;
+      var t0=AC.currentTime, XF=0.6;
       ambB.g.gain.cancelScheduledValues(t0);
       ambB.g.gain.setValueAtTime(ambB.g.gain.value,t0);
       ambB.g.gain.linearRampToValueAtTime(0,t0+XF);
       var tmp=ambA; ambA=ambB; ambB=tmp;
-      ambB.f.frequency.setValueAtTime(a.f,t0);
-      ambB.f.Q.setValueAtTime(a.q,t0);
+      ambB.f.frequency.setTargetAtTime(a.f,t0,0.2);
+      ambB.f.Q.setTargetAtTime(a.q,t0,0.2);
       ambB.g.gain.cancelScheduledValues(t0);
       ambB.g.gain.setValueAtTime(ambB.g.gain.value,t0);
       ambB.g.gain.linearRampToValueAtTime(isPlaying?a.g:0,t0+XF);
       drone.forEach(function(dn,k){
         var f=(a.dr&&a.dr[k])||0;
-        if(f){ dn.o.frequency.setTargetAtTime(f,t0,0.3); dn.g.gain.linearRampToValueAtTime(isPlaying?a.dg:0,t0+XF); }
+        if(f){ dn.o.frequency.setTargetAtTime(f,t0,0.35); dn.g.gain.linearRampToValueAtTime(isPlaying?a.dg:0,t0+XF); }
         else dn.g.gain.linearRampToValueAtTime(0,t0+XF);
       });
-      // Resync the note scheduler to the new scene. Without this the lookahead
-      // has already run past the scene start and beat 0 never sounds.
+      // the room changes with the place
+      sendMus.gain.setTargetAtTime(a.rv,t0,0.4);
+      sendSfx.gain.setTargetAtTime(a.rv,t0,0.4);
+      sendAmb.gain.setTargetAtTime(a.rv*0.35,t0,0.4);
       schedTo=starts[i]-0.0001;
       curAmb=i;
     }
 
-    // budgeted silence, and the pause state, both ride the master gain
-    var quiet=false;
-    for(var q=0;q<SILENCE.length;q++)
-      if(s.n===SILENCE[q][0] && lt>=SILENCE[q][1] && lt<=SILENCE[q][2]) quiet=true;
-    var target = (!isPlaying||filmT>=TOTAL) ? 0 : (quiet ? userVol*0.02 : userVol);
-    master.gain.setTargetAtTime(target,AC.currentTime,0.18);
+    var quiet=inSilence(s.n,lt);
+    var target=(!isPlaying||filmT>=TOTAL)?0:(quiet?userVol*OUT*0.02:userVol*OUT);
+    masterIn.gain.setTargetAtTime(target,AC.currentTime,0.18);
 
     if(!isPlaying||filmT>=TOTAL){ lastAudioT=filmT; schedTo=filmT; return; }
+    if(lastAudioT<0||Math.abs(filmT-lastAudioT)>0.6){ lastAudioT=filmT; schedTo=filmT; }
 
-    // a jump means a seek: resync rather than firing everything in between
-    if(lastAudioT<0 || Math.abs(filmT-lastAudioT)>0.6){ lastAudioT=filmT; schedTo=filmT; }
-
-    // one-shot effects crossed since the previous frame
     var list=SFX[s.n]||[], prevLt=lt-(filmT-lastAudioT);
     for(var e=0;e<list.length;e++){
-      if(list[e][0]>prevLt && list[e][0]<=lt){
+      if(list[e][0]>prevLt&&list[e][0]<=lt){
         var fn=FX[list[e][1]];
-        if(fn && !quiet) fn(AC.currentTime+0.01);
+        if(fn&&!quiet) fn(AC.currentTime+0.01);
       }
     }
 
-    // music, scheduled a short way ahead of the playhead
-    var LOOK=0.35, m=MUS[s.n];
-    if(m){
-      var beat=60/m.bpm, barLen=beat*m.bar.length;
-      var until=filmT+LOOK*rate;
-      var startBeat=Math.floor((schedTo-starts[i])/beat);
-      var endBeat=Math.floor((until-starts[i])/beat);
-      for(var bI=startBeat;bI<=endBeat;bI++){
+    var LOOK=0.4, cue=CUE[CUEMAP[s.n]];
+    if(cue){
+      var beat=60/cue.bpm, loopBeats=cue.bpb*cue.prog.length, until=filmT+LOOK*rate;
+      var b0=Math.floor((schedTo-starts[i])/beat), b1=Math.floor((until-starts[i])/beat);
+      for(var bI=b0;bI<=b1;bI++){
         if(bI<0) continue;
-        var ev=m.bar[((bI%m.bar.length)+m.bar.length)%m.bar.length];
-        if(!ev||ev.n===null) continue;
-        var evLocal=bI*beat, evFilm=starts[i]+evLocal;
+        var evLocal=bI*beat;
         if(evLocal>=s.d) continue;
-        if(evFilm<=schedTo||evFilm>until) continue;   // fire each beat exactly once
+        var evFilm=starts[i]+evLocal;
+        if(evFilm<=schedTo||evFilm>until) continue;
+        if(inSilence(s.n,evLocal)) continue;
         var when=AC.currentTime+(evFilm-filmT)/rate;
-        if(when<AC.currentTime) when=AC.currentTime+0.005;
-        var inQuiet=false;
-        for(var z=0;z<SILENCE.length;z++)
-          if(s.n===SILENCE[z][0] && evLocal>=SILENCE[z][1] && evLocal<=SILENCE[z][2]) inQuiet=true;
-        if(!inQuiet) playNote(ev,when);
+        if(when<AC.currentTime+0.005) when=AC.currentTime+0.005;
+        var lb=((bI%loopBeats)+loopBeats)%loopBeats;
+        var barIdx=Math.floor(lb/cue.bpb), inBar=lb%cue.bpb, chord=cue.prog[barIdx];
+
+        if(cue.cluster){
+          // Scene 12: a slowly thickening detuned cluster on D. Each pass adds a
+          // voice and pushes further out of tune, which is the load transferring.
+          var pass=Math.floor(bI/4), voice=bI%4;
+          if(voice<Math.min(4,1+pass)){
+            var det=1+voice*0.011*(1+pass*0.35);
+            strings(F_.D2*(voice%2?2:1)*det,when,beat*5.0,0.085-voice*0.008,(voice-1.5)*0.4,1.8);
+          }
+          continue;
+        }
+        if(inBar===0){
+          if(cue.pad) padChord(chord,when,beat*cue.bpb*1.02,cue.padV,cue.pad);
+          if(cue.bass) piano(chord[0]/2,when,beat*cue.bpb*0.9,cue.bass,0);
+          if(cue.horn&&barIdx%2===0) horn(chord[1],when,beat*cue.bpb*0.9,0.075,0.2);
+        }
+        if(cue.perc&&cue.perc.indexOf(inBar)>=0) drum(when,cue.percV,0);
+        if(cue.mel) for(var mI=0;mI<cue.mel.length;mI++){
+          var m=cue.mel[mI];
+          if(Math.abs(m.b-lb)<0.001) playInst(m.i,m.n,when,m.d*beat,m.v,m.p);
+        }
       }
       schedTo=until;
     } else schedTo=filmT;
     lastAudioT=filmT;
   }
+
   function audioStop(){
     if(!AC) return;
-    master.gain.setTargetAtTime(0,AC.currentTime,0.12);
+    masterIn.gain.setTargetAtTime(0,AC.currentTime,0.12);
     lastAudioT=-1;
   }
   // ================= /AUDIO =================
