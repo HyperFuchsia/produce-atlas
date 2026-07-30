@@ -72,6 +72,34 @@
      the belt to that pair of braces. */
   const KICK_EVERY = 4.0;
 
+  /* How long to wait for an engine that has been asked to say something and
+     has said nothing at all.
+
+     This matters more than it sounds. Browsers refuse to speak until the page
+     has been interacted with — Safari wants the very first utterance to come
+     straight out of a tap, and Chrome wants any interaction at all — and a
+     refused utterance is refused *silently*: no end event, no error, nothing.
+     The letters here are timed off the engine's own progress, so an utterance
+     that never starts and never ends does not merely fail to make a sound, it
+     stops the sentence dead half way through and the conversation with it.
+
+     So: if a sentence takes far longer than a sentence could, the engine is
+     not talking. Give the line back to the typewriter and carry on.
+
+     An utterance that is really speaking says so, immediately, and every
+     platform sends that one — so the test is not how long it is taking, it is
+     whether it ever started. A second and a bit is a long time for an engine
+     that is going to speak and no time at all for one that never will. The
+     length watchdog underneath is the backstop for the rarer case: one that
+     starts and then dies half way. */
+  const START_DUE = 1.3;       /* seconds to say it has begun */
+  const PATIENCE = 2.6;        /* times the expected length, once begun */
+  const PATIENCE_MIN = 2.5;
+  /* And an engine that has never once worked is not given a second chance —
+     it is not a hiccup, it is a browser saying no. One that has worked before
+     gets one, because a single dropped sentence is not a policy. */
+  const GIVE_UP_AFTER = 2;
+
   function hash(s) {
     let h = 2166136261;
     for (let i = 0; i < s.length; i++) {
@@ -101,6 +129,13 @@
     this.gap = 0;
     this.rate = CHARS_PER_SEC;
     this.kick = 0;
+    this.since = 0;
+    this.due = 0;
+    this.misses = 0;
+    this.started = false;   /* the utterance in progress has begun speaking */
+    this.everWorked = false;
+    this.blocked = false;   /* the engine is here and will not speak */
+    this.primed = false;
     this._u = null;
 
     if (this.ok) {
@@ -151,7 +186,39 @@
 
   Voice.prototype.available = function () {
     this._pick();
-    return this.ok && !!this.voice;
+    return this.ok && !!this.voice && !this.blocked;
+  };
+
+  /* Unlock the engine from inside a real gesture.
+
+     Every browser gates speech on the page having been interacted with, and
+     Safari wants the first utterance to be spoken synchronously from the tap
+     itself. His first line arrives a second later out of an animation frame,
+     which is not that, and never will be. So the moment you touch anything —
+     the send button, a key, the scene — a single silent utterance goes out to
+     open the door, and everything after it is allowed through. */
+  Voice.prototype.prime = function () {
+    if (!this.ok || this.primed) return;
+    this.primed = true;
+    try {
+      window.speechSynthesis.resume();
+      const u = new window.SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      u.rate = 2;
+      window.speechSynthesis.speak(u);
+    } catch (e) { /* an engine that will not even be asked */ }
+    /* Some platforms only fill the voice list once they have been spoken to. */
+    this.picked = false;
+    this._pick();
+  };
+
+  /* Why he is not saying anything, in words, for the button to show. */
+  Voice.prototype.why = function () {
+    if (!this.ok) return 'no speech engine';
+    if (this.blocked) return 'blocked by the browser';
+    this._pick();
+    if (!this.voice) return 'no voices installed';
+    return null;
   };
 
   /* ---- what to say ------------------------------------------------------- */
@@ -268,17 +335,29 @@
     u.volume = 1;
     this.aim = c.to;
     this.rate = CHARS_PER_SEC * c.rate;
+    this.since = 0;
+    this.started = false;
+    this.due = PATIENCE_MIN + (c.text.length / this.rate) * PATIENCE;
 
     /* Where the engine has got to. Not every platform sends these — Safari is
        unreliable and some Linux voices send none at all — so they refine an
        estimate rather than being the estimate. */
+    u.onstart = function () {
+      if (self._u !== u) return;
+      self.started = true;
+      self.everWorked = true;
+      self.misses = 0;
+    };
     u.onboundary = function (e) {
+      if (self._u === u) { self.started = true; self.everWorked = true; }
       if (typeof e.charIndex !== 'number') return;
       const to = c.from + e.charIndex;
       if (to > self.at) self.at = Math.min(to, self.aim);
     };
     u.onend = function () {
       if (self._u !== u) return;
+      self.misses = 0;
+      self.everWorked = true;
       self.at = self.aim;
       self.i++;
       self.gap = c.pause;
@@ -327,6 +406,19 @@
 
   Voice.prototype.update = function (dt) {
     if (!this.ok || !this.speaking) return;
+
+    /* Asked, and nothing came back. */
+    this.since += dt;
+    if ((!this.started && this.since > START_DUE) || this.since > this.due) {
+      this.misses++;
+      if (this.misses >= (this.everWorked ? GIVE_UP_AFTER : 1)) this.blocked = true;
+      this.at = this.aim;
+      this.speaking = false;
+      this.done = true;
+      this._u = null;
+      try { window.speechSynthesis.cancel(); } catch (e) { /* nothing to stop */ }
+      return;
+    }
 
     if (this.gap > 0) {
       this.gap -= dt;

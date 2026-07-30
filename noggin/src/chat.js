@@ -120,6 +120,9 @@
       /* Send is part of what stops. Letting it through mid-wipe would post
          whatever was left of the sentence at that instant. */
       if (self.wiping || self.lockFor > 0) return;
+      /* Straight out of the gesture, which is the only moment some browsers
+         will let a voice be started at all. */
+      if (self.voice) self.voice.prime();
       self.send(self.input.value);
       self.input.value = '';
     });
@@ -128,6 +131,7 @@
        somebody is carrying on typing at a box that has stopped taking it. */
     this.input.addEventListener('keydown', function (e) {
       e.stopPropagation();
+      if (self.voice) self.voice.prime();
       if (self.wiping || self.lockFor > 0) self.lockFor = LOCK_TAIL;
     });
 

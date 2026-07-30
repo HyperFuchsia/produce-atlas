@@ -2157,16 +2157,34 @@
     });
 
     $('voice').addEventListener('click', function () {
+      self.speech.prime();
       self.speech.setEnabled(!self.speech.enabled);
-      document.body.classList.toggle('mute', !self.speech.enabled);
-      $('voice').textContent = self.speech.enabled ? 'Voice on' : 'Voice off';
+      self._showVoiceState();
     });
+
+    /* Any touch of the page at all is enough to open the engine, and the
+       first one is the one that matters — his first line comes a second later
+       out of an animation frame, which no browser will accept on its own. */
+    const wake = function () { self.speech.prime(); self._showVoiceState(); };
+    window.addEventListener('pointerdown', wake, { once: true });
+    window.addEventListener('keydown', wake, { once: true });
 
     canvas.addEventListener('webglcontextlost', function (e) {
       e.preventDefault();
       self.contextLost = true;
       self.fail('The graphics context was released by the browser. Reload to continue.');
     });
+  };
+
+  /* The switch says what is actually happening, because a voice that is
+     silent for a reason and a voice that is silent for no reason look exactly
+     the same from a chair. */
+  App.prototype._showVoiceState = function () {
+    const why = this.speech.why();
+    const el = $('voice');
+    const text = why ? 'Voice — ' + why : (this.speech.enabled ? 'Voice on' : 'Voice off');
+    if (el.textContent !== text) el.textContent = text;
+    document.body.classList.toggle('mute', !!why || !this.speech.enabled);
   };
 
   App.prototype.buildChips = function () {
@@ -3020,6 +3038,9 @@
 
     this.chat.update(dt);
     this.updateProps(dt);
+    /* Cheap, and the only way anyone finds out the engine gave up. */
+    this._voiceTick = (this._voiceTick || 0) + dt;
+    if (this._voiceTick > 0.75) { this._voiceTick = 0; this._showVoiceState(); }
   };
 
   App.prototype.frame = function (now) {
