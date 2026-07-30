@@ -112,6 +112,7 @@
     this.onClear = null;
     this.onAbort = null;
     this.onWipe = null;
+    this.onSlots = null;
 
     const self = this;
     this.form.addEventListener('submit', function (e) {
@@ -367,6 +368,7 @@
     if (reply.spawn) after = function () { if (self.onSpawn) self.onSpawn(reply.spawn); };
     else if (reply.morph) after = function () { if (self.onMorph) self.onMorph(reply.morph); };
     else if (reply.revert) after = function () { if (self.onRevert) self.onRevert(); };
+    else if (reply.slots) after = function () { if (self.onSlots) self.onSlots(); };
     this.say(reply.lines, after);
   };
 

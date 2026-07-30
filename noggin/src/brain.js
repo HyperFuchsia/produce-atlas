@@ -39,6 +39,9 @@
      rest on what you just watched. C.find catches it before anything below. */
   const BECOME_WORDS = ['become', 'turn into', 'turn yourself into', 'transform into',
     'shapeshift', 'morph into', 'change into', 'be a ', 'be an ', 'you be ', 'show me you as'];
+  const SLOT_WORDS = ['slot machine', 'slot machines', 'slots', 'fruit machine',
+    'one armed bandit', 'one-armed bandit', 'gamble', 'gambling', 'casino',
+    'jackpot', 'play the slots', 'pokies'];
   const REVERT_WORDS = ['be yourself', 'yourself again', 'change back', 'go back to normal',
     'turn back', 'revert', 'stop being', 'be you again', 'undo that', 'back to normal'];
   /* Becoming the thing is the default. These are the ways of asking for the
@@ -166,6 +169,21 @@
        look like" mentions no specimen and is not a question about one. */
     const lesson = C.find(raw);
     if (lesson) return { lesson: lesson, lines: [] };
+
+    /* The one thing he would rather be doing than this. Before the specimen
+       lookup, or "fruit machine" is read as a request to become fruit. */
+    if (has(text, SLOT_WORDS)) {
+      return {
+        slots: true,
+        lines: [this._pick([
+          'Oh, now you are talking.',
+          'Right. Yes. Hold on.',
+          'Finally.'
+        ]),
+          'A fruit machine. In an atlas of fruit. I have been waiting for '
+          + 'somebody to ask.']
+      };
+    }
 
     /* Revert before become, so "stop being a banana" is not read as "banana". */
     if (has(text, REVERT_WORDS)) {

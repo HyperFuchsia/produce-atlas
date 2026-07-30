@@ -168,8 +168,16 @@
     /* He is watching the input box for one word. */
     this.caught = { phase: 'off', t: 0, count: 0, armed: true, cool: 0,
       heat: 0, palm: 0, look: 0, blanks: 0, at: { spin: 0, tilt: 0 } };
+    /* The thing he would rather be doing. See updateSlots. */
+    this.slots = { phase: 'off', t: 0, scale: 0, look: 0, yaw: 0, lever_: 0,
+      spins: 0, said: 0, spoke: false, hold: 1.8, hand: 1, want: [0, 0, 0],
+      pos: [0, 0, 0], at: [0, 0, 0], frame: M.m4(), cabinet: null, lever: null,
+      reels: [] };
+    this._slotTmp = M.m4();
+
     /* And with the prototype switch on, he does something about it. */
     this.proto = false;
+    this.slotsWanted = 0;
     this.snatch = { phase: 'off', t: 0, blend: 0, side: 1, hand: 1,
       pos: [0, 0, 0], glass: [0, 0, 0], grip: [0, 0, 0], holdOff: [0, 0, 0],
       spin: 0, tilt: 0, resist: 0, lift: 0,
@@ -257,6 +265,15 @@
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
     this.chat.onRevert = function () { self.becomeForm(null); };
     this.chat.onLesson = function (id) { self.runLesson(id); };
+    /* The one thing he would rather be doing. If he has not got a face on he
+       puts one on first — you asked for the machine, not for a lecture about
+       what he would need in order to play it. */
+    this.chat.onSlots = function () {
+      if (!self.face) self.becomeForm(NG.K.find('face'));
+      /* He may have to become a face first, and the morph takes its time.
+         This is a latch that waits for him to arrive, not a deadline. */
+      self.slotsWanted = 8;
+    };
     /* Abandoning a routine has to put the scene back, or you are left as a
        puddle on the floor because you changed the subject. */
     this.chat.onAbort = function () {
@@ -375,6 +392,13 @@
      they ride the being's own transform with no fitting required, and they
      grow out of it rather than appearing. */
   App.prototype._setTrimmings = function (entry) {
+    /* Whatever he becomes next, he is not taking the machine with him. It
+       goes at once rather than gracefully, because the sweep below is about
+       to fade its parts out from under it anyway, and a machine being driven
+       by a scene that no longer has a hand to drive it is worse than a
+       machine that was there a moment ago. */
+    this._killSlots();
+
     for (let i = 0; i < this.attached.length; i++) this.attached[i].target = 0;
     this.trim = null;
     this.hands = null;
@@ -1134,6 +1158,308 @@
       + stretch;
   };
 
+  /* ---- the fruit machine ------------------------------------------------- */
+
+  /* He conjures one and then he plays it, and he stops looking at you.
+
+     That is the point of it. Everything else he does is aimed at whoever is
+     in front of the screen — he turns to the camera, he answers, he watches
+     you type. This is the one thing he would rather be doing, and while it is
+     out he faces it instead of you and answers over his shoulder.
+
+     It is a fruit machine in an atlas of fruit, which was not planned. */
+  const SLOT = {
+    conjure: 0.85,   /* it arrives out of nothing */
+    arm: 0.55,       /* his hand goes to the lever */
+    pull: 0.30,      /* down */
+    back: 0.35,      /* and the lever springs up */
+    stagger: 0.42,   /* between one reel stopping and the next */
+    settle: 0.55,    /* the last reel stops and he looks at what he has got */
+    wait: [1.5, 2.6] /* before he goes again */
+  };
+  const SPIN_SPEED = 15.5;              /* radians a second, flat out */
+  /* Beside him, and standing on the floor rather than floating at his
+     height: he is a head with no body and the machine is a machine, and one
+     of the two of them ought to obey the room. It puts the lever at about his
+     eye level, which is why it looks like his machine. */
+  const SLOT_AT = { x: 3.5, z: 0.30 };
+  /* The arm leans towards you at rest and swings down and forward when he
+     pulls it. Leaning it the other way put the knob up behind the cabinet,
+     with his hand round the back of a machine he was supposed to be playing
+     the front of. */
+  const LEVER_REST = 0.34;
+  const LEVER_SWING = 1.34;
+
+  /* What the reels land on. Weighted rather than rolled: three of a kind at
+     honest odds is one spin in thirty six, which is a long time to watch
+     somebody lose, and a machine that pays out every other pull is not a
+     machine anybody recognises. Mostly nothing, often two, rarely three —
+     which is also, near enough, what a real one feels like. */
+  const OUTCOMES = [
+    { w: 46, kind: 'nothing' },
+    { w: 30, kind: 'two' },
+    { w: 6, kind: 'near' },      /* two, and the third one lands next to it */
+    { w: 4, kind: 'three' }
+  ];
+
+  const LOSE = [
+    'Nothing.', 'No.', 'Nope.', 'Again, nothing.', 'That is fine. That is fine.',
+    'Hm.', 'Come on.', 'One more.', 'It is not even taking my money. There is no money.'
+  ];
+  const TWO = [
+    'Two! Two of them.', 'So close.', 'Look at that. Look how close that is.',
+    'Two. That is nearly three.'
+  ];
+  const NEAR = [
+    'Oh, that is *cruel*.', 'It stopped one off. One.', 'Did you see that? One off.'
+  ];
+  const WIN = [
+    'YES.', 'THREE! Three of them!', 'I have never been so happy about anything.'
+  ];
+
+  App.prototype._slotPick = function () {
+    let total = 0;
+    for (let i = 0; i < OUTCOMES.length; i++) total += OUTCOMES[i].w;
+    let r = Math.random() * total;
+    for (let i = 0; i < OUTCOMES.length; i++) {
+      r -= OUTCOMES[i].w;
+      if (r <= 0) return OUTCOMES[i].kind;
+    }
+    return 'nothing';
+  };
+
+  /* Three symbol indices for a chosen kind of result. */
+  App.prototype._slotRoll = function (kind) {
+    const n = NG.SLOT.SYMBOLS.length;
+    const pick = function () { return Math.floor(Math.random() * n); };
+    const a = pick();
+    if (kind === 'three') return [a, a, a];
+    if (kind === 'near') return [a, a, (a + (Math.random() < 0.5 ? 1 : n - 1)) % n];
+    if (kind === 'two') {
+      let c = pick();
+      while (c === a) c = pick();
+      const where = Math.floor(Math.random() * 3);
+      const out = [a, a, a];
+      out[where] = c;
+      return out;
+    }
+    let b = pick(), c = pick();
+    while (b === a) b = pick();
+    while (c === a || c === b) c = pick();
+    return [a, b, c];
+  };
+
+  App.prototype.conjureSlots = function () {
+    const s = this.slots;
+    if (s.phase !== 'off') return;
+    if (!this.face || !this.hands) this._spawnHands(this.morph.form || NG.K.find('face'));
+    if (!this.hands) return;
+
+    const build = function (self, mesh) {
+      const t = { handle: self.renderer.createProp(mesh), matrix: M.m4(),
+        local: M.m4(), world: true, grow: 1, target: 1, skin: 0 };
+      self.attached.push(t);
+      return t;
+    };
+    s.cabinet = build(this, NG.SLOT.cabinet());
+    s.lever = build(this, NG.SLOT.lever());
+    s.reels = [];
+    for (let i = 0; i < 3; i++) {
+      s.reels.push({ part: build(this, NG.SLOT.reel()), angle: Math.random() * 6.28,
+        speed: 0, stopAt: 0, stopping: false });
+    }
+    s.phase = 'conjure';
+    s.t = 0;
+    s.scale = 0;
+    s.lever_ = 0;
+    s.look = 0;
+    s.hand = this.hands.length > 1 ? 1 : 0;
+    s.spins = 0;
+    s.said = 0;
+    s.at = [0, 0, 0];
+    /* Where it stands: off to his side, on the ground line, turned a little
+       towards him so it is his machine and not a shop display. */
+    M.set3(s.pos, this.headPos[0] + SLOT_AT.x, this.renderer.floorY,
+      this.headPos[2] + SLOT_AT.z);
+    s.yaw = -0.42;
+    this.audio.boing(0.55);
+  };
+
+  App.prototype.dismissSlots = function () {
+    const s = this.slots;
+    if (s.phase === 'off' || s.phase === 'going') return;
+    s.phase = 'going';
+    s.t = 0;
+  };
+
+  App.prototype._slotParts = function () {
+    const s = this.slots;
+    const out = s.cabinet ? [s.cabinet, s.lever] : [];
+    for (let i = 0; i < s.reels.length; i++) out.push(s.reels[i].part);
+    return out;
+  };
+
+  App.prototype.updateSlots = function (dt) {
+    const s = this.slots;
+    if (s.phase === 'off') return;
+    /* It is his machine. If he stops being someone who can hold a lever it
+       goes with him. */
+    if (!this.face || !this.hands) { this._killSlots(); return; }
+
+    s.t += dt;
+
+    if (s.phase === 'conjure') {
+      const k = Math.min(1, s.t / SLOT.conjure);
+      /* Overshoot on the way in, because it did not fade up, it arrived. */
+      s.scale = M.smoothstep(0, 1, k) * (1 + 0.10 * Math.sin(k * Math.PI));
+      s.look = Math.min(1, s.look + dt * 2.2);
+      if (s.t >= SLOT.conjure) { s.phase = 'arm'; s.t = 0; s.scale = 1; }
+    } else if (s.phase === 'going') {
+      s.scale = Math.max(0, s.scale - dt * 3.4);
+      s.look = Math.max(0, s.look - dt * 3);
+      if (s.scale <= 0.001) { this._killSlots(); return; }
+    } else {
+      s.scale += (1 - s.scale) * Math.min(1, dt * 8);
+      s.look = Math.min(1, s.look + dt * 2.2);
+    }
+
+    if (s.phase === 'arm') {
+      s.lever_ += (0 - s.lever_) * Math.min(1, dt * 8);
+      if (s.t >= SLOT.arm) {
+        s.phase = 'pull'; s.t = 0;
+        this.audio.click();
+      }
+    } else if (s.phase === 'pull') {
+      const k = M.smoothstep(0, 1, Math.min(1, s.t / SLOT.pull));
+      s.lever_ = k;
+      if (s.t >= SLOT.pull) {
+        s.phase = 'spin'; s.t = 0;
+        s.want = this._slotRoll(this._slotPick());
+        for (let i = 0; i < 3; i++) {
+          s.reels[i].speed = SPIN_SPEED * (0.94 + i * 0.05);
+          s.reels[i].stopping = false;
+        }
+        this.audio.boing(0.22);
+        s.spins++;
+      }
+    } else if (s.phase === 'spin') {
+      s.lever_ += (0 - s.lever_) * Math.min(1, dt * 6);
+      /* Each reel is told to stop a beat after the one before it, which is
+         the whole reason anybody watches a slot machine at all. */
+      for (let i = 0; i < 3; i++) {
+        const due = 0.75 + i * SLOT.stagger;
+        if (!s.reels[i].stopping && s.t >= due) {
+          s.reels[i].stopping = true;
+          /* Land on the wanted symbol, a couple of turns from here, so it
+             always decelerates forwards into it. */
+          const target = NG.SLOT.angleFor(s.want[i]);
+          const turns = Math.PI * 2;
+          let to = target;
+          while (to < s.reels[i].angle + turns * 1.2) to += turns;
+          s.reels[i].stopAt = to;
+        }
+      }
+      if (s.reels[2].stopping && Math.abs(s.reels[2].angle - s.reels[2].stopAt) < 0.002) {
+        s.phase = 'look'; s.t = 0;
+      }
+    } else if (s.phase === 'look') {
+      s.lever_ += (0 - s.lever_) * Math.min(1, dt * 6);
+      if (s.t >= SLOT.settle && !s.spoke) {
+        s.spoke = true;
+        this._slotSays();
+      }
+      if (s.t >= SLOT.settle + s.hold) {
+        s.phase = 'arm'; s.t = 0; s.spoke = false;
+        s.hold = SLOT.wait[0] + Math.random() * (SLOT.wait[1] - SLOT.wait[0]);
+      }
+    }
+
+    /* The reels themselves: flat out, then easing into where they were told
+       to stop. */
+    for (let i = 0; i < 3; i++) {
+      const r = s.reels[i];
+      if (r.stopping) {
+        const d = r.stopAt - r.angle;
+        if (d < 0.002) { r.angle = r.stopAt; r.speed = 0; }
+        else {
+          r.speed = Math.max(1.6, Math.min(r.speed, d * 4.2));
+          r.angle = Math.min(r.stopAt, r.angle + r.speed * dt);
+          if (r.stopAt - r.angle < 0.002) {
+            r.angle = r.stopAt;
+            r.speed = 0;
+            this.audio.click();
+          }
+        }
+      } else {
+        r.angle += r.speed * dt;
+      }
+    }
+
+    this._placeSlots();
+  };
+
+  App.prototype._slotSays = function () {
+    const s = this.slots;
+    const w = s.want;
+    const pick = function (list) { return list[Math.floor(Math.random() * list.length)]; };
+    let line;
+    if (w[0] === w[1] && w[1] === w[2]) {
+      line = pick(WIN) + ' Three ' + NG.SLOT.SYMBOLS[w[0]].say + '.';
+      this.audio.boing(0.9);
+      this.shake = 0.12;
+    } else if (w[0] === w[1] || w[1] === w[2] || w[0] === w[2]) {
+      line = pick(Math.abs(w[0] - w[2]) === 1 ? NEAR : TWO);
+    } else {
+      line = pick(LOSE);
+    }
+    /* The first few he narrates. After that he mostly just plays, because
+       somebody who comments on every single pull is doing a bit, and he is
+       not doing a bit — he is playing a fruit machine. */
+    s.said++;
+    if (s.said <= 3 || Math.random() < 0.4) this.chat.say([line]);
+  };
+
+  App.prototype._killSlots = function () {
+    const s = this.slots;
+    const parts = this._slotParts();
+    for (let i = 0; i < parts.length; i++) { parts[i].grow = 0; parts[i].target = 0; }
+    s.cabinet = null;
+    s.lever = null;
+    s.reels = [];
+    s.phase = 'off';
+    s.look = 0;
+    s.scale = 0;
+  };
+
+  /* Every part in world space. The cabinet frame is built once and the reels
+     and the lever hang off it, so the whole thing can be stood anywhere and
+     turned to any angle without any part of it knowing where it is. */
+  App.prototype._placeSlots = function () {
+    const s = this.slots;
+    if (!s.cabinet) return;
+    const cm = NG.SLOT.cm, S = NG.SLOT.SIZE;
+    /* It follows him, because he drifts. */
+    const to = [this.headPos[0] + SLOT_AT.x, this.renderer.floorY,
+      this.headPos[2] + SLOT_AT.z];
+    for (let i = 0; i < 3; i++) s.pos[i] += (to[i] - s.pos[i]) * Math.min(1, 4 * 0.016);
+
+    M.compose(s.frame, s.pos[0], s.pos[1], s.pos[2], s.yaw, 0, s.scale);
+    M.compose(s.cabinet.local, s.pos[0], s.pos[1], s.pos[2], s.yaw, 0, s.scale);
+
+    /* Where the window is looking, which is what he looks at. */
+    M.transformPoint(s.at, s.frame, [0, S.winY * cm, S.d * 0.5 * cm]);
+
+    for (let i = 0; i < 3; i++) {
+      const x = (i - 1) * S.reelGap * cm;
+      M.compose(this._slotTmp, x, S.reelY * cm, S.reelZ * cm, 0, s.reels[i].angle, 1);
+      M.multiply(s.reels[i].part.local, s.frame, this._slotTmp);
+    }
+    /* The arm swings back and down about its bracket. */
+    M.compose(this._slotTmp, S.leverX * cm, S.leverY * cm, 0, 0,
+      LEVER_REST + s.lever_ * LEVER_SWING, 1);
+    M.multiply(s.lever.local, s.frame, this._slotTmp);
+  };
+
   /* Where he is looking, as a spin and a tilt that will point his front at a
      world point. The model applies Ry then Rx, so its +Z axis ends up at
      (sin y cos x, -sin x, cos y cos x) — invert that and the two angles fall
@@ -1250,6 +1576,29 @@
     };
   };
 
+  /* On the knob, and riding it down when he pulls. Built from where the arm
+     actually is rather than from a guess, so the hand cannot drift off the
+     lever when the machine moves. */
+  App.prototype._leverHandPose = function () {
+    const s = this.slots, S = NG.SLOT.SIZE, cm = NG.SLOT.cm;
+    const a = LEVER_REST + s.lever_ * LEVER_SWING;
+    const at = [0, 0, 0];
+    M.transformPoint(at, s.frame, [
+      S.leverX * cm,
+      S.leverY * cm + Math.cos(a) * S.leverLen * cm,
+      Math.sin(a) * S.leverLen * cm
+    ]);
+    /* Palm to the knob: he is holding it from the near side. */
+    at[2] += 0.30;
+    at[1] -= 0.55;
+    const d = M.norm3([0, 0, 0], M.sub3([0, 0, 0], this.eye, at));
+    return {
+      x: at[0], y: at[1], z: at[2],
+      pitch: Math.asin(M.clamp(d[1], -1, 1)) * 0.4,
+      yaw: Math.atan2(-d[0], -d[2])
+    };
+  };
+
   App.prototype.updateHands = function (dt) {
     if (!this.hands) return;
     const t = this.time;
@@ -1260,6 +1609,8 @@
     /* The box wins over the camera: he cannot be holding both, and the one he
        is holding is the one you are watching. */
     const took = s.blend > 0.001 && s.home ? this._snatchHandPose() : null;
+    const sl = this.slots;
+    const onLever = sl.phase !== 'off' && sl.scale > 0.05 ? this._leverHandPose() : null;
 
     for (let i = 0; i < this.hands.length; i++) {
       const h = this.hands[i];
@@ -1331,6 +1682,17 @@
         if (dy < -Math.PI) dy += Math.PI * 2;
         yaw += dy * b;
         pitch += (wall.pitch - pitch) * b;
+      }
+      if (onLever && i === sl.hand) {
+        const b = Math.min(1, sl.scale * 1.2);
+        px += (onLever.x - px) * b;
+        py += (onLever.y - py) * b;
+        pz += (onLever.z - pz) * b;
+        let dy = (onLever.yaw - yaw) % (Math.PI * 2);
+        if (dy > Math.PI) dy -= Math.PI * 2;
+        if (dy < -Math.PI) dy += Math.PI * 2;
+        yaw += dy * b;
+        pitch += (onLever.pitch - pitch) * b;
       }
       if (took && i === s.hand) {
         const b = s.blend;
@@ -2522,10 +2884,21 @@
     if (this.face) {
       /* Normally he turns to whoever is looking. While he is checking his own
          hands he turns to those instead, and eases back afterwards. */
-      /* Two things can take his eyes off you: checking his own hands, and
-         reading what you are typing into the box he is holding. Whichever is
-         further along wins, and neither is ever the other. */
-      const c = this.caught.look >= this.snatch.look ? this.caught : this.snatch;
+      /* Three things can take his eyes off you: checking his own hands,
+         reading what you are typing into the box he is holding, and the
+         machine. Whichever is furthest along wins.
+
+         The machine wins nearly always, because that is the entire point of
+         it — while it is out he is looking at it and not at you, and he will
+         answer you without turning round. */
+      let c = this.caught.look >= this.snatch.look ? this.caught : this.snatch;
+      if (this.slots.look > c.look) {
+        this.slots.at_ = this.slots.at_ || { spin: 0, tilt: 0 };
+        const to = this._lookAngles(this.slots.at);
+        this.slots.at_.spin = to.spin;
+        this.slots.at_.tilt = to.tilt * 0.72;
+        c = { look: this.slots.look, at: this.slots.at_ };
+      }
       const want = c.look > 0.001 ? c.at.spin : this.camera.yaw;
       let d = (want - this.spin) % (Math.PI * 2);
       if (d > Math.PI) d -= Math.PI * 2;
@@ -2623,6 +2996,16 @@
     this.updateHands(dt);
     /* After the hands, because it holds the box in one of them. */
     this.updateSnatch(dt);
+    if (this.slotsWanted > 0) {
+      this.slotsWanted -= dt;
+      if (this.face && this.morph.t >= 1) {
+        this.slotsWanted = 0;
+        this.conjureSlots();
+      } else if (this.slotsWanted <= 0) {
+        this.slotsWanted = 0;
+      }
+    }
+    this.updateSlots(dt);
     this.updateTrimmings(dt);
     this.updateLight();
     this.trackGrabVelocity(dt);
