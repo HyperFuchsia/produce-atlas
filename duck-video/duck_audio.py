@@ -312,31 +312,56 @@ def duck_voice(text_syllables, seed=31):
     return highpass(out, 170.0)
 
 
+# --------------------------------------------------------------------------- #
+# "I'll talk you later" - the single source of truth for the spoken line.
+#
+# Each entry carries what the synthesiser needs (dur, gap, f0 contour, formant
+# targets, consonant kind) *and* what the animation needs (mouth shape, stress),
+# so the beak is keyed to the audio that actually plays rather than to a
+# guessed flap rate.  `mouth` is (open_at_start, open_at_end, roundedness).
+# --------------------------------------------------------------------------- #
+LINE_SYLLABLES = [
+    # I'll  (aɪ -> l): jaw drops wide, then closes toward the lateral
+    dict(text="I'll", dur=0.30, gap=0.015, kind="voiced", stress=1.0,
+         f0=(258, 236), mouth=(0.92, 0.34, 0.10),
+         formants=[((720, 430), 105, 1.00), ((1180, 940), 130, 0.62),
+                   ((2500, 2450), 190, 0.20)]),
+    # talk  (t + ɔ + k): plosive attack onto an open back vowel
+    dict(text="talk", dur=0.28, gap=0.045, kind="plosive", stress=0.75,
+         f0=(268, 226), mouth=(0.80, 0.62, 0.45),
+         formants=[((600, 570), 100, 1.00), ((880, 840), 125, 0.55),
+                   ((2560, 2500), 200, 0.18)]),
+    # you   (j + u): tight and rounded
+    dict(text="you", dur=0.20, gap=0.055, kind="voiced", stress=0.35,
+         f0=(244, 224), mouth=(0.30, 0.24, 0.95),
+         formants=[((330, 300), 90, 1.00), ((1900, 870), 120, 0.50),
+                   ((2400, 2240), 190, 0.16)]),
+    # la    (l + eɪ): opens into the diphthong
+    dict(text="la", dur=0.24, gap=0.010, kind="voiced", stress=0.9,
+         f0=(276, 268), mouth=(0.70, 0.80, 0.05),
+         formants=[((520, 420), 95, 1.00), ((1800, 2300), 135, 0.66),
+                   ((2600, 2900), 200, 0.22)]),
+    # ter   (t + ɚ): trails off and closes
+    dict(text="ter", dur=0.40, gap=0.0, kind="plosive", stress=0.45,
+         f0=(250, 186), mouth=(0.52, 0.06, 0.30),
+         formants=[((490, 470), 105, 1.00), ((1400, 1300), 140, 0.52),
+                   ((1750, 1650), 200, 0.30)]),
+]
+
+LINE_LENGTH = sum(s["dur"] + s["gap"] for s in LINE_SYLLABLES)
+
+
+def syllable_times():
+    """[(start, end, syllable), ...] with starts relative to the line onset."""
+    out, off = [], 0.0
+    for s in LINE_SYLLABLES:
+        out.append((off, off + s["dur"], s))
+        off += s["dur"] + s["gap"]
+    return out
+
+
 def line_ill_talk_you_later():
-    """"I'll talk you later" - five syllables with vowel formant targets."""
-    syls = [
-        # I'll  (aɪ -> l)
-        dict(dur=0.30, f0=(258, 236), gap=0.015, kind="voiced",
-             formants=[((720, 430), 105, 1.00), ((1180, 940), 130, 0.62),
-                       ((2500, 2450), 190, 0.20)]),
-        # talk  (t + ɔ + k)
-        dict(dur=0.28, f0=(268, 226), gap=0.045, kind="plosive",
-             formants=[((600, 570), 100, 1.00), ((880, 840), 125, 0.55),
-                       ((2560, 2500), 200, 0.18)]),
-        # you   (j + u)
-        dict(dur=0.20, f0=(244, 224), gap=0.055, kind="voiced",
-             formants=[((330, 300), 90, 1.00), ((1900, 870), 120, 0.50),
-                       ((2400, 2240), 190, 0.16)]),
-        # la    (l + eɪ)
-        dict(dur=0.24, f0=(276, 268), gap=0.010, kind="voiced",
-             formants=[((520, 420), 95, 1.00), ((1800, 2300), 135, 0.66),
-                       ((2600, 2900), 200, 0.22)]),
-        # ter   (t + ɚ)
-        dict(dur=0.40, f0=(250, 186), gap=0.0, kind="plosive",
-             formants=[((490, 470), 105, 1.00), ((1400, 1300), 140, 0.52),
-                       ((1750, 1650), 200, 0.30)]),
-    ]
-    return duck_voice(syls)
+    return duck_voice(LINE_SYLLABLES)
 
 
 # --------------------------------------------------------------------------- #
