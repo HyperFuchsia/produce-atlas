@@ -58,9 +58,13 @@
      per letter is a buzz, not a sound. */
   const UNBLIP_EVERY = 0.045;
 
-  function Chat(audio, brain, els) {
+  function Chat(audio, brain, els, voice) {
     this.audio = audio;
     this.brain = brain;
+    /* Out loud, when he has a face on. See voice.js. */
+    this.voice = voice || null;
+    this.canSpeak = null;    /* set by the scene: is he someone with a mouth */
+    this.aloud = false;      /* the voice is carrying the line being typed */
     this.log = els.log;
     this.input = els.input;
     this.form = els.form;
@@ -348,6 +352,10 @@
       this._runAfter();
     }
 
+    /* Talking over you is rude. Whatever he was saying, he stops. */
+    if (this.voice) this.voice.cancel();
+    this.aloud = false;
+
     this._append('you', text);
     if (this.onSend) this.onSend();
     const reply = this.brain.respond(text);
@@ -364,6 +372,7 @@
 
   Chat.prototype.update = function (dt) {
     this.lastActivity += dt;
+    if (this.voice) this.voice.update(dt);
     if (this.wiping || this.lockFor > 0) this._updateWipe(dt);
     this._ageLines(dt);
     /* Both fall away on their own; only typing puts anything back. */
@@ -385,18 +394,36 @@
       this._hold = item.hold || null;
       this.shown = 0;
       this.typingEl = this._append('him typing', '');
+      /* If he is going to say this one out loud, his voice is the clock from
+         here: the letters appear as he says them rather than at a fixed
+         speed, which is the only way the two can agree. */
+      this.aloud = !!(this.voice && (!this.canSpeak || this.canSpeak())
+        && this.voice.say(this.full));
       return;
     }
 
     const before = Math.floor(this.shown);
-    this.shown = Math.min(this.full.length, this.shown + CHARS_PER_SEC * dt);
+    if (this.aloud) {
+      this.shown = Math.min(this.full.length, this.voice.spokenTo());
+      /* And if the voice stops for any reason at all — finished, refused,
+         switched off mid-sentence, an engine that lost its nerve — the rest
+         of the line lands rather than hanging half-written. */
+      if (this.voice.done) {
+        this.aloud = false;
+        this.shown = this.full.length;
+      }
+    } else {
+      this.shown = Math.min(this.full.length, this.shown + CHARS_PER_SEC * dt);
+    }
     const now = Math.floor(this.shown);
     if (now !== before) {
       this.typingEl.textContent = this.full.slice(0, now);
       for (let i = before; i < now; i++) {
         const ch = this.full.charAt(i);
         if (ch === ' ' || ch === '\n') { this._say(null); continue; }
-        if (++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
+        /* The blip is his voice when he has not got one. When he has, it is
+           two voices at once. */
+        if (!this.aloud && ++this._blip % 5 === 0) this.audio.blip(ch.charCodeAt(0));
         this.pulse = Math.min(1, this.pulse + PULSE_PER_CHAR);
         this._say(ch);
         const w = EMPHASIS[ch];

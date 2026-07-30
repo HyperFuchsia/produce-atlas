@@ -282,10 +282,32 @@
   /* One switch, in the same voice as the sound toggle, for the thing that is
      not finished. Armed it goes gold, because you should be able to tell at a
      glance whether the next thing you type is going to cost you the box. */
-  #proto {
+  #voice {
     position: fixed;
     right: 24px;
     top: 42px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
+    transition: color 0.15s ease;
+  }
+  #voice:hover, #voice:focus-visible { color: var(--paper); outline: none; }
+  /* Struck through when off, so the state reads without having to parse the
+     word next to it. */
+  body.mute #voice { text-decoration: line-through; opacity: 0.65; }
+
+  #proto {
+    position: fixed;
+    right: 24px;
+    top: 64px;
     z-index: 10;
     border: none;
     background: transparent;
@@ -377,6 +399,7 @@
 
 <div id="mark">Produce <em>Atlas</em></div>
 <button id="sound" type="button">Sound on</button>
+<button id="voice" type="button" title="He says it out loud when he is wearing a face. Uses whatever voice your machine has.">Voice on</button>
 <button id="proto" type="button" title="Unfinished. With this on, saying the wrong word to him costs you the text box.">Prototype off</button>
 
 <div id="hud">
@@ -399,6 +422,7 @@
 <script src="src/faces.js"></script>
 <script src="src/concepts.js"></script>
 <script src="src/brain.js"></script>
+<script src="src/voice.js"></script>
 <script src="src/chat.js"></script>
 <script src="src/shaders.js"></script>
 <script src="src/renderer.js"></script>

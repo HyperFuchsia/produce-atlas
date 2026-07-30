@@ -224,9 +224,13 @@
     this.grabVel = [0, 0, 0];
 
     this.brain = new NG.Brain();
+    /* Out loud, but only when he has a mouth. See voice.js. Not `voice` —
+       that name is already the amount he is voicing, which the body swells
+       to and the shader reads. */
+    this.speech = new NG.Voice();
     this.chat = new NG.Chat(this.audio, this.brain, {
       log: $('dialogue'), input: $('prompt'), form: $('composer')
-    });
+    }, this.speech);
     this.props = [];
     /* Morph state: the being's rest shape animating from one form to another. */
     this.baseRest = new Float32Array(this.mesh ? 0 : 0);
@@ -243,6 +247,11 @@
     const self = this;
     this.chat.onSpawn = function (entry) { self.spawnSpecimen(entry); };
     this.chat.onType = function (text) { self.noticeHands(text); };
+    /* He speaks out loud only when he has a face on. As the sphere he keeps
+       the blips, which were always the honest sound for a thing with no
+       mouth — and a disembodied voice coming out of a ball of light is a
+       different and much stranger idea than the one this is. */
+    this.chat.canSpeak = function () { return !!self.face; };
     this.chat.onWipe = function () { return self.startSnatch(); };
     this.chat.onClear = function () { self.clearSpecimens(); };
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
@@ -1783,6 +1792,12 @@
 
     $('proto').addEventListener('click', function () {
       self.setProto(!self.proto);
+    });
+
+    $('voice').addEventListener('click', function () {
+      self.speech.setEnabled(!self.speech.enabled);
+      document.body.classList.toggle('mute', !self.speech.enabled);
+      $('voice').textContent = self.speech.enabled ? 'Voice on' : 'Voice off';
     });
 
     canvas.addEventListener('webglcontextlost', function (e) {
