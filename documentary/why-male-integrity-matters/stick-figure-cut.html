@@ -1,0 +1,774 @@
+<title>Why Male Integrity Matters — Stick Figure Cut</title>
+
+<style>
+  :root {
+    --ground:#E7E9EB; --panel:#F3F5F6; --line:#C9CFD4;
+    --ink:#182028; --soft:#55636E; --mute:#7E8B95;
+    --ember:#B4551F; --verd:#2F6B5E;
+    --paper:#EEF0F1; --stroke:#1A2229; --accent:#C7622F; --green:#2F6B5E; --dim:#A8B2BA;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    --serif:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+    --mono:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --ground:#10161B; --panel:#182028; --line:#2C3841;
+      --ink:#DCE3E8; --soft:#A2B0BA; --mute:#74838E;
+      --ember:#F2A65A; --verd:#5E9E8C;
+      --paper:#141B21; --stroke:#D5DDE3; --accent:#F2A65A; --green:#5E9E8C; --dim:#4A5862;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#10161B; --panel:#182028; --line:#2C3841;
+    --ink:#DCE3E8; --soft:#A2B0BA; --mute:#74838E;
+    --ember:#F2A65A; --verd:#5E9E8C;
+    --paper:#141B21; --stroke:#D5DDE3; --accent:#F2A65A; --green:#5E9E8C; --dim:#4A5862;
+  }
+  :root[data-theme="light"]{
+    --ground:#E7E9EB; --panel:#F3F5F6; --line:#C9CFD4;
+    --ink:#182028; --soft:#55636E; --mute:#7E8B95;
+    --ember:#B4551F; --verd:#2F6B5E;
+    --paper:#EEF0F1; --stroke:#1A2229; --accent:#C7622F; --green:#2F6B5E; --dim:#A8B2BA;
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:28px 18px 72px}
+
+  header{margin-bottom:18px}
+  .eyebrow{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);margin:0 0 8px}
+  h1{font-family:var(--serif);font-weight:400;font-size:1.9rem;line-height:1.1;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{margin:0;color:var(--soft);font-size:.92rem}
+
+  .stage{position:relative;background:var(--paper);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+  canvas{display:block;width:100%;height:auto}
+
+  .chip{position:absolute;top:10px;left:12px;font-family:var(--mono);font-size:.66rem;letter-spacing:.08em;color:var(--mute);background:color-mix(in srgb,var(--paper) 82%,transparent);padding:3px 7px;border-radius:2px}
+  .badge{position:absolute;top:10px;right:12px;font-family:var(--mono);font-size:.66rem;color:var(--mute);font-variant-numeric:tabular-nums}
+
+  .caption{min-height:64px;display:flex;align-items:center;padding:14px 18px;border:1px solid var(--line);border-top:0;background:var(--panel);border-radius:0 0 3px 3px}
+  .caption p{margin:0;font-family:var(--serif);font-size:1.12rem;line-height:1.4;text-wrap:balance}
+  .caption p:empty::before{content:"·";color:var(--mute)}
+
+  .bar{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+  button{font-family:var(--sans);font-size:.84rem;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:7px 13px;cursor:pointer;transition:border-color 120ms ease,color 120ms ease}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  #play{min-width:88px;font-weight:600}
+
+  .scrub{flex:1 1 220px;display:flex;align-items:center;gap:10px}
+  input[type=range]{flex:1;accent-color:var(--accent);height:20px}
+  .clock{font-family:var(--mono);font-size:.78rem;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+  .segs{display:flex;gap:2px;margin-top:12px}
+  .segs button{padding:0;height:12px;border-radius:1px;border:0;background:var(--line);flex-grow:1;flex-basis:0;min-width:0}
+  .segs button:hover{background:var(--accent)}
+  .segs button.on{background:var(--accent)}
+
+  .notes{margin-top:34px;padding-top:20px;border-top:1px solid var(--line);color:var(--soft);font-size:.88rem}
+  .notes h2{font-family:var(--serif);font-weight:400;font-size:1.05rem;color:var(--ink);margin:0 0 8px}
+  .notes p{margin:0 0 10px;max-width:66ch}
+  .notes code{font-family:var(--mono);font-size:.82em;background:var(--panel);border:1px solid var(--line);border-radius:2px;padding:1px 5px}
+  kbd{font-family:var(--mono);font-size:.78em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 5px;background:var(--panel)}
+
+  @media (max-width:560px){ h1{font-size:1.45rem} .caption p{font-size:.98rem} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Stick figure cut · low-production informational version</p>
+    <h1>Why Male Integrity Matters</h1>
+    <p class="sub">The full 15-minute structure, drawn as simply as it can be drawn. 20 scenes, real durations, narration as captions.</p>
+  </header>
+
+  <div class="stage">
+    <canvas id="c" width="1920" height="1080" aria-label="Animated stick figure documentary"></canvas>
+    <div class="chip" id="chip">SCENE 01 · BEFORE ANYONE IS AWAKE</div>
+    <div class="badge" id="badge">0:00 / 15:00</div>
+  </div>
+  <div class="caption"><p id="cap"></p></div>
+
+  <div class="bar">
+    <button id="play" type="button">Play</button>
+    <button id="prev" type="button">◂ Scene</button>
+    <button id="next" type="button">Scene ▸</button>
+    <div class="scrub">
+      <input id="scrub" type="range" min="0" max="900" step="0.1" value="0" aria-label="Scrub timeline">
+      <span class="clock" id="clock">0:00</span>
+    </div>
+    <button id="speed" type="button">1×</button>
+  </div>
+
+  <div class="segs" id="segs" role="group" aria-label="Jump to scene"></div>
+
+  <div class="notes">
+    <h2>What this is</h2>
+    <p>A watchable rough cut, not the film. Every figure is drawn from line segments in real time — no assets, no video, nothing pre-rendered. It runs the real 900-second timeline with the real scene durations, so it plays at the pace the finished documentary would play at.</p>
+    <p>Use it to feel the shape: where the argument turns, where a scene runs long, where the silence sits. The cinematic version is specified in <code>SCREENPLAY.md</code>.</p>
+    <p><kbd>Space</kbd> play/pause · <kbd>←</kbd> <kbd>→</kbd> skip scene · click the strip above to jump.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var cv = document.getElementById('c'), g = cv.getContext('2d');
+  var W = 1920, H = 1080;
+  var P = {};
+
+  function readPalette(){
+    var s = getComputedStyle(document.documentElement);
+    P.paper  = s.getPropertyValue('--paper').trim();
+    P.ink    = s.getPropertyValue('--stroke').trim();
+    P.accent = s.getPropertyValue('--accent').trim();
+    P.green  = s.getPropertyValue('--green').trim();
+    P.dim    = s.getPropertyValue('--dim').trim();
+  }
+  readPalette();
+
+  // ---------- drawing helpers ----------
+
+  function bg(col){ g.fillStyle = col || P.paper; g.fillRect(0,0,W,H); }
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function clamp(v,a,b){ return v<a?a:(v>b?b:v); }
+  function ease(t){ return t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; }
+  function seg(t,a,b){ return clamp((t-a)/(b-a),0,1); }
+
+  function line(x1,y1,x2,y2,col,w){
+    g.strokeStyle=col||P.ink; g.lineWidth=w||4; g.lineCap='round';
+    g.beginPath(); g.moveTo(x1,y1); g.lineTo(x2,y2); g.stroke();
+  }
+  function rect(x,y,w,h,col,fill){
+    g.strokeStyle=col||P.ink; g.fillStyle=col||P.ink; g.lineWidth=4;
+    if(fill) g.fillRect(x,y,w,h); else g.strokeRect(x,y,w,h);
+  }
+  function circle(x,y,r,col,fill,lw){
+    g.strokeStyle=col||P.ink; g.fillStyle=col||P.ink; g.lineWidth=lw||4;
+    g.beginPath(); g.arc(x,y,r,0,Math.PI*2);
+    if(fill) g.fill(); else g.stroke();
+  }
+  function label(txt,x,y,size,col,align){
+    g.fillStyle=col||P.ink; g.font='500 '+(size||30)+'px ui-sans-serif,system-ui,sans-serif';
+    g.textAlign=align||'center'; g.textBaseline='middle'; g.fillText(txt,x,y);
+  }
+  function serif(txt,x,y,size,col,align,sp){
+    g.fillStyle=col||P.ink; g.font=(size||60)+'px Georgia,serif';
+    g.textAlign=align||'center'; g.textBaseline='middle';
+    if(sp){ g.letterSpacing = sp+'px'; }
+    g.fillText(txt,x,y);
+    g.letterSpacing='0px';
+  }
+
+  // The stick figure. Angles are radians from straight-down.
+  function fig(x,y,h,o){
+    o=o||{};
+    var col=o.col||P.ink, lw=o.lw||Math.max(3,h*0.028);
+    g.strokeStyle=col; g.fillStyle=col; g.lineWidth=lw; g.lineCap='round'; g.lineJoin='round';
+    var hr=h*0.105, hipY=y-h*0.44, shY=y-h*0.74, dx=(o.lean||0)*h*0.14;
+    var headY=shY-hr*1.5+(o.headDy||0);
+    g.beginPath(); g.moveTo(x+dx,shY); g.lineTo(x,hipY); g.stroke();
+    g.beginPath(); g.arc(x+dx+(o.headDx||0),headY,hr,0,Math.PI*2);
+    if(o.fillHead) g.fill(); else g.stroke();
+    var al=h*0.31;
+    var aL=(o.armL===undefined?0.4:o.armL), aR=(o.armR===undefined?-0.4:o.armR);
+    g.beginPath();
+    g.moveTo(x+dx,shY); g.lineTo(x+dx+Math.sin(aL)*al, shY+Math.cos(aL)*al);
+    g.moveTo(x+dx,shY); g.lineTo(x+dx+Math.sin(aR)*al, shY+Math.cos(aR)*al);
+    g.stroke();
+    var ll=h*0.45;
+    var lL=(o.legL===undefined?0.2:o.legL), lR=(o.legR===undefined?-0.2:o.legR);
+    g.beginPath();
+    g.moveTo(x,hipY); g.lineTo(x+Math.sin(lL)*ll, hipY+Math.cos(lL)*ll);
+    g.moveTo(x,hipY); g.lineTo(x+Math.sin(lR)*ll, hipY+Math.cos(lR)*ll);
+    g.stroke();
+  }
+  function walker(x,y,h,ph,o){
+    o=o||{}; var s=Math.sin(ph);
+    // Limbs keep a permanent spread and swing around it. A true scissor gait
+    // closes to a single vertical line at the passing phase, which on a stick
+    // figure reads as a legless pole.
+    o.legL = 0.13+0.38*s; o.legR = -0.13+0.38*s;
+    if(o.armL===undefined){ o.armL = 0.46-0.26*s; o.armR = -0.46-0.26*s; }
+    fig(x,y,h,o);
+  }
+  function ground(y,col){ line(0,y,W,y,col||P.dim,3); }
+
+  // ---------- scenes ----------
+
+  var S = {};
+
+  var WINS=[[.10,.60],[.14,.52],[.21,.66],[.27,.56],[.33,.70],[.37,.50],[.46,.63],[.51,.55],[.56,.71],[.63,.52],[.67,.65],[.74,.58],[.79,.70],[.86,.54],[.90,.67]];
+
+  S[1]=function(t,d){
+    bg();
+    var yb=H*0.80;
+    var blocks=[[.06,.52],[.16,.60],[.26,.46],[.37,.62],[.47,.50],[.58,.58],[.68,.48],[.79,.60],[.88,.54]];
+    blocks.forEach(function(b){ rect(W*b[0],H*b[1],W*0.075,yb-H*b[1],P.dim); });
+    WINS.forEach(function(p,i){
+      var on = (t*0.9+i*0.7)%9 > 0.55;
+      var a = on?1:0.18;
+      g.globalAlpha=a; rect(W*p[0],H*p[1],W*0.016,H*0.028,P.accent,true); g.globalAlpha=1;
+    });
+    ground(yb);
+    // one window with a figure inside, revealed late
+    var k=seg(t,26,34);
+    if(k>0){
+      g.globalAlpha=k;
+      rect(W*0.455,H*0.545,W*0.075,H*0.10,P.accent);
+      fig(W*0.492,H*0.638,H*0.085,{col:P.accent,armL:1.9,armR:-0.3});
+      g.globalAlpha=1;
+    }
+    var q=seg(t,34,40);
+    if(q>0){ g.globalAlpha=q; serif('?',W*0.5,H*0.24,120,P.accent); g.globalAlpha=1; }
+  };
+
+  S[2]=function(t,d){
+    bg(); var y=H*0.74; ground(y);
+    var slot=Math.min(4,Math.floor(t/9)), lt=(t%9)/9, ph=t*7;
+    var cx=W*0.5;
+    if(slot===0){ // welder
+      fig(cx,y,H*0.42,{armL:1.5,armR:1.2});
+      var sx=cx+H*0.42*0.31*Math.sin(1.5), sy=y-H*0.42*0.74+H*0.42*0.31*Math.cos(1.5);
+      for(var i=0;i<9;i++){ var a=(i/9)*6.283+t*4; var r=30+((i*37+t*260)%110);
+        circle(sx+Math.cos(a)*r, sy+Math.abs(Math.sin(a))*r, 4, P.accent, true); }
+      label('a seam that holds for sixty years',cx,H*0.87,34,P.dim);
+    } else if(slot===1){ // father + infant
+      fig(cx-40,y,H*0.42,{armL:0.95,armR:0.8,lean:0.05+0.03*Math.sin(t*1.6)});
+      circle(cx+30,y-H*0.42*0.70,26,P.accent,false,5);
+      line(cx+30,y-H*0.42*0.70+26,cx+52,y-H*0.42*0.70+70,P.accent,5);
+      label('3 a.m.',cx,H*0.87,34,P.dim);
+    } else if(slot===2){ // teacher
+      rect(W*0.30,H*0.30,W*0.16,H*0.16,P.dim);
+      line(W*0.32,H*0.36,W*0.44,H*0.36,P.dim,3); line(W*0.32,H*0.40,W*0.41,H*0.40,P.dim,3);
+      fig(W*0.52,y,H*0.42,{armL:1.5,armR:-0.3});
+      fig(W*0.62,y,H*0.30,{});
+      label('one student who did not ask',cx,H*0.87,34,P.dim);
+    } else if(slot===3){ // researcher
+      rect(W*0.42,H*0.40,W*0.16,H*0.20,P.dim);
+      fig(W*0.62,y,H*0.42,{armL:1.4,armR:-0.2});
+      label('work he will not finish',cx,H*0.87,34,P.dim);
+    } else { // son at bedside
+      rect(W*0.36,H*0.56,W*0.22,H*0.10,P.dim);
+      circle(W*0.40,H*0.53,26,P.dim,false,4);
+      fig(W*0.64,y,H*0.40,{lean:-0.14,armL:1.3,armR:1.1,legL:0.7,legR:0.5});
+      label('nothing here can be fixed',cx,H*0.87,34,P.dim);
+    }
+    // filmstrip of completed vignettes
+    for(var s2=0;s2<5;s2++){
+      var on2 = s2<=slot;
+      rect(W*0.34+s2*W*0.07,H*0.09,W*0.055,H*0.035, on2?P.accent:P.dim);
+    }
+  };
+
+  S[3]=function(t,d){
+    bg();
+    var a=seg(t,0.5,2.5);
+    g.globalAlpha=a; serif('WHY MALE INTEGRITY MATTERS',W*0.5,H*0.30,64,P.ink,'center',6); g.globalAlpha=1;
+    // truss, drawn progressively, one member dashed
+    var k=seg(t,17,27), x0=W*0.24,x1=W*0.76,yb=H*0.66,yt=H*0.48;
+    g.save(); g.beginPath(); g.rect(x0-20,0,(x1-x0+40)*k,H); g.clip();
+    var pts=[[x0,yb],[x0+ (x1-x0)/4,yt],[x0+(x1-x0)/2,yb],[x0+3*(x1-x0)/4,yt],[x1,yb]];
+    line(x0,yb,x1,yb,P.dim,4);
+    line(pts[0][0],yb,pts[1][0],yt,P.dim,4);
+    line(pts[1][0],yt,pts[3][0],yt,P.dim,4);
+    line(pts[2][0],yb,pts[3][0],yt,P.dim,4);
+    line(pts[3][0],yt,x1,yb,P.dim,4);
+    g.setLineDash([14,12]); line(pts[1][0],yt,pts[2][0],yb,P.accent,5); g.setLineDash([]);
+    g.restore();
+    if(t>27) label('one member, left unmaintained',W*0.5,H*0.78,36,P.accent);
+    if(t>4&&t<18) label('not an argument that men matter more than women',W*0.5,H*0.60,38,P.dim);
+  };
+
+  S[4]=function(t,d){
+    bg();
+    if(t<11){ serif('I N T E G E R',W*0.5,H*0.42,96,P.ink); label('whole · untouched · undivided',W*0.5,H*0.58,36,P.dim); }
+    else if(t<20){ // number line, integers solid, fractions cracked
+      line(W*0.15,H*0.50,W*0.85,H*0.50,P.dim,4);
+      for(var i=0;i<=6;i++){ var x=W*0.15+i*(W*0.70/6); circle(x,H*0.50,18,P.ink,true);
+        if(i<6){ var xf=x+(W*0.70/12); g.setLineDash([6,7]); circle(xf,H*0.50,13,P.dim,false,3); g.setLineDash([]); } }
+      label('a number that is not a fraction',W*0.5,H*0.66,36,P.dim);
+    } else { // I-beam with a crack
+      var bx=W*0.30,bw=W*0.40;
+      rect(bx,H*0.42,bw,H*0.04,P.dim,true);
+      rect(W*0.5-W*0.02,H*0.46,W*0.04,H*0.14,P.dim,true);
+      rect(bx,H*0.60,bw,H*0.04,P.dim,true);
+      var cg=seg(t,30,44);
+      g.strokeStyle=P.accent; g.lineWidth=5; g.beginPath();
+      g.moveTo(W*0.48,H*0.46);
+      g.lineTo(W*0.48+W*0.02*cg, H*0.46+H*0.14*cg*0.55);
+      g.stroke();
+      label('a beam that has not been compromised',W*0.5,H*0.76,36,P.dim);
+    }
+  };
+
+  S[5]=function(t,d){
+    bg();
+    var names=['biological','neurological','psychological','emotional','ethical','moral','relational','occupational','environmental','sovereign'];
+    var cx=W*0.5, cy=H*0.48, R=H*0.30, n=10;
+    var shown=clamp(Math.floor(seg(t,2,40)*n)+1,0,n);
+    var pts=[];
+    for(var i=0;i<n;i++){ var a=(i/n)*6.283-1.5708; pts.push([cx+Math.cos(a)*R, cy+Math.sin(a)*R]); }
+    var dimmed = t>46;
+    for(var i2=0;i2<shown;i2++) for(var j=i2+1;j<shown;j++){
+      var isDim = dimmed && (i2===0||j===0);
+      g.globalAlpha = isDim?0.10:0.30;
+      line(pts[i2][0],pts[i2][1],pts[j][0],pts[j][1],P.accent, isDim?2:(dimmed?4:2.5));
+      g.globalAlpha=1;
+    }
+    for(var k=0;k<shown;k++){
+      var off = dimmed&&k===0;
+      circle(pts[k][0],pts[k][1],16,off?P.dim:P.accent,true);
+      var lx=pts[k][0]+(pts[k][0]-cx)*0.30, ly=pts[k][1]+(pts[k][1]-cy)*0.30;
+      label(names[k],lx,ly,26,off?P.dim:P.ink);
+    }
+    if(dimmed) label('the others take the load',cx,cy,32,P.ink);
+  };
+
+  S[6]=function(t,d){
+    bg();
+    var y=H*0.86, h=H*0.62, x=W*0.5;
+    fig(x,y,h,{armL:0.5,armR:-0.5});
+    var hy=y-h*0.74-h*0.105*1.5;
+    circle(x,hy,h*0.105+16,P.dim,false,3);
+    // signal travelling into the head
+    var p=(t*0.55)%1;
+    if(t<20){ circle(lerp(x-160,x,ease(p)), lerp(hy+70,hy,ease(p)), 10, P.accent, true);
+      label('judgment',x+250,hy,30,P.dim,'left'); }
+    if(t>=13){ // heart pulse
+      var s2=1+0.14*Math.sin(t*5.5);
+      circle(x-30,y-h*0.52,26*s2,P.accent,false,5);
+    }
+    if(t>=21&&t<29){ // narrowing circuits
+      for(var i=0;i<5;i++){ var w=lerp(6,2,seg(t,21,29));
+        line(x+70,y-h*0.60-i*22, x+250, y-h*0.60-i*22-30, P.accent, w); }
+      label('narrowed',W*0.78,y-h*0.66,30,P.dim,'left');
+    }
+    if(t>=29&&t<36){ // hormonal tide as a rising wash
+      g.globalAlpha=0.16*Math.min(1,seg(t,29,34)); g.fillStyle=P.accent;
+      g.fillRect(0,H-(H*seg(t,29,36)),W,H); g.globalAlpha=1;
+      label('the terms, not the command',W*0.5,H*0.16,34,P.dim);
+    }
+    if(t>=37) label('what he has to work with',W*0.5,H*0.13,38,P.accent);
+  };
+
+  S[7]=function(t,d){
+    bg();
+    var y=H*0.72, n=7, k=clamp(Math.floor(t/5.2),0,n-1);
+    ground(y+H*0.02);
+    for(var i=0;i<n;i++){
+      var x=W*(0.10+i*0.135);
+      rect(x-W*0.05,y-H*0.20,W*0.10,H*0.22, i<=k?P.dim:P.dim);
+      if(i<=k){
+        var droop=i/(n-1);
+        fig(x,y,H*0.16,{lean:-0.05-droop*0.22, armL:0.35, armR:-0.35, headDy:droop*10});
+      }
+    }
+    // sun arc
+    var sp=clamp(t/38,0,1);
+    var sx=lerp(W*0.10,W*0.92,sp), sy=H*0.30-Math.sin(sp*Math.PI)*H*0.16;
+    circle(sx,sy,22,P.accent,true);
+    g.setLineDash([5,10]);
+    g.strokeStyle=P.dim; g.lineWidth=2; g.beginPath();
+    for(var q=0;q<=40;q++){ var u=q/40, ux=lerp(W*0.10,W*0.92,u), uy=H*0.30-Math.sin(u*Math.PI)*H*0.16;
+      if(q===0)g.moveTo(ux,uy); else g.lineTo(ux,uy); }
+    g.stroke(); g.setLineDash([]);
+    if(t>22){
+      g.globalAlpha=seg(t,22,26);
+      label('biology does not guarantee morality',W*0.5,H*0.90,40,P.accent);
+      g.globalAlpha=1;
+    } else label('one day, repeated',W*0.5,H*0.90,34,P.dim);
+  };
+
+  S[8]=function(t,d){
+    bg();
+    var x0=W*0.14, yA=H*0.32, yB=H*0.44;
+    var g1=seg(t,8,13), g2=seg(t,13,20);
+    line(x0,yA,x0+(W*0.62)*Math.max(g1,0),yA,P.dim,10);
+    line(x0,yB,x0+(W*0.72)*Math.max(g1,0),yB,P.dim,10);
+    if(g1>0){ label('men',x0-24,yA,30,P.dim,'right'); label('women',x0-24,yB,30,P.dim,'right'); }
+    if(g1>0.9) circle(x0+W*0.62,yA,12,P.accent,true);
+    // two stacks of figures
+    if(g2>0){
+      var cols=10;
+      for(var i=0;i<cols;i++){
+        var on=i/cols < g2;
+        if(!on) continue;
+        fig(W*0.20+i*W*0.045, H*0.72, H*0.11, {col: i<8?P.accent:P.dim, lw:3});
+      }
+      label('deaths at work',W*0.20,H*0.80,30,P.dim,'left');
+    }
+    if(t>27){
+      var r=seg(t,27,34);
+      g.save(); g.translate(W*0.5,H*0.5); g.scale(1,Math.max(0.04,Math.cos(r*1.35)));  g.translate(-W*0.5,-H*0.5);
+      g.globalAlpha=0.5; rect(W*0.10,H*0.20,W*0.80,H*0.62,P.dim); g.globalAlpha=1;
+      g.restore();
+      if(r>0.6) label('other faces of the same structure, unread',W*0.5,H*0.90,34,P.dim);
+    }
+    if(t>38) label('not noise — information',W*0.5,H*0.12,38,P.accent);
+  };
+
+  S[9]=function(t,d){
+    bg();
+    var k=seg(t,1,26);
+    // drop
+    circle(W*0.5, lerp(H*0.10,H*0.20,Math.min(1,k*6)), 14, P.green, true);
+    // recursive branching river
+    function branch(x,y,len,ang,dep,prog){
+      if(dep<=0||prog<=0) return;
+      var x2=x+Math.sin(ang)*len*Math.min(1,prog), y2=y+Math.cos(ang)*len*Math.min(1,prog);
+      line(x,y,x2,y2,P.green,Math.max(2,dep*2.4));
+      if(prog>1){ branch(x2,y2,len*0.72,ang+0.5,dep-1,prog-1); branch(x2,y2,len*0.72,ang-0.5,dep-1,prog-1); }
+    }
+    branch(W*0.5,H*0.20,H*0.16,0,5,k*5.4);
+    if(t>30){
+      g.globalAlpha=seg(t,30,36);
+      label('a delta and a lung solve the same problem',W*0.5,H*0.90,36,P.ink);
+      g.globalAlpha=1;
+    } else label('downstream of everything above it',W*0.5,H*0.90,34,P.dim);
+  };
+
+  S[10]=function(t,d){
+    bg();
+    var names=['workshop','classroom','office','courtroom','the feed'];
+    var k=clamp(Math.floor(seg(t,1,26)*5)+1,0,5);
+    for(var i=0;i<5;i++){
+      var y=H*0.16+i*H*0.145;
+      if(i>=k) continue;
+      rect(W*0.30,y,W*0.40,H*0.125,P.dim);
+      label(names[i],W*0.28,y+H*0.06,28,P.dim,'right');
+      var ph=t*4+i;
+      if(i===4) fig(W*0.50,y+H*0.115,H*0.085,{col:P.dim,armL:0.8,armR:-0.1,lean:-0.1});
+      else { fig(W*0.40,y+H*0.115,H*0.085,{col:i<2?P.accent:P.dim,armL:0.5+0.2*Math.sin(ph),armR:-0.5});
+             fig(W*0.60,y+H*0.115,H*0.085,{col:P.dim,armL:0.3,armR:-0.3}); }
+    }
+    line(W*0.295,H*0.16,W*0.295,H*0.16+k*H*0.145,P.accent,5);
+    if(t>27) label('every room teaches something it never wrote down',W*0.5,H*0.92,36,P.accent);
+  };
+
+  S[11]=function(t,d){
+    bg();
+    var terms=['reciprocity','reputation','accountability','norms','repair','institutions'];
+    var k=clamp(Math.floor(seg(t,14,30)*6)+ (t>14?1:0),0,6);
+    var y=H*0.62;
+    ground(y+H*0.03);
+    // two figures passing a token
+    var ph=(t*0.8)%2, px=lerp(W*0.34,W*0.60,ph<1?ease(ph):ease(2-ph));
+    fig(W*0.30,y,H*0.26,{armL:1.5,armR:-0.3});
+    fig(W*0.64,y,H*0.26,{armL:0.3,armR:-1.5});
+    circle(px,y-H*0.19,14,P.accent,true);
+    for(var i=0;i<k;i++){
+      var cx=W*(0.14+ (i%3)*0.26), cy=H*0.15+Math.floor(i/3)*H*0.10;
+      label(terms[i],cx,cy,32,P.accent);
+    }
+    if(t>30){
+      // the repaired crack
+      line(W*0.20,H*0.80,W*0.80,H*0.80,P.dim,6);
+      var r=seg(t,32,42);
+      line(W*0.46,H*0.80,W*0.46+W*0.08*r,H*0.80,P.accent,8);
+      label('repaired, and the seam still shows',W*0.5,H*0.90,32,P.dim);
+    }
+  };
+
+  S[12]=function(t,d){
+    bg();
+    var n=8, y=H*0.72, x0=W*0.14, sp=(W*0.72)/(n-1);
+    var fh=H*0.26, beamH=H*0.05, beamY=y-fh*0.97-beamH;
+    var gone = t<10?0 : Math.min(4, Math.floor((t-10)/6));
+    var carriers = n-gone;
+    var loadEach = 34*n/Math.max(1,carriers);
+    var strain=clamp((loadEach-34)/70,0,1);
+    // the load — sags where nobody is holding it
+    g.fillStyle=P.dim; g.beginPath(); g.moveTo(x0-50,beamY);
+    for(var q=0;q<=n-1;q++){ var sag = q<gone ? Math.sin((q+0.5)/Math.max(1,gone)*Math.PI)*H*0.02 : 0;
+      g.lineTo(x0+q*sp, beamY+sag); }
+    g.lineTo(x0+(n-1)*sp+50,beamY); g.lineTo(x0+(n-1)*sp+50,beamY+beamH); g.lineTo(x0-50,beamY+beamH); g.closePath(); g.fill();
+    for(var i=0;i<n;i++){
+      var x=x0+i*sp;
+      if(i<gone){
+        // stepped out of the effort — still standing right there, arms down
+        fig(x, y, fh*0.9, {col:P.dim, armL:0.42, armR:-0.42, lw:3});
+      } else {
+        var col = strain>0.25?P.accent:P.ink;
+        var sh = strain>0.5 ? Math.sin(t*20+i)*strain*3 : 0;
+        fig(x+sh,y,fh,{col:col, armL:2.35, armR:-2.35, lean:-strain*0.08, legL:0.2+strain*0.26, legR:-0.2-strain*0.26, headDy:strain*12, lw:Math.max(3,fh*0.028)+strain*2});
+      }
+    }
+    var pct = Math.round(34*n/Math.max(1,carriers));
+    label(pct+'%',W*0.5,H*0.20,72,pct>70?P.accent:P.dim);
+    label('load per person',W*0.5,H*0.27,30,P.dim);
+    if(t>36) label('they do not fail immediately — they fatigue',W*0.5,H*0.92,38,P.accent);
+    else if(t>28) label('the load does not disappear. it transfers.',W*0.5,H*0.92,36,P.dim);
+  };
+
+  S[13]=function(t,d){
+    bg();
+    var y=H*0.70; ground(y);
+    var k=t/d;
+    // structures accumulate behind a walking figure
+    var built=[[0.10,'fire',3],[0.20,'field',7],[0.30,'wall',12],[0.40,'road',17],[0.50,'press',23],[0.60,'rail',29],[0.72,'grid',35],[0.84,'port',41]];
+    built.forEach(function(b){
+      if(t<b[2]) return;
+      var a=clamp((t-b[2])/3,0,1); g.globalAlpha=a;
+      var x=W*b[0];
+      rect(x-W*0.035,y-H*0.16,W*0.07,H*0.16,P.dim);
+      label(b[1],x,y+H*0.05,26,P.dim);
+      g.globalAlpha=1;
+    });
+    walker(W*(0.08+0.80*k), y, H*0.20, t*5, {});
+    // buried lattice
+    for(var i=0;i<14;i++){
+      var x1=W*(i/14), x2=W*((i+1)/14);
+      line(x1,y+H*0.14,(x1+x2)/2,y+H*0.09,P.accent,3);
+      line((x1+x2)/2,y+H*0.09,x2,y+H*0.14,P.accent,3);
+    }
+    label('trust, underneath all of it',W*0.5,y+H*0.22,32,P.accent);
+    if(t>30) label('every promise that holds is a cost never incurred',W*0.5,H*0.12,36,P.ink);
+  };
+
+  S[14]=function(t,d){
+    bg();
+    var y=H*0.72; ground(y+H*0.02);
+    var tip = t>18 && t<26;
+    var back = t>=26;
+    fig(W*0.32,y,H*0.34,{armL:2.35,armR:1.9,lean:tip?-0.16:0});
+    fig(W*0.68,y,H*0.34,{armL:-1.9,armR:-2.35});
+    var boxA_y = tip? lerp(H*0.40,H*0.50,seg(t,18,26)) : H*0.40;
+    if(back) boxA_y=H*0.40;
+    rect(W*0.32-50,boxA_y,100,80,tip?P.accent:P.ink);
+    rect(W*0.68-50,H*0.40,100,80,P.ink);
+    label('the person',W*0.32,H*0.86,32,P.dim);
+    label('the conditions',W*0.68,H*0.86,32,P.dim);
+    if(tip) label('the other hand does not move to catch it',W*0.5,H*0.20,34,P.accent);
+    if(t>38) label('explaining is not excusing',W*0.5,H*0.20,44,P.accent);
+  };
+
+  S[15]=function(t,d){
+    bg();
+    var y=H*0.58;
+    line(W*0.04,y+H*0.03,W*0.78,y+H*0.03,P.dim,6);
+    var speed=W*0.075;
+    for(var i=0;i<6;i++){
+      var x=W*0.04 + ((t*speed + i*W*0.125) % (W*0.74));
+      var stamped = x>W*0.40;
+      walker(x,y,H*0.17,t*4+i,{col:P.dim});
+      if(stamped){ label(String(40+((i*17)%50)),x,y-H*0.22,26,P.accent); }
+    }
+    // the hopper, still counting
+    rect(W*0.84,H*0.46,W*0.10,H*0.22,P.dim);
+    var cnt=Math.floor(t*7);
+    label(String(cnt),W*0.89,H*0.57,40,P.accent);
+    label('still counting',W*0.89,H*0.72,26,P.dim);
+    if(t>33) label('dignity does not begin when a person becomes useful',W*0.5,H*0.88,36,P.accent);
+    else label('measured, stamped, routed',W*0.5,H*0.88,34,P.dim);
+  };
+
+  S[16]=function(t,d){
+    bg();
+    var y=H*0.74; ground(y);
+    // the gate
+    var gx=W*0.56;
+    rect(gx-W*0.06,H*0.34,W*0.022,H*0.40,P.ink,true);
+    rect(gx+W*0.038,H*0.34,W*0.022,H*0.40,P.ink,true);
+    rect(gx-W*0.07,H*0.30,W*0.14,H*0.04,P.ink,true);
+    // the queue
+    for(var i=0;i<7;i++){
+      var x=W*0.10+i*W*0.055;
+      fig(x,y,H*0.17,{col:P.dim,lw:3});
+    }
+    // the walker who goes around
+    if(t>28){
+      var p=seg(t,28,40);
+      var wx=lerp(W*0.44,W*0.86,p);
+      var wy=y+Math.sin(p*Math.PI)*H*0.10;
+      walker(wx,wy,H*0.17,t*5,{col:P.accent});
+    }
+    if(t<11) label('"do you want to become a real man?"',W*0.5,H*0.16,42,P.ink);
+    else if(t<20) label('earned · withheld · revoked',W*0.5,H*0.16,38,P.dim);
+    else if(t<32) label('there are no walls',W*0.5,H*0.16,42,P.accent);
+    else label('the gate was never real',W*0.5,H*0.16,42,P.accent);
+  };
+
+  S[17]=function(t,d){
+    bg();
+    var y=H*0.80; ground(y);
+    var k=t/d;
+    // the tree
+    var th=lerp(H*0.05,H*0.46,ease(k));
+    line(W*0.62,y,W*0.62,y-th,'#8A6A45',Math.max(4,th*0.05));
+    circle(W*0.62,y-th-H*0.02,Math.max(10,th*0.42),P.green,false,5);
+    // the man, aging in the same gesture
+    var age=k;
+    fig(W*0.36,y,lerp(H*0.34,H*0.30,age),{lean:-age*0.16, armL:2.2, armR:-0.4, legL:0.18+age*0.08, legR:-0.18-age*0.08});
+    // successor appears at the end
+    if(t>32){ g.globalAlpha=seg(t,32,38); fig(W*0.46,y,H*0.22,{col:P.dim,armL:2.2,armR:-0.4}); g.globalAlpha=1; }
+    var seasons=['spring','summer','autumn','winter'];
+    label(seasons[Math.floor(t*1.1)%4],W*0.10,H*0.14,30,P.dim,'left');
+    label(Math.round(lerp(0,50,k))+' years',W*0.90,H*0.14,30,P.dim,'right');
+    if(t>30) label('not certified — tended',W*0.5,H*0.92,38,P.accent);
+  };
+
+  S[18]=function(t,d){
+    bg();
+    var mid=H*0.50;
+    line(0,mid,W,mid,P.accent,3);
+    function tree2(x,y,len,ang,dep,prog,col){
+      if(dep<=0||prog<=0)return;
+      var x2=x+Math.sin(ang)*len*Math.min(1,prog), y2=y+Math.cos(ang)*len*Math.min(1,prog);
+      line(x,y,x2,y2,col,Math.max(2,dep*2.2));
+      if(prog>1){ tree2(x2,y2,len*0.74,ang+0.52,dep-1,prog-1,col); tree2(x2,y2,len*0.74,ang-0.52,dep-1,prog-1,col); }
+    }
+    var k=seg(t,1,20)*5.4;
+    tree2(W*0.5,mid-8,-H*0.12,Math.PI,5,k,P.green);
+    tree2(W*0.5,mid+8, H*0.12,0,5,k,P.accent);
+    label('river delta',W*0.06,H*0.10,30,P.green,'left');
+    label('bronchi',W*0.06,H*0.92,30,P.accent,'left');
+    if(t>25) label('protect an environment, protect a nervous system',W*0.5,mid+H*0.44,36,P.ink);
+  };
+
+  S[19]=function(t,d){
+    bg();
+    var y=H*0.78; ground(y);
+    var k=t/d;
+    var scale=lerp(1,0.34,ease(clamp((t-14)/24,0,1)));
+    g.save();
+    g.translate(W*0.5,y); g.scale(scale,scale); g.translate(-W*0.5,-y);
+    var cast=[[0.10,'boy',0.16],[0.18,'boy',0.16],[0.28,'teach',0.24],[0.36,'learn',0.24],[0.47,'carry',0.24],[0.54,'carry',0.24],[0.64,'chair',0.20],[0.74,'bench',0.22],[0.80,'bench',0.22],[0.90,'walk',0.24]];
+    cast.forEach(function(c,i){
+      var x=W*c[0], h=H*c[2], ph=t*4+i;
+      if(c[1]==='chair'){ fig(x,y-H*0.03,h,{legL:1.35,legR:1.2,armL:0.4,armR:-0.4}); line(x-40,y,x+40,y,P.dim,4); }
+      else if(c[1]==='bench'){ fig(x,y-H*0.03,h,{legL:1.35,legR:1.2,armL:0.35,armR:-0.35}); }
+      else if(c[1]==='carry'){ fig(x,y,h,{armL:1.5,armR:-0.4}); }
+      else if(c[1]==='teach'){ fig(x,y,h,{armL:1.4,armR:-0.3}); }
+      else if(c[1]==='walk'){ walker(x,y,h,ph,{}); }
+      else fig(x,y,h,{armL:0.4+0.2*Math.sin(ph),armR:-0.4});
+    });
+    if(scale<0.9){ line(W*0.06,y,W*0.94,y,P.dim,3); }
+    g.restore();
+    if(t>30) label('they are load-bearing',W*0.5,H*0.16,46,P.accent);
+    else label('ordinary, and everywhere',W*0.5,H*0.16,36,P.dim);
+  };
+
+  S[20]=function(t,d){
+    bg();
+    var k=seg(t,14,19);
+    if(k>0) line(W*0.5-W*0.14*k, H*0.60, W*0.5+W*0.14*k, H*0.60, P.accent, 5);
+    var a=seg(t,17,21), f=1-seg(t,22,25);
+    g.globalAlpha=a*f;
+    serif('VIRDIGNITY',W*0.5,H*0.48,86,P.ink,'center',12);
+    g.globalAlpha=1;
+    if(t<13){
+      g.globalAlpha=1-seg(t,10,13);
+      label('civilization is not sustained by perfect men',W*0.5,H*0.50,40,P.dim);
+      g.globalAlpha=1;
+    }
+    if(t>22){ g.globalAlpha=seg(t,22,25); bg(P.paper); g.globalAlpha=1; }
+  };
+
+  // ---------- timeline ----------
+
+  var SCENES=[
+    {n:1,t:'Before Anyone Is Awake',d:50,c:[[2,"Every morning, in every country on earth, something happens that no one records."],[10,"Millions of people get up and do what they said they would do."],[18,"No ceremony. No audience."],[25,""],[33,"What if one of civilization's greatest foundations has been hiding in plain sight?"]]},
+    {n:2,t:'The Ordinary',d:50,c:[[1,"A welder, whose seam will hold a bridge for sixty years."],[9,"A father, learning a patience nobody taught him."],[18,"A teacher who stays late for one student who did not ask him to."],[27,"A researcher whose work will not be finished in his lifetime."],[36,"A son sitting with his mother in a room where nothing can be fixed."],[43,"Civilization is carried by the ordinary, repeated across billions of days."]]},
+    {n:3,t:'What This Is, And What It Is Not',d:40,c:[[1,"This film is about men."],[5,"It is not an argument that men matter more than women."],[12,"That argument is false, and this film has no use for it."],[19,"It is an argument about a structure —"],[24,"and what happens when one of its load-bearing members is left unmaintained."],[32,"The question is what a civilization requires in order to keep standing."]]},
+    {n:4,t:'The Word',d:45,c:[[1,"Integrity comes from the Latin integer — whole, untouched, undivided."],[11,"The same word a mathematician uses for a number that is not a fraction."],[20,"The same word an engineer uses for a beam that has not been compromised."],[29,"Before integrity was a virtue, it was a description."],[35,"Integrity is not a claim of goodness. It is a condition of wholeness."]]},
+    {n:5,t:'Ten Ways To Be Whole',d:55,c:[[1,"A human being is whole in more than one dimension."],[8,"Biological. Neurological. Psychological."],[15,"Emotional — the capacity to feel accurately."],[21,"Ethical and moral — what you believe, matching what you actually do."],[28,"Relational — the ability to be trusted, and to trust."],[34,"Occupational. Environmental."],[40,"And sovereign — remaining the author of your own life."],[46,"Damage any one of them, and the others begin to carry its weight."]]},
+    {n:6,t:'Every Decision Passes Through A Body',d:50,c:[[1,"Every ethical decision a person makes passes through an organism."],[8,"Judgment runs on a prefrontal cortex."],[14,"Emotional regulation runs on a nervous system that can be exhausted."],[22,"Empathy runs on circuits that pain, fear and inflammation can narrow."],[30,"Hormones do not issue commands. They set the terms."],[37,"None of this makes a man good."],[42,"All of it determines what he has to work with."]]},
+    {n:7,t:'The Unglamorous Things',d:45,c:[[1,"So the unglamorous things are not incidental."],[6,"Sleep restores the link between the brain's alarm and what moderates it."],[14,"Take it away, and the alarm gets louder while the moderator gets quieter."],[22,"But be careful. Biology does not guarantee morality."],[28,"Healthy men do terrible things. Sick men do heroic ones."],[35,"It decides how much capacity a man brings to the question."]]},
+    {n:8,t:'What We Measure',d:45,c:[[1,"When we measure what happens to men, some numbers repeat almost everywhere."],[9,"Men die earlier."],[13,"They account for most suicides, and for most deaths at work."],[20,"They are less likely to see a doctor before a problem becomes urgent."],[27,"None of this is a competition."],[31,"Women carry burdens these particular numbers do not show."],[38,"But a pattern this consistent is not noise. It is information."]]},
+    {n:9,t:'Downstream',d:45,c:[[1,"No organism is separate from the place it lives."],[7,"A river carries whatever the land upstream gives it."],[14,"A lung takes whatever the air is carrying."],[21,"You cannot keep a body healthy inside an environment that is failing."],[30,"Health is not only a property of a person."],[36,"It is a property of a place."]]},
+    {n:10,t:'Every Room Teaches',d:45,c:[[1,"Then widen the word environment until it becomes honest."],[7,"A home is an environment. A classroom. A worksite."],[14,"So is a hiring process. So is a courtroom. So is a comment thread."],[22,"These places do not merely surround people."],[27,"They teach."],[32,"Every institution transmits a curriculum it never wrote down."]]},
+    {n:11,t:'Cooperation Was Never Free',d:50,c:[[1,"Civilization did not begin because human beings trusted one another."],[8,"It began because they built the machinery that makes trust rational."],[16,"Reciprocity. Reputation. Accountability."],[23,"Norms. Repair. Institutions."],[31,"Take those away, and cooperation does not become difficult."],[39,"It becomes irrational."]]},
+    {n:12,t:'The Transfer',d:50,c:[[1,"Most people behave as conditional cooperators."],[6,"They contribute — until they watch others take without giving."],[13,"Then contribution collapses. Not out of malice. Out of arithmetic."],[21,"Every person who keeps their word carries part of the load."],[28,"Remove some of them, and the load does not disappear. It transfers."],[37,"The ones still standing carry more."],[43,"They do not fail immediately. They fatigue."]]},
+    {n:13,t:'Trust Is Infrastructure',d:50,c:[[1,"This is why trust is not a mood. It is infrastructure."],[8,"Everything a society builds sits on top of it."],[15,"Fields. Cities. Contracts. Law. Medicine. Bridges. Power grids."],[24,"Integrity lowers the cost of running a civilization."],[30,"Every promise that holds is an audit not performed, a lock not bought."],[39,"Corruption raises that cost — and everybody pays it."]]},
+    {n:14,t:'Both Hands',d:45,c:[[1,"Here the film has to be careful."],[5,"Environments shape people. That is true."],[11,"It is also true that a man is responsible for what he does."],[18,"Both hands hold weight."],[24,"An environment that makes integrity expensive does not excuse abandoning it."],[32,"And responsibility does not excuse whoever made integrity expensive."],[39,"Explaining is not excusing."]]},
+    {n:15,t:'The Accounting',d:45,c:[[1,"There is a way societies fail men that is easy to miss, because it looks like praise."],[10,"He is valued for what he produces. His output. His income. His usefulness."],[19,"That is not admiration. It is accounting."],[25,"A person valued only for his function has been told what happens when it stops."],[34,"Dignity does not begin at the moment a person becomes useful."],[40,"If it did, it would not be dignity. It would be a wage."]]},
+    {n:16,t:'The Gate',d:45,c:[[1,'"Do you want to become a real man?"'],[6,"Look at the structure of that question."],[11,"It presents manhood as a status that must be earned — and can be taken away."],[20,"But a boy does not require certification in order to be male. He already is."],[29,""],[36,"The gate was never real. Somebody has just been charging admission."]]},
+    {n:17,t:'Tending',d:40,c:[[1,"Give up the gate, and something better survives it."],[7,"Development."],[11,"Not to prove a claim — because a life is long, and there is work worth being equal to."],[21,"Skill. Patience. Honesty under pressure. Care that nobody sees."],[28,"Nobody graduates from that."],[33,"A man is not a thing to be certified. He is a thing to be tended."]]},
+    {n:18,t:'There Was Never A Boundary',d:40,c:[[3,"And what a man tends tends him back."],[8,"A river delta and a set of bronchi solve the same problem with the same shape."],[17,"Caring for a forest, a watershed, a city's air is not masculine or feminine."],[25,"It is human."],[29,"Protect an environment and you are protecting a nervous system."],[35,"There was never a boundary there."]]},
+    {n:19,t:'The Return',d:40,c:[[1,"So the boys become men."],[5,"Fathers, or not. Teachers. Builders. Patients. Caregivers."],[13,"Some are strong. Some are tired."],[18,"Some need help and were never taught how to ask."],[24,""],[31,"They are not remarkable."],[35,"They are load-bearing."]]},
+    {n:20,t:'Virdignity',d:25,c:[[1,"Civilization is not sustained by perfect men."],[6,"It is sustained by environments that allow ordinary people to live with dignity."],[14,"Male integrity is not only about men."],[18,"It is one indispensable thread in the fabric of humanity itself."]]}
+  ];
+
+  var TOTAL=0, starts=[];
+  SCENES.forEach(function(s){ starts.push(TOTAL); TOTAL+=s.d; });
+
+  // ---------- player ----------
+
+  var time=0, playing=false, rate=1, last=0;
+  var capEl=document.getElementById('cap'), chipEl=document.getElementById('chip'),
+      badgeEl=document.getElementById('badge'), clockEl=document.getElementById('clock'),
+      scrubEl=document.getElementById('scrub'), playBtn=document.getElementById('play'),
+      speedBtn=document.getElementById('speed'), segsEl=document.getElementById('segs');
+  scrubEl.max=String(TOTAL);
+
+  function fmt(s){ var m=Math.floor(s/60), r=Math.floor(s%60); return m+':'+(r<10?'0':'')+r; }
+  function sceneAt(x){ for(var i=SCENES.length-1;i>=0;i--) if(x>=starts[i]) return i; return 0; }
+
+  SCENES.forEach(function(s,i){
+    var b=document.createElement('button'); b.type='button';
+    b.style.flexGrow=String(s.d);
+    b.title='Scene '+s.n+' · '+s.t;
+    b.setAttribute('aria-label','Scene '+s.n+', '+s.t);
+    b.addEventListener('click',function(){ time=starts[i]; render(true); });
+    segsEl.appendChild(b);
+  });
+  var segBtns=Array.prototype.slice.call(segsEl.children);
+
+  var lastCap=null;
+  function render(force){
+    readPalette();
+    var i=sceneAt(time), s=SCENES[i], lt=time-starts[i];
+    g.setTransform(1,0,0,1,0,0);
+    (S[s.n]||function(){bg();})(lt,s.d);
+    var caption='';
+    for(var k=0;k<s.c.length;k++) if(lt>=s.c[k][0]) caption=s.c[k][1];
+    if(caption!==lastCap){ capEl.textContent=caption; lastCap=caption; }
+    chipEl.textContent='SCENE '+(s.n<10?'0'+s.n:s.n)+' · '+s.t.toUpperCase();
+    badgeEl.textContent=fmt(time)+' / '+fmt(TOTAL);
+    clockEl.textContent=fmt(time);
+    if(force||!dragging) scrubEl.value=String(time);
+    segBtns.forEach(function(b,j){ b.classList.toggle('on',j===i); });
+  }
+
+  function loop(ts){
+    if(!last) last=ts;
+    var dt=(ts-last)/1000; last=ts;
+    if(playing){
+      time+=dt*rate;
+      if(time>=TOTAL){ time=TOTAL; playing=false; playBtn.textContent='Replay'; }
+    }
+    render(false);
+    requestAnimationFrame(loop);
+  }
+
+  var dragging=false;
+  scrubEl.addEventListener('input',function(){ dragging=true; time=parseFloat(scrubEl.value); });
+  scrubEl.addEventListener('change',function(){ dragging=false; });
+
+  playBtn.addEventListener('click',function(){
+    if(time>=TOTAL) time=0;
+    playing=!playing; playBtn.textContent=playing?'Pause':'Play';
+  });
+  document.getElementById('prev').addEventListener('click',function(){
+    var i=sceneAt(time); if(time-starts[i]<1.2 && i>0) i--; time=starts[i]; render(true);
+  });
+  document.getElementById('next').addEventListener('click',function(){
+    var i=sceneAt(time); if(i<SCENES.length-1){ time=starts[i+1]; render(true); }
+  });
+  speedBtn.addEventListener('click',function(){
+    rate = rate===1?2 : rate===2?4 : rate===4?0.5 : 1;
+    speedBtn.textContent=rate+'×';
+  });
+  document.addEventListener('keydown',function(e){
+    if(e.target.tagName==='INPUT') return;
+    if(e.code==='Space'){ e.preventDefault(); playBtn.click(); }
+    if(e.code==='ArrowRight'){ e.preventDefault(); document.getElementById('next').click(); }
+    if(e.code==='ArrowLeft'){ e.preventDefault(); document.getElementById('prev').click(); }
+  });
+
+  render(true);
+  requestAnimationFrame(loop);
+})();
+</script>
