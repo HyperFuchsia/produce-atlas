@@ -57,6 +57,9 @@
   #play{min-width:88px;font-weight:600}
 
   .scrub{flex:1 1 220px;display:flex;align-items:center;gap:10px}
+  .vol{display:flex;align-items:center;width:110px}
+  .vol input{width:100%}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   input[type=range]{flex:1;accent-color:var(--accent);height:20px}
   .clock{font-family:var(--mono);font-size:.85rem;color:var(--soft);font-variant-numeric:tabular-nums;white-space:nowrap}
 
@@ -98,15 +101,19 @@
       <span class="clock" id="clock">0:00</span>
     </div>
     <button id="speed" type="button">1×</button>
+    <button id="sound" type="button" aria-pressed="true">Sound on</button>
+    <label class="vol"><span class="sr">Volume</span>
+      <input id="vol" type="range" min="0" max="1" step="0.01" value="0.9" aria-label="Volume">
+    </label>
   </div>
 
   <div class="segs" id="segs" role="group" aria-label="Jump to scene"></div>
 
   <div class="notes">
     <h2>About this film</h2>
-    <p>Fifteen minutes, played straight through. Every figure is drawn from line segments in real time — there is no video file and no image inside this page, only instructions for making marks. Narration appears as captions beneath the picture.</p>
-    <p>The full cinematic version — camera, lighting, score, sound design — is specified scene by scene in <code>SCREENPLAY.md</code>, with the look-dev reference in <code>VISUAL-BIBLE.md</code>.</p>
-    <p><kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> skip a scene · click the strip above to jump anywhere.</p>
+    <p>Fifteen minutes, played straight through, with score and sound. Nothing here is a file: every figure is drawn from line segments and every sound is built from oscillators and filtered noise, all generated while it plays. That is why the whole film is one portable page.</p>
+    <p>The score follows the documentary's own architecture — a felt piano motif that stays unresolved for fifteen minutes, a pulse that enters at the biology sequence and slows as the day wears down, a microtonal string cluster over the load transfer, and a final chord that resolves only on the last note. Three passages are scored as silence on purpose; the audio drops out completely and comes back.</p>
+    <p>Sound starts when you press play, because browsers only allow it after a click. <kbd>Space</kbd> play or pause · <kbd>←</kbd> <kbd>→</kbd> skip a scene · click the strip above to jump anywhere.</p>
   </div>
 </div>
 
@@ -710,6 +717,356 @@
   var TOTAL=0, starts=[];
   SCENES.forEach(function(s){ starts.push(TOTAL); TOTAL+=s.d; });
 
+  // ================= AUDIO =================
+  // Everything is synthesised. There are no sound files anywhere in this page —
+  // the score and the effects are generated from oscillators and filtered noise
+  // at playback time, which is why it stays one portable document.
+
+  var AC=null, master, busMus, busSfx, busAmb, noiseBuf, ambA, ambB, drone=[],
+      curAmb=-1, audioOn=true, userVol=0.9;
+
+  var N={ D1:36.71,D2:73.42,A2:110,C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196,A3:220,
+          Bb3:233.08,C4:261.63,D4:293.66,E4:329.63,F4:349.23,Fs4:369.99,G4:392,A4:440,
+          C5:523.25,D5:587.33,F5:698.46,A5:880 };
+
+  function initAudio(){
+    if(AC) return;
+    var Ctx = window.AudioContext||window.webkitAudioContext;
+    if(!Ctx){ audioOn=false; return; }
+    AC = new Ctx();
+    master=AC.createGain(); master.gain.value=0.9; master.connect(AC.destination);
+    busMus=AC.createGain(); busMus.gain.value=0.42; busMus.connect(master);
+    busSfx=AC.createGain(); busSfx.gain.value=0.5;  busSfx.connect(master);
+    busAmb=AC.createGain(); busAmb.gain.value=0.30; busAmb.connect(master);
+
+    // Pink-ish noise — the raw material for wind, water, rooms and machines.
+    var n=Math.floor(AC.sampleRate*3);
+    noiseBuf=AC.createBuffer(1,n,AC.sampleRate);
+    var d=noiseBuf.getChannelData(0), b0=0,b1=0,b2=0;
+    for(var i=0;i<n;i++){
+      var w=Math.random()*2-1;
+      b0=0.99765*b0+w*0.0990460; b1=0.96300*b1+w*0.2965164; b2=0.57000*b2+w*1.0526913;
+      d[i]=(b0+b1+b2+w*0.1848)*0.22;
+    }
+    ambA=makeAmbLayer(); ambB=makeAmbLayer();
+    for(var k=0;k<2;k++){
+      var o=AC.createOscillator(), gn=AC.createGain();
+      o.type='sine'; o.frequency.value=55; gn.gain.value=0;
+      o.connect(gn); gn.connect(busAmb); o.start();
+      drone.push({o:o,g:gn});
+    }
+  }
+  function makeAmbLayer(){
+    var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+    var f=AC.createBiquadFilter(); f.type='bandpass'; f.frequency.value=400; f.Q.value=0.6;
+    var gn=AC.createGain(); gn.gain.value=0;
+    src.connect(f); f.connect(gn); gn.connect(busAmb); src.start();
+    return {f:f,g:gn};
+  }
+
+  // ---- instruments ----
+  function piano(f,when,dur,vel){
+    var o=AC.createOscillator(), o2=AC.createOscillator(), g2=AC.createGain(),
+        gn=AC.createGain(), lp=AC.createBiquadFilter();
+    o.type='triangle'; o.frequency.value=f;
+    o2.type='sine'; o2.frequency.value=f*2.004; g2.gain.value=0.22;
+    lp.type='lowpass'; lp.frequency.value=Math.min(9000,f*7);
+    o.connect(gn); o2.connect(g2); g2.connect(gn); gn.connect(lp); lp.connect(busMus);
+    var v=vel||0.5;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(v,when+0.014);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o2.start(when); o.stop(when+dur+0.05); o2.stop(when+dur+0.05);
+  }
+  function bow(f,when,dur,vel,type,bright){
+    var o=AC.createOscillator(), gn=AC.createGain(), lp=AC.createBiquadFilter();
+    o.type=type||'sawtooth'; o.frequency.value=f;
+    lp.type='lowpass'; lp.frequency.value=f*(bright||2.6); lp.Q.value=0.8;
+    o.connect(lp); lp.connect(gn); gn.connect(busMus);
+    var v=vel||0.14, a=Math.min(0.7,dur*0.35);
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.linearRampToValueAtTime(v,when+a);
+    gn.gain.setValueAtTime(v,when+dur*0.72);
+    gn.gain.linearRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o.stop(when+dur+0.05);
+  }
+  function glass(f,when,dur,vel){
+    var o=AC.createOscillator(), gn=AC.createGain();
+    o.type='sine'; o.frequency.value=f;
+    o.connect(gn); gn.connect(busMus);
+    var v=vel||0.16;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(v,when+0.006);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o.stop(when+dur+0.05);
+  }
+  function drum(when,vel){
+    var o=AC.createOscillator(), gn=AC.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(96,when);
+    o.frequency.exponentialRampToValueAtTime(42,when+0.16);
+    o.connect(gn); gn.connect(busMus);
+    var v=vel||0.34;
+    gn.gain.setValueAtTime(v,when);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+0.42);
+    o.start(when); o.stop(when+0.5);
+    noiseHit(when,0.09,260,1.2,v*0.35,busMus);
+  }
+  function metal(f,when,dur,vel){
+    var o=AC.createOscillator(), gn=AC.createGain(), bp=AC.createBiquadFilter();
+    o.type='square'; o.frequency.value=f;
+    bp.type='bandpass'; bp.frequency.value=f*3.1; bp.Q.value=7;
+    o.connect(bp); bp.connect(gn); gn.connect(busMus);
+    var v=vel||0.10;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(v,when+0.004);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o.stop(when+dur+0.03);
+  }
+
+  // ---- effect primitives ----
+  function noiseHit(when,dur,freq,q,vel,bus,type){
+    var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+    var f=AC.createBiquadFilter(); f.type=type||'bandpass'; f.frequency.value=freq; f.Q.value=q||1;
+    var gn=AC.createGain();
+    src.connect(f); f.connect(gn); gn.connect(bus||busSfx);
+    var v=vel||0.3;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(v,when+Math.min(0.02,dur*0.2));
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    src.start(when); src.stop(when+dur+0.05);
+  }
+  function sweep(when,dur,f0,f1,q,vel,bus){
+    var src=AC.createBufferSource(); src.buffer=noiseBuf; src.loop=true;
+    var f=AC.createBiquadFilter(); f.type='bandpass'; f.Q.value=q||3;
+    f.frequency.setValueAtTime(f0,when);
+    f.frequency.exponentialRampToValueAtTime(Math.max(30,f1),when+dur);
+    var gn=AC.createGain();
+    src.connect(f); f.connect(gn); gn.connect(bus||busSfx);
+    var v=vel||0.25;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.linearRampToValueAtTime(v,when+dur*0.3);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    src.start(when); src.stop(when+dur+0.05);
+  }
+  function blip(when,f0,f1,dur,vel,type){
+    var o=AC.createOscillator(), gn=AC.createGain();
+    o.type=type||'sine'; o.frequency.setValueAtTime(f0,when);
+    o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),when+dur);
+    o.connect(gn); gn.connect(busSfx);
+    var v=vel||0.2;
+    gn.gain.setValueAtTime(0.0001,when);
+    gn.gain.exponentialRampToValueAtTime(v,when+0.005);
+    gn.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+    o.start(when); o.stop(when+dur+0.03);
+  }
+
+  var FX={
+    kettle:  function(w){ sweep(w,3.2,300,1900,6,0.16); },
+    bus:     function(w){ noiseHit(w,1.6,150,0.8,0.20); blip(w,70,52,1.2,0.10,'sawtooth'); },
+    door:    function(w){ blip(w,120,44,0.22,0.42); noiseHit(w,0.10,900,1.4,0.16); },
+    weld:    function(w){ for(var i=0;i<14;i++) noiseHit(w+i*0.055+Math.random()*0.02,0.05,2400+Math.random()*1800,2,0.13); },
+    monitor: function(w){ blip(w,880,880,0.10,0.12,'sine'); },
+    radiator:function(w){ noiseHit(w,0.14,420,6,0.16); noiseHit(w+0.22,0.10,380,6,0.11); },
+    compress:function(w){ blip(w,58,58,1.4,0.09,'sawtooth'); },
+    chisel:  function(w){ noiseHit(w,0.07,2600,3,0.30); blip(w,520,240,0.5,0.14,'triangle'); },
+    shatter: function(w){ for(var i=0;i<10;i++) noiseHit(w+i*0.018,0.28,2600+Math.random()*3200,4,0.13); },
+    ring:    function(w){ metal(660,w,1.6,0.13); },
+    creak:   function(w){ sweep(w,1.4,320,140,9,0.16); },
+    heart:   function(w){ blip(w,64,40,0.20,0.30); blip(w+0.31,58,36,0.16,0.20); },
+    tick:    function(w){ noiseHit(w,0.02,5200,3,0.10); },
+    drip:    function(w){ blip(w,1500,700,0.13,0.22,'sine'); },
+    key:     function(w){ noiseHit(w,0.03,2800,4,0.13); },
+    printer: function(w){ for(var i=0;i<7;i++) noiseHit(w+i*0.09,0.06,900,3,0.10); },
+    scrape:  function(w){ sweep(w,0.7,900,300,5,0.18); },
+    relay:   function(w){ noiseHit(w,0.03,1700,6,0.24); blip(w+0.02,300,90,0.22,0.14,'square'); },
+    stamp:   function(w){ blip(w,180,50,0.16,0.40); noiseHit(w,0.16,700,1.5,0.22); },
+    token:   function(w){ metal(1180,w,0.5,0.10); },
+    flap:    function(w){ for(var i=0;i<6;i++) noiseHit(w+i*0.035,0.025,1500,5,0.09); },
+    foot:    function(w){ noiseHit(w,0.07,240,2,0.14); },
+    bell:    function(w){ glass(N.A5,w,1.5,0.10); glass(N.D5,w,1.8,0.07); },
+    saw:     function(w){ for(var i=0;i<5;i++) sweep(w+i*0.42,0.36,700,1500,3,0.12); },
+    bird:    function(w){ blip(w,2600,3400,0.07,0.09); blip(w+0.11,3100,2500,0.06,0.07); },
+    breath:  function(w){ sweep(w,2.4,300,900,1.4,0.24); },
+    gust:    function(w){ sweep(w,3.0,180,520,0.9,0.26); },
+    press:   function(w){ blip(w,150,60,0.24,0.30); noiseHit(w+0.05,0.20,600,2,0.16); },
+    quill:   function(w){ for(var i=0;i<5;i++) noiseHit(w+i*0.07,0.05,3400,4,0.07); },
+    stylus:  function(w){ noiseHit(w,0.05,1400,5,0.14); },
+    subload: function(w){ blip(w,52,34,2.4,0.26,'sine'); },
+    crowd:   function(w){ sweep(w,3.4,300,700,0.7,0.14); }
+  };
+
+  // Per-scene ambience beds: filter centre, resonance, level, and sub-drone pitches.
+  var AMB={
+    1:{f:170,q:0.5,g:0.55,dr:[41,82],dg:0.055}, 2:{f:520,q:0.7,g:0.30,dr:[110],dg:0.025},
+    3:{f:300,q:0.5,g:0.08,dr:[],dg:0},          4:{f:950,q:0.9,g:0.20,dr:[73],dg:0.03},
+    5:{f:1500,q:1.3,g:0.16,dr:[147],dg:0.025},  6:{f:250,q:0.6,g:0.44,dr:[55,110],dg:0.06},
+    7:{f:430,q:0.7,g:0.32,dr:[73],dg:0.03},     8:{f:2100,q:0.5,g:0.15,dr:[110],dg:0.04},
+    9:{f:1250,q:0.9,g:0.64,dr:[],dg:0},         10:{f:720,q:0.6,g:0.34,dr:[120],dg:0.04},
+    11:{f:340,q:0.5,g:0.42,dr:[73,110],dg:0.05},12:{f:150,q:0.7,g:0.30,dr:[36.7,73.4],dg:0.075},
+    13:{f:620,q:0.5,g:0.48,dr:[73],dg:0.04},    14:{f:200,q:0.4,g:0.12,dr:[],dg:0},
+    15:{f:840,q:1.5,g:0.50,dr:[55],dg:0.06},    16:{f:260,q:0.4,g:0.58,dr:[],dg:0},
+    17:{f:1700,q:0.8,g:0.36,dr:[],dg:0},        18:{f:900,q:0.7,g:0.40,dr:[110],dg:0.03},
+    19:{f:660,q:0.5,g:0.50,dr:[],dg:0},         20:{f:200,q:0.5,g:0.08,dr:[],dg:0}
+  };
+
+  // One-shot effects, keyed to what is happening on screen.
+  var SFX={
+    1:[[9,'kettle'],[22,'bus'],[44,'door']],
+    2:[[1,'weld'],[4,'weld'],[10,'compress'],[19,'radiator'],[27,'compress'],[36,'monitor'],[41,'monitor']],
+    3:[[18,'tick']],
+    4:[[1,'chisel'],[2.4,'chisel'],[3.8,'chisel'],[13,'shatter'],[21,'ring'],[36,'creak']],
+    5:[[3,'tick'],[9,'tick'],[15,'tick'],[21,'tick'],[27,'tick'],[33,'tick'],[39,'tick'],[46,'creak']],
+    6:[[2,'heart'],[9,'heart'],[16,'heart'],[24,'heart'],[32,'breath'],[41,'heart']],
+    7:[[1,'tick'],[8,'radiator'],[16,'key'],[24,'compress'],[33,'tick']],
+    8:[[10,'tick'],[14,'tick'],[18,'tick'],[22,'tick'],[26,'tick'],[30,'tick'],[34,'tick']],
+    9:[[1,'drip'],[3,'drip'],[6,'drip'],[12,'gust'],[24,'breath'],[34,'breath']],
+    10:[[3,'saw'],[10,'radiator'],[16,'key'],[19,'printer'],[25,'scrape'],[33,'tick']],
+    11:[[2,'chisel'],[9,'stylus'],[15,'stylus'],[21,'chisel'],[27,'quill'],[33,'press'],[40,'key'],[44,'key']],
+    12:[[1,'subload'],[10,'relay'],[16,'relay'],[22,'relay'],[28,'relay'],[34,'creak'],[38,'creak']],
+    13:[[2,'crowd'],[12,'foot'],[20,'press'],[27,'crowd'],[34,'bus'],[42,'bell']],
+    14:[[3,'tick'],[19,'creak'],[27,'breath'],[38,'tick']],
+    15:[[1,'stamp'],[6,'token'],[9,'stamp'],[13,'token'],[17,'stamp'],[21,'token'],[26,'flap'],[31,'stamp'],[35,'token'],[40,'flap']],
+    16:[[2,'gust'],[13,'gust'],[24,'gust'],[31,'foot'],[33,'foot'],[35,'foot'],[37,'foot'],[39,'foot']],
+    17:[[2,'bird'],[7,'saw'],[13,'bird'],[19,'gust'],[25,'bird'],[32,'bird']],
+    18:[[2,'breath'],[11,'gust'],[20,'breath'],[30,'breath']],
+    19:[[2,'foot'],[5,'bell'],[9,'bird'],[13,'foot'],[17,'crowd'],[26,'bus'],[33,'bird']],
+    20:[]
+  };
+
+  // Score. One bar per scene, looped, per the film's score architecture.
+  var MUS={
+    1:{bpm:15,bar:[{n:N.D3,i:'p',d:3.6,v:0.42},{n:null},{n:N.A3,i:'p',d:3.0,v:0.30},{n:null},
+                   {n:N.D2,i:'p',d:4.2,v:0.34},{n:null},{n:null},{n:null}]},
+    2:{bpm:15,bar:[{n:N.D3,i:'p',d:3.4,v:0.38},{n:N.D3,i:'b',d:4.0,v:0.10},{n:N.A3,i:'p',d:3.0,v:0.28},
+                   {n:N.F3,i:'b',d:4.0,v:0.09},{n:N.D2,i:'p',d:4.0,v:0.30},{n:null},{n:N.A2,i:'b',d:5.0,v:0.08},{n:null}]},
+    3:{bpm:12,bar:[{n:N.D2,i:'b',d:8.0,v:0.09},{n:null},{n:null},{n:null}]},
+    4:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.26},{n:N.A4,i:'g',d:0.7,v:0.07},{n:null},{n:N.D5,i:'g',d:0.6,v:0.05},
+                   {n:N.D3,i:'d',d:0,v:0.20},{n:N.A4,i:'g',d:0.7,v:0.06},{n:null},{n:null}]},
+    5:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.22},{n:N.D5,i:'g',d:0.8,v:0.07},{n:N.A4,i:'g',d:0.8,v:0.06},{n:null},
+                   {n:N.D3,i:'d',d:0,v:0.18},{n:N.F5,i:'g',d:0.8,v:0.06},{n:null},{n:N.C5,i:'g',d:0.7,v:0.05}]},
+    6:{bpm:62,bar:[{n:N.D3,i:'d',d:0,v:0.24},{n:N.D4,i:'b',d:2.4,v:0.10,t:'triangle'},{n:null},{n:null},
+                   {n:N.D3,i:'d',d:0,v:0.18},{n:N.F4,i:'b',d:2.4,v:0.09,t:'triangle'},{n:null},{n:null}]},
+    7:{bpm:54,bar:[{n:N.D3,i:'d',d:0,v:0.20},{n:null},{n:N.E4,i:'b',d:2.6,v:0.08,t:'triangle'},{n:null},
+                   {n:N.D3,i:'d',d:0,v:0.15},{n:null},{n:null},{n:null}]},
+    8:{bpm:8,bar:[{n:N.A2,i:'b',d:14,v:0.07}]},
+    9:{bpm:40,bar:[{n:N.D4,i:'b',d:2.6,v:0.11,t:'sine'},{n:N.A4,i:'g',d:1.2,v:0.06},{n:N.F4,i:'b',d:2.6,v:0.09,t:'sine'},{n:null},
+                   {n:N.C4,i:'b',d:2.6,v:0.09,t:'sine'},{n:N.D5,i:'g',d:1.2,v:0.05},{n:null},{n:null}]},
+    10:{bpm:96,bar:[{n:N.D3,i:'m',d:0.3,v:0.07},{n:null},{n:N.A3,i:'m',d:0.3,v:0.05},{n:null},
+                    {n:N.F3,i:'m',d:0.3,v:0.06},{n:null},{n:null},{n:N.C4,i:'m',d:0.3,v:0.04}]},
+    11:{bpm:60,bar:[{n:N.D2,i:'d',d:0,v:0.28},{n:N.D3,i:'b',d:3.0,v:0.10},{n:null},{n:N.A2,i:'d',d:0,v:0.16},
+                    {n:N.F3,i:'b',d:3.0,v:0.08},{n:null}]},
+    12:{bpm:30,bar:[{n:N.D2,i:'b',d:4.4,v:0.10},{n:N.D2*1.03,i:'b',d:4.4,v:0.08},{n:N.A2,i:'b',d:4.4,v:0.09},
+                    {n:N.A2*1.026,i:'b',d:4.4,v:0.07},{n:N.D3,i:'b',d:4.4,v:0.07},{n:N.D3*1.02,i:'b',d:4.4,v:0.06}]},
+    13:{bpm:62,bar:[{n:N.D3,i:'p',d:2.2,v:0.36},{n:N.A3,i:'p',d:1.6,v:0.22},{n:N.D4,i:'p',d:2.0,v:0.26},{n:N.C4,i:'b',d:3.2,v:0.11},
+                    {n:N.F3,i:'p',d:2.2,v:0.30},{n:N.A3,i:'p',d:1.6,v:0.20},{n:N.D3,i:'b',d:4.0,v:0.12},{n:null}]},
+    14:{bpm:36,bar:[{n:N.D3,i:'b',d:3.2,v:0.13},{n:N.F3,i:'b',d:2.6,v:0.11},{n:N.E3,i:'b',d:3.0,v:0.10},{n:null}]},
+    15:{bpm:104,bar:[{n:N.D3,i:'m',d:0.22,v:0.10},{n:N.D3,i:'m',d:0.18,v:0.05},{n:N.A3,i:'m',d:0.22,v:0.08},{n:null},
+                     {n:N.D3,i:'m',d:0.22,v:0.09},{n:N.C4,i:'m',d:0.18,v:0.06},{n:N.A3,i:'m',d:0.22,v:0.07},{n:N.F3,i:'m',d:0.2,v:0.05}]},
+    16:{bpm:20,bar:[{n:N.D3,i:'b',d:6.0,v:0.11,t:'triangle'},{n:N.A3,i:'b',d:6.0,v:0.08,t:'triangle'},
+                    {n:N.F3,i:'b',d:6.0,v:0.07,t:'triangle'},{n:null}]},
+    17:{bpm:52,bar:[{n:N.D3,i:'p',d:2.6,v:0.38},{n:N.F3,i:'p',d:2.0,v:0.24},{n:N.A3,i:'p',d:2.4,v:0.28},{n:N.D3,i:'b',d:3.6,v:0.11},
+                    {n:N.C4,i:'p',d:2.2,v:0.24},{n:N.A3,i:'p',d:1.8,v:0.20},{n:null},{n:null}]},
+    18:{bpm:44,bar:[{n:N.D3,i:'b',d:3.4,v:0.13},{n:N.A3,i:'b',d:3.4,v:0.11},{n:N.D4,i:'b',d:3.4,v:0.09},
+                    {n:N.F4,i:'b',d:3.4,v:0.08},{n:N.C4,i:'b',d:3.4,v:0.08},{n:null}]},
+    19:{bpm:58,bar:[{n:N.D3,i:'p',d:2.4,v:0.40},{n:N.A3,i:'p',d:1.8,v:0.26},{n:N.D4,i:'p',d:2.2,v:0.30},{n:N.F4,i:'b',d:3.4,v:0.11},
+                    {n:N.C4,i:'p',d:2.2,v:0.26},{n:N.A3,i:'p',d:1.8,v:0.22},{n:N.D3,i:'b',d:4.4,v:0.12},{n:null}]},
+    20:{bpm:24,bar:[{n:N.D3,i:'p',d:4.0,v:0.44},{n:N.A3,i:'p',d:3.6,v:0.34},{n:N.D4,i:'p',d:3.6,v:0.32},
+                    {n:N.Fs4,i:'p',d:6.0,v:0.30}]}
+  };
+
+  // The film's budgeted silences: scene number, local start, local end.
+  var SILENCE=[[12,40,47],[16,25,31],[19,18,24]];
+
+  function playNote(ev,when){
+    if(ev.i==='p') piano(ev.n,when,ev.d,ev.v);
+    else if(ev.i==='b') bow(ev.n,when,ev.d,ev.v,ev.t);
+    else if(ev.i==='g') glass(ev.n,when,ev.d,ev.v);
+    else if(ev.i==='d') drum(when,ev.v);
+    else if(ev.i==='m') metal(ev.n,when,ev.d,ev.v);
+  }
+
+  var schedTo=0, lastAudioT=-1;
+  function audioTick(filmT,dt,rate,isPlaying){
+    if(!AC||!audioOn) return;
+    var i=sceneAt(Math.min(filmT,TOTAL-0.001)), s=SCENES[i], lt=filmT-starts[i];
+
+    // ambience follows the scene
+    if(i!==curAmb){
+      var a=AMB[s.n]||{f:400,q:0.6,g:0.2,dr:[],dg:0};
+      var t0=AC.currentTime, XF=0.5;
+      ambB.g.gain.cancelScheduledValues(t0);
+      ambB.g.gain.setValueAtTime(ambB.g.gain.value,t0);
+      ambB.g.gain.linearRampToValueAtTime(0,t0+XF);
+      var tmp=ambA; ambA=ambB; ambB=tmp;
+      ambB.f.frequency.setValueAtTime(a.f,t0);
+      ambB.f.Q.setValueAtTime(a.q,t0);
+      ambB.g.gain.cancelScheduledValues(t0);
+      ambB.g.gain.setValueAtTime(ambB.g.gain.value,t0);
+      ambB.g.gain.linearRampToValueAtTime(isPlaying?a.g:0,t0+XF);
+      drone.forEach(function(dn,k){
+        var f=(a.dr&&a.dr[k])||0;
+        if(f){ dn.o.frequency.setTargetAtTime(f,t0,0.3); dn.g.gain.linearRampToValueAtTime(isPlaying?a.dg:0,t0+XF); }
+        else dn.g.gain.linearRampToValueAtTime(0,t0+XF);
+      });
+      // Resync the note scheduler to the new scene. Without this the lookahead
+      // has already run past the scene start and beat 0 never sounds.
+      schedTo=starts[i]-0.0001;
+      curAmb=i;
+    }
+
+    // budgeted silence, and the pause state, both ride the master gain
+    var quiet=false;
+    for(var q=0;q<SILENCE.length;q++)
+      if(s.n===SILENCE[q][0] && lt>=SILENCE[q][1] && lt<=SILENCE[q][2]) quiet=true;
+    var target = (!isPlaying||filmT>=TOTAL) ? 0 : (quiet ? userVol*0.02 : userVol);
+    master.gain.setTargetAtTime(target,AC.currentTime,0.18);
+
+    if(!isPlaying||filmT>=TOTAL){ lastAudioT=filmT; schedTo=filmT; return; }
+
+    // a jump means a seek: resync rather than firing everything in between
+    if(lastAudioT<0 || Math.abs(filmT-lastAudioT)>0.6){ lastAudioT=filmT; schedTo=filmT; }
+
+    // one-shot effects crossed since the previous frame
+    var list=SFX[s.n]||[], prevLt=lt-(filmT-lastAudioT);
+    for(var e=0;e<list.length;e++){
+      if(list[e][0]>prevLt && list[e][0]<=lt){
+        var fn=FX[list[e][1]];
+        if(fn && !quiet) fn(AC.currentTime+0.01);
+      }
+    }
+
+    // music, scheduled a short way ahead of the playhead
+    var LOOK=0.35, m=MUS[s.n];
+    if(m){
+      var beat=60/m.bpm, barLen=beat*m.bar.length;
+      var until=filmT+LOOK*rate;
+      var startBeat=Math.floor((schedTo-starts[i])/beat);
+      var endBeat=Math.floor((until-starts[i])/beat);
+      for(var bI=startBeat;bI<=endBeat;bI++){
+        if(bI<0) continue;
+        var ev=m.bar[((bI%m.bar.length)+m.bar.length)%m.bar.length];
+        if(!ev||ev.n===null) continue;
+        var evLocal=bI*beat, evFilm=starts[i]+evLocal;
+        if(evLocal>=s.d) continue;
+        if(evFilm<=schedTo||evFilm>until) continue;   // fire each beat exactly once
+        var when=AC.currentTime+(evFilm-filmT)/rate;
+        if(when<AC.currentTime) when=AC.currentTime+0.005;
+        var inQuiet=false;
+        for(var z=0;z<SILENCE.length;z++)
+          if(s.n===SILENCE[z][0] && evLocal>=SILENCE[z][1] && evLocal<=SILENCE[z][2]) inQuiet=true;
+        if(!inQuiet) playNote(ev,when);
+      }
+      schedTo=until;
+    } else schedTo=filmT;
+    lastAudioT=filmT;
+  }
+  function audioStop(){
+    if(!AC) return;
+    master.gain.setTargetAtTime(0,AC.currentTime,0.12);
+    lastAudioT=-1;
+  }
+  // ================= /AUDIO =================
+
   // ---------- player ----------
 
   var time=0, playing=false, rate=1, last=0;
@@ -781,9 +1138,10 @@
     var dt=(ts-last)/1000; last=ts;
     if(playing){
       time+=dt*rate;
-      if(time>=TOTAL){ time=TOTAL; playing=false; playBtn.textContent='Replay'; }
+      if(time>=TOTAL){ time=TOTAL; playing=false; playBtn.textContent='Replay'; audioStop(); }
     }
     render(false);
+    audioTick(time,dt,rate,playing);
     requestAnimationFrame(loop);
   }
 
@@ -794,7 +1152,19 @@
   playBtn.addEventListener('click',function(){
     if(time>=TOTAL) time=0;
     playing=!playing; playBtn.textContent=playing?'Pause':'Play';
+    // Audio can only be created inside a user gesture, so it starts here.
+    if(playing){ initAudio(); if(AC && AC.state==='suspended') AC.resume(); curAmb=-1; lastAudioT=-1; }
+    else audioStop();
   });
+
+  var soundBtn=document.getElementById('sound'), volEl=document.getElementById('vol');
+  soundBtn.addEventListener('click',function(){
+    audioOn=!audioOn;
+    soundBtn.textContent=audioOn?'Sound on':'Sound off';
+    soundBtn.setAttribute('aria-pressed',String(audioOn));
+    if(!audioOn) audioStop(); else { curAmb=-1; lastAudioT=-1; }
+  });
+  volEl.addEventListener('input',function(){ userVol=parseFloat(volEl.value); });
   document.getElementById('prev').addEventListener('click',function(){
     var i=sceneAt(time); if(time-starts[i]<1.2 && i>0) i--; time=starts[i]; render(true);
   });
