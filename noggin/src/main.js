@@ -32,11 +32,18 @@
     stretchGlow: [0.34, 0.16, 0.10]
   };
 
+  /* The room. Deep rather than dark: the being is a pearl with a light in it,
+     and a pearl needs somewhere to be the brightest thing. A pale room would
+     make it grey and would put white text on white — so the value stays low
+     and the light goes into the horizon instead, where it can pour along the
+     ground and give the shafts and the dust something to be made of.
+
+     Authored in linear light, like every other colour here. */
   const SKY = {
-    top: [0.055, 0.065, 0.058],
-    bottom: [0.014, 0.017, 0.015],
-    glowColor: [0.14, 0.15, 0.12],
-    glow: 1.0
+    top: [0.020, 0.026, 0.042],        /* cool and deep overhead */
+    bottom: [0.030, 0.030, 0.038],
+    glowColor: [0.150, 0.128, 0.098],  /* the warm light along the horizon */
+    glow: 1.25
   };
 
   /* The being. Core is what glows through the middle, focus is the bright
@@ -47,9 +54,22 @@
     pool: [0.035, 0.058, 0.10]
   };
 
+  /* Polished, not gridded. `grid` is now the colour of the sheen across it —
+     kept under the old name because it is still the one line of light on the
+     ground, it is just a reflection now instead of a ruler. */
   const FLOOR = {
-    grid: [0.055, 0.060, 0.052],
-    base: [0.026, 0.029, 0.025]
+    grid: [0.070, 0.068, 0.062],
+    base: [0.019, 0.021, 0.028],
+    /* Derived, never typed. The far floor has to be exactly the colour the
+       backdrop is at the horizon or there is a hard line across the picture
+       where one ends and the other begins — which is a worse tell than the
+       grid was, because a grid at least looks deliberate. Setting it by hand
+       got it half a stop out and drew a straight edge across the room. */
+    horizon: [
+      SKY.bottom[0] + SKY.glowColor[0] * 0.62,
+      SKY.bottom[1] + SKY.glowColor[1] * 0.62,
+      SKY.bottom[2] + SKY.glowColor[2] * 0.62
+    ]
   };
 
   /* What it is currently made of. Asked whether it is a solid, a liquid or a

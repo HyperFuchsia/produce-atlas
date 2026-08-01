@@ -77,17 +77,65 @@ uniform float uGlow;
 out vec4 oColor;
 ${COMMON}
 
+/* The room he is in.
+
+   A flat dark gradient with a grid on the floor is the default viewport of
+   every 3-D tool ever made, and everybody has seen it. Nothing else about
+   this looks unfinished, so the backdrop should not be the one thing that
+   announces the whole scene came out of a modelling package with the lights
+   left on default.
+
+   What replaces it is air. A warm light lying along the horizon that the
+   floor can dissolve into so there is no edge to find, three soft columns of
+   it coming down from above, and dust drifting through them — which is the
+   cheapest and oldest trick there is for making a volume read as a volume
+   rather than as a backdrop. All of it is a function of the view direction
+   and the clock; there is nothing to load. */
 void main() {
   vec2 ndc = vUV * 2.0 - 1.0;
   vec3 dir = normalize(uRayF + uRayR * ndc.x + uRayU * ndc.y);
 
-  // Seamless sweep: a lit backdrop, not a sky.
   float h = dir.y * 0.5 + 0.5;
   vec3 col = mix(uBotColor, uTopColor, pow(h, 0.9));
 
-  // Soft pool of light behind the subject.
+  /* The horizon itself is lit. This is the band the floor fades into, and
+     matching the two is what removes the ring where the ground used to
+     visibly stop. */
+  col += uGlowColor * exp(-abs(dir.y) * 9.0) * 0.62;
+
+  /* Columns of light. Not god rays from a source — light that is simply
+     already in the room, leaning, drifting slowly enough that you are never
+     quite sure it moved. */
+  float shafts = 0.0;
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i);
+    float x = ndc.x * 1.5 - (fi - 1.0) * 0.62
+      + sin(uTime * 0.043 + fi * 2.3) * 0.30 + dir.y * 0.35;
+    float w = 0.20 + fi * 0.07;
+    shafts += exp(-x * x / (w * w)) * smoothstep(-1.0, 0.85, ndc.y)
+      * (0.75 + 0.25 * sin(uTime * 0.07 + fi));
+  }
+  col += uGlowColor * shafts * 0.13;
+
+  /* And the pool of light he stands in. */
   float d = length(ndc * vec2(0.85, 1.0));
   col += uGlowColor * uGlow * pow(max(0.0, 1.0 - d * 0.55), 3.5);
+
+  /* Dust. Three layers at different depths, each drifting at its own speed,
+     which is the whole of the parallax and all it needs. */
+  float motes = 0.0;
+  for (int i = 0; i < 3; i++) {
+    float fi = float(i) + 1.0;
+    vec2 q = ndc * (5.0 * fi) + vec2(uTime * 0.020 * fi, uTime * 0.031 * fi);
+    vec2 cell = floor(q);
+    vec2 f = fract(q) - 0.5;
+    float r = hash12(cell + fi * 13.7);
+    vec2 off = (vec2(r, hash12(cell + fi * 71.3)) - 0.5) * 0.62;
+    float dd = length(f - off);
+    /* Only where there is light for them to catch. */
+    motes += smoothstep(0.022, 0.0, dd) * (0.35 + 0.65 * r) / (fi * fi);
+  }
+  col += vec3(0.86, 0.90, 1.0) * motes * (0.030 + shafts * 0.075);
 
   oColor = vec4(col, 1.0);
 }`;
@@ -628,6 +676,8 @@ in vec4 vLPos;
 uniform vec3 uEye;
 uniform vec3 uGridColor, uFloorColor;
 uniform vec3 uPoolPos, uPoolColor;
+uniform vec3 uHorizon;
+uniform vec3 uLightDir;
 uniform highp sampler2DShadow uShadow;
 uniform vec2 uShadowTexel;
 uniform float uTime;
@@ -635,18 +685,21 @@ uniform float uFade;      /* how far the floor reaches before it goes */
 out vec4 oColor;
 ${COMMON}
 
-float gridMask(vec2 p, float step) {
-  vec2 q = p / step;
-  vec2 g = abs(fract(q - 0.5) - 0.5) / max(fwidth(q), 1e-5);
-  return 1.0 - min(min(g.x, g.y), 1.0);
-}
+/* No grid.
 
+   A grid on the ground is the single loudest thing in a default viewport, and
+   it was doing real work here — it gave the eye something to measure scale
+   against. What replaces it has to do that job without saying "Blender": a
+   dark polished floor, a long soft sheen across it, and the being's own
+   reflection stretched towards you. A reflection reads distance and scale as
+   well as a grid does and it belongs in the picture.
+
+   And the far edge dissolves into the horizon colour rather than into black,
+   because fading a lit floor to black on a lit backdrop leaves a visible ring
+   on the ground exactly where the maths ran out. */
 void main() {
   float d = length(vWPos.xz);
-  /* The room grows with the subject: a 4.5 m car standing on a floor that
-     runs out at 2.6 m looks like it is parked on a rug. */
-  float fade = smoothstep(uFade, uFade * 0.15, d);
-  if (fade <= 0.001) discard;
+  float fade = smoothstep(uFade, uFade * 0.10, d);
 
   vec3 p = vLPos.xyz / vLPos.w * 0.5 + 0.5;
   float sh = 1.0;
@@ -660,17 +713,38 @@ void main() {
     sh = s / 25.0;
   }
 
-  /* One line per 10 cm up close; coarser once the shot is wide enough that
-     the fine grid would alias into a haze. */
-  float step0 = uFade > 60.0 ? 10.0 : (uFade > 26.0 ? 5.0 : 1.0);
-  float g = gridMask(vWPos.xz, step0);
-  vec3 col = uFloorColor + uGridColor * g;
-  /* A luminous body should light the table under it, and a hard black
-     shadow under something emissive reads as a contradiction. */
-  col *= mix(0.45, 1.0, sh);
-  float pd = length(vWPos.xz - uPoolPos.xz);
-  col += uPoolColor * exp(-pd * pd * 0.16);
-  col *= fade;
+  vec3 col = uFloorColor;
+
+  /* Polish. A broad specular lobe off a horizontal surface, which is what
+     tells you the floor is a floor and not a fog. */
+  vec3 V = normalize(uEye - vWPos);
+  vec3 H = normalize(V + normalize(uLightDir));
+  float ndh = max(0.0, H.y);
+  col += uGridColor * pow(ndh, 220.0) * 6.0;
+  /* and the wide sheen underneath it */
+  col += uGridColor * pow(ndh, 9.0) * 0.35;
+
+  /* His reflection, smeared away from him towards the eye — which is what a
+     reflection in a slightly rough floor does. */
+  vec2 rel = vWPos.xz - uPoolPos.xz;
+  vec2 toEye = normalize(uEye.xz - uPoolPos.xz + vec2(1e-5));
+  float along = dot(rel, toEye);
+  float across = dot(rel, vec2(-toEye.y, toEye.x));
+  float refl = exp(-across * across * 0.9) * exp(-max(0.0, along) * 0.42)
+    * smoothstep(-1.4, 0.0, along);
+  col += uPoolColor * refl * 1.5;
+
+  /* The pool of light he casts, which is not the same thing as his
+     reflection and reads as bounce rather than mirror. */
+  float pd = length(rel);
+  col += uPoolColor * exp(-pd * pd * 0.16) * 0.8;
+
+  /* A luminous body should light the floor under it, and a hard black shadow
+     under something emissive reads as a contradiction. */
+  col *= mix(0.52, 1.0, sh);
+
+  /* Into the horizon, with nothing to mark where it went. */
+  col = mix(uHorizon, col, fade);
 
   oColor = vec4(col, 1.0);
 }`;

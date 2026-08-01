@@ -542,6 +542,10 @@
       gl.uniform3fv(pr.u.uEye, state.eye);
       gl.uniform3fv(pr.u.uGridColor, state.floor.grid);
       gl.uniform3fv(pr.u.uFloorColor, state.floor.base);
+      /* The colour the ground has to dissolve into, so the two agree and
+         there is no ring where the floor stops. */
+      gl.uniform3fv(pr.u.uHorizon, state.floor.horizon);
+      gl.uniform3fv(pr.u.uLightDir, state.light.dir);
       gl.uniform1f(pr.u.uTime, state.time);
       gl.uniform1f(pr.u.uFade, state.floorFade || 26);
       gl.uniform3fv(pr.u.uPoolPos, state.poolPos);
