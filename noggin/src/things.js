@@ -21,36 +21,44 @@
 
       /* A lofted hull rather than a solid of revolution. The roofline and the
          floorpan are separate curves, front to back, which is the whole
-         difference between a car and a loaf of bread. */
+         difference between a car and a loaf of bread.
+
+         The silhouette is lifted from car3d.js (MIT), a procedural three.js
+         car — not its code, which is built on a renderer this project does
+         not have, but its authored profiles: thirty-odd control points a side
+         where this had ten, at real GT proportions. Resampled once, at
+         authoring time, through that file's own monotone cubic rather than
+         our Catmull-Rom, because Catmull-Rom overshoots between control
+         points and a two millimetre overshoot on a car body reads as a dent.
+         Sampling it there and baking the result means the runtime is
+         unchanged and the shape is the one that was drawn.
+
+         One shell now, roof included, where it used to be a lower body with a
+         separate glasshouse on top. */
       kind: 'hull',
-      lengthCm: 450, widthCm: 180, heightCm: 145,
-      /* The lower body only: sills, shoulder, and a beltline at about 90 cm.
-         Everything above that is the glasshouse, which is a separate shell.
-         rear bumper ....................................... front bumper */
-      top: [0.46, 0.58, 0.62, 0.64, 0.65, 0.65, 0.63, 0.58, 0.52, 0.44],
-      bottom: [0.22, 0.14, 0.11, 0.10, 0.10, 0.10, 0.10, 0.11, 0.14, 0.22],
-      wide: [0.66, 0.90, 0.98, 1.00, 1.00, 1.00, 0.99, 0.94, 0.84, 0.62],
-      /* sill ......... shoulder ......... belt: widest in the middle */
-      taper: [0.84, 0.96, 1.00, 0.99, 0.93],
+      lengthCm: 475, widthCm: 192, heightCm: 124.3,
+      /* rear bumper ....................................... front bumper */
+      top: [0.316, 0.631, 0.667, 0.682, 0.697, 0.719, 0.758, 0.805, 0.850,
+        0.891, 0.927, 0.956, 0.977, 0.990, 0.997, 0.999, 1.000, 0.997, 0.986,
+        0.960, 0.916, 0.855, 0.784, 0.718, 0.694, 0.692, 0.691, 0.688, 0.683,
+        0.662, 0.634, 0.598, 0.319],
+      bottom: [0.280, 0.056, 0.039, 0.032, 0.027, 0.024, 0.022, 0.021, 0.020,
+        0.019, 0.018, 0.018, 0.017, 0.017, 0.016, 0.016, 0.016, 0.016, 0.016,
+        0.017, 0.017, 0.018, 0.018, 0.018, 0.019, 0.019, 0.019, 0.018, 0.015,
+        0.010, 0.000, 0.002, 0.280],
+      wide: [0.021, 0.837, 0.926, 0.965, 0.985, 0.996, 0.999, 0.999, 0.992,
+        0.984, 0.975, 0.969, 0.966, 0.963, 0.962, 0.962, 0.962, 0.963, 0.964,
+        0.965, 0.968, 0.972, 0.977, 0.983, 0.990, 0.993, 0.995, 0.992, 0.983,
+        0.965, 0.939, 0.888, 0.021],
+      /* Tumblehome: sill ....... shoulder ....... roof. Taken across the
+         middle of the car, where the greenhouse actually is. */
+      taper: [0.862, 0.908, 0.954, 1.000, 0.908, 0.816, 0.725],
       corner: 6.0,
       color: [0.17, 0.028, 0.026],
 
-      cabin: {
-        kind: 'hull',
-        lengthCm: 252, widthCm: 142, heightCm: 56,
-        atXCm: -16, atYCm: 40,
-        /* backlight ......... roof ......... windscreen */
-        top: [0.22, 0.68, 0.92, 1.00, 1.00, 0.97, 0.84, 0.50, 0.16, 0.04],
-        bottom: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        wide: [0.42, 0.80, 0.95, 1.00, 1.00, 1.00, 0.97, 0.86, 0.60, 0.32],
-        taper: [1.00, 0.97, 0.91, 0.82, 0.70],
-        corner: 4.5,
-        color: [0.030, 0.038, 0.052]
-      },
-
       wheels: {
-        diameterCm: 64, widthCm: 22, atXCm: 143, atYCm: -40.5, atZCm: 76,
-        hubCm: 38,
+        diameterCm: 70.6, widthCm: 25.5, atXCm: 143.5, atYCm: -26.9, atZCm: 83.1,
+        hubCm: 40,
         color: [0.022, 0.022, 0.025], hubColor: [0.38, 0.40, 0.43]
       },
 
