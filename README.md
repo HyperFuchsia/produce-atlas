@@ -96,46 +96,18 @@ Materially it is painted steel, not flat fill: a specular band raked across the 
 with the outer inches falling into shadow, two polished corner posts standing at the
 front edges, a machined bezel around the reel window, and pressed recesses in the
 flanks that are dark along the top inner edge and bright along the bottom — which is
-what makes an eye read a recess rather than a rectangle. Three things are lit and
-throw light onto the paint around them: the marquee, the reel window and the lower
-notice rail.
+what makes an eye read a recess rather than a rectangle. The flanks' outer edges take
+a cool rim so the silhouette survives a dark room. Three panels are lit and throw
+light onto the paint around them: the marquee, the reel window and the lower notice
+rail. Over the drums is glass — a specular sweep that travels as you orbit, a soft
+reflection of the room high on the pane — and each reel cell is shaded as a drum
+face, lit across its crown and falling off at both shoulders.
 
-### The fourth axis
-
-The cabinet is not a box but a **4-orthotope**, 420 × 1036 × 364 × 300; the machine
-you orbit is one of its two cubic cells. The **zw dial** beneath the view bar (or
-`[` and `]`) rotates the whole apparatus in the plane spanned by depth and w. The
-wireframe is the real projection — 16 vertices, 32 edges, each vertex divided by
-(K−w) so the far cell shrinks inside the near one and the joining struts read as a
-frustum. At **90°** the cabinet is edge-on to 3-space and thinnest; at **180°** it is
-full size again but you are looking at the *other* cell, having turned through
-itself. Return to 3-D eases the dial back to zero. The frame is drawn on two
-canvases, behind and in front of the machine, and split by the depth of the
-cabinet's own front plane — so the solid occludes the wires that pass behind it
-instead of being scribbled over.
-
-The solid cabinet takes only the cell's *mean* projected scale and depth, because a
-CSS transform is affine and cannot shear a rectangle into a trapezoid — the
-wireframe carries the true 4-D geometry, and the manual says so. Nothing in the
-physics or the register depends on the dial.
-
-Top to bottom the front carries a lit **marquee**, a **schedule of dispositions**
-printed on the paytable glass (each species, its disposition and its detector
-efficiency, generated from the same table the machine decides by), the **reel
-window** with payline arrows, the **display band** of status flags, message line and
-seven-segment counters, a **control deck** sloping toward the player on a real 52°
-rotation with the four keys standing proud of it, the **belly glass** carrying the
-office seal and the notice, and a **certificate tray** at the base that jumps to the
-latest determination. The lever is mounted on the right flank at deck height.
-
-The back is modelled too: rating plate, compliance mark reading *not a measuring
-instrument, not for use in evidence*, a ribbed access panel, power inlet, vents and
-four slotted screws. The sides carry vent grilles and the lever boss; the caps carry
-vents and feet.
-
-The reels are continuous strips: each window shows three symbol rows at a fractional
-position, eases to a stop with a slight overshoot, and only the payline row carries
-the ghost-pixel wash.
+**Grounding.** At a 14° camera a real floor plane is edge-on and carries nothing, so
+the machine is grounded the way a product render does it at that angle: a hard
+contact core, a soft ambient shadow, and a reflection of the lit panels coming back
+up off the floor — all in the plane of the page, and all sized from the machine's own
+footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 
 ### Interface
 

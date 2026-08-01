@@ -131,22 +131,6 @@ h1{
 .doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 
 /* the hypercabinet's frame, drawn over the stage */
-#hyperframe{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
-#hyperframeF{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
-.wbar{
-  display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:min(760px,100%);
-  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
-  border-top:1px solid var(--line);padding-top:11px;
-}
-.wlabel{white-space:nowrap}
-.wread{white-space:nowrap;color:var(--text);font-variant-numeric:tabular-nums;min-width:17ch}
-#wDial{flex:1;min-width:150px;-webkit-appearance:none;appearance:none;height:3px;background:var(--line);outline:none}
-#wDial::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:15px;height:22px;border-radius:2px;
-  cursor:grab;background:linear-gradient(180deg,#E6EBE8,#A9AFAC);box-shadow:0 1px 3px rgba(0,0,0,.8)}
-#wDial::-moz-range-thumb{width:15px;height:22px;border:0;border-radius:2px;cursor:grab;
-  background:linear-gradient(180deg,#E6EBE8,#A9AFAC);box-shadow:0 1px 3px rgba(0,0,0,.8)}
-#wDial:focus-visible{outline:2px solid var(--bright);outline-offset:4px}
-
 /* ---------- surfaces: grain, wear, light ---------- */
 :root{
   --grain:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='140' height='140' filter='url(%23n)' opacity='0.55'/></svg>");
@@ -174,33 +158,60 @@ h1{
   background-image:var(--scuff);background-size:260px 260px;opacity:.05;mix-blend-mode:soft-light;
 }
 
-/* the floor it stands on */
-.floor{
-  position:absolute;left:50%;top:100%;width:1180px;height:1180px;margin-left:-590px;margin-top:-590px;
-  transform:rotateX(90deg);pointer-events:none;z-index:0;
-  background:
-    radial-gradient(ellipse 22% 18% at 50% 50%, rgba(178,186,180,.42), rgba(178,186,180,0) 62%),
-    repeating-linear-gradient(0deg, rgba(184,192,186,.22) 0 1px, transparent 1px 72px),
-    repeating-linear-gradient(90deg, rgba(184,192,186,.22) 0 1px, transparent 1px 72px),
-    radial-gradient(ellipse 42% 36% at 50% 50%, rgba(104,112,107,.2), rgba(104,112,107,0) 72%);
-  -webkit-mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
-  mask-image:radial-gradient(ellipse 40% 34% at 50% 50%, #000 0%, rgba(0,0,0,.62) 44%, transparent 78%);
+/* ---------- the ground ---------- */
+/* At a 14° camera a real floor plane is edge-on and carries nothing, so the
+   grounding is done the way a product render does it at this angle: a hard
+   contact core, a soft ambient shadow and a reflection smear, all in the plane
+   of the page, sized from the machine's own silhouette as it turns.
+   --gw is the width of the rotated footprint: w·|cos yaw| + d·|sin yaw|. */
+.ground{
+  position:absolute;left:50%;top:var(--gy,100%);width:var(--gw,420px);height:0;
+  margin-left:calc(-0.5 * var(--gw,420px));pointer-events:none;z-index:0;
 }
-.contact{
-  position:absolute;left:50%;top:100%;width:520px;height:400px;margin-left:-260px;margin-top:-200px;
-  transform:rotateX(90deg);pointer-events:none;z-index:1;
-  background:radial-gradient(ellipse 42% 40% at 50% 50%, rgba(0,0,0,.92), rgba(0,0,0,.55) 46%, rgba(0,0,0,0) 74%);
-  filter:blur(7px);
+/* the reflection: the lit panels coming back up off a hard floor */
+.ground .refl{
+  position:absolute;left:-3%;right:-3%;top:-6px;height:168px;
+  /* brightest where the lit panels are, and the marquee's own bright core
+     lands a little left of centre, the way the machine is actually lit */
+  background:
+    radial-gradient(ellipse 30% 62% at 43% 0%, rgba(238,243,226,.34), rgba(238,243,226,0) 74%),
+    radial-gradient(ellipse 46% 78% at 52% 0%, rgba(184,202,168,.20), rgba(184,202,168,0) 76%),
+    linear-gradient(180deg, rgba(206,216,196,.13) 0%, rgba(150,164,144,.06) 34%, rgba(0,0,0,0) 78%);
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent),
+    linear-gradient(180deg,#000 0%,rgba(0,0,0,.45) 46%,transparent 88%);
+  mask-image:linear-gradient(90deg,transparent,#000 20%,#000 80%,transparent),
+    linear-gradient(180deg,#000 0%,rgba(0,0,0,.45) 46%,transparent 88%);
+  -webkit-mask-composite:source-in;mask-composite:intersect;
+  filter:blur(8px);
+}
+/* the ambient shadow it sits in */
+.ground .amb{
+  position:absolute;left:-46%;right:-46%;top:-42px;height:150px;border-radius:50%;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.82), rgba(0,0,0,0) 72%);
+  filter:blur(16px);
+}
+/* and the hard line where the plinth actually touches */
+.ground .core{
+  position:absolute;left:1%;right:1%;top:-13px;height:26px;border-radius:50%;
+  background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,1), rgba(0,0,0,.55) 58%, rgba(0,0,0,0) 78%);
+  filter:blur(5px);
 }
 
 /* ---------- the cabinet ---------- */
 .device{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:12px 0 40px}
+/* the room: a far wall that lifts very slightly toward the horizon behind the
+   machine, and the glow the lit panels throw back onto it */
 .device::before{
   content:"";position:absolute;left:50%;top:-40px;width:1500px;height:calc(100% + 80px);
   transform:translateX(-50%);pointer-events:none;z-index:0;
   background:
-    radial-gradient(ellipse 30% 34% at 50% 42%, rgba(126,136,130,.07), rgba(126,136,130,0) 72%),
-    radial-gradient(ellipse 46% 56% at 50% 46%, rgba(8,10,10,.95) 0%, rgba(8,10,10,.82) 40%, rgba(8,10,10,0) 74%);
+    radial-gradient(ellipse 24% 18% at 50% 24%, rgba(158,170,158,.10), rgba(158,170,158,0) 72%),
+    radial-gradient(ellipse 34% 30% at 50% 50%, rgba(128,142,128,.075), rgba(128,142,128,0) 74%),
+    radial-gradient(ellipse 30% 14% at 50% 76%, rgba(120,132,120,.05), rgba(120,132,120,0) 74%),
+    linear-gradient(180deg,
+      rgba(4,5,5,.9) 0%, rgba(10,13,12,.5) 34%, rgba(16,20,19,.34) 62%,
+      rgba(12,15,14,.5) 78%, rgba(3,4,4,.95) 100%),
+    radial-gradient(ellipse 50% 58% at 50% 48%, rgba(8,10,10,.9) 0%, rgba(8,10,10,.7) 44%, rgba(8,10,10,0) 78%);
 }
 .device > *{position:relative;z-index:1}
 .stage{
@@ -217,8 +228,7 @@ h1{
 .rig{
   position:relative;z-index:1;width:var(--cab-w);height:var(--cab-h);transform-style:preserve-3d;
   transform-origin:50% 0;margin-top:var(--lift,0px);
-  transform:scale(calc(var(--fit,1) * var(--w4,1))) translateZ(var(--z4,0px))
-            rotateX(var(--px,14deg)) rotateY(var(--py,-11deg));
+  transform:scale(var(--fit,1)) rotateX(var(--px,14deg)) rotateY(var(--py,-11deg));
 }
 /* the shell is built with its front at z=0 and its back at -depth, so without
    this the rig would swing about the front glass instead of turning about its
@@ -272,8 +282,12 @@ h1{
     linear-gradient(177deg,#454B49 0%,#3A403E 8%,#333937 44%,#272C2B 82%,#191E1D 100%);
 }
 /* the seam where a flank meets the front is the brightest line on the machine */
-.face.side.sl{box-shadow:inset -2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
-.face.side.sr{box-shadow:inset 2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
+/* the seam where a flank meets the front is the brightest line on the machine;
+   the opposite edge takes a cool rim so the silhouette survives a dark room */
+.face.side.sl{box-shadow:inset -2px 0 0 rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.16),
+  inset 3px 0 0 rgba(196,212,206,.16), inset 7px 0 10px -6px rgba(196,212,206,.14)}
+.face.side.sr{box-shadow:inset 2px 0 0 rgba(255,255,255,.22), inset 0 1px 0 rgba(255,255,255,.16),
+  inset -3px 0 0 rgba(196,212,206,.16), inset -7px 0 10px -6px rgba(196,212,206,.14)}
 /* a pressed panel, so the flank reads as formed sheet rather than a slab:
    dark along the top inner edge and light along the bottom is what makes an
    eye read a recess rather than a rectangle drawn on */
@@ -331,11 +345,6 @@ h1{
 .feet{position:absolute;top:34%;left:7%;right:7%;height:16px;
   background:linear-gradient(90deg,#0B0E0D 0 60px,transparent 60px calc(100% - 60px),#0B0E0D calc(100% - 60px))}
 
-.deskshadow{
-  position:absolute;left:14%;right:14%;bottom:-16px;height:42px;border-radius:50%;
-  background:radial-gradient(ellipse at center,rgba(0,0,0,.85),rgba(0,0,0,0) 70%);
-  filter:blur(12px);transform:scaleX(var(--shadowS,1));pointer-events:none;
-}
 .viewbar{position:relative;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   width:min(760px,100%);font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--dim)}
@@ -464,7 +473,32 @@ h1{
 .payline-rule::after{right:2px;border-right:7px solid #D2D8D0}
 .payline-tag{position:absolute;left:14px;top:calc(50% - 16px);z-index:5;font-family:var(--mono);
   font-size:6.5px;letter-spacing:.2em;text-transform:uppercase;color:#C3CBBC;pointer-events:none;opacity:.85}
-.reelglass .sheen{border-radius:0;z-index:6}
+/* glass over the drums: a specular sweep that travels as you orbit, a soft
+   reflection of the room high on the pane, and the pane's own edges */
+.reelglass .sheen{
+  position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:0;
+  background:
+    linear-gradient(101deg,
+      rgba(255,255,255,0) calc(var(--sheen,50%) - 30%),
+      rgba(226,236,224,.075) calc(var(--sheen,50%) - 9%),
+      rgba(226,236,224,.115) calc(var(--sheen,50%) - 2%),
+      rgba(226,236,224,.03) calc(var(--sheen,50%) + 7%),
+      rgba(255,255,255,0) calc(var(--sheen,50%) + 26%)),
+    linear-gradient(178deg,
+      rgba(206,220,204,.10) 0%, rgba(206,220,204,.03) 9%, rgba(0,0,0,0) 22%),
+    radial-gradient(ellipse 120% 40% at 50% 104%, rgba(0,0,0,.34), rgba(0,0,0,0) 70%);
+  box-shadow:inset 0 0 0 1px rgba(214,226,210,.10);
+}
+/* each cell is a drum face: lit across its crown, falling off at both shoulders */
+.cell::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:2;border-radius:2px;
+  background:
+    linear-gradient(180deg,
+      rgba(0,0,0,.5) 0%, rgba(0,0,0,.16) 11%, rgba(255,255,255,.045) 44%,
+      rgba(255,255,255,.045) 56%, rgba(0,0,0,.16) 89%, rgba(0,0,0,.5) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.24) 0%, rgba(0,0,0,0) 18%,
+      rgba(0,0,0,0) 82%, rgba(0,0,0,.24) 100%);
+}
 
 /* status strip under the reels */
 .statusstrip{background:#0B0E0D;border-top:1px solid #000;padding:6px 10px 7px;
@@ -826,11 +860,6 @@ h1{
 .entry p{margin:0;font-size:13.5px;color:var(--dim)}
 .entry b{color:var(--text);font-weight:600}
 
-.entry.wide{grid-column:1/-1}
-.entry.wide .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 26px}
-@media (max-width:900px){.entry.wide .cols{grid-template-columns:1fr;gap:9px}}
-.entry.wide .cols p{margin:0}
-
 .warn{grid-column:1/-1;padding:0;background:linear-gradient(175deg,var(--paper) 0%,var(--paper-2) 100%);color:var(--paper-ink)}
 .warn-head{padding:12px 18px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
 .warn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 26px;padding:10px 18px 16px}
@@ -917,6 +946,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
   <section class="device">
     <div class="stage" id="stage" tabindex="0" role="group" aria-label="Apparatus QA-77 — drag or use arrow keys to turn the cabinet">
+      <span class="ground" id="ground" aria-hidden="true">
+        <span class="refl"></span><span class="amb"></span><span class="core"></span>
+      </span>
       <div class="rig" id="rig">
         <div class="box" id="box">
 
@@ -1093,13 +1125,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             <span class="lever-arm"><span class="lever-ball"></span></span>
           </button>
 
-          <span class="floor" aria-hidden="true"></span>
-          <span class="contact" aria-hidden="true"></span>
         </div>
       </div>
-      <span class="deskshadow" aria-hidden="true"></span>
-      <canvas id="hyperframe" aria-hidden="true"></canvas>
-      <canvas id="hyperframeF" aria-hidden="true"></canvas>
 
     </div>
 
@@ -1113,13 +1140,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       </span>
     </div>
 
-    <div class="wbar">
-      <label class="wlabel" for="wDial">Fourth axis · zw rotation</label>
-      <input type="range" id="wDial" min="0" max="360" step="1" value="0"
-             aria-label="Rotate the cabinet through the fourth dimension">
-      <span class="wread" id="wRead">w 0° · outer cell</span>
-      <button class="minibtn" id="wZero">Return to 3-D</button>
-    </div>
   </section>
 
   <section class="paper doc" id="doc" hidden aria-live="polite" aria-labelledby="docHead">
@@ -1272,15 +1292,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry">
         <h3>The background</h3>
         <p>Behind the glass turns a <b>tesseract</b>: a 4-cube of 16 vertices and 32 edges, rotated in the xw and zw planes and projected 4→3→2. Its rate is tied to the live coherence, so when the machine decoheres the fourth dimension slows down with it. The falling glyphs are the alphabet the state is written in. Both are decoration, and both stop if your system asks for reduced motion.</p>
-      </div>
-
-      <div class="entry wide">
-        <h3>The fourth axis · what the zw dial does</h3>
-        <div class="cols">
-          <p>The cabinet is not a box. It is a <b>4-orthotope</b>, 420 × 1036 × 364 × 300, and the machine you have been turning is only one of its two cubic cells — the one your 3-space happens to be cutting. The other cell is the same cabinet, 300 units away along an axis you have no name for.</p>
-          <p>The <b>zw dial</b> rotates the whole apparatus in the plane spanned by depth and the fourth axis. The wireframe is the honest projection: 16 vertices, 32 edges, each vertex divided by (K−w) so the far cell shrinks inside the near one and the struts between them read as a frustum. At <b>90°</b> the cabinet is edge-on to your space and thinnest. Carry on to <b>180°</b> and it is full size again — but you are now looking at the <i>other</i> cell. It has turned through itself.</p>
-          <p><b>An honest limit.</b> A CSS transform is affine: it can scale and rotate but it cannot shear a rectangle into a trapezoid. The solid cabinet can therefore take only the cell's <i>mean</i> projected scale and depth, while the wireframe carries the true 4-D geometry. Where the two disagree, believe the wires. <b>Return to 3-D</b> puts the dial back at zero, and nothing in the physics or the register depends on where you leave it.</p>
-        </div>
       </div>
 
       <div class="entry">
@@ -1574,8 +1585,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     stage.style.setProperty("--lift", Math.max(0, Math.round(over) + 6) + "px");
     rig.style.setProperty("--lift", Math.max(0, Math.round(over) + 6) + "px");
     f = face.getBoundingClientRect();
+    /* the extra 190 is the stretch of floor in front of the machine: the pool of
+       light, the reflection off it and the contact shadow all live there */
     stage.style.setProperty("--pad4",
-      Math.max(0, Math.round(f.height - pxOf("--cab-h")*fit) + 20) + "px");
+      Math.max(0, Math.round(f.height - pxOf("--cab-h")*fit) + 190) + "px");
+    /* park the ground on the machine's own base line */
+    stage.style.setProperty("--gy", Math.round(f.bottom - s.top) + "px");
   }
   function pxOf(n){
     return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n)) || 0;
@@ -2553,116 +2568,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     });
   })();
 
-  /* ============================ the hypercabinet ============================ */
-  /* The QA-77 is a 4-orthotope. What you operate is one of its two cubic cells;
-     the frame drawn around it is the whole object, projected 4->3->2. Turning the
-     zw dial swings the cells through one another until they trade places. */
-  var H4 = (function(){
-    var cv = el("hyperframe"), ctx = cv.getContext("2d");
-    var cvF = el("hyperframeF"), ctxF = cvF.getContext("2d");
-    var K4 = 520, HW = 150;                 /* 4D viewing distance, and w half-extent */
-    var V = [], E = [], stageW = 0, stageH = 0;
-
-    function pxVar(n){
-      return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n)) || 0;
-    }
-    function build(){
-      var hx = pxVar("--cab-w")/2, hy = pxVar("--cab-h")/2, hz = pxVar("--cab-d")/2, i, a, b, k, diff;
-      V = [];
-      for(i=0;i<16;i++) V.push([(i&1?1:-1)*hx, (i&2?1:-1)*hy, (i&4?1:-1)*hz, (i&8?1:-1)*HW]);
-      E = [];
-      for(a=0;a<16;a++) for(b=a+1;b<16;b++){
-        diff = 0;
-        for(k=0;k<4;k++) if(V[a][k] !== V[b][k]) diff++;
-        if(diff === 1) E.push([a,b]);
-      }
-    }
-    function size(){
-      var st = el("stage"), r = st.getBoundingClientRect();
-      var dpr = Math.min(2, window.devicePixelRatio || 1);
-      stageW = r.width; stageH = r.height;
-      cv.width = Math.round(stageW*dpr); cv.height = Math.round(stageH*dpr);
-      cvF.width = cv.width; cvF.height = cv.height;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctxF.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    /* the nearer cell's centre: this is the one the solid cabinet stands in */
-    function cell(wA){
-      var ca = Math.cos(wA), sa = Math.sin(wA), sign = ca >= 0 ? 1 : -1;
-      return {scale:(K4 - HW)/(K4 - HW*Math.abs(ca)), z:-sign*HW*sa, sign:sign, ca:ca};
-    }
-    function draw(yaw, pitch, wA, fit){
-      if(!V.length) build();
-      if(!stageW) size();
-      ctx.clearRect(0, 0, stageW, stageH);
-      ctxF.clearRect(0, 0, stageW, stageH);
-      var cs = cell(wA), S = fit*cs.scale;
-      var P = 2600, ox = stageW/2, oy = stageH*0.40, cy = pxVar("--cab-h")/2*S;
-      var cw = Math.cos(wA), sw = Math.sin(wA);
-      var yr = yaw*Math.PI/180, pr = pitch*Math.PI/180;
-      var cyw = Math.cos(yr), syw = Math.sin(yr), cp = Math.cos(pr), sp = Math.sin(pr);
-      var pts = V.map(function(v){
-        var z1 = v[2]*cw - v[3]*sw, w1 = v[2]*sw + v[3]*cw;
-        var s4 = (K4 - HW)/(K4 - w1);
-        var x = v[0]*s4, y = v[1]*s4, z = z1*s4;
-        var x2 = x*cyw + z*syw, z2 = -x*syw + z*cyw;        /* rotateY */
-        var y3 = y*cp - z2*sp, z3 = y*sp + z2*cp;           /* rotateX */
-        var sx = ox + x2*S, sy = cy + y3*S;
-        var depth = (z3 + cs.z)*S;
-        var f = P/(P - depth);
-        return [ox + (sx - ox)*f, oy + (sy - oy)*f, w1, depth];
-      });
-      /* depth of the solid cabinet's own front plane: edges nearer than this are
-         drawn on the overlay canvas, everything else is occluded by the machine */
-      var frontZ = (pxVar("--cab-d")/2*cyw*cp + cs.z)*S;
-      var i, a, b, near, t, strut, front, c, w;
-
-      for(i=0;i<E.length;i++){
-        a = pts[E[i][0]]; b = pts[E[i][1]];
-        near = (a[2] + b[2])/2;
-        t = Math.max(0, Math.min(1, (near + HW)/(2*HW)));   /* 0 far cell, 1 near cell */
-        strut = V[E[i][0]][3] !== V[E[i][1]][3];
-        front = (a[3] + b[3])/2 > frontZ + 2;
-        c = front ? ctxF : ctx;
-        w = front ? 0.30 : 1;                               /* in front of the machine: a hint only */
-        c.lineCap = "round";
-        c.setLineDash(strut ? [4,7] : []);
-        if(strut){
-          c.strokeStyle = "rgba(150,161,153," + (w*(0.10 + 0.20*t)).toFixed(3) + ")";
-          c.lineWidth = 1;
-          c.shadowBlur = 0;
-        }else{
-          c.strokeStyle = "rgba(206,215,208," + (w*(0.13 + 0.46*t)).toFixed(3) + ")";
-          c.lineWidth = 0.9 + 0.8*t;
-          c.shadowBlur = 7*t*w; c.shadowColor = "rgba(198,212,200,.5)";
-        }
-        c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke();
-        c.shadowBlur = 0;
-      }
-      ctx.setLineDash([]); ctxF.setLineDash([]);
-      /* a machined tick at each corner of the near cell only */
-      for(i=0;i<pts.length;i++){
-        t = Math.max(0, Math.min(1, (pts[i][2]+HW)/(2*HW)));
-        if(t < 0.55) continue;
-        c = pts[i][3] > frontZ + 2 ? ctxF : ctx;
-        w = c === ctxF ? 0.30 : 1;
-        c.strokeStyle = "rgba(222,230,223," + (w*0.5*t).toFixed(3) + ")";
-        c.lineWidth = 1;
-        c.beginPath();
-        c.moveTo(pts[i][0]-4, pts[i][1]); c.lineTo(pts[i][0]+4, pts[i][1]);
-        c.moveTo(pts[i][0], pts[i][1]-4); c.lineTo(pts[i][0], pts[i][1]+4);
-        c.stroke();
-      }
-      return cs;
-    }
-    return {draw:draw, size:size, rebuild:build, cell:cell};
-  })();
-
+  /* ============================ the cabinet ============================ */
   /* Orbit. Drag the apparatus to turn it through a full circle; it carries a
      little momentum and then holds wherever you left it. */
   var view = (function(){
     var stage = el("stage"), rig = el("rig");
-    var yaw = -11, pitch = 14, vYaw = 0, vPitch = 0, wDeg = 0;
+    var yaw = -11, pitch = 14, vYaw = 0, vPitch = 0;
     var goal = null, raf = null, dragging = false, lastX = 0, lastY = 0, moved = false;
 
     function norm(a){ return ((a % 360) + 360) % 360; }
@@ -2689,14 +2600,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     function apply(){
       rig.style.setProperty("--py", yaw.toFixed(2) + "deg");
       rig.style.setProperty("--px", pitch.toFixed(2) + "deg");
-      /* the fourth axis: project the cell the operator is standing in */
-      var wA = wDeg*Math.PI/180;
-      var cs = H4.draw(yaw, pitch, wA, parseFloat(getComputedStyle(stage).getPropertyValue("--fit")) || 1);
-      rig.style.setProperty("--w4", cs.scale.toFixed(4));
-      rig.style.setProperty("--z4", (cs.z).toFixed(1) + "px");
-      el("wRead").textContent = "w " + Math.round(wDeg) + "\u00B0 · " +
-        (Math.abs(Math.abs(wDeg % 360) - 90) < 6 || Math.abs(Math.abs(wDeg % 360) - 270) < 6
-          ? "edge-on" : (cs.sign > 0 ? "outer cell" : "inner cell"));
       var yr = yaw*Math.PI/180, pr = pitch*Math.PI/180, k;
       for(k in NORMALS){
         var sh = shadeOf(NORMALS[k], yr, pr);
@@ -2704,7 +2607,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         rig.style.setProperty("--shade" + k, sh.toFixed(3));
       }
       rig.style.setProperty("--sheen", (50 - Math.sin(yr)*34).toFixed(1) + "%");
-      stage.style.setProperty("--shadowS", (0.78 + 0.22*Math.abs(Math.cos(yr))).toFixed(3));
+      /* the footprint the machine actually covers as it turns */
+      var fit = parseFloat(getComputedStyle(stage).getPropertyValue("--fit")) || 1;
+      stage.style.setProperty("--gw",
+        Math.round((pxOf("--cab-w")*Math.abs(Math.cos(yr)) +
+                    pxOf("--cab-d")*Math.abs(Math.sin(yr))) * fit) + "px");
     }
     function running(){ if(!raf) raf = requestAnimationFrame(tick); }
     function tick(){
@@ -2763,19 +2670,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       else if(e.key === "ArrowRight") yaw += step;
       else if(e.key === "ArrowUp") pitch = Math.min(74, pitch + step);
       else if(e.key === "ArrowDown") pitch = Math.max(-74, pitch - step);
-      else if(e.key === "[" || e.key === "]"){
-        wDeg = (wDeg + (e.key === "]" ? 6 : -6) + 360) % 360;
-        el("wDial").value = wDeg;
-        apply(); e.preventDefault(); return;
-      }
       else if(e.key === "Home") { moveTo(-11, 14); }
       else used = false;
       if(used){ e.preventDefault(); goal = goal || null; running(); }
     });
     apply();
     return {
-      setW:function(v){ wDeg = v; apply(); },
-      getW:function(){ return wDeg; },
       redraw:apply,
       front:function(){ moveTo(Math.round(yaw/360)*360 - 11, 14); },
       back: function(){ moveTo(Math.round(yaw/360)*360 + 180, 12); },
@@ -2787,16 +2687,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   el("vBack").addEventListener("click", view.back);
   el("vLeft").addEventListener("click", view.side);
   el("vReset").addEventListener("click", view.reset);
-  el("wDial").addEventListener("input", function(){ view.setW(+this.value); });
-  el("wZero").addEventListener("click", function(){
-    var dial = el("wDial"), from = +dial.value, t0 = performance.now();
-    (function ease(){
-      var k = Math.min(1, (performance.now() - t0)/520);
-      var v = from*(1 - (1 - Math.pow(1-k,3)));
-      dial.value = v; view.setW(v);
-      if(k < 1) requestAnimationFrame(ease);
-    })();
-  });
 
   /* Inline glossary: every instrument on the panel explains itself. */
   var DEFS = {
@@ -2865,7 +2755,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   window.addEventListener("resize", function(){
     clearTimeout(rt);
     rt = setTimeout(function(){
-      fitCabinet(); H4.size(); H4.rebuild(); view.redraw();
+      fitCabinet(); view.redraw();
       sizeRain(); sizeHyper(); sizeCells(); renderChart();
     }, 140);
   });
