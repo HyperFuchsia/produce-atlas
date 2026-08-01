@@ -78,11 +78,33 @@ label and figure. No colour is used to carry meaning anywhere.
 
 ### The cabinet
 
-A full-height standing slot machine, 404 × 960 × 300, built from six CSS 3D faces
+A full-height standing slot machine, 420 × 1036 × 364, built from six CSS 3D faces
 and turnable through a complete circle. **Drag it to orbit** with momentum, use the
 arrow keys when it has focus, or the Front / Back / Side / Reset presets; a
 double-click restores the default three-quarter view and the live yaw and pitch are
 reported beneath it. The whole cabinet scales to fit whatever width the page has.
+
+Each face is built as a centred cube — translated back half the depth, rotated, then
+pushed out half the width — so all six outer surfaces point outwards and none are
+culled by `backface-visibility`. The data plate on the right flank reads unmirrored,
+which is the proof. A world-fixed key light shades each face from its own normal
+against the live orbit, so the lit side stays lit as you turn the machine.
+
+### The fourth axis
+
+The cabinet is not a box but a **4-orthotope**, 420 × 1036 × 364 × 300; the machine
+you orbit is one of its two cubic cells. The **zw dial** beneath the view bar (or
+`[` and `]`) rotates the whole apparatus in the plane spanned by depth and w. The
+wireframe is the real projection — 16 vertices, 32 edges, each vertex divided by
+(K−w) so the far cell shrinks inside the near one and the joining struts read as a
+frustum. At **90°** the cabinet is edge-on to 3-space and thinnest; at **180°** it is
+full size again but you are looking at the *other* cell, having turned through
+itself. Return to 3-D eases the dial back to zero.
+
+The solid cabinet takes only the cell's *mean* projected scale and depth, because a
+CSS transform is affine and cannot shear a rectangle into a trapezoid — the
+wireframe carries the true 4-D geometry, and the manual says so. Nothing in the
+physics or the register depends on the dial.
 
 Top to bottom the front carries a lit **marquee**, a **schedule of dispositions**
 printed on the paytable glass (each species, its disposition and its detector
@@ -98,9 +120,9 @@ instrument, not for use in evidence*, a ribbed access panel, power inlet, vents 
 four slotted screws. The sides carry vent grilles and the lever boss; the caps carry
 vents and feet.
 
-The reels are true drums — each face rides a cylinder via `translateZ(-r) rotateX(a)
-translateZ(r)`, so the rest pose is the identity transform, and the next species is
-swapped in while the current face is edge-on.
+The reels are continuous strips: each window shows three symbol rows at a fractional
+position, eases to a stop with a slight overshoot, and only the payline row carries
+the ghost-pixel wash.
 
 ### Interface
 
