@@ -131,7 +131,8 @@ h1{
 .doc-actions{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
 
 /* the hypercabinet's frame, drawn over the stage */
-#hyperframe{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+#hyperframe{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+#hyperframeF{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
 .wbar{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:min(760px,100%);
   font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
@@ -193,7 +194,7 @@ h1{
 }
 
 /* ---------- the cabinet ---------- */
-.device{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:10px 0 44px}
+.device{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:12px 0 40px}
 .device::before{
   content:"";position:absolute;left:50%;top:-40px;width:1500px;height:calc(100% + 80px);
   transform:translateX(-50%);pointer-events:none;z-index:0;
@@ -203,20 +204,27 @@ h1{
 }
 .device > *{position:relative;z-index:1}
 .stage{
-  position:relative;width:100%;height:calc(var(--cab-h) * var(--fit,1));
-  display:flex;justify-content:center;
+  /* the extra height is the room perspective needs: the rig is pinned at its top
+     edge, so the far corners of the base project below the cabinet's flat height */
+  position:relative;width:100%;
+  height:calc(var(--cab-h) * var(--fit,1) + var(--pad4,96px));
+  display:flex;justify-content:center;align-items:flex-start;
   perspective:2600px;perspective-origin:50% 40%;
   cursor:grab;touch-action:none;
 }
 .stage.grabbing{cursor:grabbing}
 .stage:focus-visible{outline:2px solid var(--bright);outline-offset:6px;border-radius:4px}
 .rig{
-  position:relative;width:var(--cab-w);height:var(--cab-h);transform-style:preserve-3d;
-  transform-origin:50% 0;
+  position:relative;z-index:1;width:var(--cab-w);height:var(--cab-h);transform-style:preserve-3d;
+  transform-origin:50% 0;margin-top:var(--lift,0px);
   transform:scale(calc(var(--fit,1) * var(--w4,1))) translateZ(var(--z4,0px))
             rotateX(var(--px,14deg)) rotateY(var(--py,-11deg));
 }
-.box{position:absolute;inset:0;transform-style:preserve-3d}
+/* the shell is built with its front at z=0 and its back at -depth, so without
+   this the rig would swing about the front glass instead of turning about its
+   own axis — and the solid would sit half a cabinet in front of the 4-D frame */
+.box{position:absolute;inset:0;transform-style:preserve-3d;
+  transform:translateZ(calc(0.5 * var(--cab-d)))}
 .face{backface-visibility:hidden;position:absolute;pointer-events:none}
 .face.front{inset:0;z-index:1;pointer-events:auto}
 .face.back{
@@ -257,17 +265,31 @@ h1{
 
 .face.side{
   top:0;bottom:0;width:var(--cab-d);left:50%;margin-left:calc(-0.5 * var(--cab-d));overflow:hidden;
-  background:linear-gradient(100deg,#5A605E 0%,#4A504E 26%,#3A403E 62%,#2C3231 100%);
+  /* same paint as the front, one stop darker: a flank is never the bright face */
+  background:
+    linear-gradient(100deg,rgba(255,255,255,.07) 0%,rgba(255,255,255,.02) 20%,
+      rgba(0,0,0,.10) 52%,rgba(0,0,0,.30) 82%,rgba(0,0,0,.52) 100%),
+    linear-gradient(177deg,#454B49 0%,#3A403E 8%,#333937 44%,#272C2B 82%,#191E1D 100%);
 }
 /* the seam where a flank meets the front is the brightest line on the machine */
 .face.side.sl{box-shadow:inset -2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
 .face.side.sr{box-shadow:inset 2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
-/* a pressed panel seam, so the flank reads as formed sheet rather than a slab */
-.face.side::before{
-  content:"";position:absolute;inset:26px 20px;pointer-events:none;z-index:1;border-radius:3px;
-  box-shadow:inset 0 0 0 1px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.09),
-             0 0 0 1px rgba(255,255,255,.05);
-  background:rgba(0,0,0,.05);
+/* a pressed panel, so the flank reads as formed sheet rather than a slab:
+   dark along the top inner edge and light along the bottom is what makes an
+   eye read a recess rather than a rectangle drawn on */
+.side-panel{
+  position:absolute;inset:26px 20px;pointer-events:none;z-index:2;border-radius:3px;
+  box-shadow:
+    inset 0 3px 7px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.17),
+    inset 3px 0 5px rgba(0,0,0,.3), inset -3px 0 5px rgba(0,0,0,.3),
+    inset 0 0 0 1px rgba(0,0,0,.55),
+    0 1px 0 rgba(255,255,255,.11);
+  background:rgba(0,0,0,.09);
+}
+/* the seam where the top box is bolted to the base */
+.side-reveal{
+  position:absolute;left:0;right:0;height:3px;z-index:2;
+  background:linear-gradient(180deg,rgba(0,0,0,.75) 0 2px,rgba(255,255,255,.16) 2px);
 }
 .side-plinth{position:absolute;left:0;right:0;bottom:0;height:34px;z-index:2;
   background:linear-gradient(180deg,#262B2A,#101413);border-top:1px solid rgba(255,255,255,.1)}
@@ -284,9 +306,17 @@ h1{
   background:repeating-linear-gradient(180deg,rgba(255,255,255,.07) 0 1px,transparent 1px 4px,rgba(0,0,0,.5) 4px 8px)}
 .siderail{position:absolute;bottom:13%;left:24%;right:24%;height:10px;border-radius:5px;z-index:2;
   background:linear-gradient(180deg,#6B7270,#2A2F2E);box-shadow:0 2px 4px rgba(0,0,0,.5)}
-.boss{position:absolute;top:42%;left:20%;right:20%;height:168px;border-radius:9px;z-index:2;
-  background:linear-gradient(180deg,#6E7573,#3A403E 46%,#252A29);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.24), inset 0 -3px 8px rgba(0,0,0,.55), 0 3px 7px rgba(0,0,0,.5)}
+/* the cast housing the lever shaft runs into — a raised boss, not a pale patch */
+.boss{position:absolute;top:41%;left:26%;right:26%;height:132px;border-radius:7px;z-index:3;
+  background:linear-gradient(178deg,#4E5452 0 1px,#3E4443 1px,#333937 44%,#232827 78%,#191E1D 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.40), inset 0 -2px 0 rgba(0,0,0,.7),
+    inset 0 -10px 18px rgba(0,0,0,.5),
+    0 6px 14px -2px rgba(0,0,0,.8), 0 1px 0 rgba(255,255,255,.06)}
+.boss::after{  /* the collar the shaft passes through */
+  content:"";position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;
+  border-radius:50%;background:radial-gradient(circle at 40% 34%,#2A302E,#0B0E0D 70%);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.16)}
 .face.cap{left:0;right:0;height:var(--cab-d);top:50%;margin-top:calc(-0.5 * var(--cab-d));overflow:hidden;
   background:linear-gradient(90deg,#4A504E,#616866 42%,#3C4241);
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
@@ -318,10 +348,43 @@ h1{
 /* ---------- cabinet front: 74 x 30 x 26 in ---------- */
 .cabinet{
   transform-style:preserve-3d;display:flex;flex-direction:column;gap:0;
-  background:linear-gradient(176deg,#454B49 0%,#3B4140 4%,#353B39 62%,#272C2B 100%);
-  border:1px solid #101413;border-radius:5px;padding:0;overflow:hidden;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.18), inset 0 -3px 14px rgba(0,0,0,.5),
-             inset 0 0 70px rgba(0,0,0,.16);
+  /* painted steel: a specular band raked across the face, the outer inches
+     falling into shadow the way formed sheet does, over the base coat */
+  background:
+    linear-gradient(97deg,
+      rgba(0,0,0,.46) 0%, rgba(0,0,0,.16) 5%, rgba(255,255,255,.055) 15%,
+      rgba(255,255,255,.10) 26%, rgba(255,255,255,.015) 44%,
+      rgba(0,0,0,.10) 68%, rgba(0,0,0,.30) 90%, rgba(0,0,0,.58) 100%),
+    linear-gradient(176deg,#565D5A 0%,#464C4A 3%,#3B4140 26%,#333937 62%,#202524 92%,#161A19 100%);
+  border:1px solid #05070600;border-radius:5px 5px 3px 3px;padding:0;overflow:hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.42),
+    inset 0 -2px 0 rgba(0,0,0,.9),
+    inset 0 -14px 34px rgba(0,0,0,.5),
+    inset 0 0 90px rgba(0,0,0,.20);
+}
+/* the two front corner posts — the brightest verticals on the machine, and
+   the thing that makes the front read as the face of a box rather than a card */
+.post{
+  position:absolute;top:0;bottom:0;width:14px;z-index:8;pointer-events:none;
+  background:linear-gradient(90deg,
+    #050706 0%, #383E3C 14%, #9AA29E 34%, #D6DDD8 46%, #7E8582 58%,
+    #414745 72%, #1B201F 88%, #080B0A 100%);
+  box-shadow:6px 0 16px -6px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.55);
+}
+.post::after{  /* the post is only polished where the key light rakes it */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.16) 0%,rgba(255,255,255,0) 16%,
+    rgba(0,0,0,0) 62%,rgba(0,0,0,.4) 100%);
+}
+.post.pl{left:0}
+.post.pr{right:0;transform:scaleX(-1)}
+/* light thrown onto the bodywork by the lit panels above it */
+.spill{
+  position:absolute;left:-14%;right:-14%;top:-4%;height:56%;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(ellipse 34% 20% at 50% 14%, rgba(233,237,224,.16), rgba(233,237,224,0) 72%),
+    radial-gradient(ellipse 42% 26% at 50% 52%, rgba(168,192,152,.13), rgba(168,192,152,0) 72%);
 }
 .gloss{position:absolute;inset:0;border-radius:5px;pointer-events:none;z-index:9;
   background:linear-gradient(104deg,
@@ -332,7 +395,7 @@ h1{
 
 /* louvred top vents */
 .topvents{
-  flex:none;height:30px;margin:7px 16px 6px;border-radius:2px;
+  flex:none;height:30px;margin:8px 22px 7px;border-radius:2px;
   background:repeating-linear-gradient(180deg,
     rgba(0,0,0,.62) 0 3px, rgba(255,255,255,.05) 3px 4px, transparent 4px 7px);
   box-shadow:inset 0 0 0 1px rgba(0,0,0,.35);
@@ -340,12 +403,24 @@ h1{
 
 /* header nameplate */
 .nameplate{
-  flex:none;position:relative;margin:0 13px 10px;padding:11px 13px 10px;border-radius:2px;
-  background-blend-mode:multiply;
-  background:linear-gradient(180deg,#DFE0D5,#CBCCC0 60%,#BCBDB1);
-  border:1px solid #14181700;border:1px solid #141817;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.7), 0 3px 8px rgba(0,0,0,.55);
+  flex:none;position:relative;margin:0 19px 11px;padding:11px 13px 10px;border-radius:2px;
+  /* backlit acrylic: hottest just under the lamp at the top, falling off downward */
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 34%),
+    linear-gradient(178deg,#F4F5EC 0%,#E3E4D8 38%,#CFD0C3 76%,#B9BAAE 100%);
+  border:1px solid #0A0D0C;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    inset 0 -2px 5px rgba(0,0,0,.20),
+    0 0 34px 10px rgba(226,231,214,.11),
+    0 5px 14px rgba(0,0,0,.75);
   font-family:var(--mono);color:#1B1F1C;
+}
+/* the light box behind it, spilling onto the paint */
+.nameplate::before{
+  content:"";position:absolute;left:-16px;right:-16px;top:-12px;bottom:-14px;z-index:-1;
+  border-radius:8px;pointer-events:none;
+  background:radial-gradient(ellipse 60% 66% at 50% 40%, rgba(232,237,220,.18), rgba(232,237,220,0) 72%);
 }
 .np-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:10px}
 .np-brand{font-size:15px;letter-spacing:.14em;font-weight:700}
@@ -360,10 +435,19 @@ h1{
 .screw.n3{bottom:5px;left:5px}.screw.n4{bottom:5px;right:5px}
 
 /* reel window */
-.reelbox{flex:none;margin:0 13px 11px;border-radius:3px;overflow:hidden;
-  border:1px solid #0E1211;background:#0D100F;
-  box-shadow:inset 0 0 0 3px #23282700, inset 0 2px 10px rgba(0,0,0,.8), 0 4px 12px rgba(0,0,0,.5)}
-.reelglass{position:relative;padding:10px;background:linear-gradient(180deg,#171B16,#1F241D 22%,#1F241D 78%,#171B16)}
+/* the reel window sits in a machined bezel, not straight in the paint */
+.reelbox{flex:none;margin:0 19px 12px;border-radius:4px;overflow:hidden;padding:6px;
+  border:1px solid #04060500;
+  background:linear-gradient(178deg,#8E9693 0%,#5C6360 8%,#333938 34%,#272C2B 64%,#3E4443 90%,#6C7370 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.6),
+    inset 0 -1px 0 rgba(255,255,255,.20),
+    inset 0 0 0 1px rgba(0,0,0,.55),
+    0 0 44px 4px rgba(150,178,132,.10),
+    0 7px 20px rgba(0,0,0,.8)}
+.reelglass{position:relative;padding:10px;border-radius:2px 2px 0 0;
+  background:linear-gradient(180deg,#0E120C,#1F241D 20%,#232819 50%,#1F241D 80%,#0E120C);
+  box-shadow:inset 0 0 0 1px #04060500, inset 0 0 0 1px rgba(0,0,0,.9), inset 0 3px 12px rgba(0,0,0,.75)}
 .cells{display:grid;grid-template-columns:repeat(3,var(--reel-cell,96px));gap:6px;
   justify-content:center;position:relative;z-index:1}
 .cell{position:relative;overflow:hidden;border-radius:2px;
@@ -402,16 +486,23 @@ h1{
   border-top:1px solid rgba(190,198,186,.16);padding-top:5px;color:#B6BEB2;display:flex;align-items:center}
 
 /* sloped control deck */
-.deck{position:relative;flex:none;height:86px;transform-style:preserve-3d;z-index:5}
+/* tall enough to contain the shelf and its overhang, so the lip stops
+   painting over whatever comes next */
+.deck{position:relative;flex:none;height:124px;transform-style:preserve-3d;z-index:5}
 .deck-top{
   position:absolute;left:0;right:0;top:0;height:126px;transform-origin:center top;transform:rotateX(52deg);
-  background:linear-gradient(180deg,#4E5452,#3A403E 40%,#2B3130);
-  border-top:1px solid #5F6563;
-  box-shadow:0 14px 26px -8px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.14);
-  display:flex;align-items:center;gap:9px;padding:0 11px;
+  /* a sloped shelf catches the light along its leading edge and loses it at the back */
+  background:linear-gradient(180deg,#767D7A 0 1px,#5A605E 1px,#474D4B 26%,#363C3A 62%,#232827 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.55),
+    inset 0 -10px 20px rgba(0,0,0,.5),
+    0 18px 30px -8px rgba(0,0,0,.9);
+  display:flex;align-items:center;gap:9px;padding:0 15px;
 }
-.deck-lip{position:absolute;left:0;right:0;top:78px;height:38px;transform:translateZ(99px);
-  background:linear-gradient(180deg,#262B2A,#141817);border-top:1px solid #4A504E}
+/* the nosing: the underside of the shelf where it overhangs the body */
+.deck-lip{position:absolute;left:0;right:0;top:80px;height:44px;transform:translateZ(99px);
+  background:linear-gradient(180deg,#8F9693 0 1px,#3E4443 1px,#1B201F 46%,#0C100F 100%);
+  box-shadow:0 10px 20px -4px rgba(0,0,0,.9)}
 .key{
   font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;
   color:#D6DCD9;border:1px solid #121615;cursor:pointer;padding:9px 7px;border-radius:2px;
@@ -446,10 +537,30 @@ h1{
 .lamp.lit{background:radial-gradient(circle at 36% 32%,#FFE9A8,#E0B140 55%,#8A6716);
   box-shadow:0 0 9px rgba(224,177,64,.6), inset 0 1px 0 rgba(255,255,255,.5)}
 
+/* the lower lit panel — a real cabinet's belly rail, carrying its small print */
+.noticeband{
+  flex:none;position:relative;z-index:4;margin:20px 19px 0;padding:6px 11px 7px;border-radius:2px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,0) 44%),
+    linear-gradient(178deg,#E9EADF,#D3D4C8 62%,#BEBFB3);
+  border:1px solid #0A0D0C;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9), inset 0 -2px 4px rgba(0,0,0,.18),
+    0 0 22px 6px rgba(224,229,212,.09), 0 3px 9px rgba(0,0,0,.7);
+  font-family:var(--mono);font-size:6.5px;letter-spacing:.19em;text-transform:uppercase;
+  color:#4A504A;white-space:nowrap;overflow:hidden;
+}
+.noticeband > span:first-child{overflow:hidden;text-overflow:ellipsis}
+.noticeband b{color:#14180F;font-weight:700;letter-spacing:.2em}
+.noticeband .nb-no{
+  flex:none;border:1px solid rgba(20,24,15,.45);border-radius:1px;padding:2px 5px;
+  color:#2A2F27;letter-spacing:.22em}
+
 /* record row: printer + claim tray */
-.recordrow{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:42px 13px 0;position:relative;z-index:4}
-.recordrow::before{content:"";position:absolute;left:-13px;right:-13px;top:-42px;height:30px;pointer-events:none;
-  background:linear-gradient(180deg,rgba(0,0,0,.6),rgba(0,0,0,0))}
+.recordrow{flex:none;display:grid;grid-template-columns:1fr 1fr;gap:11px;margin:14px 19px 0;position:relative;z-index:4}
+.recordrow::before{content:"";position:absolute;left:-19px;right:-19px;top:-48px;height:36px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,.72),rgba(0,0,0,0))}
 .printer,.claimtray{position:relative;border-radius:2px;padding:0;border:0;background:none;text-align:left}
 .pr-label,.ct-label{display:block;font-family:var(--mono);font-size:6.5px;letter-spacing:.19em;
   text-transform:uppercase;color:#A6ADA9;margin-bottom:5px}
@@ -457,8 +568,13 @@ h1{
   box-shadow:inset 0 3px 6px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.09)}
 .pr-mouth::after{content:"";position:absolute;left:8%;right:8%;top:calc(50% + 3px);height:4px;background:#05070600;background:#050706;border-radius:2px}
 .claimtray{cursor:pointer}
-.ct-mouth{display:block;height:58px;border-radius:2px;background:linear-gradient(180deg,#07090800,#0A0D0C);
-  background:linear-gradient(180deg,#0A0D0C,#101413);box-shadow:inset 0 5px 12px rgba(0,0,0,.95), 0 1px 0 rgba(255,255,255,.09)}
+.ct-mouth{display:block;height:58px;border-radius:2px;position:relative;
+  background:linear-gradient(180deg,#05070600,#050706 0,#0C100F 55%,#161A19 100%);
+  box-shadow:inset 0 6px 14px rgba(0,0,0,.98), inset 0 -1px 0 rgba(255,255,255,.10),
+             0 1px 0 rgba(255,255,255,.18)}
+/* the lip you would actually reach into */
+.ct-mouth::after{content:"";position:absolute;left:6%;right:6%;bottom:5px;height:9px;border-radius:2px;
+  background:linear-gradient(180deg,#1E2322,#0A0D0C);box-shadow:0 -1px 0 rgba(255,255,255,.07)}
 .claimtray .ct-label{margin:6px 0 0;text-align:center}
 .claimtray:hover .ct-label{color:#C6CCC9}
 .claimtray:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
@@ -484,25 +600,63 @@ h1{
 @keyframes feed{from{transform:translateY(-88%) scaleY(.55);opacity:0}to{transform:none;opacity:1}}
 
 /* service door */
+/* belly glass: a recessed well, with the door standing inside it */
 .servicedoor{
-  flex:1;min-height:0;margin:12px 13px 0;border-radius:2px;position:relative;
-  background:linear-gradient(178deg,#3A403E,#2E3433 60%,#242928);
-  border:1px solid #141817;box-shadow:inset 0 1px 0 rgba(255,255,255,.07), inset 0 -3px 10px rgba(0,0,0,.5);
+  flex:1;min-height:0;margin:13px 19px 0;border-radius:3px;position:relative;
+  background:
+    radial-gradient(ellipse 46% 40% at 50% 42%, rgba(196,206,190,.09), rgba(196,206,190,0) 74%),
+    linear-gradient(100deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.012) 30%,rgba(0,0,0,.18) 100%),
+    linear-gradient(178deg,#333937 0%,#2A302E 44%,#1E2322 82%,#171B1A 100%);
+  border:0;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,.85),          /* the reveal at the top of the well */
+    inset 0 -1px 0 rgba(255,255,255,.14),
+    inset 2px 0 4px rgba(0,0,0,.5), inset -2px 0 4px rgba(0,0,0,.5),
+    inset 0 0 0 1px rgba(0,0,0,.7);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding:14px;
+  overflow:hidden;
+}
+/* the etched authority roundel, cut into the glass rather than printed on it */
+.sd-seal{
+  position:absolute;left:50%;top:50%;width:186px;height:186px;margin:-104px 0 0 -93px;
+  border-radius:50%;pointer-events:none;z-index:0;
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.14),
+    0 1px 0 rgba(255,255,255,.06);
+  background:
+    repeating-conic-gradient(from 0deg,
+      rgba(255,255,255,.055) 0deg 2.2deg, rgba(255,255,255,0) 2.2deg 5deg);
+  -webkit-mask-image:radial-gradient(circle,transparent 0 66%,#000 68% 100%);
+  mask-image:radial-gradient(circle,transparent 0 66%,#000 68% 100%);
+}
+.sd-seal::after{
+  content:"";position:absolute;inset:26px;border-radius:50%;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.09), 0 1px 0 rgba(255,255,255,.05);
 }
 .lock{position:absolute;left:14px;top:50%;margin-top:-9px;width:18px;height:18px;border-radius:50%;
   background:radial-gradient(circle at 36% 32%,#7C837F,#3C4341 58%,#191D1C);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 1px 3px rgba(0,0,0,.7)}
 .lock::after{content:"";position:absolute;left:50%;top:5px;bottom:5px;width:2px;margin-left:-1px;background:#141817}
-.sd-text{display:flex;flex-direction:column;align-items:center;gap:3px;font-family:var(--mono);
-  font-size:7.5px;letter-spacing:.19em;text-transform:uppercase;color:#7E8582;text-align:center}
-.sd-text b{font-size:9px;letter-spacing:.22em;color:#A9B0AC}
+.sd-text{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-family:var(--mono);
+  font-size:7.5px;letter-spacing:.19em;text-transform:uppercase;color:#8B928E;text-align:center;
+  text-shadow:0 1px 0 rgba(0,0,0,.8), 0 -1px 0 rgba(255,255,255,.05)}
+.sd-text b{font-size:10px;letter-spacing:.24em;color:#C3CAC5;
+  text-shadow:0 1px 0 rgba(0,0,0,.9), 0 -1px 0 rgba(255,255,255,.10)}
 .sd-sub{margin-top:5px;opacity:.7}
-.sd-vents{position:absolute;left:12%;right:12%;bottom:10px;height:26px;border-radius:2px;
-  background:repeating-linear-gradient(180deg,rgba(0,0,0,.55) 0 3px,transparent 3px 7px)}
+.sd-vents{position:absolute;left:11%;right:11%;bottom:12px;height:30px;border-radius:2px;z-index:1;
+  background:repeating-linear-gradient(180deg,
+    rgba(0,0,0,.8) 0 3px, rgba(255,255,255,.075) 3px 4px, transparent 4px 8px);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.4)}
 
-.plinth{flex:none;height:34px;background:linear-gradient(180deg,#202524,#0E1211);
-  border-top:1px solid #0A0D0C;box-shadow:inset 0 2px 5px rgba(0,0,0,.6)}
+/* kick plate: the darkest thing on the machine, with a bright nosing */
+.plinth{flex:none;height:38px;position:relative;
+  background:linear-gradient(180deg,#2C3231 0 2px,#171B1A 2px,#0B0E0D 62%,#050706 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.34), inset 0 7px 12px rgba(0,0,0,.75)}
+.plinth::after{
+  content:"";position:absolute;left:12%;right:12%;top:13px;height:12px;border-radius:2px;
+  background:repeating-linear-gradient(90deg,transparent 0 9px,rgba(0,0,0,.7) 9px 13px);
+  box-shadow:0 1px 0 rgba(255,255,255,.05)}
 
 /* lever, on a side escutcheon */
 .lever{
@@ -802,11 +956,13 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
           <div class="face side sl" aria-hidden="true">
             <span class="sidevent"></span><span class="siderail"></span><span class="side-plinth"></span>
+            <span class="side-panel"></span><span class="side-reveal" style="top:47%"></span>
             <i class="side-screw" style="top:16px;left:16px"></i><i class="side-screw" style="top:16px;right:16px"></i>
             <i class="side-screw" style="bottom:56px;left:16px"></i><i class="side-screw" style="bottom:56px;right:16px"></i>
           </div>
           <div class="face side sr" aria-hidden="true">
             <span class="sidevent"></span><span class="boss"></span><span class="side-plinth"></span>
+            <span class="side-panel"></span><span class="side-reveal" style="top:47%"></span>
             <i class="side-screw" style="top:16px;left:16px"></i><i class="side-screw" style="top:16px;right:16px"></i>
             <i class="side-screw" style="bottom:56px;left:16px"></i><i class="side-screw" style="bottom:56px;right:16px"></i>
             <div class="dataplate">ATLAS · ELECTRONICS<br>QA-77-00177-A<br>Serial no. 77-0472<br>Property of<br>Public Luck Authority</div>
@@ -817,6 +973,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
           <!-- ---------- front ---------- -->
           <div class="face front cabinet">
 
+            <span class="spill" aria-hidden="true"></span>
             <div class="topvents" aria-hidden="true"></div>
 
             <div class="nameplate">
@@ -882,6 +1039,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
               <div class="deck-lip" aria-hidden="true"></div>
             </div>
 
+            <div class="noticeband" aria-hidden="true">
+              <span><b>No stake · no payout</b> · determines nothing about the operator</span>
+              <span class="nb-no">QA-77/B</span>
+            </div>
+
             <div class="recordrow">
               <div class="printer">
                 <span class="pr-label">Determination record</span>
@@ -909,6 +1071,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             </div>
 
             <div class="servicedoor">
+              <span class="sd-seal" aria-hidden="true"></span>
               <span class="lock" aria-hidden="true"></span>
               <div class="sd-text">
                 <b>Public Luck Authority</b>
@@ -920,6 +1083,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             </div>
 
             <div class="plinth" aria-hidden="true"></div>
+            <span class="post pl" aria-hidden="true"></span>
+            <span class="post pr" aria-hidden="true"></span>
             <span class="gloss" aria-hidden="true"></span>
           </div>
 
@@ -934,6 +1099,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       </div>
       <span class="deskshadow" aria-hidden="true"></span>
       <canvas id="hyperframe" aria-hidden="true"></canvas>
+      <canvas id="hyperframeF" aria-hidden="true"></canvas>
 
     </div>
 
@@ -1389,9 +1555,30 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   function fitCabinet(){
     var stage = el("stage"), rig = el("rig");
     var avail = stage.clientWidth || window.innerWidth;
-    var fit = Math.min(1, avail/560);
+    /* the shell is centred on the rig's origin, so its front glass stands half a
+       cabinet's depth nearer the camera than the origin — take that magnification
+       out of the fit, or the machine grows past the room it was given */
+    var d = parseFloat(getComputedStyle(document.documentElement)
+              .getPropertyValue("--cab-d")) || 0;
+    var mag = 2600/(2600 - d/2);
+    var fit = Math.min(1/mag, avail/560/mag);
     rig.style.setProperty("--fit", fit.toFixed(4));
     stage.style.setProperty("--fit", fit.toFixed(4));
+    /* perspective throws the projected shell above and below the box the layout
+       reserved for it, so measure the real silhouette and give it that room */
+    var face = document.querySelector(".face.front");
+    if(!face) return;
+    var lift = parseFloat(stage.style.getPropertyValue("--lift")) || 0;
+    var s = stage.getBoundingClientRect(), f = face.getBoundingClientRect();
+    var over = (s.top + lift) - f.top;                       /* how far it rides high */
+    stage.style.setProperty("--lift", Math.max(0, Math.round(over) + 6) + "px");
+    rig.style.setProperty("--lift", Math.max(0, Math.round(over) + 6) + "px");
+    f = face.getBoundingClientRect();
+    stage.style.setProperty("--pad4",
+      Math.max(0, Math.round(f.height - pxOf("--cab-h")*fit) + 20) + "px");
+  }
+  function pxOf(n){
+    return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n)) || 0;
   }
 
   function caseRef(n){
@@ -2372,6 +2559,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
      zw dial swings the cells through one another until they trade places. */
   var H4 = (function(){
     var cv = el("hyperframe"), ctx = cv.getContext("2d");
+    var cvF = el("hyperframeF"), ctxF = cvF.getContext("2d");
     var K4 = 520, HW = 150;                 /* 4D viewing distance, and w half-extent */
     var V = [], E = [], stageW = 0, stageH = 0;
 
@@ -2394,7 +2582,9 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       var dpr = Math.min(2, window.devicePixelRatio || 1);
       stageW = r.width; stageH = r.height;
       cv.width = Math.round(stageW*dpr); cv.height = Math.round(stageH*dpr);
+      cvF.width = cv.width; cvF.height = cv.height;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctxF.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
     /* the nearer cell's centre: this is the one the solid cabinet stands in */
     function cell(wA){
@@ -2405,6 +2595,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       if(!V.length) build();
       if(!stageW) size();
       ctx.clearRect(0, 0, stageW, stageH);
+      ctxF.clearRect(0, 0, stageW, stageH);
       var cs = cell(wA), S = fit*cs.scale;
       var P = 2600, ox = stageW/2, oy = stageH*0.40, cy = pxVar("--cab-h")/2*S;
       var cw = Math.cos(wA), sw = Math.sin(wA);
@@ -2419,25 +2610,48 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         var sx = ox + x2*S, sy = cy + y3*S;
         var depth = (z3 + cs.z)*S;
         var f = P/(P - depth);
-        return [ox + (sx - ox)*f, oy + (sy - oy)*f, w1];
+        return [ox + (sx - ox)*f, oy + (sy - oy)*f, w1, depth];
       });
-      var i, a, b, near, alpha, strut;
-      ctx.lineCap = "round";
+      /* depth of the solid cabinet's own front plane: edges nearer than this are
+         drawn on the overlay canvas, everything else is occluded by the machine */
+      var frontZ = (pxVar("--cab-d")/2*cyw*cp + cs.z)*S;
+      var i, a, b, near, t, strut, front, c, w;
+
       for(i=0;i<E.length;i++){
         a = pts[E[i][0]]; b = pts[E[i][1]];
         near = (a[2] + b[2])/2;
-        alpha = 0.09 + 0.32*Math.max(0, Math.min(1, (near + HW)/(2*HW)));
+        t = Math.max(0, Math.min(1, (near + HW)/(2*HW)));   /* 0 far cell, 1 near cell */
         strut = V[E[i][0]][3] !== V[E[i][1]][3];
-        ctx.strokeStyle = "rgba(198,206,200," + alpha.toFixed(3) + ")";
-        ctx.lineWidth = strut ? 0.8 : 1.4;
-        ctx.setLineDash(strut ? [5,5] : []);
-        ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        front = (a[3] + b[3])/2 > frontZ + 2;
+        c = front ? ctxF : ctx;
+        w = front ? 0.30 : 1;                               /* in front of the machine: a hint only */
+        c.lineCap = "round";
+        c.setLineDash(strut ? [4,7] : []);
+        if(strut){
+          c.strokeStyle = "rgba(150,161,153," + (w*(0.10 + 0.20*t)).toFixed(3) + ")";
+          c.lineWidth = 1;
+          c.shadowBlur = 0;
+        }else{
+          c.strokeStyle = "rgba(206,215,208," + (w*(0.13 + 0.46*t)).toFixed(3) + ")";
+          c.lineWidth = 0.9 + 0.8*t;
+          c.shadowBlur = 7*t*w; c.shadowColor = "rgba(198,212,200,.5)";
+        }
+        c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]); c.stroke();
+        c.shadowBlur = 0;
       }
-      ctx.setLineDash([]);
+      ctx.setLineDash([]); ctxF.setLineDash([]);
+      /* a machined tick at each corner of the near cell only */
       for(i=0;i<pts.length;i++){
-        ctx.fillStyle = "rgba(214,221,215," +
-          (0.10 + 0.3*Math.max(0, Math.min(1, (pts[i][2]+HW)/(2*HW)))).toFixed(3) + ")";
-        ctx.beginPath(); ctx.arc(pts[i][0], pts[i][1], 1.8, 0, Math.PI*2); ctx.fill();
+        t = Math.max(0, Math.min(1, (pts[i][2]+HW)/(2*HW)));
+        if(t < 0.55) continue;
+        c = pts[i][3] > frontZ + 2 ? ctxF : ctx;
+        w = c === ctxF ? 0.30 : 1;
+        c.strokeStyle = "rgba(222,230,223," + (w*0.5*t).toFixed(3) + ")";
+        c.lineWidth = 1;
+        c.beginPath();
+        c.moveTo(pts[i][0]-4, pts[i][1]); c.lineTo(pts[i][0]+4, pts[i][1]);
+        c.moveTo(pts[i][0], pts[i][1]-4); c.lineTo(pts[i][0], pts[i][1]+4);
+        c.stroke();
       }
       return cs;
     }

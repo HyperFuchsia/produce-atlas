@@ -87,8 +87,18 @@ reported beneath it. The whole cabinet scales to fit whatever width the page has
 Each face is built as a centred cube — translated back half the depth, rotated, then
 pushed out half the width — so all six outer surfaces point outwards and none are
 culled by `backface-visibility`. The data plate on the right flank reads unmirrored,
-which is the proof. A world-fixed key light shades each face from its own normal
-against the live orbit, so the lit side stays lit as you turn the machine.
+which is the proof. The whole shell is then pushed forward half a depth so it turns
+about its own axis rather than swinging around its front glass, and the fit takes the
+resulting perspective magnification back out. A world-fixed key light shades each
+face from its own normal against the live orbit, so the lit side stays lit.
+
+Materially it is painted steel, not flat fill: a specular band raked across the front
+with the outer inches falling into shadow, two polished corner posts standing at the
+front edges, a machined bezel around the reel window, and pressed recesses in the
+flanks that are dark along the top inner edge and bright along the bottom — which is
+what makes an eye read a recess rather than a rectangle. Three things are lit and
+throw light onto the paint around them: the marquee, the reel window and the lower
+notice rail.
 
 ### The fourth axis
 
@@ -99,7 +109,10 @@ wireframe is the real projection — 16 vertices, 32 edges, each vertex divided 
 (K−w) so the far cell shrinks inside the near one and the joining struts read as a
 frustum. At **90°** the cabinet is edge-on to 3-space and thinnest; at **180°** it is
 full size again but you are looking at the *other* cell, having turned through
-itself. Return to 3-D eases the dial back to zero.
+itself. Return to 3-D eases the dial back to zero. The frame is drawn on two
+canvases, behind and in front of the machine, and split by the depth of the
+cabinet's own front plane — so the solid occludes the wires that pass behind it
+instead of being scribbled over.
 
 The solid cabinet takes only the cell's *mean* projected scale and depth, because a
 CSS transform is affine and cannot shear a rectangle into a trapezoid — the
