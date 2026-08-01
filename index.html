@@ -238,22 +238,46 @@ h1{
 .screw.s1{top:14px;left:14px}.screw.s2{top:14px;right:14px}
 .screw.s3{bottom:14px;left:14px}.screw.s4{bottom:14px;right:14px}
 
-.face.side{top:0;bottom:0;width:var(--cab-d);
-  background:linear-gradient(180deg,#43494700,#43494700);
-  background:linear-gradient(100deg,#3E4442,#2A2F2E 40%,#191D1C)}
-.face.side.sl{left:0;transform-origin:left center;transform:rotateY(90deg)}
-.face.side.sr{right:0;transform-origin:right center;transform:rotateY(-90deg)}
-.sidevent{position:absolute;top:11%;left:16%;right:16%;height:120px;border-radius:4px;
-  background:repeating-linear-gradient(180deg,transparent 0 5px,rgba(0,0,0,.42) 5px 9px)}
-.siderail{position:absolute;bottom:9%;left:18%;right:18%;height:8px;border-radius:4px;
-  background:linear-gradient(180deg,#4E5452,#232827)}
-.boss{position:absolute;top:46%;left:14%;right:14%;height:150px;border-radius:8px;
-  background:linear-gradient(180deg,#4E5452,#232927);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), inset 0 -3px 7px rgba(0,0,0,.5)}
-.face.cap{left:0;right:0;height:var(--cab-d);
-  background:linear-gradient(90deg,#2F3433,#474D4B 42%,#262B2A)}
-.face.cap.ct{top:0;transform-origin:center top;transform:rotateX(-90deg)}
-.face.cap.cb{bottom:0;transform-origin:center bottom;transform:rotateX(90deg);
+.face.side{
+  top:0;bottom:0;width:var(--cab-d);left:50%;margin-left:calc(-0.5 * var(--cab-d));overflow:hidden;
+  background:linear-gradient(100deg,#5A605E 0%,#4A504E 26%,#3A403E 62%,#2C3231 100%);
+}
+/* the seam where a flank meets the front is the brightest line on the machine */
+.face.side.sl{box-shadow:inset -2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
+.face.side.sr{box-shadow:inset 2px 0 0 rgba(255,255,255,.20), inset 0 1px 0 rgba(255,255,255,.16)}
+/* a pressed panel seam, so the flank reads as formed sheet rather than a slab */
+.face.side::before{
+  content:"";position:absolute;inset:26px 20px;pointer-events:none;z-index:1;border-radius:3px;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.09),
+             0 0 0 1px rgba(255,255,255,.05);
+  background:rgba(0,0,0,.05);
+}
+.side-plinth{position:absolute;left:0;right:0;bottom:0;height:34px;z-index:2;
+  background:linear-gradient(180deg,#262B2A,#101413);border-top:1px solid rgba(255,255,255,.1)}
+.side-screw{position:absolute;width:11px;height:11px;border-radius:50%;z-index:3;
+  background:radial-gradient(circle at 36% 32%,#6A716E,#333938 62%,#1A1E1D);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.5)}
+.face.side.sl{
+  transform:translateZ(calc(-0.5 * var(--cab-d))) rotateY(-90deg) translateZ(calc(0.5 * var(--cab-w)));
+}
+.face.side.sr{
+  transform:translateZ(calc(-0.5 * var(--cab-d))) rotateY(90deg) translateZ(calc(0.5 * var(--cab-w)));
+}
+.sidevent{position:absolute;top:9%;left:22%;right:22%;height:150px;border-radius:3px;z-index:2;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.07) 0 1px,transparent 1px 4px,rgba(0,0,0,.5) 4px 8px)}
+.siderail{position:absolute;bottom:13%;left:24%;right:24%;height:10px;border-radius:5px;z-index:2;
+  background:linear-gradient(180deg,#6B7270,#2A2F2E);box-shadow:0 2px 4px rgba(0,0,0,.5)}
+.boss{position:absolute;top:42%;left:20%;right:20%;height:168px;border-radius:9px;z-index:2;
+  background:linear-gradient(180deg,#6E7573,#3A403E 46%,#252A29);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.24), inset 0 -3px 8px rgba(0,0,0,.55), 0 3px 7px rgba(0,0,0,.5)}
+.face.cap{left:0;right:0;height:var(--cab-d);top:50%;margin-top:calc(-0.5 * var(--cab-d));overflow:hidden;
+  background:linear-gradient(90deg,#4A504E,#616866 42%,#3C4241);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.face.cap.ct{
+  transform:translateZ(calc(-0.5 * var(--cab-d))) rotateX(90deg) translateZ(calc(0.5 * var(--cab-h)));
+}
+.face.cap.cb{
+  transform:translateZ(calc(-0.5 * var(--cab-d))) rotateX(-90deg) translateZ(calc(0.5 * var(--cab-h)));
   background:linear-gradient(90deg,#141817,#232827 42%,#121615)}
 .topvent{position:absolute;top:24%;left:22%;right:22%;height:26px;border-radius:4px;
   background:repeating-linear-gradient(90deg,transparent 0 7px,rgba(0,0,0,.45) 7px 11px)}
@@ -494,9 +518,9 @@ h1{
 .lever:disabled{cursor:not-allowed}
 
 /* data plate on the right flank */
-.dataplate{position:absolute;right:16%;bottom:22%;width:132px;padding:8px 9px;border-radius:2px;
-  background:linear-gradient(180deg,#3A403E,#262B2A);border:1px solid #171B1A;
-  font-family:var(--mono);font-size:6px;letter-spacing:.13em;text-transform:uppercase;color:#9AA29E;line-height:1.8;
+.dataplate{position:absolute;right:20%;bottom:26%;width:150px;padding:9px 10px;border-radius:2px;z-index:3;
+  background:linear-gradient(180deg,#565C5A,#333937);border:1px solid #171B1A;
+  font-family:var(--mono);font-size:6.5px;letter-spacing:.13em;text-transform:uppercase;color:#C2C9C5;line-height:1.85;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.12), 0 2px 5px rgba(0,0,0,.6)}
 
 /* ---------- schedules ---------- */
@@ -754,9 +778,15 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             <i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i><i class="screw s4"></i>
           </div>
 
-          <div class="face side sl" aria-hidden="true"><span class="sidevent"></span><span class="siderail"></span></div>
+          <div class="face side sl" aria-hidden="true">
+            <span class="sidevent"></span><span class="siderail"></span><span class="side-plinth"></span>
+            <i class="side-screw" style="top:16px;left:16px"></i><i class="side-screw" style="top:16px;right:16px"></i>
+            <i class="side-screw" style="bottom:56px;left:16px"></i><i class="side-screw" style="bottom:56px;right:16px"></i>
+          </div>
           <div class="face side sr" aria-hidden="true">
-            <span class="sidevent"></span><span class="boss"></span>
+            <span class="sidevent"></span><span class="boss"></span><span class="side-plinth"></span>
+            <i class="side-screw" style="top:16px;left:16px"></i><i class="side-screw" style="top:16px;right:16px"></i>
+            <i class="side-screw" style="bottom:56px;left:16px"></i><i class="side-screw" style="bottom:56px;right:16px"></i>
             <div class="dataplate">ATLAS · ELECTRONICS<br>QA-77-00177-A<br>Serial no. 77-0472<br>Property of<br>Public Luck Authority</div>
           </div>
           <div class="face cap ct" aria-hidden="true"><span class="topvent"></span></div>
@@ -2322,7 +2352,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       var x = n[0]*cy + n[2]*sy, z1 = -n[0]*sy + n[2]*cy, y = n[1];   /* rotateY */
       var y2 = y*cp - z1*sp, z2 = y*sp + z1*cp;                        /* rotateX */
       var d = x*LIGHT[0] + y2*LIGHT[1] + z2*LIGHT[2];
-      return Math.max(0, Math.min(0.52, 0.30 - d*0.34));               /* darkness, not light */
+      return Math.max(0, Math.min(0.34, 0.20 - d*0.24));               /* darkness, not light */
     }
     function apply(){
       rig.style.setProperty("--py", yaw.toFixed(2) + "deg");
