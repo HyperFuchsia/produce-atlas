@@ -109,6 +109,29 @@ contact core, a soft ambient shadow, and a reflection of the lit panels coming b
 up off the floor — all in the plane of the page, and all sized from the machine's own
 footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 
+### The apparatus is not quite right
+
+Deliberately, and Schedule D on the page says so in full. The cabinet holds a pose
+exactly and then, every ten seconds or so, is a fraction of a degree somewhere else;
+its reflection is a beat behind it; the seal in the belly glass turns once every nine
+minutes. The rating plate and the flank plate change their serial numbers while they
+are turned away from the camera, and the service record on the back counts up whether
+or not you pull the lever — the apparatus was running before the page opened and does
+not stop when it closes. Occasionally a lamp lights for nothing, a second payline
+appears on a machine that has one, a character in the message line gives way, and a
+reel reports **state 8**, which is not in the basis. The register has always held
+**QA-77/0000**: a matter you did not file, withheld, deferred, not open to appeal. If
+you leave it alone it will eventually tell you so, four times, and then stop. Come
+back later and it knows you were here.
+
+**Four things are exempt and stay true:** the physics, the printed probabilities, the
+register's arithmetic, and the session clock. State 8 is a display artefact only —
+the outcome recorded, counted and certified is the one the Born rule produced. None
+of it is a hook: the drift holds still between shifts so the keys stay a stable
+target, the idle lines are written to be off-putting and do not repeat, and
+`prefers-reduced-motion` stops all of it. The manual states plainly that the machine
+has not noticed you and cannot, and that nothing here is a sign.
+
 ### Interface
 
 Powers on with a real LCD segment test — every pixel and flag lit, then blank, then

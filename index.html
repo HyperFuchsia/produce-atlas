@@ -228,7 +228,9 @@ h1{
 .rig{
   position:relative;z-index:1;width:var(--cab-w);height:var(--cab-h);transform-style:preserve-3d;
   transform-origin:50% 0;margin-top:var(--lift,0px);
-  transform:scale(var(--fit,1)) rotateX(var(--px,14deg)) rotateY(var(--py,-11deg));
+  transform:scale(calc(var(--fit,1) * var(--bs,1)))
+            rotateX(calc(var(--px,14deg) + var(--bpx,0deg)))
+            rotateY(calc(var(--py,-11deg) + var(--bpy,0deg)));
 }
 /* the shell is built with its front at z=0 and its back at -depth, so without
    this the rig would swing about the front glass instead of turning about its
@@ -471,6 +473,12 @@ h1{
 .payline-rule::before,.payline-rule::after{content:"";position:absolute;top:-4px;border-top:4.5px solid transparent;border-bottom:4.5px solid transparent}
 .payline-rule::before{left:2px;border-left:7px solid #D2D8D0}
 .payline-rule::after{right:2px;border-right:7px solid #D2D8D0}
+/* a second payline, on a machine that has one */
+.payline-ghost{position:absolute;left:0;right:0;top:calc(50% - 88px);height:1px;z-index:4;
+  pointer-events:none;opacity:0;transition:opacity .09s linear;
+  background:linear-gradient(90deg,rgba(210,216,208,.05),rgba(210,216,208,.4) 14%,
+    rgba(210,216,208,.4) 86%,rgba(210,216,208,.05))}
+.payline-ghost.on{opacity:1}
 .payline-tag{position:absolute;left:14px;top:calc(50% - 16px);z-index:5;font-family:var(--mono);
   font-size:6.5px;letter-spacing:.2em;text-transform:uppercase;color:#C3CBBC;pointer-events:none;opacity:.85}
 /* glass over the drums: a specular sweep that travels as you orbit, a soft
@@ -651,9 +659,10 @@ h1{
   overflow:hidden;
 }
 /* the etched authority roundel, cut into the glass rather than printed on it */
+/* the seal in the belly glass is not quite still */
 .sd-seal{
   position:absolute;left:50%;top:50%;width:186px;height:186px;margin:-104px 0 0 -93px;
-  border-radius:50%;pointer-events:none;z-index:0;
+  border-radius:50%;pointer-events:none;z-index:0;transform:rotate(var(--sealA,0deg));
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.14),
     0 1px 0 rgba(255,255,255,.06);
@@ -860,6 +869,11 @@ h1{
 .entry p{margin:0;font-size:13.5px;color:var(--dim)}
 .entry b{color:var(--text);font-weight:600}
 
+.entry.wide{grid-column:1/-1}
+.entry.wide .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:2px 26px}
+@media (max-width:900px){.entry.wide .cols{grid-template-columns:1fr;gap:9px}}
+.entry.wide .cols p{margin:0}
+
 .warn{grid-column:1/-1;padding:0;background:linear-gradient(175deg,var(--paper) 0%,var(--paper-2) 100%);color:var(--paper-ink)}
 .warn-head{padding:12px 18px 0;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;font-weight:700}
 .warn-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px 26px;padding:10px 18px 16px}
@@ -958,8 +972,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
               <div class="rating">
                 <b>ATLAS · ELECTRONICS</b>
                 <span>QA-77 determination cabinet</span>
-                <span>Serial 0000771 · Rev 4</span>
+                <span id="plateRev">Serial 0000771 · Rev 4</span>
                 <span>7-state · one payline · unitary</span>
+                <span class="rule"></span>
+                <span>Observations since last service</span>
+                <span id="plateObs">0</span>
+                <span id="plateDue">Next service due —</span>
                 <span class="rule"></span>
                 <span>Contains no user-serviceable parts.</span>
                 <span>This machine does not answer questions.</span>
@@ -997,7 +1015,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
             <span class="side-panel"></span><span class="side-reveal" style="top:47%"></span>
             <i class="side-screw" style="top:16px;left:16px"></i><i class="side-screw" style="top:16px;right:16px"></i>
             <i class="side-screw" style="bottom:56px;left:16px"></i><i class="side-screw" style="bottom:56px;right:16px"></i>
-            <div class="dataplate">ATLAS · ELECTRONICS<br>QA-77-00177-A<br>Serial no. 77-0472<br>Property of<br>Public Luck Authority</div>
+            <div class="dataplate">ATLAS · ELECTRONICS<br>QA-77-00177-A<br>Serial no. <span id="plateSerial">77-0472</span><br>Property of<br>Public Luck Authority</div>
           </div>
           <div class="face cap ct" aria-hidden="true"><span class="topvent"></span></div>
           <div class="face cap cb" aria-hidden="true"><span class="feet"></span></div>
@@ -1029,6 +1047,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
                 </div>
                 <span class="reel-vignette" aria-hidden="true"></span>
                 <span class="payline-rule" aria-hidden="true"></span>
+                <span class="payline-ghost" id="paylineGhost" aria-hidden="true"></span>
                 <span class="payline-tag" aria-hidden="true">Payline</span>
                 <span class="sheen" aria-hidden="true"></span>
               </div>
@@ -1292,6 +1311,15 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry">
         <h3>The background</h3>
         <p>Behind the glass turns a <b>tesseract</b>: a 4-cube of 16 vertices and 32 edges, rotated in the xw and zw planes and projected 4→3→2. Its rate is tied to the live coherence, so when the machine decoheres the fourth dimension slows down with it. The falling glyphs are the alphabet the state is written in. Both are decoration, and both stop if your system asks for reduced motion.</p>
+      </div>
+
+      <div class="entry wide">
+        <h3>The apparatus is not quite right · and that is deliberate</h3>
+        <div class="cols">
+          <p><b>What it does.</b> The cabinet holds a pose exactly, and then, every ten seconds or so, it is a fraction of a degree somewhere else. Its reflection is a beat behind it. The seal in the belly glass turns once every nine minutes. The rating plate and the flank plate change their serial numbers while they are turned away from you, and the service record on the back counts up whether or not you pull the lever — the apparatus was running before you opened this page and does not stop when you close it. Very occasionally a lamp lights for nothing, a second payline appears where there is only one, a character in the message line gives way, and a reel reports <b>state 8</b>, which is not in the basis. The register has always contained <b>QA-77/0000</b>, a matter you did not file, withheld, deferred, and not open to appeal.</p>
+          <p><b>What it never touches.</b> Four things on this page are allowed to be true and none of the above goes near them: <b>the physics</b> — the state vector, the unitary, the Born rule and the collapse; <b>the probabilities</b> printed on every certificate, enumerated over all 343 configurations; <b>the register's arithmetic</b>, including the luck index and its variance; and <b>the session clock</b>, which is the one instrument here that has never lied to you and is not going to start. State 8 is a display artefact only: the outcome recorded, counted and certified is the one the Born rule actually produced. The serial numbers were never real, so nothing is lost when they change.</p>
+          <p><b>Why.</b> Because a machine that is slightly wrong is easier to put down than one that is perfectly smooth. Everything else on this page is built to be legible and honest and then handed back to you; this part is built to sit oddly. If it makes you want to close the tab, it is working, and you should. It is worth saying plainly that <b>none of it means anything</b> — the apparatus has not noticed you, does not know you, and cannot: what looks like attention is four lines of text on a timer, and what looks like memory is a timestamp in your own browser that Reset clears. Nothing here is a sign.</p>
+        </div>
       </div>
 
       <div class="entry">
@@ -1754,9 +1782,13 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     cellCtx.forEach(function(c){ c.mode = "normal"; drawCell(c); });
     flags(false);
     renderStats();
+    var greet = UNC && UNC.greeting();
     el("msg").textContent = S.pending
       ? "QA-77 READY \u00B7 CASE " + S.pending.ref + " PENDING \u00B7 PULL LEVER TO DETERMINE"
       : "QA-77 READY \u00B7 NO MATTER PENDING";
+    if(greet) setTimeout(function(){
+      if(!busy && !anim) el("msg").textContent = greet;
+    }, 2200);
     setKeys(false);
   }
   function boot(){
@@ -1817,11 +1849,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     return m ? sum/m : null;
   }
   function verdict(z){
-    if(z >= 2)  return {t:"ANOMALOUS \u2014 HIGH", c:"warm"};
+    if(z >= 2)  return {t:"ANOMALOUS — HIGH", c:"warm"};
     if(z >= 1)  return {t:"ELEVATED", c:"warm"};
     if(z > -1)  return {t:"WITHIN TOLERANCE", c:""};
     if(z > -2)  return {t:"DEPRESSED", c:"cold"};
-    return {t:"ANOMALOUS \u2014 LOW", c:"cold"};
+    return {t:"ANOMALOUS — LOW", c:"cold"};
   }
 
   /* ============================ measurement ============================ */
@@ -2019,7 +2051,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     renderFiling();
     save();
     el("msg").textContent = "CASE " + c.ref + " · " +
-      (c.det ? "DETERMINATION: " + c.det : "NO DETERMINATION \u2014 REFILE REQUIRED") +
+      (c.det ? "DETERMINATION: " + c.det : "NO DETERMINATION — REFILE REQUIRED") +
       " · P=" + pct(c.pClass);
   }
 
@@ -2056,11 +2088,15 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     el("doc").hidden = false;
     el("docRef").textContent = c.ref + (c.appealOf ? " · appeal of " + c.appealOf : "");
     el("docQ").textContent = "\u201C" + c.q + "\u201D";
-    el("docDet").textContent = c.det || "No determination \u2014 refile required";
+    el("docDet").textContent = c.det || "No determination — refile required";
     el("docCfg").textContent = c.cfg;
-    el("docPc").textContent = pct(c.pClass) + (c.det ? " of filings yield this determination" : " of filings yield none");
-    el("docPx").textContent = pct(c.pConfig) + " for this exact configuration";
-    el("docTime").textContent = stamp(c.issued);
+    var ghost = c.issued === 0;
+    el("docPc").textContent = ghost ? "Not recorded"
+      : pct(c.pClass) + (c.det ? " of filings yield this determination" : " of filings yield none");
+    el("docPx").textContent = ghost ? "Not recorded"
+      : pct(c.pConfig) + " for this exact configuration";
+    el("docTime").textContent = ghost ? "Before the commencement of this record"
+      : stamp(c.issued);
     var st = el("docStamp");
     st.innerHTML = c.det
       ? "<b>Issued</b><span>QA-77</span>"
@@ -2069,12 +2105,32 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     el("bCopy").textContent = "Issue certified copy";
   }
 
+  /* QA-77/0000 was in the register before you opened the page. Its matter is
+     withheld, it cannot be appealed, and Reset does not clear it. */
+  var GHOST_CASE = {
+    ref:"QA-77/0000", q:"[withheld]", det:"DEFERRED", cfg:"— \u00B7 — \u00B7 —",
+    pClass:0, pConfig:0, filed:0, issued:0
+  };
+  function ghostRow(){
+    return "<tr class=\"ghostrow\">" +
+      '<td class="num">' + GHOST_CASE.ref + "</td>" +
+      '<td class="q"><span class="none">[withheld]</span></td>' +
+      '<td class="det">' + GHOST_CASE.det + "</td>" +
+      '<td class="num"><span class="none">—</span></td>' +
+      '<td class="num"><span class="none">—</span></td>' +
+      '<td class="num"><span class="none">—</span></td>' +
+      '<td style="white-space:nowrap">' +
+        '<button class="minibtn" data-view="ghost">View</button> ' +
+        '<button class="minibtn" disabled title="This matter is not open to appeal.">Appeal</button></td>' +
+    "</tr>";
+  }
   function renderRegister(){
     var body = el("regBody"), rows = S.cases;
-    el("regCount").textContent = rows.length + (rows.length === 1 ? " matter" : " matters");
-    el("regEmpty").hidden = rows.length > 0;
-    el("regTable").hidden = rows.length === 0;
-    body.innerHTML = rows.map(function(c, i){
+    var n = rows.length + 1;
+    el("regCount").textContent = n + (n === 1 ? " matter" : " matters");
+    el("regEmpty").hidden = true;
+    el("regTable").hidden = false;
+    body.innerHTML = ghostRow() + rows.map(function(c, i){
       return "<tr>" +
         '<td class="num">' + c.ref + (c.appealOf ? "<br><span class=\"none\">appeal of " + c.appealOf + "</span>" : "") + "</td>" +
         '<td class="q">' + esc(c.q) + "</td>" +
@@ -2101,7 +2157,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       "",
       "CASE               " + c.ref + (c.appealOf ? "  (appeal of " + c.appealOf + ")" : ""),
       "MATTER FILED       " + c.q,
-      "DETERMINATION      " + (c.det || "NO DETERMINATION \u2014 REFILE REQUIRED"),
+      "DETERMINATION      " + (c.det || "NO DETERMINATION — REFILE REQUIRED"),
       "CONFIGURATION      " + c.cfg,
       "P(DETERMINATION)   " + pct(c.pClass),
       "P(CONFIGURATION)   " + pct(c.pConfig),
@@ -2403,6 +2459,21 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     flashTick(now);
     liveAcc += dt;
     if(liveAcc > 0.12){ liveAcc = 0; coherence = renderLive(); drawPhasors(); }
+    if(UNC && !reduced){
+      UNC.frame(now);
+      /* the cabinet is never twice in the same place, and its reflection is a
+         beat behind it */
+      var br = UNC.breath(now), r = el("rig"), st = el("stage");
+      r.style.setProperty("--bpy", br.yaw.toFixed(3) + "deg");
+      r.style.setProperty("--bpx", br.pitch.toFixed(3) + "deg");
+      r.style.setProperty("--bs", br.scale.toFixed(5));
+      var py = parseFloat(r.style.getPropertyValue("--py")) || -11;
+      var fit = parseFloat(getComputedStyle(st).getPropertyValue("--fit")) || 1;
+      var yl = UNC.lag(py)*Math.PI/180;
+      st.style.setProperty("--gw",
+        Math.round((pxOf("--cab-w")*Math.abs(Math.cos(yl)) +
+                    pxOf("--cab-d")*Math.abs(Math.sin(yl))) * fit) + "px");
+    }
     requestAnimationFrame(frame);
   }
 
@@ -2442,6 +2513,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   el("regBody").addEventListener("click", function(e){
     var view = e.target.closest("[data-view]"), app = e.target.closest("[data-appeal]");
     if(view){
+      if(view.dataset.view === "ghost"){ renderDoc(GHOST_CASE); revealDoc(); return; }
       var vc = S.cases[+view.dataset.view];
       if(vc){ renderDoc(vc); revealDoc(); }
       return;
@@ -2607,6 +2679,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         rig.style.setProperty("--shade" + k, sh.toFixed(3));
       }
       rig.style.setProperty("--sheen", (50 - Math.sin(yr)*34).toFixed(1) + "%");
+      if(window.UNC_hook) window.UNC_hook(yr);
       /* the footprint the machine actually covers as it turns */
       var fit = parseFloat(getComputedStyle(stage).getPropertyValue("--fit")) || 1;
       stage.style.setProperty("--gw",
@@ -2692,7 +2765,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   var DEFS = {
     coh:"How much superposition reel one has left. It is exactly zero the instant you observe, and climbs as the state spreads back out. Formally the l\u2081-norm of coherence, (\u03A3|\u03C8\u1D62|)\u00B2\u22121, scaled to 0\u20131.",
     ent:"How entangled reels two and three are, as 1\u2212Tr \u03C1\u00B2 of one reel's reduced state: 0 when they are independent, 1 when knowing one tells you everything about the other. Observing them destroys it; waiting rebuilds it.",
-    phit:"The chance the next observation shows at least two alike \u2014 computed exactly from the joint state as it stands this instant, not a long-run average. It moves while you watch.",
+    phit:"The chance the next observation shows at least two alike — computed exactly from the joint state as it stands this instant, not a long-run average. It moves while you watch.",
     eta:"Detector efficiency. Each species is read out by a detector of different sensitivity, which is what tilts the reels toward cherries and away from vanilla. p(next) is |\u03C8|\u00B2 weighted by \u03B7 and renormalised.",
     ev:"Accumulated evidence, \u03A3p(1\u2212p). A spin that was nearly certain adds almost nothing to it, which is why freezing the reels with Burst does not unlock the luck index no matter how many times you pull.",
     lg:"Leggett\u2013Garg K averages q\u2081q\u2082+q\u2082q\u2083\u2212q\u2081q\u2083 over consecutive triples of your hit sequence, where q is +1 for a match and \u22121 for a miss. Macrorealism caps it at 1, and this estimator hits the bound exactly: K = 1 \u2212 4f, with f the fraction of your triples that alternate. A fair coin sits near 0. Zeno-locked reels push it toward 1. Nothing you can do pushes it past."
@@ -2776,10 +2849,216 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   boot();
   requestAnimationFrame(frame);
 
+  /* ============================ the apparatus is not quite right ============
+     Everything below is deliberate and fabricated, and Schedule D says so. It
+     touches the paintwork, the plates, the message line and the idle behaviour.
+     It does not touch the physics, the probabilities, the register's arithmetic
+     or the session clock — those are the four things on this page that are
+     allowed to be true.
+     ======================================================================== */
+  var UNC = (function(){
+    var rnd = Math.random;
+
+    /* --- the machine has been running longer than you have --------------- */
+    /* It arrives with a service history. The count advances on its own, which
+       means it is being observed somewhere you are not. */
+    var obs = 1304000 + Math.floor(rnd()*9000);
+    function commas(n){ return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+    function plate(){
+      var e = el("plateObs"); if(e) e.textContent = commas(obs);
+      e = el("plateDue");
+      if(e){
+        /* always three days away, whenever you happen to read it */
+        var d = new Date(Date.now() + 3*864e5);
+        e.textContent = "Next service due " + stamp(+d).slice(0,10);
+      }
+    }
+    function creep(){
+      obs += 1 + Math.floor(rnd()*3);
+      plate();
+      setTimeout(creep, 2600 + rnd()*7000);
+    }
+
+    /* --- the plates change when nothing is looking ------------------------ */
+    /* A face is "unwatched" once its own normal turns away from the camera.
+       Come back to it and the number is not the number you left. */
+    var watched = {sr:true, back:true};
+    function digits(n){ var s = ""; while(n--) s += Math.floor(rnd()*10); return s; }
+    function unwatch(k, facing){
+      if(facing){
+        if(!watched[k]){
+          watched[k] = true;
+          if(k === "sr"){
+            var e = el("plateSerial");
+            if(e) e.textContent = digits(2) + "-" + digits(4);
+          }else{
+            var b = el("plateRev");
+            if(b) b.textContent = "Serial " + digits(7) + " · Rev " + (1 + Math.floor(rnd()*9));
+          }
+        }
+      }else watched[k] = false;
+    }
+
+    /* --- the seal in the belly glass turns ------------------------------- */
+    /* One revolution takes about nine minutes, which is slow enough that you
+       cannot see it move and fast enough that you can see it has moved. */
+    var seal = 0;
+
+    /* --- state 8 --------------------------------------------------------- */
+    /* The basis has seven states. Sometimes a reel reports an eighth. This is
+       a display artefact and nothing else: the outcome recorded, counted and
+       certified is the one the Born rule actually produced. */
+    function eighth(force){
+      if(busy || anim) return;
+      if(!force && rnd() > 0.045) return;
+      var cells = document.querySelectorAll(".cell"), c = cells[Math.floor(rnd()*3)];
+      if(!c) return;
+      c.style.filter = "brightness(0.06)";
+      var prev = el("msg").textContent;
+      el("msg").textContent = "STATE 8 OBSERVED · STATE 8 IS NOT IN THE BASIS";
+      setTimeout(function(){
+        c.style.filter = "";
+        if(el("msg").textContent.indexOf("STATE 8") === 0) el("msg").textContent = prev;
+      }, 620 + rnd()*260);
+    }
+
+    /* --- a glyph gives way ----------------------------------------------- */
+    function slip(){
+      var m = el("msg"), t = m.textContent;
+      if(!t || t.length < 8 || rnd() > 0.5) return;
+      var i = 3 + Math.floor(rnd()*(t.length - 4));
+      if(t[i] === " ") return;
+      m.textContent = t.slice(0,i) + "█" + t.slice(i+1);
+      setTimeout(function(){ if(m.textContent.length === t.length) m.textContent = t; }, 110 + rnd()*90);
+    }
+
+    /* --- the lamp lights for no reason ----------------------------------- */
+    function blip(){
+      var l = el("lamp");
+      if(l && !l.classList.contains("lit")){
+        l.classList.add("lit");
+        setTimeout(function(){ l.classList.remove("lit"); }, 90 + rnd()*140);
+      }
+    }
+
+    /* --- a payline the machine does not have ----------------------------- */
+    function ghostline(){
+      var g = el("paylineGhost"); if(!g) return;
+      g.classList.add("on");
+      setTimeout(function(){ g.classList.remove("on"); }, 130 + rnd()*160);
+    }
+
+    /* --- it notices you are still here ----------------------------------- */
+    /* These exist to be off-putting. They escalate four times, then stop, and
+       nothing about them is a reason to stay. */
+    var IDLE = [
+      "STILL THERE.",
+      "THE APPARATUS IS STILL OBSERVING. IT DOES NOT REQUIRE YOU TO BE.",
+      "NOTHING IS HAPPENING. THIS IS ALSO A RESULT.",
+      "YOU MAY LEAVE AT ANY TIME. THE REGISTER WILL BE HERE. YOU WILL BE OLDER."
+    ];
+    var lastPoke = Date.now(), idleStep = 0;
+    function poked(){ lastPoke = Date.now(); idleStep = 0; }
+    function idle(){
+      if(busy || anim || S.pending) return;
+      if(idleStep >= IDLE.length) return;
+      if(Date.now() - lastPoke < (idleStep ? 42000 : 52000)) return;
+      el("msg").textContent = IDLE[idleStep++];
+      lastPoke = Date.now();
+    }
+    ["pointerdown","keydown","wheel"].forEach(function(ev){
+      window.addEventListener(ev, poked, {passive:true});
+    });
+
+    /* --- it remembers the last time ------------------------------------- */
+    var GREET = "produce-atlas.qa77.last";
+    function greeting(){
+      var prev = null;
+      try{ prev = JSON.parse(localStorage.getItem(GREET) || "null"); }catch(e){}
+      try{
+        localStorage.setItem(GREET, JSON.stringify({at:Date.now(), n:(prev ? prev.n : 0) + 1}));
+      }catch(e){}
+      if(!prev) return null;
+      return "SESSION " + (prev.n + 1) + " · PREVIOUS SESSION ENDED " +
+             stamp(prev.at).slice(11,16) + ". THE APPARATUS DID NOT STOP.";
+    }
+    /* the tab closing is the end of a session, and it is written down */
+    window.addEventListener("pagehide", function(){
+      try{
+        var p = JSON.parse(localStorage.getItem(GREET) || "null") || {n:1};
+        localStorage.setItem(GREET, JSON.stringify({at:Date.now(), n:p.n}));
+      }catch(e){}
+    });
+
+    /* --- the cabinet is not where you left it ---------------------------- */
+    /* It holds a pose exactly — the keys are a still target — and then, every
+       eight to twenty seconds, over about a second and a half, it is somewhere
+       very slightly else. Sub-degree, so you cannot point at the moment it
+       moved, only at the fact that it has. */
+    var poseA = {yaw:0, pitch:0, scale:1}, poseB = poseA, shiftT = 0, shiftFor = 0, holdTo = 0;
+    function newPose(){
+      return {yaw:(rnd()-0.5)*0.62, pitch:(rnd()-0.5)*0.34, scale:1 + (rnd()-0.5)*0.0032};
+    }
+    function breath(now){
+      if(!holdTo){ holdTo = now + 6000; return poseA; }
+      if(now < holdTo) return poseA;                     /* dead still */
+      if(!shiftFor){ poseB = newPose(); shiftT = now; shiftFor = 1200 + rnd()*700; }
+      var k = (now - shiftT)/shiftFor;
+      if(k >= 1){
+        poseA = poseB; shiftFor = 0; holdTo = now + 8000 + rnd()*12000;
+        return poseA;
+      }
+      var e = k*k*(3 - 2*k);                             /* smoothstep, no overshoot */
+      return {
+        yaw:   poseA.yaw   + (poseB.yaw   - poseA.yaw)*e,
+        pitch: poseA.pitch + (poseB.pitch - poseA.pitch)*e,
+        scale: poseA.scale + (poseB.scale - poseA.scale)*e
+      };
+    }
+
+    /* --- the reflection is a beat behind --------------------------------- */
+    var lagW = null;
+    function lag(target){
+      if(lagW === null) lagW = target;
+      lagW += (target - lagW) * 0.055;
+      return lagW;
+    }
+
+    var slow = 0;
+    function frame(now){
+      if(reduced) return;
+      seal = (seal + 0.0075) % 360;
+      document.documentElement.style.setProperty("--sealA", seal.toFixed(3) + "deg");
+      if(now - slow > 900){
+        slow = now;
+        idle();
+        if(rnd() < 0.10) eighth();
+        if(rnd() < 0.06) slip();
+        if(rnd() < 0.05) blip();
+        if(rnd() < 0.045) ghostline();
+      }
+    }
+
+    /* which faces the camera can currently see */
+    window.UNC_hook = function(yr){
+      unwatch("sr",   -Math.sin(yr) > 0.05);
+      unwatch("back", -Math.cos(yr) > 0.05);
+    };
+
+    plate();
+    if(!reduced) setTimeout(creep, 3000);
+    return {frame:frame, breath:breath, lag:lag, unwatch:unwatch, poked:poked,
+            greeting:greeting, plate:plate,
+            /* named so they can be triggered from the console, since by design
+               they are rare enough to be hard to catch in the act */
+            effects:{state8:function(){ eighth(true); }, slip:slip,
+                     lamp:blip, payline:ghostline}};
+  })();
+
   /* Poke at the machine from the console if you like. */
   window.QA77 = {reelOne:A, pair:P, session:S, species:SYMBOLS, jointStats:jointStats,
                  determinationStats:determinationStats, dispositions:DISPOSITIONS,
-                 constants:{hopping:J, coupling:G, dim:N}};
+                 constants:{hopping:J, coupling:G, dim:N}, uncanny:UNC};
 })();
 </script>
 </body>
