@@ -125,16 +125,28 @@ is nothing in the glove.
 
 It is not your hand either; on the machine's own account it is the second one, the one
 the attendance plate keeps reporting: *two hands detected, one is not accounted for.*
-The glove is an SVG in cloth gradients with seams, gauntlet stitching and a dark mouth
-where the wrist should be; it has a permanent slow float, four fingers hinged at their
-own knuckles that foreshorten rather than swing as they curl, and a thumb that comes
-round in front of the record once it is held up. The choreography runs as five stepped
+The glove is drawn as a lit object rather than a flat shape. Each digit carries a full
+cylinder ramp — shadow edge, highlight band, terminator, core shadow, and the bounce
+light that comes back off the far side — with the little finger on a tighter ramp
+because it sits further round. The back of the hand has its own broad gradient, four
+soft speculars along the knuckle ridge, two palm folds and three seams; the digits are
+drawn *behind* the hand so they emerge from under a scalloped knuckle line instead of
+sitting on top of a mitten; each has a joint crease and a lengthwise sheen. The
+gauntlet is a cylinder with a hem, dashed stitching, the shadow the hand throws down
+into it, a mouth on a radial ramp and the far inner wall of that mouth catching the
+light. The thumb has the same ramp, its own joint, a lengthwise highlight and the
+shadow it lays on the record it is holding down. The whole glove has a permanent slow
+float, and the four fingers are hinged at their own knuckles and foreshorten rather
+than swing as they curl. The choreography runs as five stepped
 beats — approach, grip, take, present, release — each timed on its own and composed
 from custom properties so no two beats fight over the same transform. In the present
 beat the record is re-set at a larger type size rather than scaled up, computed from
-its real line count so the whole of it fits the stage however long it happens to be,
-and the glove's grip is placed from where the curled fingertips actually land in the
-artwork.
+its real line count so the whole of it fits the stage however long it happens to be;
+the glove holds it by one bottom corner so it stands up and to the side rather than
+hiding the glove behind its own work; and the grip is placed from where the curled
+fingertips actually land in the artwork. The held tilt is kept under two degrees,
+because a wide sheet rotated any further shears its right-hand column of figures past
+a whole line and stops reading as a column.
 
 Nothing is withheld: the record is complete and yours the moment the glove is gone,
 and `prefers-reduced-motion` goes straight to it.
