@@ -156,6 +156,17 @@
     return m;
   }
 
+  /* Every moving part on the cabinet is one of these: a number that eases from
+     0 to 1 and a function that decides what that means. Keys turn, toggles
+     flip, the stamp falls, the cover lifts, the lever swings — all of it is the
+     same three lines running once per frame. */
+  var anims = [];
+  function anim(rate, apply) {
+    var a = { v: 0, target: 0, rate: rate, apply: apply };
+    anims.push(a); apply(0);
+    return a;
+  }
+
   /* ------------------------------------------------------------ printing -- */
   var MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
   function makeCanvas(w, h) {
@@ -649,6 +660,216 @@
   ctlReveal.position.set(0, ctlY - 0.078, FZ - 0.001);
   machine.add(ctlReveal);
 
+  /* ================== THE ATTENDANCE INTERLOCK ============================ */
+  /* Seven steps to start a machine whose result means nothing, each of them a
+     control you have to find and work, all of them in order, and the whole
+     thing resets the instant the reels stop. The lever is real, three hundred
+     grams of chrome, and it is not connected to anything. */
+  var ILK = { key: false, decl: [false, false, false], stamped: false,
+              docket: false, lever: false, cover: false };
+  var STEP_NAME = [
+    "TURN THE ATTENDANCE KEY", "MAKE THE THREE DECLARATIONS",
+    "APPLY THE STAMP", "TAKE THE DOCKET", "PULL THE LEVER",
+    "RAISE THE COVER", "PRESS OBSERVE"
+  ];
+  function stepNo() {
+    if (!ILK.key) return 0;
+    if (!ILK.decl[0] || !ILK.decl[1] || !ILK.decl[2]) return 1;
+    if (!ILK.stamped) return 2;
+    if (!ILK.docket) return 3;
+    if (!ILK.lever) return 4;
+    if (!ILK.cover) return 5;
+    return 6;
+  }
+
+  var ilkY = 0.648, ILK_HIT = [];
+  var ilkPlate = plate(PW, 0.084, ilkY, 1600, 220, function (x, w, h) {
+    var g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#33363A"); g.addColorStop(1, "#26292C");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.textBaseline = "middle";
+    x.fillStyle = "#8E949A"; x.font = "500 24px " + MONO;
+    tracked(x, "ATTENDANCE INTERLOCK", 24, 34, 3, "left");
+    x.fillStyle = "#5E646A"; x.font = "500 20px " + MONO;
+    tracked(x, "FORM QA-77/B · COMPLETE IN ORDER", 24, 66, 2, "left");
+    /* the label under each control, at the position the control stands at */
+    x.fillStyle = "#9AA0A6"; x.font = "500 20px " + MONO;
+    var marks = [[0.10, "KEY"], [0.305, "I ATTEND"], [0.435, "UNPAID"],
+                 [0.565, "AWARE"], [0.83, "STAMP"]];
+    marks.forEach(function (m) { tracked(x, m[1], w * m[0], h - 30, 2, "center"); });
+    x.strokeStyle = "rgba(150,156,162,.22)"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(24, h - 56); x.lineTo(w - 24, h - 56); x.stroke();
+  }, 0.24, false);
+  var ilkTop = ilkY + 0.014;
+
+  /* ---- the attendance key ---- */
+  var keyX = -PW * 0.40;
+  var escutcheon = new T.Mesh(new T.CylinderGeometry(0.017, 0.017, 0.008, 20), steelDim);
+  escutcheon.rotation.x = Math.PI / 2;
+  escutcheon.position.set(keyX, ilkTop, FZ + 0.005);
+  escutcheon.castShadow = true;
+  machine.add(escutcheon);
+  var keyGroup = new T.Group();
+  keyGroup.position.set(keyX, ilkTop, FZ + 0.010);
+  var keyBit = box(0.007, 0.030, 0.008, steel);
+  keyBit.position.y = 0.009;
+  keyGroup.add(keyBit);
+  var keyBow = new T.Mesh(new T.TorusGeometry(0.008, 0.0025, 8, 20), steel);
+  keyBow.position.y = 0.028;
+  keyGroup.add(keyBow);
+  machine.add(keyGroup);
+  var keyAnim = anim(7, function (v) { keyGroup.rotation.z = -v * Math.PI / 2; });
+  keyBit.userData.ilk = "key"; keyBow.userData.ilk = "key";
+  escutcheon.userData.ilk = "key";
+  ILK_HIT.push(keyBit, keyBow, escutcheon);
+
+  /* ---- the three declarations ---- */
+  var declAnims = [];
+  [-PW * 0.195, -PW * 0.065, PW * 0.065].forEach(function (dx, i) {
+    var base = new T.Mesh(new T.CylinderGeometry(0.009, 0.010, 0.008, 16), steelDim);
+    base.rotation.x = Math.PI / 2;
+    base.position.set(dx, ilkTop, FZ + 0.005);
+    machine.add(base);
+    var g = new T.Group();
+    g.position.set(dx, ilkTop, FZ + 0.008);
+    var stick = new T.Mesh(new T.CylinderGeometry(0.0035, 0.0045, 0.028, 12), steel);
+    stick.position.y = 0.014; stick.castShadow = true;
+    g.add(stick);
+    var tip = new T.Mesh(new T.SphereGeometry(0.006, 14, 10), steel);
+    tip.position.y = 0.029;
+    g.add(tip);
+    machine.add(g);
+    /* forward-and-down for a declaration not yet made, back-and-up for one that
+       has been. A toggle that only changed colour would not be a toggle. */
+    declAnims.push(anim(9, function (v) { g.rotation.x = 0.70 - v * 1.20; }));
+    stick.userData.ilk = "decl" + i; tip.userData.ilk = "decl" + i;
+    base.userData.ilk = "decl" + i;
+    ILK_HIT.push(stick, tip, base);
+  });
+
+  /* ---- the stamp press ---- */
+  var stampX = PW * 0.34;
+  var stampPost = box(0.014, 0.052, 0.016, steelDim);
+  stampPost.position.set(stampX + 0.026, ilkY + 0.006, FZ + 0.014);
+  machine.add(stampPost);
+  var stampPad = box(0.030, 0.007, 0.024, cavity);
+  stampPad.position.set(stampX - 0.024, ilkY - 0.020, FZ + 0.016);
+  machine.add(stampPad);
+  var stampArm = new T.Group();
+  stampArm.position.set(stampX + 0.026, ilkY + 0.030, FZ + 0.018);
+  var armBar = box(0.056, 0.008, 0.010, steel);
+  armBar.position.x = -0.028; armBar.castShadow = true;
+  stampArm.add(armBar);
+  var armKnob = new T.Mesh(new T.SphereGeometry(0.010, 18, 12), steel);
+  armKnob.position.x = -0.058; armKnob.castShadow = true;
+  stampArm.add(armKnob);
+  var stampHead = box(0.020, 0.016, 0.018, paintDark);
+  stampHead.position.set(-0.050, -0.013, 0);
+  stampArm.add(stampHead);
+  machine.add(stampArm);
+  var stampAnim = anim(11, function (v) { stampArm.rotation.z = -0.44 * (1 - v); });
+  [armBar, armKnob, stampHead].forEach(function (o) {
+    o.userData.ilk = "stamp"; ILK_HIT.push(o);
+  });
+
+  /* ---- the docket ---- */
+  /* It comes out of the record mouth, and it has to be taken. A machine that
+     printed one and kept it would be a different kind of joke. */
+  var docketNo = 0;
+  var docket = livePanel(0.096, 0.052, 640, 350, function (x, w, h) {
+    x.fillStyle = "#DAD6C8"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "rgba(90,86,74,.18)"; x.fillRect(0, 0, w, 8);
+    x.textBaseline = "middle"; x.fillStyle = "#23241F";
+    x.font = "600 26px " + MONO;
+    tracked(x, "PUBLIC LUCK AUTHORITY", w / 2, 44, 2, "center");
+    x.font = "700 58px " + MONO;
+    tracked(x, "No " + String(docketNo).padStart(4, "0"), w / 2, 118, 4, "center");
+    x.strokeStyle = "#6C6A5E"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(40, 158); x.lineTo(w - 40, 158); x.stroke();
+    x.fillStyle = "#3E3E36"; x.font = "500 24px " + MONO;
+    tracked(x, "ONE (1) OBSERVATION", w / 2, 190, 2, "center");
+    x.fillStyle = "#6C6A5E"; x.font = "500 19px " + MONO;
+    tracked(x, "THIS DOCKET ENTITLES THE", w / 2, 232, 1, "center");
+    tracked(x, "BEARER TO NOTHING", w / 2, 258, 1, "center");
+    /* the stamp, once it has been applied */
+    if (ILK.stamped) {
+      x.save();
+      x.translate(w * 0.5, 300); x.rotate(-0.14);
+      x.strokeStyle = "rgba(52,54,46,.62)"; x.lineWidth = 4;
+      x.strokeRect(-130, -24, 260, 48);
+      x.fillStyle = "rgba(52,54,46,.72)"; x.font = "700 26px " + MONO;
+      tracked(x, "ATTENDED", 0, 0, 4, "center");
+      x.restore();
+    }
+  }, 0.24);
+  docket.material.side = T.DoubleSide;
+  docket.visible = false;
+  machine.add(docket);
+  var docketX = -PW * 0.24, docketY = 0.478;
+  var docketAnim = anim(4.5, function (v) {
+    docket.position.set(docketX, docketY - 0.006 - v * 0.030, FZ - 0.020 + v * 0.062);
+    docket.rotation.x = -v * 0.42;
+  });
+  docket.userData.ilk = "docket";
+  ILK_HIT.push(docket);
+
+  /* ---- the cover over the OBSERVE bar ---- */
+  var coverHinge = new T.Group();
+  coverHinge.position.set(-PW * 0.26, ctlY + 0.038, FZ + 0.032);
+  var coverFlap = new T.Mesh(new T.PlaneGeometry(PW * 0.46, 0.076),
+    new T.MeshPhysicalMaterial({
+      color: 0x3A3E42, roughness: 0.10, metalness: 0.0,
+      clearcoat: 1.0, clearcoatRoughness: 0.06,
+      transparent: true, opacity: 0.42, side: T.DoubleSide
+    }));
+  coverFlap.position.y = -0.038;
+  coverHinge.add(coverFlap);
+  var coverRail = box(PW * 0.47, 0.008, 0.010, steelDim);
+  coverRail.position.set(-PW * 0.26, ctlY + 0.042, FZ + 0.032);
+  machine.add(coverRail);
+  machine.add(coverHinge);
+  var coverAnim = anim(6, function (v) { coverHinge.rotation.x = -v * 2.0; });
+  coverFlap.userData.ilk = "cover";
+  ILK_HIT.push(coverFlap);
+
+  /* ---- the lever ---- */
+  /* On the flank, where a fruit machine's lever belongs, and carrying a plate
+     that says what it does. */
+  var leverX = W / 2;
+  var leverMount = slab(0.020, 0.110, 0.110, 0.014, 0.005, paintDark);
+  leverMount.rotation.y = Math.PI / 2;
+  leverMount.position.set(leverX + 0.008, 0.830, D * 0.02);
+  machine.add(leverMount);
+  var leverBoss = new T.Mesh(new T.CylinderGeometry(0.028, 0.032, 0.030, 22), steelDim);
+  leverBoss.rotation.z = Math.PI / 2;
+  leverBoss.position.set(leverX + 0.028, 0.830, D * 0.02);
+  leverBoss.castShadow = true;
+  machine.add(leverBoss);
+  var leverArm = new T.Group();
+  leverArm.position.set(leverX + 0.032, 0.830, D * 0.02);
+  var leverShaft = new T.Mesh(new T.CylinderGeometry(0.008, 0.010, 0.200, 16), steel);
+  leverShaft.position.y = 0.100; leverShaft.castShadow = true;
+  leverArm.add(leverShaft);
+  var leverBall = new T.Mesh(new T.SphereGeometry(0.026, 28, 20), steel);
+  leverBall.position.y = 0.210; leverBall.castShadow = true;
+  leverArm.add(leverBall);
+  machine.add(leverArm);
+  var leverAnim = anim(8, function (v) { leverArm.rotation.x = v * 1.05; });
+  leverShaft.userData.ilk = "lever"; leverBall.userData.ilk = "lever";
+  ILK_HIT.push(leverShaft, leverBall);
+
+  var leverPlate = livePanel(0.150, 0.030, 700, 140, function (x, w, h) {
+    x.fillStyle = "#8E9296"; x.fillRect(0, 0, w, h);
+    x.strokeStyle = "#2C2F33"; x.lineWidth = 4; x.strokeRect(8, 8, w - 16, h - 16);
+    x.fillStyle = "#191C1F"; x.textBaseline = "middle";
+    x.font = "500 26px " + MONO;
+    tracked(x, "THIS LEVER IS NOT", w / 2, h * 0.36, 2, "center");
+    tracked(x, "CONNECTED TO ANYTHING", w / 2, h * 0.68, 2, "center");
+  }, 0.16);
+  leverPlate.rotation.y = Math.PI / 2;
+  leverPlate.position.set(leverX + 0.0015, 0.690, D * 0.02);
+  machine.add(leverPlate);
+
   /* ---- the notice rail ---- */
   var notice = plate(PW, 0.038, 0.578, 1500, 90, function (x, w, h) {
     x.fillStyle = "#22252A"; x.fillRect(0, 0, w, h);
@@ -873,14 +1094,114 @@
 
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag · pinch · press OBSERVE"
-      : "Drag to orbit · scroll to dolly · press OBSERVE";
+      ? "Drag · pinch · work the interlock"
+      : "Drag to orbit · scroll to dolly · work the interlock in order";
   }
   function setMessage(s) { msg = s; msgLine.redraw(); }
   function setState(a, b) { swState.set(a); swMatter.set(b); }
+  function showStep() {
+    var n = stepNo();
+    setState("STATE: SUPERPOSED", "STEP " + (n + 1) + " OF 7");
+    hudRight.textContent = STEP_NAME[n];
+  }
+
+  /* ---- working the form ---- */
+  /* Strictly in order. A form completed out of order is not a completed form,
+     and the apparatus is very clear about that. */
+  var OUT_OF_ORDER = [
+    "OUT OF SEQUENCE. THE FORM MUST BE COMPLETED IN ORDER.",
+    "THAT STEP COMES LATER. NOTHING HAS BEEN RECORDED.",
+    "PREMATURE. THE APPARATUS HAS NOTED IT AND DISREGARDED IT."
+  ];
+  var ooo = 0;
+  function refuse() {
+    setMessage(OUT_OF_ORDER[ooo++ % OUT_OF_ORDER.length]);
+    showStep();
+  }
+
+  function doStep(which) {
+    if (spinning) return;
+    var n = stepNo();
+    if (which === "key") {
+      if (n !== 0) return refuse();
+      ILK.key = true; keyAnim.target = 1;
+      setMessage("ATTENDANCE RECORDED. YOU ARE PRESENT AT T+"
+                 + (t0 / 1000).toFixed(1) + "S.");
+    } else if (which.indexOf("decl") === 0) {
+      if (n !== 1) return refuse();
+      var i = +which.charAt(4);
+      if (ILK.decl[i]) { setMessage("ALREADY DECLARED. ONCE IS SUFFICIENT."); return; }
+      ILK.decl[i] = true; declAnims[i].target = 1;
+      setMessage(["DECLARED: I AM ATTENDING OF MY OWN ACCORD.",
+                  "DECLARED: I AM NOT BEING PAID TO ATTEND.",
+                  "DECLARED: I AM AWARE THAT NOTHING FOLLOWS FROM THIS."][i]);
+    } else if (which === "stamp") {
+      if (n !== 2) return refuse();
+      ILK.stamped = true;
+      stampAnim.target = 1;
+      setTimeout(function () { stampAnim.target = 0; }, 260);
+      docketNo++;
+      docket.redraw();
+      docket.visible = true;
+      docketAnim.target = 1;
+      setMessage("STAMP APPLIED. DOCKET No "
+                 + String(docketNo).padStart(4, "0")
+                 + " ISSUED. YOU ARE 1 OF 1 IN THE QUEUE.");
+    } else if (which === "docket") {
+      if (n !== 3) return refuse();
+      ILK.docket = true;
+      docketAnim.rate = 2.6; docketAnim.target = 1.9;
+      setTimeout(function () { docket.visible = false; docketAnim.rate = 4.5; }, 900);
+      setMessage("DOCKET TAKEN. RETAIN IT. IT ENTITLES YOU TO NOTHING.");
+    } else if (which === "lever") {
+      if (n !== 4) return refuse();
+      ILK.lever = true;
+      leverAnim.rate = 14; leverAnim.target = 1;
+      setTimeout(function () { leverAnim.rate = 2.2; leverAnim.target = 0; }, 420);
+      setMessage("LEVER PULLED. THE APPARATUS ACKNOWLEDGES THE GESTURE.");
+    } else if (which === "cover") {
+      if (n !== 5) return refuse();
+      ILK.cover = true; coverAnim.target = 1;
+      setMessage("COVER RAISED. PRESS OBSERVE. THIS IS THE PART THAT WORKS.");
+    }
+    if (stepNo() === 6 && which !== "cover") {
+      setMessage("THE FORM IS COMPLETE. PRESS OBSERVE.");
+    }
+    showStep();
+  }
+
+  function resetInterlock(quiet) {
+    ILK.key = false; ILK.decl = [false, false, false];
+    ILK.stamped = false; ILK.docket = false;
+    ILK.lever = false; ILK.cover = false;
+    keyAnim.target = 0;
+    declAnims.forEach(function (a) { a.target = 0; });
+    coverAnim.target = 0;
+    docketAnim.target = 0; docket.visible = false;
+    if (!quiet) showStep();
+  }
+
+  /* the space bar works whichever control is next, which is the only mercy in
+     the whole arrangement */
+  function advance() {
+    if (spinning) return;
+    var n = stepNo();
+    if (n === 0) return doStep("key");
+    if (n === 1) return doStep("decl" + (ILK.decl[0] ? (ILK.decl[1] ? 2 : 1) : 0));
+    if (n === 2) return doStep("stamp");
+    if (n === 3) return doStep("docket");
+    if (n === 4) return doStep("lever");
+    if (n === 5) return doStep("cover");
+    return observe();
+  }
 
   function observe() {
     if (spinning) return;
+    if (stepNo() < 6) {
+      setMessage("THE INTERLOCK IS NOT SATISFIED. " + STEP_NAME[stepNo()] + ".");
+      showStep();
+      return;
+    }
     spinning = true;
     pressed = observeKey; pressT = 1;
     setState("STATE: COLLAPSING", "MATTER PENDING");
@@ -915,12 +1236,19 @@
     hudLeft.textContent = idleHint();
     hudRight.textContent = result.join(" / ");
     window.QA77.result = result;
+    /* and the whole ceremony is undone, every time, without being asked */
+    resetInterlock(true);
+    setTimeout(function () {
+      if (spinning) return;
+      setMessage("THE INTERLOCK HAS RESET. IT ALWAYS DOES.");
+      showStep();
+    }, 2600);
   }
 
   /* click, but only if the pointer did not travel — otherwise every orbit drag
      that happens to end on a key would also press it */
   var ray = new T.Raycaster(), ndc = new T.Vector2();
-  var hitTargets = [observeKey, burstKey, resetKey, fileKey];
+  var hitTargets = [observeKey, burstKey, resetKey, fileKey].concat(ILK_HIT);
   function pick(e) {
     var r = canvas.getBoundingClientRect();
     ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
@@ -930,14 +1258,27 @@
     return hits.length ? hits[0].object : null;
   }
   function press(obj) {
-    if (obj === observeKey) return observe();
+    if (obj.userData && obj.userData.ilk) return doStep(obj.userData.ilk);
+    if (obj === observeKey) {
+      if (!ILK.cover) {                     /* the cover is in the way, literally */
+        setMessage("THE COVER IS DOWN. " + STEP_NAME[stepNo()] + ".");
+        showStep();
+        return;
+      }
+      return observe();
+    }
     pressed = obj; pressT = 1;
-    if (obj === burstKey) setMessage("BURST IS DISABLED WHILE THE APPARATUS IS UNATTENDED.");
+    if (obj === burstKey) setMessage("BURST REQUIRES A SECOND ATTENDANT. THERE IS ONE OF YOU.");
     if (obj === resetKey) {
       obsCount = 0; matchCount = 0;
+      resetInterlock(true);
       setMessage("REGISTER CLEARED. THE SESSION CLOCK IS NOT CLEARED.");
+      showStep();
     }
-    if (obj === fileKey) setMessage("NO MATTER IS PENDING. NOTHING TO FILE.");
+    if (obj === fileKey) {
+      setMessage(ILK.docket ? "THE DOCKET IS ALREADY WITH YOU. FILING IS YOUR AFFAIR."
+                            : "NO MATTER IS PENDING. NOTHING TO FILE.");
+    }
   }
 
   /* ------------------------------------------------------------- camera --- */
@@ -1042,7 +1383,7 @@
     dolly(1 + e.deltaY * 0.0011);
   }, { passive: false });
   window.addEventListener("keydown", function (e) {
-    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); observe(); }
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); advance(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
@@ -1100,6 +1441,14 @@
 
     stepReels(dt);
 
+    for (var ai = 0; ai < anims.length; ai++) {
+      var a = anims[ai];
+      if (Math.abs(a.target - a.v) > 1e-4) {
+        a.v += (a.target - a.v) * Math.min(1, a.rate * dt);
+        a.apply(a.v);
+      }
+    }
+
     /* coherence rebuilds after an observation and never quite reaches one */
     if (!spinning && coherence < 0.97) coherence = Math.min(0.97, coherence + dt * 0.115);
 
@@ -1134,7 +1483,7 @@
   requestAnimationFrame(frame);
 
   hudLeft.textContent = idleHint();
-  hudRight.textContent = result.join(" / ");
+  showStep();
 
   var load = document.getElementById("loading");
   load.classList.add("gone");
@@ -1144,6 +1493,8 @@
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
     reels: reels, sprites: SPRITES, symbols: NSYM,
     observe: observe, fit: fitDistance, result: result,
+    advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
+    interlock: ILK, doStep: doStep, message: function () { return msg; },
     spinning: function () { return spinning; },
     register: function () { return { obs: obsCount, match: matchCount,
                                      coherence: coherence, seconds: t0 / 1000 }; }
