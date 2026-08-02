@@ -3,10 +3,89 @@ An evidence-led interactive 3-D atlas tracing the scientific identity, origins, 
 
 ## QA-77 — The Quantum Fruit Machine (`index.html`)
 
-A handheld LCD game in the style of an early-80s pocket console, with no gambling
-in it: no currency, credits, wagers or payouts exist anywhere in the app. A lever
-and four rubber keys, seven food-plant species held in superposition, and a running
-measurement of your luck against what the amplitudes predicted.
+A standing slot machine rendered as an actual WebGL scene: real geometry, physical
+materials, lights that cast shadows, and a camera you orbit. **Drag to orbit, scroll
+to dolly, click the lever (or press space) to observe.**
+
+> **Where the rebuild stands.** Everything below the line marked *Carried over from
+> the CSS build* describes behaviour that is **not currently in the page**. The
+> earlier version faked three dimensions with CSS transforms and painted shading; it
+> is preserved at commit `7af387e` and its specification is kept here because that
+> substance is being reconnected to the new scene, not discarded. What the page does
+> today is the cabinet, the reels and the spin — described immediately below.
+
+### The scene
+
+Built on three.js, bundled to a single IIFE and inlined, so `index.html` remains one
+self-contained file with no network calls of any kind.
+
+Physical materials are mostly reflection, and with nothing to reflect they render as
+flat lambert no matter how many lights you add — which is precisely what the CSS
+version could never fix. So the scene carries a procedural environment: a painted
+equirectangular canvas (cool sky, a warm softbox high on the left, a second cooler
+source behind the right, a floor bounce) run through `PMREMGenerator` so the
+roughness terms are correct. Tone mapping is ACES filmic; shadows are PCF soft from a
+2048² directional key, with a cool rim from behind right and a weak frontal fill.
+
+Point lights inside the cabinet are set in the hundredths. That is not a mistake:
+illuminance falls off with the square of distance, and a lamp four centimetres behind
+a reel strip at intensity 0.30 delivers roughly thirty times the key's illuminance,
+which clipped the entire window to a featureless white slab.
+
+### The reels
+
+Three cylinders on a shared horizontal axis, seen through a hole. The curvature is
+the point — symbols compress toward the top and bottom of the window and only the
+middle row is square-on — and it is the one thing a scrolling list of tiles can never
+produce, which is what every previous attempt was.
+
+Each drum carries an eleven-stop strip drawn to canvas: seven glyphs in a different
+order per drum, aged paper, hairlines between stops, and the stop number printed
+small at the edge as on a real strip. The strip is drawn sideways, because a
+cylinder's texture *u* runs around the circumference and its *v* runs along the axis
+— so on the front face canvas +x reads as up the screen and canvas +y reads as across
+to the right, and every glyph is laid down through a quarter turn.
+
+Where a stop lands is derived rather than tuned. Three's cylinder puts texture
+coordinate *u* = 0 at +Z, and after the quarter turn that lays the axis along X,
+spinning by `rotation.x = a` carries the point at *u* to the front when `a = 2πu`.
+Stop *i* is centred at *u* = (i + ½)/11, so its landing angle is exactly
+`2π(i + ½)/11` plus any number of whole turns. Each drum runs up, eases out,
+over-travels by a seventh of a stop and snaps back — the settle you can hear on a
+real machine — over a duration staggered so they stop left to right.
+
+### The cabinet
+
+74 × 30 × 26 inches, modelled to scale in metres. No edge anywhere is sharp: every
+part is an extruded rounded rectangle with a bevel, and that radius catching the
+light is most of what says *made object*.
+
+The head is one continuous fascia with a genuine rectangular hole extruded into it,
+not four panels arranged around a gap. Built the second way — which is how it was
+built first — the seams land on the face of the machine and the head reads as a stack
+of trays. The carcass behind it (crown, shelf, two posts, back wall) can then be
+plain boxes, because no joint in it is ever visible.
+
+Both lit panels are dark ground with pale lettering rather than the reverse: a
+backlit sign that is mostly light surface has no headroom before it clips, and the
+first marquee came out as a blank white rectangle for exactly that reason. The
+marquee carries the bureau's name; the belly glass carries its seal and the schedule
+of dispositions. Round them out: a chromed bezel and a thin pane over the drums, a
+printed payline at the middle row, a notice rail, coin and claim mouths, a coin tray
+you can see into, panel reveals and a keyed service lock, side louvres, and a
+four-key control deck with legends under a brass observe bar.
+
+### Verification
+
+`window.QA77` exposes the scene, camera, orbit state, drums, strip orders and the
+landing-angle function. The spin is checked headlessly against it: over six
+consecutive spins every drum's resting angle matched `landingAngle(stop)` to within
+1e-9 modulo a whole turn, and the symbol reported to the read-out matched the one the
+strip order puts on the payline. Zero failures, no console errors.
+
+---
+
+*Carried over from the CSS build — specification, not current behaviour:*
 
 ### The physics is real, not decoration
 
@@ -69,45 +148,6 @@ put down** (no currency, credits, wagers, prizes, payouts, streaks, daily bonus,
 countdowns, notifications, leaderboards or unlocks — nothing is lost by closing the
 tab), and **your time is the only stake**. A session clock runs in the header as the
 page's only honest score, and every quarter hour the LCD says so out loud.
-
-### Presentation
-
-Monochrome throughout — a dark bureau interior with light paper documents (the
-filing form, the certificate, the notice). Serif for prose, monospace for every
-label and figure. No colour is used to carry meaning anywhere.
-
-### The cabinet
-
-A full-height standing slot machine, 420 × 1036 × 364, built from six CSS 3D faces
-and turnable through a complete circle. **Drag it to orbit** with momentum, use the
-arrow keys when it has focus, or the Front / Back / Side / Reset presets; a
-double-click restores the default three-quarter view and the live yaw and pitch are
-reported beneath it. The whole cabinet scales to fit whatever width the page has.
-
-Each face is built as a centred cube — translated back half the depth, rotated, then
-pushed out half the width — so all six outer surfaces point outwards and none are
-culled by `backface-visibility`. The data plate on the right flank reads unmirrored,
-which is the proof. The whole shell is then pushed forward half a depth so it turns
-about its own axis rather than swinging around its front glass, and the fit takes the
-resulting perspective magnification back out. A world-fixed key light shades each
-face from its own normal against the live orbit, so the lit side stays lit.
-
-Materially it is painted steel, not flat fill: a specular band raked across the front
-with the outer inches falling into shadow, two polished corner posts standing at the
-front edges, a machined bezel around the reel window, and pressed recesses in the
-flanks that are dark along the top inner edge and bright along the bottom — which is
-what makes an eye read a recess rather than a rectangle. The flanks' outer edges take
-a cool rim so the silhouette survives a dark room. Three panels are lit and throw
-light onto the paint around them: the marquee, the reel window and the lower notice
-rail. Over the drums is glass — a specular sweep that travels as you orbit, a soft
-reflection of the room high on the pane — and each reel cell is shaded as a drum
-face, lit across its crown and falling off at both shoulders.
-
-**Grounding.** At a 14° camera a real floor plane is edge-on and carries nothing, so
-the machine is grounded the way a product render does it at that angle: a hard
-contact core, a soft ambient shadow, and a reflection of the lit panels coming back
-up off the floor — all in the plane of the page, and all sized from the machine's own
-footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 
 ### The receipt
 
