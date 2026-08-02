@@ -874,9 +874,16 @@
       dr.phase = 0;
     }
   }
+  /* Two hints, because the long one wraps to a second line on a phone and the
+     gestures are not the same ones anyway. */
+  function idleHint() {
+    return window.innerWidth < 560
+      ? "Drag · pinch · pull the lever"
+      : "Drag to orbit · scroll to dolly · pull the lever";
+  }
   function settleReport() {
     var names = drums.map(function (dr, i) { return SYMBOLS[ORDERS[i][dr.stop]].name; });
-    hudLeft.textContent = "Drag to orbit · scroll to dolly · pull the lever";
+    hudLeft.textContent = idleHint();
     hudRight.textContent = names.join(" / ");
     window.QA77.result = names;
   }
@@ -940,11 +947,39 @@
     camera.lookAt(orbit.target);
   }
 
+  function dolly(scale) {
+    var f = fitDistance();
+    orbit.dist = Math.max(f * 0.32, Math.min(f * 2.2, orbit.dist * scale));
+  }
+
+  /* Pointers are tracked by id rather than with a single dragging flag, because
+     a wheel is not the only way to get closer: on a touchscreen there is none,
+     and without a pinch the machine is stuck at whatever distance frames it. */
+  var pointers = new Map(), pinchWas = 0;
+  function pinchSpan() {
+    var it = pointers.values(), a = it.next().value, b = it.next().value;
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  }
   canvas.addEventListener("pointerdown", function (e) {
-    dragging = true; travel = 0; lastX = e.clientX; lastY = e.clientY;
-    canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      dragging = true; travel = 0; lastX = e.clientX; lastY = e.clientY;
+      canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
+    } else {
+      dragging = false; vYaw = vPitch = 0;
+      canvas.classList.remove("dragging");
+      pinchWas = pinchSpan();
+    }
   });
   canvas.addEventListener("pointermove", function (e) {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size >= 2) {
+      var now = pinchSpan();
+      if (pinchWas > 0 && now > 0) dolly(pinchWas / now);
+      pinchWas = now;
+      return;
+    }
     if (!dragging) return;
     var dx = e.clientX - lastX, dy = e.clientY - lastY;
     travel += Math.abs(dx) + Math.abs(dy);
@@ -952,6 +987,9 @@
     vYaw = -dx * 0.0055; vPitch = -dy * 0.0045;
   });
   function endDrag(e) {
+    if (e) pointers.delete(e.pointerId);
+    if (pointers.size < 2) pinchWas = 0;
+    if (pointers.size > 0) return;                /* a finger is still down */
     if (dragging && travel < 6 && e && hitsLever(e)) spin();
     dragging = false; canvas.classList.remove("dragging");
   }
@@ -959,8 +997,7 @@
   canvas.addEventListener("pointercancel", endDrag);
   canvas.addEventListener("wheel", function (e) {
     e.preventDefault();
-    var f = fitDistance();
-    orbit.dist = Math.max(f * 0.32, Math.min(f * 2.2, orbit.dist * (1 + e.deltaY * 0.0011)));
+    dolly(1 + e.deltaY * 0.0011);
   }, { passive: false });
   window.addEventListener("keydown", function (e) {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); spin(); }
@@ -980,6 +1017,7 @@
     var after = fitDistance();
     orbit.dist = framed ? orbit.dist * (after / before) : after;
     framed = true;
+    if (!spinning) hudLeft.textContent = idleHint();
   }
   window.addEventListener("resize", resize);
   resize();
