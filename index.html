@@ -5861,6 +5861,7 @@ void main() {
     }
     return need * 1.06;
   }
+  var shakeClock = 0;
   function applyCamera() {
     var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
     camera.position.set(
@@ -5869,6 +5870,16 @@ void main() {
       orbit.target.z + orbit.dist * cp * Math.cos(orbit.yaw)
     );
     camera.lookAt(orbit.target);
+    if (shake > 0.0002) {
+      /* two frequencies rather than white noise: random per frame reads as a
+         broken renderer, a beat reads as something hitting something */
+      var t = shakeClock;
+      camera.position.x += (Math.sin(t * 47.3) + Math.sin(t * 29.1) * 0.6) * shake;
+      camera.position.y += (Math.sin(t * 53.7) + Math.sin(t * 37.9) * 0.6) * shake;
+      camera.position.z += (Math.sin(t * 41.1) + Math.sin(t * 23.3) * 0.6) * shake;
+      camera.lookAt(orbit.target);
+      camera.rotateZ(Math.sin(t * 31.7) * shake * 0.5);
+    }
   }
   /* Wide. The point of an orbit view is to get your face right up against the
      stamp press or stand well back from the whole cabinet, and a range that
@@ -6168,6 +6179,76 @@ void main() {
     return null;
   }
 
+  /* --------------------------------------------------- the fall effects --- */
+  /* A camera that tracks a falling object perfectly shows no fall at all: the
+     object sits dead still in frame and only the tumble moves. What sells it is
+     everything the camera passes on the way down. These streaks hang still in
+     the world and get recycled once they are above you, so falling past them is
+     the actual motion rather than a simulation of one. */
+  var FALLFX = new T.Group();
+  FALLFX.visible = false;
+  scene.add(FALLFX);
+
+  var STREAKS = 620, streakSeed = [], streakPos = new Float32Array(STREAKS * 6);
+  (function () {
+    for (var i = 0; i < STREAKS; i++) {
+      var a = Math.random() * TAU, r = 0.95 + Math.pow(Math.random(), 0.7) * 6.2;
+      streakSeed.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, y: 0, k: 0.5 + Math.random() });
+    }
+    var g = new T.BufferGeometry();
+    g.setAttribute("position", new T.BufferAttribute(streakPos, 3));
+    var m = new T.LineBasicMaterial({ color: 0xD2D8DE, transparent: true, opacity: 0.62 });
+    var ls = new T.LineSegments(g, m);
+    /* The bounding sphere is computed once, at construction, when every vertex
+       is still at the origin — so the whole field gets frustum-culled the
+       moment the camera is anywhere but on top of it, which is always. */
+    ls.frustumCulled = false;
+    FALLFX.add(ls);
+  })();
+  var streakGeo = FALLFX.children[0].geometry;
+  function seedStreaks(camY) {
+    for (var i = 0; i < STREAKS; i++) streakSeed[i].y = camY - 13 + Math.random() * 16;
+  }
+  function stepStreaks(camY, speed) {
+    var len = 0.18 + speed * 0.20;
+    for (var i = 0; i < STREAKS; i++) {
+      var sd = streakSeed[i];
+      if (sd.y > camY + 3.2) {
+        var a = Math.random() * TAU, r = 0.95 + Math.pow(Math.random(), 0.7) * 6.2;
+        sd.x = Math.cos(a) * r; sd.z = Math.sin(a) * r;
+        sd.y = camY - 13 - Math.random() * 5;
+      }
+      var o = i * 6;
+      streakPos[o] = sd.x; streakPos[o + 1] = sd.y; streakPos[o + 2] = sd.z;
+      streakPos[o + 3] = sd.x; streakPos[o + 4] = sd.y + len * sd.k; streakPos[o + 5] = sd.z;
+    }
+    streakGeo.attributes.position.needsUpdate = true;
+  }
+
+  /* and the tokens it is shedding on the way down, tumbling alongside */
+  var SPILL = [];
+  (function () {
+    for (var i = 0; i < 14; i++) {
+      var cls = CLASSES[i % CLASSES.length];
+      var m = new T.Mesh(cls.geo, cls.mats);
+      m.userData.off = new T.Vector3(
+        (Math.random() - 0.5) * 1.7, (Math.random() - 0.5) * 2.4, (Math.random() - 0.5) * 1.5);
+      m.userData.drift = 0.10 + Math.random() * 0.45;
+      m.userData.spin = new T.Vector3(
+        (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 7);
+      FALLFX.add(m);
+      SPILL.push(m);
+    }
+  })();
+  function stepSpill(dt, machY) {
+    for (var i = 0; i < SPILL.length; i++) {
+      var m = SPILL[i], u = m.userData;
+      u.off.y += u.drift * dt;              /* it falls a little slower than the cabinet */
+      m.position.set(u.off.x, machY + H * 0.5 + u.off.y, u.off.z);
+      m.rotation.x += u.spin.x * dt; m.rotation.y += u.spin.y * dt; m.rotation.z += u.spin.z * dt;
+    }
+  }
+
   /* ============================== THE FALL ================================= */
   /* The apparatus has been in service somewhere else. It arrives mid-cycle,
      falling, with two reels already down on the same symbol and the third
@@ -6175,9 +6256,12 @@ void main() {
      watch. It lands one stop short of the only result that would have meant
      anything, and it comes apart. That is where the parts on the floor come
      from, and it is the whole reason there is a schedule to follow. */
-  var FALL_H = 7.4, MATCH = 3;                   /* MELON, three alike */
-  var T_STOP = [2.30, 3.55], T_CRAWL = 4.05, T_IMPACT = 6.90;
-  var introT = 0, broke = false;
+  /* Thirty metres, not seven. Under the old profile the cabinet arrived at
+     about two metres a second, which is a heavy object being lowered rather
+     than one that is falling. */
+  var FALL_H = 30.0, MATCH = 3;                  /* MELON, three alike */
+  var T_STOP = [1.95, 3.15], T_CRAWL = 3.70, T_IMPACT = 6.20;
+  var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0;
 
   function nextMatchAt(x) {
     var k = Math.ceil((x - MATCH) / NSYM);
@@ -6185,7 +6269,11 @@ void main() {
   }
   function startIntro() {
     planScatter();
-    phase = "INTRO"; introT = 0; broke = false;
+    phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
+    FALLFX.visible = true;
+    seedStreaks(FALL_H);
+    SPILL.forEach(function (m) { m.userData.off.y = (Math.random() - 0.5) * 2.4; });
+    camera.fov = 32; camera.updateProjectionMatrix();
     power = 1; applyPower();
     contact.material.opacity = 0;
     workLight.intensity = 0;
@@ -6235,6 +6323,9 @@ void main() {
     machine.rotation.set(0, 0, 0);
     power = 0; applyPower();
     workLight.intensity = 1.5;
+    FALLFX.visible = false;
+    shake = 0.16; flash = 1;                 /* the hit */
+    camera.fov = 40; camera.updateProjectionMatrix();
     hudRight.textContent = "ONE STOP SHORT";
     var landed = 0;
     schedule.forEach(function (p, i) {
@@ -6255,20 +6346,36 @@ void main() {
   function stepIntro(dt) {
     introT += dt;
     var u = Math.min(1, introT / T_IMPACT);
-    /* falling, and straightening as it falls */
-    machine.position.y = FALL_H * (1 - u * u);
-    machine.rotation.y = 0.62 * (1 - u);
-    machine.rotation.z = 0.20 * (1 - u) * Math.sin(introT * 1.9);
-    machine.rotation.x = 0.14 * (1 - u) * Math.cos(introT * 1.5);
+    /* moving when we join it and accelerating from there, rather than starting
+       from rest — a pure u-squared drop opens on a stationary object */
+    var fall = 0.30 * u + 0.70 * u * u;
+    var prevY = machine.position.y;
+    machine.position.y = FALL_H * (1 - fall);
+    fallSpeed = dt > 0 ? Math.abs(machine.position.y - prevY) / dt : 0;
+    machine.rotation.y = 0.62 * (1 - u) + 0.9 * (1 - u) * (1 - u);
+    machine.rotation.z = 0.26 * (1 - u) * Math.sin(introT * 2.6);
+    machine.rotation.x = 0.20 * (1 - u) * Math.cos(introT * 2.1);
     /* the shadow tightening under it is most of what says how close it is */
-    contact.material.opacity = 0.10 + 0.80 * u * u;
-    var sp = 2.6 - 1.6 * u * u;
+    contact.material.opacity = 0.06 + 0.84 * u * u * u;
+    var sp = 3.4 - 2.4 * u * u * u;
     contact.scale.set(sp, sp, sp);
 
-    orbit.target.set(0, machine.position.y + H * 0.52, 0);
-    orbit.yaw = -0.66 + 0.34 * u;
+    /* the viewer is falling too, and not quite keeping up: the cabinet pulls
+       away through the middle of the drop and is caught again at the floor */
+    var lag = Math.sin(u * Math.PI) * 0.95;
+    orbit.target.set(0, machine.position.y + H * 0.52 + lag, 0);
+    orbit.yaw = -0.66 + 0.34 * u + 0.10 * Math.sin(introT * 0.8);
     orbit.pitch = -0.05 + 0.42 * u * u;
-    orbit.dist = 4.0 - 0.8 * u;
+    orbit.dist = 4.2 - 1.0 * u;
+
+    /* wider as it accelerates, which reads as speed rather than as zoom */
+    camera.fov = 32 + 15 * u * u;
+    camera.updateProjectionMatrix();
+    shake = 0.006 + 0.030 * u * u;
+
+    var camY = orbit.target.y + orbit.dist * Math.sin(orbit.pitch);
+    stepStreaks(camY, fallSpeed);
+    stepSpill(dt, machine.position.y);
 
     stepIntroReels(dt, introT);
     if (introT >= T_IMPACT && !broke) breakApart();
@@ -6276,6 +6383,9 @@ void main() {
 
   function skipIntro() {
     if (phase !== "INTRO" && phase !== "BREAK") return;
+    FALLFX.visible = false;
+    shake = 0; flash = 0;
+    camera.fov = 32; camera.updateProjectionMatrix();
     machine.position.set(0, 0, 0); machine.rotation.set(0, 0, 0);
     contact.scale.set(1, 1, 1);
     power = 0; applyPower();
@@ -6325,13 +6435,19 @@ void main() {
     orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
     applyCamera();
 
+    shakeClock += dt;
     if (phase === "INTRO") stepIntro(dt);
     else if (phase === "BREAK") {
       stepAssembly(dt);
       orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
+      shake *= Math.pow(0.02, dt);              /* rings down over about a second */
+      flash = Math.max(0, flash - dt * 3.2);
+      camera.fov += (32 - camera.fov) * Math.min(1, 3 * dt);
+      camera.updateProjectionMatrix();
     }
     else if (phase === "ASSEMBLY") { stepAssembly(dt); bobNext(clock.elapsedTime); }
     else if (phase === "COMMISSIONING") { stepAssembly(dt); stepCommission(dt); }
+    renderer.toneMappingExposure = 1.02 + flash * 0.55;
 
     if (autoFrame) {
       orbit.dist += (wantDist - orbit.dist) * Math.min(1, 1.9 * dt);
@@ -6396,6 +6512,7 @@ void main() {
     reframe: function () { reframe(); }, dolly: dolly,
     phase: function () { return phase; }, parts: PARTS, schedule: schedule,
     skipIntro: skipIntro, introTime: function () { return introT; },
+    fallSpeed: function () { return fallSpeed; },
     nextPart: function () { return nextPart; },
     fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },
     tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },

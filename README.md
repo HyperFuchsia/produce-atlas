@@ -88,11 +88,23 @@ one stop short. A third of a symbol: near enough to see the melon entering the
 window, not near enough to count. Then it comes apart, and that is where the ten
 parts on the floor come from.
 
-The fall is a straightening tumble over about seven seconds, and most of what says
-how close the floor is is the contact shadow tightening and darkening underneath
-it. The reel choreography is stateful rather than scripted frame by frame: two
-reels run at eleven symbols a second and ease onto the match, the third drops into
-a decelerating crawl at four seconds and is still moving when the machine hits.
+Thirty metres in six seconds, arriving at about eight metres a second. A camera
+that tracks a falling object perfectly shows no fall at all — the object sits dead
+still in frame and only the tumble moves — so the motion has to come from what the
+camera passes on the way down. A field of six hundred streaks hangs still in the
+world and gets recycled once it is above you, lengthening with speed; fourteen
+tokens the machine is shedding tumble alongside, falling slightly slower so they
+drift up out of frame; the field of view widens fifteen degrees as it accelerates;
+the camera shakes on two frequencies rather than white noise, because random per
+frame reads as a broken renderer and a beat reads as something hitting something.
+The viewer is falling too and not quite keeping up: the cabinet pulls away through
+the middle of the drop and is caught again at the floor. Impact spikes the
+exposure and rings the shake down over a second.
+
+The reel choreography is stateful rather than scripted frame by frame: two reels
+run at eleven symbols a second and ease onto the match at 1.9 and 3.2 seconds, the
+third drops into a decelerating crawl at 3.7 and is still moving when the machine
+hits.
 
 One animator handles both directions. Parts fly off the machine when it lands and
 back onto it during assembly, and the only difference is which pose is the
