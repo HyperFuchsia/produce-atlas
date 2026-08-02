@@ -115,8 +115,19 @@ The apparatus is glass, machined metal and a 49-dimensional state vector, and th
 thing it hands you is 58 mm of thermal paper. Every observation prints one, and it
 comes **out of the machine**: the paper feeds from the printer mouth in the cabinet's
 own front face, hangs down over the belly glass to the plinth, and turns with the
-cabinet when you orbit it. Click it once to be taken to the readable copy, again to
-tear it off. The head is not in good repair: the roll never feeds square, one band across the
+cabinet when you orbit it.
+
+**You cannot read it until it has been collected.** The paper hangs in the printer,
+and when you click it a hand comes up from below the frame, closes on it, takes it off
+the machine and goes back down with it — and only then does the readable copy open. It
+is not your hand; on the machine's own account it is the second one, the one the
+attendance plate keeps reporting: *two hands detected, one is not accounted for.* The
+hand is an SVG silhouette with the apparatus's own light caught along its edge, scaled
+and placed from the paper's live bounding box so it reaches the right spot at any
+orbit and any fit. Nothing is withheld — the record is complete and yours the moment
+the hand is gone, and `prefers-reduced-motion` skips straight to it.
+
+The head is not in good repair: the roll never feeds square, one band across the
 paper is faint where the platen ran cold, a scattering of characters simply failed to
 fire, and the printer clock runs behind the apparatus clock — so about one receipt in
 four is stamped as having been printed *before* the observation it records.
