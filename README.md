@@ -118,14 +118,26 @@ own front face, hangs down over the belly glass to the plinth, and turns with th
 cabinet when you orbit it.
 
 **You cannot read it until it has been collected.** The paper hangs in the printer,
-and when you click it a hand comes up from below the frame, closes on it, takes it off
-the machine and goes back down with it — and only then does the readable copy open. It
-is not your hand; on the machine's own account it is the second one, the one the
-attendance plate keeps reporting: *two hands detected, one is not accounted for.* The
-hand is an SVG silhouette with the apparatus's own light caught along its edge, scaled
-and placed from the paper's live bounding box so it reaches the right spot at any
-orbit and any fit. Nothing is withheld — the record is complete and yours the moment
-the hand is gone, and `prefers-reduced-motion` skips straight to it.
+and when you click it a **white attendant's glove** floats up out of the dark, closes
+on the record, takes it off the machine, brings it round to face you and holds it up
+long enough to read every line before letting you have it. The cuff is open and there
+is nothing in the glove.
+
+It is not your hand either; on the machine's own account it is the second one, the one
+the attendance plate keeps reporting: *two hands detected, one is not accounted for.*
+The glove is an SVG in cloth gradients with seams, gauntlet stitching and a dark mouth
+where the wrist should be; it has a permanent slow float, four fingers hinged at their
+own knuckles that foreshorten rather than swing as they curl, and a thumb that comes
+round in front of the record once it is held up. The choreography runs as five stepped
+beats — approach, grip, take, present, release — each timed on its own and composed
+from custom properties so no two beats fight over the same transform. In the present
+beat the record is re-set at a larger type size rather than scaled up, computed from
+its real line count so the whole of it fits the stage however long it happens to be,
+and the glove's grip is placed from where the curled fingertips actually land in the
+artwork.
+
+Nothing is withheld: the record is complete and yours the moment the glove is gone,
+and `prefers-reduced-motion` goes straight to it.
 
 The head is not in good repair: the roll never feeds square, one band across the
 paper is faint where the platen ran cold, a scattering of characters simply failed to

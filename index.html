@@ -936,48 +936,87 @@ h1{
 .def{margin:0;padding:9px 11px;font-size:12.5px;line-height:1.55;color:var(--text);background:rgba(180,189,185,.05);border-left:2px solid var(--text);font-family:var(--serif)}
 .def[hidden]{display:none}
 
-/* ---------- the hand ----------
-   It comes up from below the frame, takes the record off the machine and goes
-   back down with it. It is drawn as a silhouette with the apparatus's own light
-   caught along the edge facing the cabinet — dark on dark, legible by its rim. */
-.hand{
-  position:absolute;left:var(--handX,40%);bottom:0;z-index:9;
-  width:var(--handW,150px);height:auto;pointer-events:none;overflow:visible;
-  filter:drop-shadow(0 -8px 18px rgba(0,0,0,.9));
+/* ---------- the collector ----------
+   A white attendant's glove, the kind used for handling documents, with nothing
+   in it. It floats in, takes the record off the machine, brings it round to face
+   you and holds it up before letting you have it. The choreography is stepped
+   from JS so each beat can be timed on its own; the transforms are all composed
+   from custom properties so the beats never fight each other. */
+.collector{
+  position:absolute;left:0;top:0;z-index:9;pointer-events:none;
+  width:var(--colW,190px);
+  transform-origin:50% 34%;
+  transform:translate(var(--colX,0px), var(--colY,0px))
+            rotate(var(--colR,0deg)) scale(var(--colS,1));
+  transition:transform var(--colT,.8s) cubic-bezier(.22,.68,.24,1);
+  will-change:transform;
 }
-.hand[hidden]{display:none}
-.hand path{
-  fill:url(#handSkin);
-  stroke:rgba(214,226,218,.62);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round;
-  paint-order:stroke fill;
+.collector[hidden]{display:none}
+/* the glove itself, floating: a slow bob that never quite settles */
+.glove{
+  position:absolute;left:0;top:0;width:100%;height:auto;display:block;
+  filter:drop-shadow(0 18px 26px rgba(0,0,0,.75));
+  animation:gvfloat 5.2s ease-in-out infinite;
 }
-/* animated as a plain transform, not through a custom property: unregistered
-   custom properties are not animatable in keyframes */
-.hand .hand-thumb{transform-origin:240px 310px;transform:rotate(19deg)}
-@keyframes handreach{
-  0%   { transform:translate(0,132%) rotate(3deg) }
-  30%  { transform:translate(0,10%)  rotate(1deg) }
-  44%  { transform:translate(0,2%)   rotate(0deg) }
-  60%  { transform:translate(0,4%)   rotate(0deg) }
-  100% { transform:translate(-7%,134%) rotate(-4deg) }
+@keyframes gvfloat{
+  0%,100% { transform:translateY(0)     rotate(0deg) }
+  33%     { transform:translateY(-5px)  rotate(-1.1deg) }
+  66%     { transform:translateY(3px)   rotate(.8deg) }
 }
-@keyframes handgrip{
-  0%,40%   { transform:rotate(19deg) }
-  50%,100% { transform:rotate(0deg) }
+.gv-cuff{fill:url(#gvCuff);stroke:rgba(70,74,66,.5);stroke-width:1.4}
+.gv-mouth{fill:url(#gvMouth)}
+.gv-band{fill:rgba(255,255,255,.16);stroke:rgba(70,74,66,.28);stroke-width:1}
+.gv-palm{fill:url(#gvCloth);stroke:rgba(70,74,66,.5);stroke-width:1.4}
+.gv-f{fill:url(#gvDigit);stroke:rgba(70,74,66,.5);stroke-width:1.4;
+  transform-box:fill-box;transform-origin:50% 100%;
+  transition:transform .34s cubic-bezier(.3,.1,.2,1);}
+.gv-seam path{fill:none;stroke:rgba(88,92,82,.42);stroke-width:1.5;stroke-linecap:round}
+.gv-stitch{fill:none;stroke:rgba(88,92,82,.5);stroke-width:1.3;
+  stroke-dasharray:4 5;stroke-linecap:round}
+/* curled: a finger folding toward the viewer foreshortens, it does not swing */
+.collector.grip .gv-f{transform:scaleY(.40)}
+.collector.grip .f1{transform:rotate(-5deg) scaleY(.46)}
+.collector.grip .f2{transform:rotate(-1.5deg) scaleY(.40)}
+.collector.grip .f3{transform:rotate(2deg) scaleY(.38)}
+.collector.grip .f4{transform:rotate(5.5deg) scaleY(.32)}
+
+/* the record in the glove */
+.held{
+  position:absolute;left:var(--heldX,4%);top:var(--heldY,-64%);
+  width:var(--heldW,86%);
+  transform-origin:50% 100%;
+  transform:rotate(var(--heldR,.5deg)) scale(var(--heldS,1));
+  transition:transform var(--colT,.8s) cubic-bezier(.22,.68,.24,1),
+             opacity .4s linear;
+  background:linear-gradient(180deg,#E6E4D9 0%,#DDDBD0 46%,#C9C7BC 100%);
+  box-shadow:0 10px 22px -8px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.6);
+  padding:4px 5px 0;overflow:hidden;
 }
-.hand.grabbing{animation:handreach 2.15s cubic-bezier(.35,.05,.3,1) both}
-.hand.grabbing .hand-thumb{animation:handgrip 2.15s steps(1,end) both}
-/* the paper goes with it */
-@keyframes handtaken{
-  0%,46%  { transform:rotate(.5deg) translateY(0); opacity:1 }
-  62%     { transform:rotate(2.4deg) translateY(26px); opacity:1 }
-  100%    { transform:rotate(9deg) translateY(230px); opacity:0 }
+.held pre{
+  margin:0;font-family:var(--mono);font-size:var(--heldF,2.6px);line-height:1.55;
+  white-space:pre;color:#3B3E37;
 }
-.rc-tongue.taken{animation:handtaken 2.15s cubic-bezier(.35,.05,.3,1) both}
+.held::after{      /* the torn edge */
+  content:"";position:absolute;left:0;right:0;bottom:-4px;height:5px;
+  background:radial-gradient(circle at 4px 5px, transparent 0 3px, #0A0C0C 3.1px) 0 0/8px 5px repeat-x;
+}
+/* the thumb that comes round in front once the record is held up */
+.gv-thumbwrap{
+  position:absolute;left:var(--thX,52%);top:var(--thY,-8%);width:var(--thW,46%);
+  height:auto;opacity:0;transform-origin:80% 90%;
+  transform:rotate(var(--thR,26deg)) scale(.92);
+  transition:opacity .3s linear, transform .5s cubic-bezier(.22,.68,.24,1);
+  filter:drop-shadow(-3px -2px 8px rgba(0,0,0,.55));
+}
+.gv-thumb{fill:url(#gvThumb);stroke:rgba(70,74,66,.5);stroke-width:1.6}
+.gv-thumbseam{fill:none;stroke:rgba(88,92,82,.4);stroke-width:1.4;stroke-linecap:round}
+.collector.grip .gv-thumbwrap,
+.collector.take .gv-thumbwrap,
+.collector.present .gv-thumbwrap{opacity:1;transform:rotate(var(--thR2,2deg)) scale(1)}
+.collector.away{opacity:0;transition:transform .55s ease-in, opacity .55s linear}
 @media (prefers-reduced-motion: reduce){
-  .hand.grabbing{animation:none}
-  .hand.grabbing .hand-thumb{animation:none}
-  .rc-tongue.taken{animation:none}
+  .glove{animation:none}
+  .collector,.held,.gv-thumbwrap,.gv-f{transition:none}
 }
 
 /* ---------- the receipt ----------
@@ -1181,43 +1220,81 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         <span class="refl"></span><span class="amb"></span><span class="core"></span>
       </span>
 
-      <!-- the hand that collects the record -->
-      <svg class="hand" id="hand" viewBox="0 0 320 780" aria-hidden="true" hidden>
-        <defs>
-          <linearGradient id="handSkin" x1="0" y1="0" x2="1" y2="0.4">
-            <stop offset="0" stop-color="#181C1B"/>
-            <stop offset=".46" stop-color="#0E1211"/>
-            <stop offset="1" stop-color="#050706"/>
-          </linearGradient>
-        </defs>
-        <g class="hand-g">
-          <!-- thumb: shorter and thicker than the index, set out to the side,
-               hinged at its base so it closes on the paper -->
-          <path class="hand-thumb" d="M 214 318
-                   C 196 300 176 266 168 228
-                   C 161 196 184 172 202 188
-                   C 214 199 210 226 216 252
-                   C 224 284 240 306 254 318 Z"/>
-          <!-- forearm, wrist, palm, three curled knuckles and the index -->
-          <path class="hand-palm" d="M 116 780
-                   C 104 618 100 476 110 408
-                   C 115 380 100 356 94 330
-                   C 84 302 70 280 76 258
-                   C 82 240 104 242 112 260
-                   C 104 236 98 212 104 196
-                   C 111 178 133 180 140 200
-                   C 133 176 128 152 134 136
-                   C 141 118 163 120 168 142
-                   C 160 116 154  86 158  68
-                   C 163  46 190  46 196  70
-                   C 202  94 196 130 194 158
-                   C 192 190 196 220 204 244
-                   C 212 266 226 280 240 292
-                   C 258 308 268 336 266 364
-                   C 264 388 258 400 260 418
-                   C 250 486 244 620 232 780 Z"/>
-        </g>
-      </svg>
+      <!-- the collector: a floating glove, the record it takes, and the thumb
+           that comes round in front of it when the record is held up -->
+      <div class="collector" id="collector" hidden aria-hidden="true">
+        <svg class="glove" viewBox="0 0 300 430">
+          <defs>
+            <linearGradient id="gvCloth" x1=".12" y1="0" x2=".92" y2=".9">
+              <stop offset="0"   stop-color="#F1EFE5"/>
+              <stop offset=".34" stop-color="#DBD9CE"/>
+              <stop offset=".72" stop-color="#B4B2A8"/>
+              <stop offset="1"   stop-color="#8D8B83"/>
+            </linearGradient>
+            <linearGradient id="gvDigit" x1=".1" y1="0" x2="1" y2=".7">
+              <stop offset="0"   stop-color="#F4F2E9"/>
+              <stop offset=".45" stop-color="#DEDCD1"/>
+              <stop offset="1"   stop-color="#A7A59B"/>
+            </linearGradient>
+            <linearGradient id="gvCuff" x1=".1" y1="0" x2=".95" y2=".8">
+              <stop offset="0"   stop-color="#E7E5DA"/>
+              <stop offset=".5"  stop-color="#C6C4B9"/>
+              <stop offset="1"   stop-color="#87857D"/>
+            </linearGradient>
+            <radialGradient id="gvMouth" cx=".42" cy=".3" r=".8">
+              <stop offset="0"   stop-color="#20241F"/>
+              <stop offset=".55" stop-color="#0B0E0D"/>
+              <stop offset="1"   stop-color="#040605"/>
+            </radialGradient>
+          </defs>
+
+          <!-- gauntlet -->
+          <path class="gv-cuff" d="M 84 300 L 216 300 C 226 340 232 372 234 404
+                   C 200 418 100 418 66 404 C 68 372 74 340 84 300 Z"/>
+          <ellipse class="gv-mouth" cx="150" cy="404" rx="68" ry="15"/>
+          <path class="gv-band" d="M 86 308 L 214 308 C 217 320 219 328 221 338
+                   C 180 348 120 348 79 338 C 81 328 83 320 86 308 Z"/>
+
+          <!-- back of the hand -->
+          <path class="gv-palm" d="M 92 178 C 88 210 84 250 84 282
+                   C 84 296 86 300 88 306 L 212 306 C 214 300 216 296 216 282
+                   C 216 250 212 210 208 178 Z"/>
+
+          <!-- fingers, each hinged at its own knuckle -->
+          <g class="gv-fingers">
+            <rect class="gv-f f1" x="88"  y="62"  width="34" height="126" rx="17"/>
+            <rect class="gv-f f2" x="124" y="44"  width="36" height="144" rx="18"/>
+            <rect class="gv-f f3" x="162" y="58"  width="34" height="130" rx="17"/>
+            <rect class="gv-f f4" x="198" y="86"  width="30" height="102" rx="15"/>
+          </g>
+
+          <!-- seams and stitching, which is what makes cloth read as cloth -->
+          <g class="gv-seam">
+            <path d="M 106 196 C 104 232 102 262 102 292"/>
+            <path d="M 142 194 C 141 232 140 262 140 292"/>
+            <path d="M 178 196 C 179 232 180 262 180 292"/>
+          </g>
+          <path class="gv-stitch" d="M 88 320 C 128 330 172 330 212 320"/>
+        </svg>
+
+        <!-- the record, held -->
+        <div class="held" id="held"><pre id="heldText"></pre></div>
+
+        <!-- the thumb comes round in front of the record -->
+        <svg class="gv-thumbwrap" viewBox="0 0 160 260">
+          <defs>
+            <linearGradient id="gvThumb" x1=".1" y1="0" x2="1" y2=".8">
+              <stop offset="0"   stop-color="#F2F0E7"/>
+              <stop offset=".5"  stop-color="#D6D4C9"/>
+              <stop offset="1"   stop-color="#9B998F"/>
+            </linearGradient>
+          </defs>
+          <path class="gv-thumb" d="M 118 236 C 96 214 70 172 58 128
+                   C 48 92 78 60 104 80 C 122 94 118 130 126 164
+                   C 133 194 146 220 156 234 Z"/>
+          <path class="gv-thumbseam" d="M 96 108 C 100 142 106 176 116 204"/>
+        </svg>
+      </div>
       <div class="rig" id="rig">
         <div class="box" id="box">
 
@@ -1605,7 +1682,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry wide">
         <h3>The apparatus is not quite right · and that is deliberate</h3>
         <div class="cols">
-          <p><b>The receipt.</b> Every observation prints one, and it comes <b>out of the machine</b> — the paper feeds from the printer mouth, hangs down over the belly glass to the plinth, and turns with the cabinet when you orbit it. Click it to read it; click it again to tear it off. The head is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>You cannot read it until it has been collected.</b> The paper hangs in the printer, and when you reach for it a hand comes up from below the frame, takes it off the machine and goes back down with it — and only then does the readable copy open. It is not your hand. It is, on the machine’s own account, the second one: <i>two hands detected, one is not accounted for</i>. Nothing is lost — the record is complete and yours the moment the hand is gone. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records. Every probability on it has been checked against the raw amplitudes by arithmetic that shares no code with the page: <b>luck is not a quantity and cannot be measured; every figure on the paper can be, and was.</b></p>
+          <p><b>The receipt.</b> Every observation prints one, and it comes <b>out of the machine</b> — the paper feeds from the printer mouth, hangs down over the belly glass to the plinth, and turns with the cabinet when you orbit it. Click it to read it; click it again to tear it off. The head is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>You cannot read it until it has been collected.</b> The paper hangs in the printer, and when you reach for it a <b>white attendant’s glove</b> floats up, closes on the record, takes it off the machine, brings it round to face you and <b>holds it up long enough for you to read every line of it</b> before letting you have it. The cuff is open and there is nothing in the glove. It is not your hand either — it is, on the machine’s own account, the second one: <i>two hands detected, one is not accounted for</i>. Nothing is withheld: the record is complete and yours the moment the glove is gone, and reduced motion goes straight to it. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records. Every probability on it has been checked against the raw amplitudes by arithmetic that shares no code with the page: <b>luck is not a quantity and cannot be measured; every figure on the paper can be, and was.</b></p>
           <p><b>The attendance interlock.</b> The brass plate on the deck is the way in. <b>Press and hold it</b>: while it is held the apparatus reads you and reports what it read, and when you let go it observes. Let go before it has registered and the attendance is withdrawn and nothing happens. The readings are invented — it has no sensor, it is a button — and the plate has always recorded more hands than the machine has spins, because <b>every so often it registers a hand that is not there</b>, says so, and observes without you. The lever, the space bar, Enter on the plate and the docked control all still work and none of them make you wait; the interlock is the primary way in, never the only one.</p>
           <p><b>What else it does.</b> The cabinet holds a pose exactly, and then, every ten seconds or so, it is a fraction of a degree somewhere else. Its reflection is a beat behind it. The seal in the belly glass turns once every nine minutes. The rating plate and the flank plate change their serial numbers while they are turned away from you, and the service record on the back counts up whether or not you pull the lever — the apparatus was running before you opened this page and does not stop when you close it. Very occasionally a lamp lights for nothing, a second payline appears where there is only one, a character in the message line gives way, and a reel reports <b>state 8</b>, which is not in the basis. The register has always contained <b>QA-77/0000</b>, a matter you did not file, withheld, deferred, and not open to appeal.</p>
           <p><b>What it never touches.</b> Four things on this page are allowed to be true and none of the above goes near them: <b>the physics</b> — the state vector, the unitary, the Born rule and the collapse; <b>the probabilities</b> printed on every certificate, enumerated over all 343 configurations; <b>the register's arithmetic</b>, including the luck index and its variance; and <b>the session clock</b>, which is the one instrument here that has never lied to you and is not going to start. State 8 is a display artefact only: the outcome recorded, counted and certified is the one the Born rule actually produced. The serial numbers were never real, so nothing is lost when they change.</p>
@@ -2592,53 +2669,128 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     }
     el("rcTear").addEventListener("click", tear);
     /* --- collection ------------------------------------------------------
-       You reach for the paper and something else gets there first. The hand
-       comes up from below the frame, takes the record off the machine and goes
-       back down with it — and only then is the record readable. */
+       You reach for the record and a glove gets there first: it floats up, takes
+       the paper off the machine, brings it round to face you, holds it up long
+       enough for you to see what you got, and then lets you have it. There is
+       nothing in the glove. */
     var TAKEN = [
       "TWO HANDS DETECTED. THIS IS THE OTHER ONE.",
       "RECORD COLLECTED BY THE ATTENDANT. THERE IS NO ATTENDANT.",
       "THE RECORD WAS COLLECTED. NOT BY YOU.",
       "COLLECTION LOGGED. THE COLLECTING PARTY IS NOT ON THE ROSTER."
     ];
-    var grabbing = false;
+    var grabbing = false, beats = [];
+    function clearBeats(){ beats.forEach(clearTimeout); beats = []; }
+    function at(ms, fn){ beats.push(setTimeout(fn, ms)); }
+
     function reveal(){
       sec.hidden = false;
       el("rcTongue").hidden = true;
-      /* hidden is an HTMLElement property; on an SVG element it has to be the
-         attribute or it silently becomes an expando */
-      el("hand").setAttribute("hidden", "");
+      var c = el("collector");
+      c.hidden = true;
+      c.className = "collector";
       el("msg").textContent = "RECORD RELEASED FOR READING.";
       sec.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
       grabbing = false;
     }
+
     function collect(){
       if(grabbing || !last) return;
-      grabbing = true;
-      shown = true;
-      var tongue = el("rcTongue"), hand = el("hand"), stage = el("stage");
-      /* stand the hand under wherever the paper actually is, whatever the orbit */
+      grabbing = true; shown = true; collected = true;
+      clearBeats();
+      var tongue = el("rcTongue"), c = el("collector"), stage = el("stage");
       var t = tongue.getBoundingClientRect(), st = stage.getBoundingClientRect();
-      /* the hand is scaled off the paper, so it stays in proportion with the
-         machine at any fit; the index tip sits at 49% of the artwork's width and
-         the forearm runs off the bottom of the frame */
-      var W = Math.min(260, Math.max(104, Math.round(t.width*1.18)));
-      var H = W*780/320;
-      hand.style.setProperty("--handW", W + "px");
-      hand.style.setProperty("--handX",
-        Math.round(t.left + t.width/2 - st.left - W*0.52) + "px");
-      hand.style.bottom = Math.round((st.bottom - t.top) - H) + "px";
-      hand.removeAttribute("hidden");
       el("msg").textContent = TAKEN[Math.floor(Math.random()*TAKEN.length)];
-      collected = true;
+
       if(reduced){ reveal(); return; }
-      hand.classList.remove("grabbing"); tongue.classList.remove("taken");
-      void hand.offsetHeight;
-      hand.classList.add("grabbing"); tongue.classList.add("taken");
-      setTimeout(function(){
-        hand.classList.remove("grabbing"); tongue.classList.remove("taken");
-        reveal();
-      }, 2150);
+
+      /* The glove is sized off the record, so it stays in proportion with the
+         machine at any fit, and the held copy starts exactly where the paper on
+         the machine is so the swap between them is invisible. */
+      var W = Math.round(t.width*1.30);
+      el("heldText").textContent = last;
+      c.className = "collector";
+      c.style.setProperty("--colW", W + "px");
+      c.style.setProperty("--heldW", Math.round(t.width) + "px");
+      c.style.setProperty("--heldX", Math.round(W*0.055) + "px");
+      c.style.setProperty("--heldY", -Math.round(t.height*0.86) + "px");
+      c.style.setProperty("--heldF", "2.5px");
+      c.style.setProperty("--colT", ".78s");
+      /* start below the machine, off to the side, out of the light */
+      var restX = Math.round(t.left - st.left - W*0.06);
+      var restY = Math.round(t.top - st.top + t.height*0.80);
+      c.style.setProperty("--colX", (restX + 54) + "px");
+      c.style.setProperty("--colY", (restY + 210) + "px");
+      c.style.setProperty("--colR", "9deg");
+      c.style.setProperty("--colS", ".88");
+      c.hidden = false;
+      void c.offsetHeight;
+
+      /* 1. float in and settle under the record */
+      at(20, function(){
+        c.style.setProperty("--colX", restX + "px");
+        c.style.setProperty("--colY", restY + "px");
+        c.style.setProperty("--colR", "1.5deg");
+        c.style.setProperty("--colS", "1");
+      });
+      /* 2. close on it */
+      at(800, function(){ c.classList.add("grip"); });
+      /* 3. take it off the machine — the paper on the cabinet goes now, and the
+            held copy has been standing in exactly its place since step one */
+      at(1130, function(){
+        tongue.hidden = true;
+        c.classList.add("take");
+        c.style.setProperty("--colT", ".92s");
+        c.style.setProperty("--colX", Math.round(st.width/2 - W*0.5) + "px");
+        c.style.setProperty("--colY", Math.round(st.height*0.30) + "px");
+        c.style.setProperty("--colR", "-2deg");
+      });
+      /* 4. bring it round to face you and hold it up.
+            The record is re-set at a larger type size rather than scaled, so the
+            figures stay crisp, and the size is computed from the real line count
+            so the whole record fits the stage however long it happens to be. */
+      at(1500, function(){
+        var lines = last.split("\n").length;
+        var targetH = st.height*0.68;
+        var fontPx = Math.max(3.2, Math.min(11, targetH/(lines*1.62)));
+        var paperH = lines*fontPx*1.62 + 8;
+        var paperW = Math.round(46*fontPx*0.60 + 12);  /* 44 monospace columns */
+        /* Where the curled fingertips actually are: the glove art is 300x430
+           with the tips at y=44 and the knuckles at y=188, and a curled finger
+           keeps 40% of its length. The record has to come down past that point
+           or the glove is holding nothing. */
+        var gloveH = W*430/300;
+        var tipY = (188 - (188 - 44)*0.40)/430 * gloveH;
+        var overlap = Math.round(tipY + gloveH*0.10);
+        c.classList.add("present");
+        c.style.setProperty("--colS", "1");
+        c.style.setProperty("--heldS", "1");
+        c.style.setProperty("--heldR", "-.6deg");
+        c.style.setProperty("--heldF", fontPx.toFixed(2) + "px");
+        c.style.setProperty("--heldW", paperW + "px");
+        c.style.setProperty("--heldX", Math.round((W - paperW)/2) + "px");
+        c.style.setProperty("--heldY", -Math.round(paperH - overlap) + "px");
+        /* the thumb comes round onto the face of the record, low and to the left */
+        /* the thumb lies across the face of the record at its bottom edge,
+           where a hand holding a strip of paper would actually put it */
+        var thW = Math.round(W*0.46), thH = thW*260/160;
+        c.style.setProperty("--thW", thW + "px");
+        c.style.setProperty("--thX", Math.round((W - paperW)/2 + paperW*0.13) + "px");
+        c.style.setProperty("--thY", Math.round(overlap - thH*0.86) + "px");
+        c.style.setProperty("--thR2", "-6deg");
+        /* stand it where the whole record clears the top of the stage */
+        c.style.setProperty("--colX", Math.round(st.width/2 - W/2) + "px");
+        c.style.setProperty("--colY", Math.round(paperH - overlap + 26) + "px");
+        c.style.setProperty("--colR", "0deg");
+      });
+      /* 5. and then let you have it */
+      at(3350, function(){
+        c.classList.add("away");
+        c.style.setProperty("--colY",
+          (parseFloat(c.style.getPropertyValue("--colY")) + 300) + "px");
+        c.style.setProperty("--colR", "6deg");
+      });
+      at(3900, reveal);
     }
     el("rcTongue").addEventListener("click", collect);
 
