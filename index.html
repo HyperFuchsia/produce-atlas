@@ -5139,83 +5139,120 @@ void main() {
   trayLight.position.set(0, trayFloorY + 0.075, trayZ + 0.020);
   machine.add(trayLight);
 
-  var tokensIssued = 0;
-  var trayPlate = livePanel(trayW * 0.86, 0.020, 900, 60, function (x, w, h) {
+  /* Declared up here, not with the tokens: livePanel draws once as it builds,
+     so anything its draw reads must already exist. */
+  var tokensIssued = 0, issuedByClass = [0, 0, 0];
+  var trayPlate = livePanel(trayW * 0.90, 0.024, 1200, 100, function (x, w, h) {
     x.fillStyle = "#24272A"; x.fillRect(0, 0, w, h);
-    x.textBaseline = "middle"; x.font = "500 24px " + MONO;
+    x.textBaseline = "middle"; x.font = "500 23px " + MONO;
     x.fillStyle = "#7E848A";
-    tracked(x, "TOKENS ISSUED", 12, h / 2 + 1, 2, "left");
-    x.fillStyle = "#0E1012"; x.fillRect(w * 0.44, 6, 128, h - 12);
+    tracked(x, "TOKENS ISSUED", 14, 30, 2, "left");
+    x.fillStyle = "#0E1012"; x.fillRect(230, 12, 116, 36);
     x.fillStyle = "#C6CBD0";
-    tracked(x, String(Math.min(tokensIssued, 999)).padStart(3, "0"),
-            w * 0.44 + 64, h / 2 + 1, 5, "center");
-    x.fillStyle = "#6E747A";
-    tracked(x, "NO VALUE", w - 12, h / 2 + 1, 2, "right");
+    tracked(x, String(Math.min(tokensIssued, 999)).padStart(3, "0"), 288, 30, 5, "center");
+    x.fillStyle = "#6E747A"; x.font = "500 21px " + MONO;
+    tracked(x, "MIN " + issuedByClass[0] + "  COM " + issuedByClass[1]
+             + "  PRI " + issuedByClass[2], w - 14, 30, 2, "right");
+    x.strokeStyle = "rgba(140,146,152,.18)"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(14, 56); x.lineTo(w - 14, 56); x.stroke();
+    x.fillStyle = "#5E646A"; x.font = "500 20px " + MONO;
+    tracked(x, "THE CLASSES ARE NOT DENOMINATIONS · ALL TOKENS ARE OF NO VALUE",
+            w / 2, 78, 2, "center");
   }, 0.22);
   trayPlate.position.set(0, trayFloorY + 0.013, trayZ + trayD / 2 + 0.0105);
   machine.add(trayPlate);
 
-  /* ---- the token ---- */
-  var tokenTex = (function () {
-    var c = makeCanvas(320, 320), x = c.getContext("2d");
-    x.clearRect(0, 0, 320, 320);
-    var g = x.createRadialGradient(120, 110, 10, 160, 160, 170);
-    g.addColorStop(0, "#D2D6DA"); g.addColorStop(0.6, "#A9AEB3"); g.addColorStop(1, "#8A8F94");
-    x.beginPath(); x.arc(160, 160, 158, 0, TAU); x.fillStyle = g; x.fill();
-    x.strokeStyle = "rgba(60,64,68,.55)"; x.lineWidth = 5;
-    x.beginPath(); x.arc(160, 160, 140, 0, TAU); x.stroke();
+  /* ---- the tokens ---- */
+  /* Three sizes, issued in strict rotation from the hopper because that is how
+     the hopper is loaded. They are classes, not denominations — the plate on
+     the lip says so, and it has to, because three sizes of coin is exactly what
+     a denomination looks like. All three are struck NO VALUE. */
+  var CLASSES = [
+    { name: "MINOR",     r: 0.0105, t: 0.0018, seg: 32, tone: 0x8C9196, rings: 1 },
+    { name: "COMMON",    r: 0.0145, t: 0.0024, seg: 44, tone: 0xA9AEB3, rings: 2 },
+    { name: "PRINCIPAL", r: 0.0190, t: 0.0032, seg: 56, tone: 0xC4C9CE, rings: 3 }
+  ];
+
+  function mintFace(cls) {
+    var c = makeCanvas(360, 360), x = c.getContext("2d");
+    x.clearRect(0, 0, 360, 360);
+    var g = x.createRadialGradient(130, 120, 12, 180, 180, 190);
+    g.addColorStop(0, "#DCE0E4"); g.addColorStop(0.6, "#AFB4B9"); g.addColorStop(1, "#8C9196");
+    x.beginPath(); x.arc(180, 180, 178, 0, TAU); x.fillStyle = g; x.fill();
+    x.strokeStyle = "rgba(56,60,64,.55)";
+    x.lineWidth = 6; x.beginPath(); x.arc(180, 180, 158, 0, TAU); x.stroke();
+    if (cls.rings > 1) {
+      x.lineWidth = 3; x.beginPath(); x.arc(180, 180, 146, 0, TAU); x.stroke();
+    }
+    if (cls.rings > 2) {                       /* the principal carries pips */
+      x.fillStyle = "rgba(56,60,64,.5)";
+      for (var k = 0; k < 28; k++) {
+        var a = (k / 28) * TAU;
+        x.beginPath();
+        x.arc(180 + Math.cos(a) * 136, 180 + Math.sin(a) * 136, 4, 0, TAU);
+        x.fill();
+      }
+    }
     x.fillStyle = "#2A2E32";
     x.textBaseline = "middle"; x.textAlign = "center";
     /* the authority's name set round the top of the rim, as a coin has it */
     var name = "PUBLIC LUCK AUTHORITY";
-    x.save(); x.translate(160, 160);
-    x.font = "600 21px " + MONO;
+    x.save(); x.translate(180, 180);
+    x.font = "600 22px " + MONO;
     for (var i = 0; i < name.length; i++) {
-      var a = -Math.PI * 0.78 + (i / (name.length - 1)) * Math.PI * 1.56;
-      x.save(); x.rotate(a); x.translate(0, -119); x.rotate(Math.PI);
+      var a2 = -Math.PI * 0.78 + (i / (name.length - 1)) * Math.PI * 1.56;
+      x.save(); x.rotate(a2); x.translate(0, -122); x.rotate(Math.PI);
       x.fillText(name.charAt(i), 0, 0); x.restore();
     }
     x.restore();
-    x.font = "700 52px " + MONO;
-    x.fillText("NO", 160, 132);
-    x.fillText("VALUE", 160, 186);
-    x.font = "500 20px " + MONO;
-    x.fillStyle = "#4A4E52";
-    x.fillText("QA-77", 160, 236);
+    x.font = "700 56px " + MONO;
+    x.fillText("NO", 180, 146);
+    x.fillText("VALUE", 180, 204);
+    x.font = "600 22px " + MONO;
+    x.fillStyle = "#43474B";
+    x.fillText(cls.name, 180, 258);
     var t = new T.CanvasTexture(c);
     t.colorSpace = T.SRGBColorSpace; t.anisotropy = MAXA;
     return t;
-  })();
-  var tokenFace = new T.MeshPhysicalMaterial({
-    map: tokenTex, color: 0xFFFFFF, roughness: 0.34, metalness: 0.85
+  }
+
+  CLASSES.forEach(function (cls) {
+    var face = mintFace(cls);
+    /* A cylinder's bottom cap carries the same UVs as its top but is seen from
+       the other side, so the same texture on both comes out mirrored on the
+       reverse — every coin that landed tails-up read ETULAV ON. Both faces of a
+       real coin are struck the right way round, so the reverse gets a flipped
+       copy rather than the same one. */
+    var rev = face.clone();
+    rev.needsUpdate = true;
+    rev.wrapS = T.RepeatWrapping;
+    rev.repeat.x = -1; rev.offset.x = 1;
+    var matFace = new T.MeshPhysicalMaterial({
+      map: face, color: cls.tone, roughness: 0.34, metalness: 0.85
+    });
+    var matRev = new T.MeshPhysicalMaterial({
+      map: rev, color: cls.tone, roughness: 0.34, metalness: 0.85
+    });
+    var matEdge = new T.MeshPhysicalMaterial({
+      color: cls.tone, roughness: 0.46, metalness: 0.9, flatShading: true
+    });
+    cls.geo = new T.CylinderGeometry(cls.r, cls.r, cls.t, cls.seg);
+    cls.mats = [matEdge, matFace, matRev];
   });
-  /* A cylinder's bottom cap carries the same UVs as its top but is seen from
-     the other side, so the same texture on both comes out mirrored on the
-     reverse — every coin that landed tails-up read ETULAV ON. Both faces of a
-     real coin are struck the right way round, so the reverse gets a flipped
-     copy of the texture rather than the same one. */
-  var tokenTexRev = tokenTex.clone();
-  tokenTexRev.needsUpdate = true;
-  tokenTexRev.wrapS = T.RepeatWrapping;
-  tokenTexRev.repeat.x = -1;
-  tokenTexRev.offset.x = 1;
-  var tokenFaceRev = new T.MeshPhysicalMaterial({
-    map: tokenTexRev, color: 0xFFFFFF, roughness: 0.34, metalness: 0.85
-  });
-  var tokenEdge = new T.MeshPhysicalMaterial({
-    color: 0x93989D, roughness: 0.46, metalness: 0.9, flatShading: true
-  });
-  var TOKEN_R = 0.0145, TOKEN_T = 0.0024;
-  var tokenGeo = new T.CylinderGeometry(TOKEN_R, TOKEN_R, TOKEN_T, 40);
 
   var MAX_IN_TRAY = 18;
   var tokens = [];
   var TOKEN_HIT = [];
 
   function dispenseToken() {
-    tokensIssued++;
+    /* strict rotation, because that is the order the hopper was loaded in and
+       nothing else about the apparatus gets to decide it either */
+    var ci = tokensIssued % CLASSES.length;
+    var cls = CLASSES[ci];
+    tokensIssued++; issuedByClass[ci]++;
     trayPlate.redraw();
-    var m = new T.Mesh(tokenGeo, [tokenEdge, tokenFace, tokenFaceRev]);
+    var m = new T.Mesh(cls.geo, cls.mats);
+    m.userData.cls = cls;
     m.castShadow = true; m.receiveShadow = true;
     m.position.set((Math.random() - 0.5) * trayW * 0.30, trayHoodY - 0.022, FZ + 0.014);
     m.rotation.set(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU);
@@ -5233,7 +5270,8 @@ void main() {
     tokens.push(m); TOKEN_HIT.push(m);
     /* the tray holds eighteen. After that the Authority takes one back, which
        is the only mechanism in the apparatus that removes anything. */
-    if (tokens.length > MAX_IN_TRAY) {
+    var overflow = tokens.length > MAX_IN_TRAY;
+    if (overflow) {
       var old = tokens.shift();
       TOKEN_HIT.splice(TOKEN_HIT.indexOf(old), 1);
       machine.remove(old);
@@ -5241,6 +5279,7 @@ void main() {
         if (!spinning) setMessage("PERIODIC AUDIT. ONE (1) TOKEN RECLAIMED.");
       }, 900);
     }
+    return cls;
   }
 
   function surrenderTokens() {
@@ -5248,16 +5287,19 @@ void main() {
       setMessage("THERE ARE NO TOKENS IN THE TRAY TO SURRENDER.");
       return;
     }
-    var n = tokens.length;
-    tokens.forEach(function (m) { machine.remove(m); });
+    var n = tokens.length, by = [0, 0, 0];
+    tokens.forEach(function (m) {
+      by[CLASSES.indexOf(m.userData.cls)]++;
+      machine.remove(m);
+    });
     tokens.length = 0; TOKEN_HIT.length = 0;
-    setMessage("TOKENS SURRENDERED: " + n + ". THE AUTHORITY THANKS YOU. "
-               + "THE ISSUE RECORD IS UNCHANGED.");
+    setMessage("TOKENS SURRENDERED: " + n + " (" + by[0] + " MINOR, " + by[1]
+               + " COMMON, " + by[2] + " PRINCIPAL). THE ISSUE RECORD IS UNCHANGED.");
   }
 
   /* Not a physics engine — a coin, a floor and three walls. Gravity, a bounce
      that keeps a third of the speed, and a tumble that stops when it lands. */
-  var TOKEN_FLOOR = trayFloorY + TOKEN_T / 2 + 0.0006;
+  var TOKEN_FLOOR = trayFloorY + 0.0006;
   function stepTokens(dt) {
     for (var i = 0; i < tokens.length; i++) {
       var m = tokens[i];
@@ -5267,14 +5309,16 @@ void main() {
       v.y -= 9.81 * dt;
       m.position.addScaledVector(v, dt);
       m.rotation.x += s2.x * dt; m.rotation.y += s2.y * dt; m.rotation.z += s2.z * dt;
-      var zMax = trayZ + trayD / 2 - TOKEN_R, zMin = trayZ - trayD / 2 + TOKEN_R;
-      var xLim = trayW / 2 - TOKEN_R;
+      var cr = m.userData.cls.r;              /* the walls are per-coin now */
+      var zMax = trayZ + trayD / 2 - cr, zMin = trayZ - trayD / 2 + cr;
+      var xLim = trayW / 2 - cr;
       if (m.position.z > zMax) { m.position.z = zMax; v.z *= -0.35; }
       if (m.position.z < zMin) { m.position.z = zMin; v.z *= -0.35; }
       if (m.position.x > xLim) { m.position.x = xLim; v.x *= -0.35; }
       if (m.position.x < -xLim) { m.position.x = -xLim; v.x *= -0.35; }
-      if (m.position.y <= TOKEN_FLOOR) {
-        m.position.y = TOKEN_FLOOR;
+      var floorY = TOKEN_FLOOR + m.userData.cls.t / 2;
+      if (m.position.y <= floorY) {
+        m.position.y = floorY;
         /* A bounce that keeps a third of its speed converges, but nothing in
            the arithmetic promises it converges soon — and on a slow frame the
            step is coarse enough to keep a coin skittering. Anything still in
@@ -5283,7 +5327,7 @@ void main() {
           /* down for good: lie flat, keep whatever facing it happened to land on */
           m.userData.rest = true;
           m.rotation.set(0, Math.random() * TAU, 0);
-          m.position.y = TOKEN_FLOOR + (i % 3) * 0.0004;
+          m.position.y = floorY + (i % 3) * 0.0004;
         } else {
           v.y = -v.y * 0.34; v.x *= 0.55; v.z *= 0.55;
           s2.multiplyScalar(0.45);
@@ -5587,8 +5631,9 @@ void main() {
        a payout that depended on the result would be a payout. */
     setTimeout(function () {
       if (spinning) return;
-      dispenseToken();
-      setMessage("ONE (1) TOKEN DISPENSED. THE OUTCOME DID NOT AFFECT THIS.");
+      var cls = dispenseToken();
+      setMessage("ONE (1) TOKEN DISPENSED · CLASS " + cls.name
+                 + ". THE OUTCOME DID NOT AFFECT THIS. NOR DID ANYTHING ELSE.");
     }, 1100);
     /* and the whole ceremony is undone, every time, without being asked */
     resetInterlock(true);
@@ -5857,6 +5902,7 @@ void main() {
     interlock: ILK, doStep: doStep, message: function () { return msg; },
     tokens: tokens, dispense: dispenseToken, surrender: surrenderTokens,
     tokensIssued: function () { return tokensIssued; },
+    classes: CLASSES, issuedByClass: function () { return issuedByClass.slice(); },
     tokensAtRest: function () { return tokens.filter(function (m) { return m.userData.rest; }).length; },
     spinning: function () { return spinning; },
     register: function () { return { obs: obsCount, match: matchCount,

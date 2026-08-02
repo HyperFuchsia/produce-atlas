@@ -117,10 +117,19 @@ reels did, because a payout that depended on the result would be a payout, and i
 says so out loud: *"ONE (1) TOKEN DISPENSED. THE OUTCOME DID NOT AFFECT THIS."*
 Three alike gets you the same token as three of nothing.
 
-The token is a minted disc — 29 mm, milled edge, PUBLIC LUCK AUTHORITY struck round
-the rim and NO VALUE across both faces. Both faces, because a cylinder's bottom cap
-carries its top cap's UVs seen from the other side, so a single texture on both
-came out mirrored and every coin that landed tails-up read ETULAV ON.
+Tokens come in three sizes — **MINOR** at 21 mm with a single rim line, **COMMON**
+at 29 mm with a double rim, **PRINCIPAL** at 38 mm with a double rim and a ring of
+28 pips — and they are issued in strict rotation, because that is the order the
+hopper was loaded in and nothing else about the apparatus gets to decide it either.
+The plate on the tray lip carries the running breakdown and, beneath it, the line
+the whole arrangement needs: *THE CLASSES ARE NOT DENOMINATIONS · ALL TOKENS ARE OF
+NO VALUE.* It has to say that, because three sizes of coin is precisely what a
+denomination looks like.
+
+All three are struck NO VALUE on both faces, with PUBLIC LUCK AUTHORITY round the
+rim and the class below. Both faces, because a cylinder's bottom cap carries its
+top cap's UVs seen from the other side, so a single texture on both came out
+mirrored and every coin that landed tails-up read ETULAV ON.
 
 It falls: out of the chute, tumbling, bouncing off the tray floor at a third of its
 speed, rattling off the lip and the cheeks if it arrives too fast, and lying flat
@@ -164,7 +173,9 @@ the observation, and the space bar walking a cold machine to the spin in exactly
 nine presses. The dispenser too: six tokens all reaching rest inside the tray,
 the cap holding at eighteen while the issue record keeps counting, surrender
 emptying the tray without touching the record, and one full observation yielding
-exactly one token.
+exactly one token. The classes are checked too: strict rotation over six
+dispenses, an even split across the three, three distinct radii, and each class
+resting on its own half-thickness.
 
 The camera frames the machine rather than sitting at a fixed distance. It projects
 the eight corners of the bounding box and takes the distance at which the last of
