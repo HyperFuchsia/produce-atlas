@@ -109,6 +109,31 @@ contact core, a soft ambient shadow, and a reflection of the lit panels coming b
 up off the floor — all in the plane of the page, and all sized from the machine's own
 footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 
+### The receipt
+
+The apparatus is glass, machined metal and a 49-dimensional state vector, and the one
+thing it hands you is 58 mm of thermal paper. Every observation prints one, from a
+head that is not in good repair: the roll never feeds square, one band across the
+paper is faint where the platen ran cold, a scattering of characters simply failed to
+fire, and the printer clock runs behind the apparatus clock — so about one receipt in
+four is stamped as having been printed *before* the observation it records.
+
+**The figures are all real**, taken at the instant of observation: the payline with
+taxon and common name; p(this configuration), p(any match this spin) and p(all three
+alike); the detection probability of all seven species with η already applied, each
+with a bar; l₁ coherence, entanglement, the interval since the last observation and
+whether that puts it in the Zeno regime; the Leggett–Garg K; the running record with
+its expectation, its Σp(1−p) evidence and the luck index (withheld in as many words
+when there is too little evidence); and the matter, its determination, its exact
+probability and its file number when one was filed. Then the disclaimer, the session
+clock, the roll metreage, and a barcode of the receipt number that no reader on earth
+wants.
+
+**Copy text** and **Save as .txt** give the clean, complete text — what is on the
+paper is only what the head managed to lay down. **Print** reduces the page to the
+receipt alone. **Tear off** detaches it, and the machine notes that it has not kept a
+copy. Leave one uncollected and the next one says so.
+
 ### The attendance interlock
 
 The apparatus will not observe until it is satisfied that an observer exists. The

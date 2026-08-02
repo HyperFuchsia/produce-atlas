@@ -897,6 +897,86 @@ h1{
 .def{margin:0;padding:9px 11px;font-size:12.5px;line-height:1.55;color:var(--text);background:rgba(180,189,185,.05);border-left:2px solid var(--text);font-family:var(--serif)}
 .def[hidden]{display:none}
 
+/* ---------- the receipt ----------
+   Everything else on this machine is glass and machined metal. The one thing it
+   hands you is 58 mm of thermal paper from a printer that is losing its head. */
+.printout{display:flex;flex-direction:column;gap:0}
+.rc-stage{
+  position:relative;display:flex;justify-content:center;padding:0 12px 22px;
+  /* the pool of light the paper is lying in */
+  background:radial-gradient(ellipse 40% 60% at 50% 30%, rgba(150,160,152,.05), rgba(0,0,0,0) 72%);
+}
+.rc-paper{
+  position:relative;width:min(430px,100%);
+  /* thermal stock: warm-grey, never white, and never evenly coated */
+  background:
+    linear-gradient(102deg, rgba(0,0,0,.05) 0%, rgba(0,0,0,0) 12%,
+      rgba(255,255,255,.05) 42%, rgba(0,0,0,0) 74%, rgba(0,0,0,.07) 100%),
+    linear-gradient(180deg,#E4E2D8 0%,#DEDCD1 40%,#D9D7CB 78%,#CFCDC1 100%);
+  color:#2C2F2A;
+  box-shadow:0 1px 0 rgba(255,255,255,.5) inset, 0 14px 26px -10px rgba(0,0,0,.85),
+             0 2px 5px rgba(0,0,0,.5);
+  transform:rotate(-0.35deg);         /* the roll never feeds quite square */
+  transform-origin:50% 0;
+  padding:14px 16px 0;
+}
+@keyframes feedout{
+  from{clip-path:inset(0 0 100% 0);transform:rotate(-0.35deg) translateY(-14px)}
+  to  {clip-path:inset(0 0 0 0);transform:rotate(-0.35deg) translateY(0)}
+}
+.rc-paper.feeding{animation:feedout 1.15s cubic-bezier(.16,.7,.2,1) both}
+/* the sprocket-torn top edge, where it left the printer */
+.rc-perf{
+  position:absolute;left:0;right:0;height:7px;pointer-events:none;
+  background:
+    radial-gradient(circle at 4px 0, transparent 0 3.4px, #0A0C0C 3.5px) 0 0/9px 7px repeat-x;
+}
+.rc-perf.top{top:-1px;transform:scaleY(-1)}
+.rc-text{
+  margin:0;font-family:var(--mono);font-size:10.5px;line-height:1.62;letter-spacing:.02em;
+  white-space:pre;overflow-x:auto;
+  /* a thermal head lays ink unevenly and never quite black */
+  color:#33362F;text-shadow:0 0 .45px rgba(51,54,47,.55);
+}
+.rc-text b{font-weight:700;color:#14170F}
+/* characters the head failed to fire */
+.rc-text .cold{opacity:.30}
+.rc-text .rule{color:#8C9086}
+/* the band where the roll ran over a cold platen */
+.rc-band{
+  position:absolute;left:0;right:0;top:var(--bandY,42%);height:var(--bandH,26px);
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(228,226,216,0),rgba(228,226,216,.62) 42%,rgba(228,226,216,0));
+}
+.rc-code{display:flex;align-items:flex-end;gap:1px;height:34px;margin:8px 0 2px;padding:0 2px}
+.rc-code i{display:block;background:#2A2D27;height:100%}
+.rc-tear{
+  position:relative;margin:8px -16px 0;padding:5px 0 9px;text-align:center;
+  font-family:var(--mono);font-size:6.5px;letter-spacing:.28em;text-transform:uppercase;color:#8B8F84;
+  border-top:1px dashed rgba(70,74,64,.45);
+}
+.rc-paper::after{      /* the torn bottom edge */
+  content:"";position:absolute;left:0;right:0;bottom:-6px;height:7px;
+  background:radial-gradient(circle at 5px 7px, transparent 0 4px, #0A0C0C 4.1px) 0 0/11px 7px repeat-x;
+}
+/* the curl the roll never loses */
+.rc-curl{
+  position:absolute;left:0;right:0;bottom:0;height:56px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.16) 62%,rgba(0,0,0,.30));
+}
+.rc-actions{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  border-top:1px solid var(--line);padding:11px 0 0;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);
+}
+.rc-btns{display:flex;gap:6px;flex-wrap:wrap}
+@keyframes tearoff{to{transform:rotate(-2.6deg) translateY(46px);opacity:0}}
+.rc-paper.torn{animation:tearoff .5s cubic-bezier(.4,0,.75,.2) both}
+@media (max-width:520px){ .rc-text{font-size:9px} }
+@media (prefers-reduced-motion: reduce){
+  .rc-paper.feeding,.rc-paper.torn{animation:none}
+}
+
 /* manual */
 .manual{border:1px solid var(--line);display:flex;flex-direction:column}
 .manual-head{
@@ -930,6 +1010,15 @@ h1{
 
 @media print{
   canvas.bg,.vignette,.hud,.titleblock,.procedure,.filing,.device,.console,.register,.manual,footer,.dock{display:none !important}
+  .printout{display:none !important}
+  body.print-receipt .doc{display:none !important}
+  body.print-receipt .printout{display:block !important}
+  body.print-receipt .rc-actions{display:none !important}
+  body.print-receipt .rc-paper{background:#fff;color:#000;box-shadow:none;transform:none;width:auto}
+  body.print-receipt .rc-text{color:#000;text-shadow:none}
+  body.print-receipt .rc-text .cold{opacity:1}
+  body.print-receipt .rc-perf,body.print-receipt .rc-curl,body.print-receipt .rc-band{display:none}
+  body.print-receipt .rc-paper::after{display:none}
   body{background:#fff;color:#000}
   .wrap{padding:0;gap:0;max-width:none}
   .doc{border:1px solid #000;background:#fff;color:#000;box-shadow:none}
@@ -1214,6 +1303,30 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
   </section>
 
+  <!-- ---------- the receipt ---------- -->
+  <section class="printout" id="printout" hidden aria-labelledby="rcHead">
+    <h2 class="vh" id="rcHead">Observation receipt</h2>
+    <div class="rc-stage">
+      <div class="rc-paper" id="rcPaper">
+        <div class="rc-perf top" aria-hidden="true"></div>
+        <pre class="rc-text" id="rcText"></pre>
+        <div class="rc-code" id="rcCode" aria-hidden="true"></div>
+        <div class="rc-tear" aria-hidden="true"><span>tear here</span></div>
+        <div class="rc-curl" aria-hidden="true"></div>
+        <div class="rc-band" aria-hidden="true"></div>
+      </div>
+    </div>
+    <div class="rc-actions">
+      <span class="rc-note" id="rcNote">Printed on the apparatus. The paper is the only copy it keeps.</span>
+      <span class="rc-btns">
+        <button class="minibtn" id="rcCopy">Copy text</button>
+        <button class="minibtn" id="rcSave">Save as .txt</button>
+        <button class="minibtn" id="rcPrint">Print</button>
+        <button class="minibtn ghost" id="rcTear">Tear off</button>
+      </span>
+    </div>
+  </section>
+
   <section class="paper doc" id="doc" hidden aria-live="polite" aria-labelledby="docHead">
     <div class="paper-head">
       <b id="docHead">Certificate of determination</b>
@@ -1369,6 +1482,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry wide">
         <h3>The apparatus is not quite right · and that is deliberate</h3>
         <div class="cols">
+          <p><b>The receipt.</b> Every observation prints one, from a thermal head that is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records.</p>
           <p><b>The attendance interlock.</b> The brass plate on the deck is the way in. <b>Press and hold it</b>: while it is held the apparatus reads you and reports what it read, and when you let go it observes. Let go before it has registered and the attendance is withdrawn and nothing happens. The readings are invented — it has no sensor, it is a button — and the plate has always recorded more hands than the machine has spins, because <b>every so often it registers a hand that is not there</b>, says so, and observes without you. The lever, the space bar, Enter on the plate and the docked control all still work and none of them make you wait; the interlock is the primary way in, never the only one.</p>
           <p><b>What else it does.</b> The cabinet holds a pose exactly, and then, every ten seconds or so, it is a fraction of a degree somewhere else. Its reflection is a beat behind it. The seal in the belly glass turns once every nine minutes. The rating plate and the flank plate change their serial numbers while they are turned away from you, and the service record on the back counts up whether or not you pull the lever — the apparatus was running before you opened this page and does not stop when you close it. Very occasionally a lamp lights for nothing, a second payline appears where there is only one, a character in the message line gives way, and a reel reports <b>state 8</b>, which is not in the basis. The register has always contained <b>QA-77/0000</b>, a matter you did not file, withheld, deferred, and not open to appeal.</p>
           <p><b>What it never touches.</b> Four things on this page are allowed to be true and none of the above goes near them: <b>the physics</b> — the state vector, the unitary, the Born rule and the collapse; <b>the probabilities</b> printed on every certificate, enumerated over all 343 configurations; <b>the register's arithmetic</b>, including the luck index and its variance; and <b>the session clock</b>, which is the one instrument here that has never lied to you and is not going to start. State 8 is a display artefact only: the outcome recorded, counted and certified is the one the Born rule actually produced. The serial numbers were never real, so nothing is lost when they change.</p>
@@ -1955,7 +2069,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     if(S.drift.length > 200) S.drift = S.drift.slice(-200);
 
     return {out:out, kind:kind, top:top, pHit:js.hit, gap:gap, ent:entangled, entVal:ent,
-            ds:ds, pConfig:pConfig};
+            ds:ds, pConfig:pConfig, pTrio:js.trio, p1:p1.slice(0, N), at:Date.now()};
   }
 
   function stepAnim(now){
@@ -1988,7 +2102,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
   function finish(res){
     announce(res);
     if(window.PLATE_count) window.PLATE_count();
-    if(S.pending) issue(res);
+    /* the machine prints on every observation, whether or not a matter was filed;
+       issue() runs first when there is one so the case is on the paper */
+    var filed = S.pending;
+    if(filed) issue(res);
+    RECEIPT.print(res, filed && filed.issued ? filed : null);
     renderAll();
     save();
     celebrate(res.kind);
@@ -2130,6 +2248,206 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
     void slip.offsetHeight;
     slip.style.animation = "";
   }
+
+  /* ============================ the receipt ============================
+     The apparatus is glass, machined metal and a 49-dimensional state vector,
+     and the only thing it hands you is 58 mm of thermal paper. Every figure on
+     it is the real one, taken at the instant of observation. The printer is not
+     in good repair. */
+  var RECEIPT = (function(){
+    var W = 44, sec = el("printout"), pre = el("rcText"), paper = el("rcPaper");
+    var last = null, collected = true, printed = 0, roll = 41.6;
+
+    function rep(ch, n){ var s = ""; while(n-- > 0) s += ch; return s; }
+    function rule(ch){ return rep(ch || "-", W); }
+    function mid(t){
+      var pad = Math.max(0, Math.floor((W - t.length)/2));
+      return rep(" ", pad) + t;
+    }
+    /* label left, figure hard right — a receipt is a column of right-aligned facts */
+    function row(a, b){
+      a = String(a); b = String(b);
+      var gap = W - a.length - b.length;
+      return gap < 1 ? a + " " + b : a + rep(" ", gap) + b;
+    }
+    function bar(v){
+      var n = Math.round(v*22), i, s = "";
+      for(i=0;i<22;i++) s += i < n ? "█" : "·";
+      return s;
+    }
+    function clock(ms){
+      var s = Math.floor(ms/1000);
+      return ("0"+Math.floor(s/3600)).slice(-2) + ":" +
+             ("0"+Math.floor(s/60)%60).slice(-2) + ":" + ("0"+(s%60)).slice(-2);
+    }
+    function num(v, d){ return v === null || v === undefined ? "—" : v.toFixed(d); }
+
+    function compose(res, c){
+      var no = ("00000000" + (770000 + (S.lifetime*3719) % 8999999)).slice(-9);
+      var L = [], i, K = leggettGarg(), z = zScore();
+      /* the printer clock is not the apparatus clock, and it is behind */
+      var skew = printed % 4 === 3 ? -(2 + Math.floor(Math.random()*3))*1000 : 0;
+
+      L.push(mid("PUBLIC LUCK AUTHORITY"));
+      L.push(mid("OFFICE OF PROBABILISTIC DETERMINATIONS"));
+      L.push(mid("APPARATUS QA-77 · BAY 3"));
+      L.push(rule("="));
+      L.push("OBSERVATION RECEIPT");
+      L.push(row("NO.", no));
+      L.push(row("OBSERVED", stamp(res.at)));
+      L.push(row("PRINTED", stamp(res.at + skew)));
+      if(skew) L.push("PRINTED BEFORE THE OBSERVATION WAS MADE.");
+      L.push(rule());
+      L.push("PAYLINE");
+      for(i=0;i<3;i++){
+        var sp = SYMBOLS[res.out[i]];
+        L.push(" " + (i+1) + " " + (sp.taxon + rep(" ", 12)).slice(0,12) + " " + sp.common);
+      }
+      L.push("");
+      L.push(row("RESULT", res.kind === "trio" ? "THREE ALIKE"
+                        : res.kind === "pair" ? "PAIR" : "NO MATCH"));
+      L.push(row("P(THIS CONFIGURATION)", (res.pConfig*100).toFixed(3) + " %"));
+      L.push(row("P(ANY MATCH, THIS SPIN)", (res.pHit*100).toFixed(3) + " %"));
+      L.push(row("P(ALL THREE ALIKE)", (res.pTrio*100).toFixed(3) + " %"));
+      L.push(rule());
+      L.push("DETECTION PROBABILITY AT OBSERVATION");
+      L.push("|psi_i|^2 WEIGHTED BY DETECTOR EFFICIENCY");
+      for(i=0;i<N;i++){
+        L.push(" " + (SYMBOLS[i].taxon + rep(" ", 8)).slice(0,8) + " " +
+               res.p1[i].toFixed(4) + " " + bar(res.p1[i]/Math.max.apply(null, res.p1)));
+      }
+      L.push(rule());
+      L.push("INSTRUMENTS");
+      L.push(row("COHERENCE (l1)", num(A.coherence(), 3)));
+      L.push(row("ENTANGLEMENT (1-Tr rho^2)", num(res.entVal, 3)));
+      L.push(row("SINCE LAST OBSERVATION", res.gap.toFixed(2) + " S"));
+      L.push(row("ZENO REGIME", res.gap < 0.75 ? "YES" : "NO"));
+      L.push(row("LEGGETT-GARG K", K === null ? "—" : (K >= 0 ? "+" : "−") + Math.abs(K).toFixed(3)));
+      L.push(rule());
+      L.push("RUNNING RECORD");
+      L.push(row("OBSERVATIONS", S.spins));
+      L.push(row("MATCHES", S.hits));
+      L.push(row("EXPECTED", S.expHits.toFixed(2)));
+      L.push(row("THREE ALIKE", S.trios + " of " + S.expTrios.toFixed(2)));
+      L.push(row("EVIDENCE  SUM p(1-p)", S.varHits.toFixed(2)));
+      L.push(row("LUCK INDEX", z === null ? "WITHHELD — TOO LITTLE EVIDENCE"
+             : (z >= 0 ? "+" : "−") + Math.abs(z).toFixed(2) + " SD"));
+      if(c){
+        L.push(rule());
+        L.push("MATTER");
+        L.push(row("CASE", c.ref + (c.appealOf ? " (APPEAL)" : "")));
+        L.push(row("FILED", stamp(c.filed)));
+        L.push(row("DETERMINATION", c.det || "NONE — REFILE"));
+        L.push(row("P(DETERMINATION)", (c.pClass*100).toFixed(3) + " %"));
+        L.push(row("FILE NO.", fileNumber(c)));
+      }
+      L.push(rule());
+      L.push("THIS RECEIPT IS NOT EVIDENCE OF ANYTHING.");
+      L.push("THE APPARATUS DID NOT READ YOUR QUESTION");
+      L.push("AND CANNOT. NO INFERENCE MAY BE DRAWN");
+      L.push("FROM ANY FIGURE PRINTED ABOVE. IT IS A");
+      L.push("RECORD THAT A THING WAS OBSERVED, AND");
+      L.push("NOTHING WHATEVER ABOUT YOU.");
+      L.push(rule());
+      L.push(row("OPERATOR PRESENT", clock(Date.now() - started)));
+      L.push(row("ROLL 0007", roll.toFixed(1) + " M REMAINING"));
+      if(roll < 12) L.push("PAPER LOW.");
+      if(!collected) L.push("PREVIOUS RECEIPT WAS NOT COLLECTED.");
+      L.push(rule("="));
+      L.push(mid("RETAIN THIS RECEIPT."));
+      L.push(mid("THE APPARATUS WILL NOT"));
+      L.push(mid("PRINT IT AGAIN."));
+      return {text:L.join("\n"), no:no};
+    }
+
+    /* The paper you take away is complete. The paper on the machine is what the
+       head actually managed to lay down. */
+    function degrade(text){
+      var out = "", i, ch;
+      for(i=0;i<text.length;i++){
+        ch = text[i];
+        if(ch === "<") ch = "&lt;"; else if(ch === "&") ch = "&amp;";
+        if(ch !== "\n" && ch !== " " && Math.random() < 0.016)
+          out += '<span class="cold">' + ch + "</span>";
+        else out += ch;
+      }
+      return out;
+    }
+    /* Code-39-ish: a guard, then three bars and three spaces per digit, then a
+       guard. It encodes the receipt number and nothing else, and there is no
+       reader on earth that wants it. */
+    function barcode(no){
+      var host = el("rcCode"), i, k, d, h = "";
+      function bars(w){ h += '<i style="width:' + w + 'px"></i>'; }
+      function gap(w){ h += '<i style="width:' + w + 'px;background:transparent"></i>'; }
+      bars(2); gap(2); bars(1); gap(2);
+      for(i=0;i<no.length;i++){
+        d = +no[i];
+        for(k=0;k<3;k++){
+          bars(1 + ((d >> k) & 1)*2);
+          gap(1 + ((d + k) % 3));
+        }
+      }
+      bars(1); gap(2); bars(2);
+      host.innerHTML = h;
+    }
+
+    function print(res, c){
+      printed++;
+      roll = Math.max(4.2, roll - 0.28);
+      var r = compose(res, c);
+      last = r.text;
+      pre.innerHTML = degrade(r.text);
+      barcode(r.no);
+      paper.style.setProperty("--bandY", (18 + Math.random()*58).toFixed(0) + "%");
+      paper.style.setProperty("--bandH", (14 + Math.random()*26).toFixed(0) + "px");
+      sec.hidden = false;
+      paper.classList.remove("torn");
+      el("rcNote").textContent = "Printed on the apparatus · receipt " + r.no;
+      if(!reduced){
+        paper.classList.remove("feeding"); void paper.offsetHeight;
+        paper.classList.add("feeding");
+      }
+      collected = false;
+    }
+
+    el("rcCopy").addEventListener("click", function(){
+      if(!last) return;
+      var b = this;
+      navigator.clipboard.writeText(last).then(function(){
+        b.textContent = "Copied";
+        setTimeout(function(){ b.textContent = "Copy text"; }, 1600);
+      }, function(){ b.textContent = "Copy failed"; });
+    });
+    el("rcSave").addEventListener("click", function(){
+      if(!last) return;
+      var blob = new Blob([last + "\n"], {type:"text/plain;charset=utf-8"});
+      var url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = "qa-77-receipt.txt";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+      collected = true;
+    });
+    el("rcPrint").addEventListener("click", function(){
+      document.body.classList.add("print-receipt");
+      window.print();
+      setTimeout(function(){ document.body.classList.remove("print-receipt"); }, 400);
+      collected = true;
+    });
+    el("rcTear").addEventListener("click", function(){
+      if(!last) return;
+      collected = true;
+      paper.classList.add("torn");
+      var go = function(){
+        sec.hidden = true;
+        paper.classList.remove("torn");
+        el("msg").textContent = "RECEIPT COLLECTED. THE APPARATUS HAS NOT KEPT A COPY.";
+      };
+      if(reduced) go(); else setTimeout(go, 480);
+    });
+
+    return {print:print, text:function(){ return last; }};
+  })();
 
   var shownCase = null;
   function revealDoc(){
@@ -2904,12 +3222,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
 
   /* Inline glossary: every instrument on the panel explains itself. */
   var DEFS = {
-    coh:"How much superposition reel one has left. It is exactly zero the instant you observe, and climbs as the state spreads back out. Formally the l\u2081-norm of coherence, (\u03A3|\u03C8\u1D62|)\u00B2\u22121, scaled to 0\u20131.",
+    coh:"How much superposition reel one has left. It is exactly zero the instant you observe, and climbs as the state spreads back out. Formally the l\u2081-norm of coherence, (\u03A3|\u03C8\u1D62|)\u00B2\u22121, scaled to 0–1.",
     ent:"How entangled reels two and three are, as 1\u2212Tr \u03C1\u00B2 of one reel's reduced state: 0 when they are independent, 1 when knowing one tells you everything about the other. Observing them destroys it; waiting rebuilds it.",
     phit:"The chance the next observation shows at least two alike — computed exactly from the joint state as it stands this instant, not a long-run average. It moves while you watch.",
     eta:"Detector efficiency. Each species is read out by a detector of different sensitivity, which is what tilts the reels toward cherries and away from vanilla. p(next) is |\u03C8|\u00B2 weighted by \u03B7 and renormalised.",
     ev:"Accumulated evidence, \u03A3p(1\u2212p). A spin that was nearly certain adds almost nothing to it, which is why freezing the reels with Burst does not unlock the luck index no matter how many times you pull.",
-    lg:"Leggett\u2013Garg K averages q\u2081q\u2082+q\u2082q\u2083\u2212q\u2081q\u2083 over consecutive triples of your hit sequence, where q is +1 for a match and \u22121 for a miss. Macrorealism caps it at 1, and this estimator hits the bound exactly: K = 1 \u2212 4f, with f the fraction of your triples that alternate. A fair coin sits near 0. Zeno-locked reels push it toward 1. Nothing you can do pushes it past."
+    lg:"Leggett–Garg K averages q\u2081q\u2082+q\u2082q\u2083\u2212q\u2081q\u2083 over consecutive triples of your hit sequence, where q is +1 for a match and \u22121 for a miss. Macrorealism caps it at 1, and this estimator hits the bound exactly: K = 1 \u2212 4f, with f the fraction of your triples that alternate. A fair coin sits near 0. Zeno-locked reels push it toward 1. Nothing you can do pushes it past."
   };
   [].forEach.call(document.querySelectorAll(".term"), function(btn){
     btn.addEventListener("click", function(){
