@@ -4222,8 +4222,12 @@ void main() {
   /* Painted steel. Clearcoat is what makes it read as sprayed and lacquered
      rather than as raw plastic — it puts a second, tighter specular over the
      broad diffuse one. */
+  /* Metalness low: sprayed steel is a dielectric coat over metal, and every
+     point of metalness scales the diffuse term straight down. At 0.25 the
+     flanks and the back went to an unreadable black slab under anything but
+     the key. The clearcoat, not the metalness, is what makes it look sprayed. */
   var paint = new T.MeshPhysicalMaterial({
-    color: 0x474D52, roughness: 0.36, metalness: 0.25,
+    color: 0x4C5257, roughness: 0.36, metalness: 0.12,
     clearcoat: 0.62, clearcoatRoughness: 0.20
   });
   var paintDark = new T.MeshPhysicalMaterial({
@@ -4272,9 +4276,24 @@ void main() {
     g.translate(0, 0, -(d - bevel * 2) / 2);
     return g;
   }
+  /* ExtrudeGeometry's bevel grows OUTWARD from the profile: bevelSize is how far
+     past the outline it reaches. Feed it the finished size and you get a part
+     2*bevel too big in both axes — which is why the body's flank sat at 0.393
+     rather than 0.381 and every fitting placed against it ended up buried
+     inside. Shrink the profile first and the outer size is the one asked for. */
   function slab(w, h, d, r, bevel, mat) {
     bevel = bevel === undefined ? 0.010 : bevel;
-    var m = new T.Mesh(extrude(roundedPath(w, h, r || 0.02), d, bevel), mat);
+    var s = roundedPath(w - 2 * bevel, h - 2 * bevel,
+                        Math.max(0.002, (r || 0.02) - bevel));
+    var m = new T.Mesh(extrude(s, d, bevel), mat);
+    m.castShadow = true; m.receiveShadow = true;
+    return m;
+  }
+  /* the same compensation for a frame: the outer edge shrinks, the hole grows */
+  function ring(ow, oh, iw, ih, orad, irad, d, bevel, mat) {
+    var s = roundedPath(ow - 2 * bevel, oh - 2 * bevel, Math.max(0.002, orad - bevel));
+    s.holes.push(roundedPath(iw + 2 * bevel, ih + 2 * bevel, irad + bevel, T.Path));
+    var m = new T.Mesh(extrude(s, d, bevel), mat);
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
@@ -4285,9 +4304,12 @@ void main() {
   }
 
   /* ------------------------------------------------------------- the room -- */
+  /* Rough rather than polished. At clearcoat 1.0 and roughness 0.24 the side
+     lights land on it as a hard white blob the size of the machine, which reads
+     as a blown highlight rather than as a floor. */
   var floorMat = new T.MeshPhysicalMaterial({
-    color: 0x12151A, roughness: 0.24, metalness: 0.1,
-    clearcoat: 1.0, clearcoatRoughness: 0.16
+    color: 0x0D1015, roughness: 0.46, metalness: 0.08,
+    clearcoat: 0.45, clearcoatRoughness: 0.40
   });
   var floor = new T.Mesh(new T.CircleGeometry(14, 64), floorMat);
   floor.rotation.x = -Math.PI / 2;
@@ -4332,11 +4354,12 @@ void main() {
      gap. Built the other way the seams land on the face of the machine and the
      head reads as a stack of trays; built this way every joint in the carcass
      behind it is hidden by a single continuous rounded front. */
-  var fasciaT = 0.055;
+  var fasciaT = 0.055, fasciaB = 0.010;
   var headCY = bodyH + topH / 2;
-  var fasciaShape = roundedPath(headW, topH, 0.028);
-  fasciaShape.holes.push(roundedPath(winW, winH, 0.010, T.Path, 0, winCY - headCY));
-  var fascia = new T.Mesh(extrude(fasciaShape, fasciaT, 0.010), paint);
+  var fasciaShape = roundedPath(headW - 2 * fasciaB, topH - 2 * fasciaB, 0.028 - fasciaB);
+  fasciaShape.holes.push(roundedPath(winW + 2 * fasciaB, winH + 2 * fasciaB,
+                                     0.010 + fasciaB, T.Path, 0, winCY - headCY));
+  var fascia = new T.Mesh(extrude(fasciaShape, fasciaT, fasciaB), paint);
   fascia.position.set(0, headCY, headZF - fasciaT / 2);
   fascia.castShadow = true; fascia.receiveShadow = true;
   machine.add(fascia);
@@ -4350,11 +4373,15 @@ void main() {
     machine.add(m);
     return m;
   }
-  carcass(headW, headTopY - winTop, carcD, 0, (headTopY + winTop) / 2, carcZF - carcD / 2, true);
-  carcass(headW, winBot - bodyH, carcD, 0, (winBot + bodyH) / 2, carcZF - carcD / 2, true);
+  /* The two side panels run the full height of the head and the crown and shelf
+     sit between them. Cut the other way — posts only as tall as the window —
+     the joints above and below it land on the flank, and turning the machine
+     side-on shows two hard seams straight across it. */
   var postW = (headW - winW) / 2;
-  carcass(postW, winH, carcD, -(winW + postW) / 2, winCY, carcZF - carcD / 2, false);
-  carcass(postW, winH, carcD,  (winW + postW) / 2, winCY, carcZF - carcD / 2, false);
+  carcass(postW, topH, carcD, -(winW + postW) / 2, headCY, carcZF - carcD / 2, true);
+  carcass(postW, topH, carcD,  (winW + postW) / 2, headCY, carcZF - carcD / 2, true);
+  carcass(winW, headTopY - winTop, carcD, 0, (headTopY + winTop) / 2, carcZF - carcD / 2, false);
+  carcass(winW, winBot - bodyH, carcD, 0, (winBot + bodyH) / 2, carcZF - carcD / 2, false);
   carcass(winW, winH, carcD - bayD, 0, winCY, carcZF - bayD - (carcD - bayD) / 2, false);
 
   /* line the bay so no painted steel shows behind the drums */
@@ -4365,7 +4392,14 @@ void main() {
 
   /* the control deck: a wedge sloping toward the player */
   var deckD = D * 0.46, deckH = 0.075, deckTilt = 0.42;
-  var deck = slab(W * 0.99, deckD, deckH, 0.020, 0.008, paint);
+  /* Darker than the rest of the paint on purpose. The deck's normal is within
+     35 degrees of the key, so it takes more light than any other surface on the
+     machine and in the cabinet grey it clipped to white every time. */
+  var deckMat = new T.MeshPhysicalMaterial({
+    color: 0x2E3338, roughness: 0.52, metalness: 0.12,
+    clearcoat: 0.45, clearcoatRoughness: 0.45
+  });
+  var deck = slab(W * 0.99, deckD, deckH, 0.020, 0.008, deckMat);
   deck.rotation.x = -Math.PI / 2 + deckTilt;   /* a real 24 degree slope */
   deck.position.set(0, bodyH + 0.028, D * 0.30);
   machine.add(deck);
@@ -4513,11 +4547,8 @@ void main() {
   }
 
   /* --------------------------------------------------------- window glass -- */
-  var bezelShape = roundedPath(winW + 0.050, winH + 0.050, 0.016);
-  bezelShape.holes.push(roundedPath(winW, winH, 0.010, T.Path));
-  var bezel = new T.Mesh(extrude(bezelShape, 0.026, 0.006), chromeDim);
+  var bezel = ring(winW + 0.050, winH + 0.050, winW, winH, 0.016, 0.010, 0.026, 0.006, chromeDim);
   bezel.position.set(0, winCY, headZF + 0.006);
-  bezel.castShadow = true;
   machine.add(bezel);
 
   /* Not a transmissive material: at this thickness refraction buys nothing and
@@ -4532,9 +4563,9 @@ void main() {
   machine.add(glass);
 
   /* the payline, printed on the glass at the middle row */
-  var payline = new T.Mesh(new T.PlaneGeometry(winW * 0.99, 0.0022),
-    new T.MeshStandardMaterial({ color: 0xC8402F, emissive: 0xC8402F,
-      emissiveIntensity: 0.55, transparent: true, opacity: 0.8, depthWrite: false }));
+  var payline = new T.Mesh(new T.PlaneGeometry(winW * 0.99, 0.0032),
+    new T.MeshStandardMaterial({ color: 0xD8452F, emissive: 0xD8452F,
+      emissiveIntensity: 1.6, transparent: true, opacity: 0.92, depthWrite: false }));
   payline.position.set(0, winCY, headZF + 0.005);
   machine.add(payline);
 
@@ -4597,9 +4628,8 @@ void main() {
   var marquee = litPanel(marqueeW, marqueeH, marqueeTex, 1.05);
   marquee.position.set(0, bodyH + topH * 0.80, headZF + 0.0015);
   machine.add(marquee);
-  var mfShape = roundedPath(marqueeW + 0.034, marqueeH + 0.034, 0.014);
-  mfShape.holes.push(roundedPath(marqueeW, marqueeH, 0.008, T.Path));
-  var marqueeFrame = new T.Mesh(extrude(mfShape, 0.018, 0.005), chromeDim);
+  var marqueeFrame = ring(marqueeW + 0.034, marqueeH + 0.034, marqueeW, marqueeH,
+                          0.014, 0.008, 0.018, 0.005, chromeDim);
   marqueeFrame.position.set(0, marquee.position.y, headZF + 0.005);
   machine.add(marqueeFrame);
   var marqueeLight = new T.PointLight(0xBFD0F5, 0.055, 1.5, 2);
@@ -4679,9 +4709,8 @@ void main() {
   var belly = litPanel(bellyW, bellyH, bellyTex, 0.55);
   belly.position.set(0, bellyY, D / 2 + 0.0015);
   machine.add(belly);
-  var bfShape = roundedPath(bellyW + 0.034, bellyH + 0.034, 0.014);
-  bfShape.holes.push(roundedPath(bellyW, bellyH, 0.008, T.Path));
-  var bellyFrame = new T.Mesh(extrude(bfShape, 0.018, 0.005), chromeDim);
+  var bellyFrame = ring(bellyW + 0.034, bellyH + 0.034, bellyW, bellyH,
+                        0.014, 0.008, 0.018, 0.005, chromeDim);
   bellyFrame.position.set(0, bellyY, D / 2 + 0.005);
   machine.add(bellyFrame);
   var bellyLight = new T.PointLight(0x9FB4E0, 0.045, 1.1, 2);
@@ -4727,14 +4756,129 @@ void main() {
     machine.add(sc);
   });
 
-  /* side louvres, so the flanks are not blank */
-  for (var lv = 0; lv < 9; lv++) {
-    for (var sgn = -1; sgn <= 1; sgn += 2) {
-      var lo = box(0.016, 0.013, D * 0.46, paintDark);
-      lo.position.set(sgn * (W / 2 - 0.005), bodyH * 0.50 + lv * 0.030, -D * 0.12);
+  /* --------------------------------------------------------- the flanks --- */
+  /* The largest single surface on the machine, and side-on it is the whole
+     picture. Left plain it is a rectangle of grey with nothing in it. */
+  for (var sgn = -1; sgn <= 1; sgn += 2) {
+    var fx = sgn * (W / 2 - 0.004);
+    /* the extract louvres, high and toward the back */
+    for (var lv = 0; lv < 10; lv++) {
+      var lo = box(0.014, 0.012, D * 0.40, cavity);
+      lo.position.set(fx, bodyH * 0.50 + lv * 0.032, -D * 0.14);
       machine.add(lo);
     }
+    /* the door's edge, and the same waist line the front carries */
+    var vseam = box(0.012, bodyH * 0.66, 0.005, paintDark);
+    vseam.position.set(fx, bodyH * 0.37, D * 0.36);
+    machine.add(vseam);
+    var hseam = box(0.012, 0.005, D * 0.86, paintDark);
+    hseam.position.set(fx, bodyH * 0.70, 0);
+    machine.add(hseam);
+    /* a lifting handle: the only thing on a cabinet side that is there for a
+       person rather than for the machine. Standing proud on two mounts rather
+       than sunk into the panel, because a recess needs a hole and there isn't
+       one — an inset box just sits inside the flank where nothing can see it. */
+    for (var mz = -1; mz <= 1; mz += 2) {
+      var mount = box(0.020, 0.036, 0.026, paintDark);
+      mount.position.set(sgn * (W / 2 + 0.008), bodyH * 0.80, -D * 0.02 + mz * 0.075);
+      machine.add(mount);
+    }
+    var gripBar = new T.Mesh(new T.CylinderGeometry(0.009, 0.009, 0.17, 16), chromeDim);
+    gripBar.rotation.x = Math.PI / 2;
+    gripBar.position.set(sgn * (W / 2 + 0.020), bodyH * 0.80, -D * 0.02);
+    gripBar.castShadow = true;
+    machine.add(gripBar);
   }
+
+  /* ------------------------------------------------------------- the back -- */
+  /* You can turn this thing all the way round, so the back is a surface the
+     viewer will actually stand in front of. Blank, it announces that only the
+     front was ever modelled. */
+  var backZ = -D / 2;
+  function onBack(w, h, d, cx, cy, mat) {
+    var m = box(w, h, d, mat);
+    m.position.set(cx, cy, backZ - d / 2 + 0.004);
+    machine.add(m);
+    return m;
+  }
+  /* the service door, as a reveal */
+  onBack(W * 0.90, 0.005, 0.010, 0, bodyH * 0.86, paintDark);
+  onBack(W * 0.90, 0.005, 0.010, 0, bodyH * 0.12, paintDark);
+  onBack(0.005, bodyH * 0.74, 0.010, -W * 0.45, bodyH * 0.49, paintDark);
+  onBack(0.005, bodyH * 0.74, 0.010,  W * 0.45, bodyH * 0.49, paintDark);
+  /* three hinges down the left edge and a latch on the right */
+  [0.22, 0.49, 0.76].forEach(function (f) {
+    onBack(0.030, 0.055, 0.014, -W * 0.44, bodyH * f, chromeDim);
+  });
+  var latch = new T.Mesh(new T.CylinderGeometry(0.016, 0.016, 0.022, 20), chromeDim);
+  latch.rotation.x = Math.PI / 2;
+  latch.position.set(W * 0.40, bodyH * 0.49, backZ - 0.008);
+  latch.castShadow = true;
+  machine.add(latch);
+  onBack(0.038, 0.006, 0.020, W * 0.40, bodyH * 0.49, chrome);
+  /* the extract grille */
+  for (var gv = 0; gv < 7; gv++) {
+    onBack(W * 0.44, 0.011, 0.014, 0, bodyH * 0.62 + gv * 0.026, cavity);
+  }
+  /* the inlet and the fuse carrier */
+  onBack(0.055, 0.048, 0.022, -W * 0.28, bodyH * 0.20, paintDark);
+  onBack(0.036, 0.036, 0.014, -W * 0.28, bodyH * 0.20, rubber);
+  onBack(0.024, 0.030, 0.018,  W * 0.28 - 0.05, bodyH * 0.20, chromeDim);
+
+  /* the data plate: the one place on the machine that states what it is */
+  var plateTex = textureFrom(760, 470, function (x, w, h) {
+    x.fillStyle = "#A9B0B6"; x.fillRect(0, 0, w, h);
+    x.strokeStyle = "#2A2E33"; x.lineWidth = 5; x.strokeRect(16, 16, w - 32, h - 32);
+    x.fillStyle = "#1B1F22";
+    x.textAlign = "center"; x.textBaseline = "middle";
+    x.font = "700 52px ui-monospace, Menlo, monospace";
+    x.fillText("QA-77", w / 2, 74);
+    x.font = "500 25px ui-monospace, Menlo, monospace";
+    x.fillText("BUREAU OF DETERMINATION", w / 2, 118);
+    x.beginPath(); x.moveTo(40, 146); x.lineTo(w - 40, 146); x.lineWidth = 3; x.stroke();
+    x.textAlign = "left";
+    x.font = "500 24px ui-monospace, Menlo, monospace";
+    [["MODEL", "QA-77/B"], ["SERIAL", "0000-0077"], ["STOPS", "11 x 3"],
+     ["SUPPLY", "230V 50Hz 0.4A"], ["MASS", "94 kg"]].forEach(function (r, i) {
+      var y = 184 + i * 46;
+      x.fillStyle = "#3A4046"; x.fillText(r[0], 46, y);
+      x.fillStyle = "#14181B"; x.textAlign = "right";
+      x.fillText(r[1], w - 46, y); x.textAlign = "left";
+    });
+  });
+  var plate = new T.Mesh(new T.PlaneGeometry(0.115, 0.071),
+    new T.MeshStandardMaterial({ map: plateTex, roughness: 0.42, metalness: 0.55 }));
+  plate.rotation.y = Math.PI;                  /* it faces out the back */
+  plate.position.set(W * 0.24, bodyH * 0.40, backZ - 0.0015);
+  machine.add(plate);
+
+  /* and a vent in the back of the head, where the tube gear would be */
+  for (var hv = 0; hv < 5; hv++) {
+    var hb = box(headW * 0.40, 0.011, 0.014, cavity);
+    hb.position.set(0, winCY - 0.05 + hv * 0.026, headZB + 0.004);
+    machine.add(hb);
+  }
+
+  /* --------------------------------------------------------- the ground -- */
+  /* The key is the only light that casts, and it throws the machine's shadow
+     back and to the right — so the floor directly beneath stays lit by three
+     lights that cast nothing and the cabinet reads as hovering. This is the
+     occlusion those lights should have been blocked by. */
+  var contactTex = textureFrom(512, 512, function (x, w, h) {
+    var g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    g.addColorStop(0.00, "rgba(0,0,0,0.90)");
+    g.addColorStop(0.42, "rgba(0,0,0,0.62)");
+    g.addColorStop(0.72, "rgba(0,0,0,0.20)");
+    g.addColorStop(1.00, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+  });
+  var contact = new T.Mesh(new T.PlaneGeometry(W * 2.1, D * 2.3),
+    new T.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false }));
+  contact.rotation.x = -Math.PI / 2;
+  contact.position.set(0, 0.003, 0);
+  contact.renderOrder = -1;
+  scene.add(contact);      /* not in the machine group: it would enlarge the
+                              bounding box the camera frames itself against */
 
   /* ------------------------------------------------------------ the keys -- */
   var deckDir = new T.Vector3(0, Math.cos(deckTilt), Math.sin(deckTilt));
@@ -4807,7 +4951,7 @@ void main() {
   var leverTargets = [ball, shaft, boss, observeKey];
 
   /* ------------------------------------------------------------- lights --- */
-  scene.add(new T.HemisphereLight(0x33405A, 0x0A0B0D, 0.32));
+  scene.add(new T.HemisphereLight(0x3C4658, 0x0B0C0F, 0.48));
 
   var key = new T.DirectionalLight(0xFFF1DC, 2.4);
   key.position.set(-2.6, 3.4, 3.0);
@@ -4820,13 +4964,28 @@ void main() {
   key.shadow.radius = 3;
   scene.add(key);
 
-  var rim = new T.DirectionalLight(0x8FB4FF, 1.9);      /* cool, from behind right */
+  /* This is an object you turn all the way round, so the three quarters the key
+     never reaches have to be lit by something. Without these the back and the
+     left flank are a silhouette with no surface in them at all. */
+  var rim = new T.DirectionalLight(0xA6BEE8, 2.9);      /* cool, from behind right */
   rim.position.set(3.4, 2.2, -2.6);
   scene.add(rim);
 
-  var fill = new T.DirectionalLight(0xBFD2FF, 0.30);
+  var backFill = new T.DirectionalLight(0x9AA4B8, 1.15); /* and from behind left */
+  backFill.position.set(-3.0, 1.7, -2.4);
+  scene.add(backFill);
+
+  var fill = new T.DirectionalLight(0xBFD2FF, 0.40);
   fill.position.set(2.2, 1.0, 2.4);
   scene.add(fill);
+
+  /* two side kickers. The flanks face neither the key nor the rim squarely, so
+     side-on the machine is the one view with nothing raking across it. */
+  [-1, 1].forEach(function (s) {
+    var kick = new T.DirectionalLight(0xC2CEDE, 0.42);
+    kick.position.set(s * 4.0, 1.5, 0.5);
+    scene.add(kick);
+  });
 
   /* ---------------------------------------------------------- the spin ---- */
   /* Deriving where a stop lands rather than guessing it: the cylinder's texture
@@ -4884,6 +5043,38 @@ void main() {
   var orbit = { yaw: -0.30, pitch: 0.16, dist: 3.35, target: new T.Vector3(0, H * 0.46, 0) };
   var vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, travel = 0;
 
+  /* Frame the machine rather than sit at a fixed distance. A hard-coded 3.35
+     happens to fit a square window and crops the top and bottom off everything
+     else — a phone in portrait most of all, where the horizontal field is a
+     third of the vertical one. This projects the eight corners of the actual
+     bounding box and takes the distance at which the last of them fits. */
+  var fitBox = new T.Box3().setFromObject(machine);
+  orbit.target.set(0, (fitBox.min.y + fitBox.max.y) / 2, 0);
+  var fitCorners = [];
+  for (var ci = 0; ci < 8; ci++) {
+    fitCorners.push(new T.Vector3(
+      ci & 1 ? fitBox.max.x : fitBox.min.x,
+      ci & 2 ? fitBox.max.y : fitBox.min.y,
+      ci & 4 ? fitBox.max.z : fitBox.min.z
+    ).sub(orbit.target));
+  }
+  var _r = new T.Vector3(), _u = new T.Vector3(), _f = new T.Vector3();
+  function fitDistance() {
+    var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
+    _f.set(cp * Math.sin(orbit.yaw), sp, cp * Math.cos(orbit.yaw));   /* toward the camera */
+    _r.set(Math.cos(orbit.yaw), 0, -Math.sin(orbit.yaw));
+    _u.crossVectors(_f, _r).normalize();
+    var tv = Math.tan(camera.fov * Math.PI / 360);
+    var th = tv * camera.aspect;
+    var need = 0;
+    for (var i = 0; i < 8; i++) {
+      var p = fitCorners[i];
+      var z = p.dot(_f);
+      need = Math.max(need, z + Math.abs(p.dot(_r)) / th, z + Math.abs(p.dot(_u)) / tv);
+    }
+    return need * 1.06;                       /* a little air around the silhouette */
+  }
+
   function applyCamera() {
     var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
     camera.position.set(
@@ -4913,18 +5104,27 @@ void main() {
   canvas.addEventListener("pointercancel", endDrag);
   canvas.addEventListener("wheel", function (e) {
     e.preventDefault();
-    orbit.dist = Math.max(1.5, Math.min(7, orbit.dist * (1 + e.deltaY * 0.0011)));
+    var f = fitDistance();
+    orbit.dist = Math.max(f * 0.32, Math.min(f * 2.2, orbit.dist * (1 + e.deltaY * 0.0011)));
   }, { passive: false });
   window.addEventListener("keydown", function (e) {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); spin(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
+  /* Keep the viewer's own zoom relative to the fit, so widening the window
+     reframes the machine instead of leaving it stranded at whatever absolute
+     distance happened to be right for the last one. */
+  var framed = false;
   function resize() {
     var w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
+    var before = framed ? fitDistance() : 0;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    var after = fitDistance();
+    orbit.dist = framed ? orbit.dist * (after / before) : after;
+    framed = true;
   }
   window.addEventListener("resize", resize);
   resize();
@@ -5002,7 +5202,7 @@ void main() {
   window.QA77 = {
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
     drums: drums, symbols: SYMBOLS, orders: ORDERS, stops: STOPS,
-    spin: spin, landingAngle: landingAngle,
+    spin: spin, landingAngle: landingAngle, fit: fitDistance,
     spinning: function () { return spinning; }
   };
   settleReport();

@@ -58,7 +58,11 @@ real machine — over a duration staggered so they stop left to right.
 
 74 × 30 × 26 inches, modelled to scale in metres. No edge anywhere is sharp: every
 part is an extruded rounded rectangle with a bevel, and that radius catching the
-light is most of what says *made object*.
+light is most of what says *made object*. The bevel is compensated for, because
+`bevelSize` grows the profile *outward*: feed `ExtrudeGeometry` the finished size
+and every part comes out 2 × bevel too big. That put the body's flank at 0.393 m
+instead of 0.381, and every fitting placed against it — louvres, seams, the lifting
+handle — ended up buried inside the panel it was supposed to sit on.
 
 The head is one continuous fascia with a genuine rectangular hole extruded into it,
 not four panels arranged around a gap. Built the second way — which is how it was
@@ -75,13 +79,27 @@ printed payline at the middle row, a notice rail, coin and claim mouths, a coin 
 you can see into, panel reveals and a keyed service lock, side louvres, and a
 four-key control deck with legends under a brass observe bar.
 
+It is an object you can turn all the way round, so it is finished all the way
+round: a hinged service door with a latch, an extract grille, a supply inlet, a fuse
+carrier and a data plate on the back; louvres, a waist seam, a door edge and a
+lifting handle on each flank. The light rig follows from that — a warm key from the
+front left, a cool rim from behind right, a back fill from behind left and two side
+kickers — because with a front key alone the other three quarters render as
+silhouette with no surface in them.
+
+The camera frames the machine rather than sitting at a fixed distance. It projects
+the eight corners of the bounding box and takes the distance at which the last of
+them fits, so a phone in portrait — where the horizontal field is a third of the
+vertical one — gets a dolly back instead of a crop.
+
 ### Verification
 
 `window.QA77` exposes the scene, camera, orbit state, drums, strip orders and the
 landing-angle function. The spin is checked headlessly against it: over six
 consecutive spins every drum's resting angle matched `landingAngle(stop)` to within
 1e-9 modulo a whole turn, and the symbol reported to the read-out matched the one the
-strip order puts on the payline. Zero failures, no console errors.
+strip order puts on the payline. Zero failures, no console errors. Framing is checked
+the same way: at 390 × 800 all eight bounding-box corners project inside the frame.
 
 ---
 
