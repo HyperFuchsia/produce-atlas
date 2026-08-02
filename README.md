@@ -118,26 +118,26 @@ own front face, hangs down over the belly glass to the plinth, and turns with th
 cabinet when you orbit it.
 
 **You cannot read it until it has been collected.** The paper hangs in the printer,
-and when you click it a **white attendant's glove** floats up out of the dark, closes
-on the record, takes it off the machine, brings it round to face you and holds it up
-long enough to read every line before letting you have it. The cuff is open and there
-is nothing in the glove.
+and when you click it a **white glove with three fingers and nobody in it** floats up
+out of the dark, closes on the record, takes it off the machine, brings it round to
+face you and holds it up long enough to read every line before letting you have it.
 
 It is not your hand either; on the machine's own account it is the second one, the one
 the attendance plate keeps reporting: *two hands detected, one is not accounted for.*
-The glove is drawn as a lit object rather than a flat shape. Each digit carries a full
-cylinder ramp — shadow edge, highlight band, terminator, core shadow, and the bounce
-light that comes back off the far side — with the little finger on a tighter ramp
-because it sits further round. The back of the hand has its own broad gradient, four
-soft speculars along the knuckle ridge, two palm folds and three seams; the digits are
-drawn *behind* the hand so they emerge from under a scalloped knuckle line instead of
-sitting on top of a mitten; each has a joint crease and a lengthwise sheen. The
-gauntlet is a cylinder with a hem, dashed stitching, the shadow the hand throws down
-into it, a mouth on a radial ramp and the far inner wall of that mouth catching the
-light. The thumb has the same ramp, its own joint, a lengthwise highlight and the
-shadow it lays on the record it is holding down. The whole glove has a permanent slow
-float, and the four fingers are hinged at their own knuckles and foreshorten rather
-than swing as they curl. The choreography runs as five stepped
+It is a cartoon glove of the inflated-vinyl kind — three fingers, a thumb, a rolled
+cuff — and it is rendered rather than drawn. **There is not one stroke anywhere in it:**
+an outline is what makes a glove read as a drawing, and the whole form is carried by
+shading instead. Every part sits on its own radial ramp lit from the upper left, from
+near-white through cream to a warm shadow; each digit gets a soft blurred specular and
+a blurred core shadow down its shaded side; the hand carries a broad knuckle specular,
+its own core shadow turning the mass, and three soft darts cut into the palm. The
+digits are drawn *behind* the hand so they emerge from under it, and the hand has a
+thenar lobe for the thumb to grow out of. The cuff is a torus in two halves, back and
+front, with the hand overlapping between them, a shaded opening and the shadow the
+hand throws down into the roll. Every form is doubled by a blurred pale copy behind
+it, so a cool rim runs the whole silhouette against the dark. The glove has a permanent
+slow float, and the three fingers are hinged at their own knuckles and foreshorten
+rather than swing as they curl. The choreography runs as five stepped
 beats — approach, grip, take, present, release — each timed on its own and composed
 from custom properties so no two beats fight over the same transform. In the present
 beat the record is re-set at a larger type size rather than scaled up, computed from
