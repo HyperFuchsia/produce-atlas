@@ -130,24 +130,26 @@ loose ring of a cuff — drawn from a reference and rendered rather than illustr
 **There is not one stroke anywhere in it:** an outline is what makes a glove read as a
 drawing, so the whole form is carried by shading instead.
 
-**The proportions come off the reference, measured.** A visible finger there is about
-210 long on 110 of width — under 2:1. Every earlier attempt drew them near 2.5:1, and
-at that ratio they stop being fingers and become ears; that one number was most of
-what was wrong. The bases nearly touch and the tips splay, each digit leaning further
-out than the last, and the thumb comes off the left of the hand low down and points
-away from them, with the deep web between it and the first finger that says "hand"
-more than anything else in the drawing.
+**It is one closed path.** Palm, three fingers and thumb are a single silhouette —
+not a union of capsules, cylinders or blobs — and every piece of shading is clipped
+inside it. That is the whole reason it holds together: with one outline there is no
+join to come apart, no primitive to float free, no doubled geometry and no accidental
+gap, and the silhouette reads before any material is applied.
 
-Every part sits on its own radial ramp lit from the upper left, near-white through
-cream into a warm shadow, with a soft blurred specular that follows the form and a
-blurred core shadow turning its shaded side. The digits run well down under the hand,
-so what shows above it is the whole finger and the deep valley either side; a crescent
-of shade hugs the hand's top edge where they disappear under it. The palm creases are
-incised — a dark groove with a lit lower lip just beneath — rather than drawn on. The
-cuff is a real loose ring: a thick stroked ellipse behind the hand and an arc with
-rounded caps coming round in front. Every form is doubled by a blurred pale copy
-behind it, inside the same rotation, so the cool rim of the room runs the whole
-silhouette against the dark.
+Four digits total, as the reference has: three fingers pointing up — tallest, slightly
+shorter, shortest and leaning out — each with a thick rounded end, and one thumb
+extending to the viewer's left with a deep web between it and the first finger. The
+palm faces the camera and stays visible; the hand is turned only four degrees, enough
+to read thickness and no more. The wrist points down and one flattened oval cuff sits
+centred beneath it, not crossing the hand. Three shallow curved palm creases, incised
+as a dark groove with a lit lip below, and nothing else — no nails, no knuckles, no
+markings.
+
+The material is warm ivory satin: a broad ramp with a soft key from the upper left,
+one specular per swelling following its form, a core shadow turning each toward the
+right, and shade pooled in the three valleys. A warm rim runs the upper-left edge and
+a cool blue rim the right, masked to their own sides, and the collector carries its
+own cobalt-and-violet pool so that cool rim has something to come from.
 
 The glove has a permanent slow float, and the three fingers are hinged at their own
 knuckles and foreshorten rather than swing as they curl. The choreography runs as five stepped
