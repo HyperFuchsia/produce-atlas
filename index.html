@@ -936,6 +936,50 @@ h1{
 .def{margin:0;padding:9px 11px;font-size:12.5px;line-height:1.55;color:var(--text);background:rgba(180,189,185,.05);border-left:2px solid var(--text);font-family:var(--serif)}
 .def[hidden]{display:none}
 
+/* ---------- the hand ----------
+   It comes up from below the frame, takes the record off the machine and goes
+   back down with it. It is drawn as a silhouette with the apparatus's own light
+   caught along the edge facing the cabinet — dark on dark, legible by its rim. */
+.hand{
+  position:absolute;left:var(--handX,40%);bottom:0;z-index:9;
+  width:var(--handW,150px);height:auto;pointer-events:none;overflow:visible;
+  filter:drop-shadow(0 -8px 18px rgba(0,0,0,.9));
+}
+.hand[hidden]{display:none}
+.hand path{
+  fill:url(#handSkin);
+  stroke:rgba(214,226,218,.62);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round;
+  paint-order:stroke fill;
+}
+/* animated as a plain transform, not through a custom property: unregistered
+   custom properties are not animatable in keyframes */
+.hand .hand-thumb{transform-origin:240px 310px;transform:rotate(19deg)}
+@keyframes handreach{
+  0%   { transform:translate(0,132%) rotate(3deg) }
+  30%  { transform:translate(0,10%)  rotate(1deg) }
+  44%  { transform:translate(0,2%)   rotate(0deg) }
+  60%  { transform:translate(0,4%)   rotate(0deg) }
+  100% { transform:translate(-7%,134%) rotate(-4deg) }
+}
+@keyframes handgrip{
+  0%,40%   { transform:rotate(19deg) }
+  50%,100% { transform:rotate(0deg) }
+}
+.hand.grabbing{animation:handreach 2.15s cubic-bezier(.35,.05,.3,1) both}
+.hand.grabbing .hand-thumb{animation:handgrip 2.15s steps(1,end) both}
+/* the paper goes with it */
+@keyframes handtaken{
+  0%,46%  { transform:rotate(.5deg) translateY(0); opacity:1 }
+  62%     { transform:rotate(2.4deg) translateY(26px); opacity:1 }
+  100%    { transform:rotate(9deg) translateY(230px); opacity:0 }
+}
+.rc-tongue.taken{animation:handtaken 2.15s cubic-bezier(.35,.05,.3,1) both}
+@media (prefers-reduced-motion: reduce){
+  .hand.grabbing{animation:none}
+  .hand.grabbing .hand-thumb{animation:none}
+  .rc-tongue.taken{animation:none}
+}
+
 /* ---------- the receipt ----------
    Everything else on this machine is glass and machined metal. The one thing it
    hands you is 58 mm of thermal paper from a printer that is losing its head. */
@@ -1136,6 +1180,44 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <span class="ground" id="ground" aria-hidden="true">
         <span class="refl"></span><span class="amb"></span><span class="core"></span>
       </span>
+
+      <!-- the hand that collects the record -->
+      <svg class="hand" id="hand" viewBox="0 0 320 780" aria-hidden="true" hidden>
+        <defs>
+          <linearGradient id="handSkin" x1="0" y1="0" x2="1" y2="0.4">
+            <stop offset="0" stop-color="#181C1B"/>
+            <stop offset=".46" stop-color="#0E1211"/>
+            <stop offset="1" stop-color="#050706"/>
+          </linearGradient>
+        </defs>
+        <g class="hand-g">
+          <!-- thumb: shorter and thicker than the index, set out to the side,
+               hinged at its base so it closes on the paper -->
+          <path class="hand-thumb" d="M 214 318
+                   C 196 300 176 266 168 228
+                   C 161 196 184 172 202 188
+                   C 214 199 210 226 216 252
+                   C 224 284 240 306 254 318 Z"/>
+          <!-- forearm, wrist, palm, three curled knuckles and the index -->
+          <path class="hand-palm" d="M 116 780
+                   C 104 618 100 476 110 408
+                   C 115 380 100 356 94 330
+                   C 84 302 70 280 76 258
+                   C 82 240 104 242 112 260
+                   C 104 236 98 212 104 196
+                   C 111 178 133 180 140 200
+                   C 133 176 128 152 134 136
+                   C 141 118 163 120 168 142
+                   C 160 116 154  86 158  68
+                   C 163  46 190  46 196  70
+                   C 202  94 196 130 194 158
+                   C 192 190 196 220 204 244
+                   C 212 266 226 280 240 292
+                   C 258 308 268 336 266 364
+                   C 264 388 258 400 260 418
+                   C 250 486 244 620 232 780 Z"/>
+        </g>
+      </svg>
       <div class="rig" id="rig">
         <div class="box" id="box">
 
@@ -1523,7 +1605,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry wide">
         <h3>The apparatus is not quite right · and that is deliberate</h3>
         <div class="cols">
-          <p><b>The receipt.</b> Every observation prints one, and it comes <b>out of the machine</b> — the paper feeds from the printer mouth, hangs down over the belly glass to the plinth, and turns with the cabinet when you orbit it. Click it to read it; click it again to tear it off. The head is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records. Every probability on it has been checked against the raw amplitudes by arithmetic that shares no code with the page: <b>luck is not a quantity and cannot be measured; every figure on the paper can be, and was.</b></p>
+          <p><b>The receipt.</b> Every observation prints one, and it comes <b>out of the machine</b> — the paper feeds from the printer mouth, hangs down over the belly glass to the plinth, and turns with the cabinet when you orbit it. Click it to read it; click it again to tear it off. The head is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>You cannot read it until it has been collected.</b> The paper hangs in the printer, and when you reach for it a hand comes up from below the frame, takes it off the machine and goes back down with it — and only then does the readable copy open. It is not your hand. It is, on the machine’s own account, the second one: <i>two hands detected, one is not accounted for</i>. Nothing is lost — the record is complete and yours the moment the hand is gone. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records. Every probability on it has been checked against the raw amplitudes by arithmetic that shares no code with the page: <b>luck is not a quantity and cannot be measured; every figure on the paper can be, and was.</b></p>
           <p><b>The attendance interlock.</b> The brass plate on the deck is the way in. <b>Press and hold it</b>: while it is held the apparatus reads you and reports what it read, and when you let go it observes. Let go before it has registered and the attendance is withdrawn and nothing happens. The readings are invented — it has no sensor, it is a button — and the plate has always recorded more hands than the machine has spins, because <b>every so often it registers a hand that is not there</b>, says so, and observes without you. The lever, the space bar, Enter on the plate and the docked control all still work and none of them make you wait; the interlock is the primary way in, never the only one.</p>
           <p><b>What else it does.</b> The cabinet holds a pose exactly, and then, every ten seconds or so, it is a fraction of a degree somewhere else. Its reflection is a beat behind it. The seal in the belly glass turns once every nine minutes. The rating plate and the flank plate change their serial numbers while they are turned away from you, and the service record on the back counts up whether or not you pull the lever — the apparatus was running before you opened this page and does not stop when you close it. Very occasionally a lamp lights for nothing, a second payline appears where there is only one, a character in the message line gives way, and a reel reports <b>state 8</b>, which is not in the basis. The register has always contained <b>QA-77/0000</b>, a matter you did not file, withheld, deferred, and not open to appeal.</p>
           <p><b>What it never touches.</b> Four things on this page are allowed to be true and none of the above goes near them: <b>the physics</b> — the state vector, the unitary, the Born rule and the collapse; <b>the probabilities</b> printed on every certificate, enumerated over all 343 configurations; <b>the register's arithmetic</b>, including the luck index and its variance; and <b>the session clock</b>, which is the one instrument here that has never lied to you and is not going to start. State 8 is a display artefact only: the outcome recorded, counted and certified is the one the Born rule actually produced. The serial numbers were never real, so nothing is lost when they change.</p>
@@ -2446,7 +2528,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       barcode(r.no);
       paper.style.setProperty("--bandY", (18 + Math.random()*58).toFixed(0) + "%");
       paper.style.setProperty("--bandH", (14 + Math.random()*26).toFixed(0) + "px");
-      sec.hidden = false;
+      /* the readable copy stays shut until the record has been collected */
+      sec.hidden = true;
       paper.classList.remove("torn");
       el("rcNote").textContent = "Printed on the apparatus · receipt " + r.no;
       /* and the paper itself, feeding out of the printer mouth on the cabinet
@@ -2464,6 +2547,12 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         tongue.classList.add("feeding");
       }
       collected = false;
+      /* the paper is easy to miss the first time, and the machine will not chase
+         you about it more than once */
+      if(printed === 1 && !reduced) setTimeout(function(){
+        if(!busy && !anim) el("msg").textContent =
+          "RECORD PRINTED. IT STAYS IN THE PRINTER UNTIL SOMEONE TAKES IT.";
+      }, 1700);
     }
 
     el("rcCopy").addEventListener("click", function(){
@@ -2502,18 +2591,56 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       if(reduced) go(); else setTimeout(go, 460);
     }
     el("rcTear").addEventListener("click", tear);
-    /* Two steps, tracked explicitly rather than by geometry: clicking the paper
-       scrolls the readable copy into view, which scrolls the paper back out of
-       view, so a viewport test can never reach the second step. */
-    el("rcTongue").addEventListener("click", function(){
-      if(!shown){
-        shown = true;
-        this.setAttribute("aria-label", "Receipt in the printer — click again to tear it off");
-        sec.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
-        return;
-      }
-      tear();
-    });
+    /* --- collection ------------------------------------------------------
+       You reach for the paper and something else gets there first. The hand
+       comes up from below the frame, takes the record off the machine and goes
+       back down with it — and only then is the record readable. */
+    var TAKEN = [
+      "TWO HANDS DETECTED. THIS IS THE OTHER ONE.",
+      "RECORD COLLECTED BY THE ATTENDANT. THERE IS NO ATTENDANT.",
+      "THE RECORD WAS COLLECTED. NOT BY YOU.",
+      "COLLECTION LOGGED. THE COLLECTING PARTY IS NOT ON THE ROSTER."
+    ];
+    var grabbing = false;
+    function reveal(){
+      sec.hidden = false;
+      el("rcTongue").hidden = true;
+      /* hidden is an HTMLElement property; on an SVG element it has to be the
+         attribute or it silently becomes an expando */
+      el("hand").setAttribute("hidden", "");
+      el("msg").textContent = "RECORD RELEASED FOR READING.";
+      sec.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
+      grabbing = false;
+    }
+    function collect(){
+      if(grabbing || !last) return;
+      grabbing = true;
+      shown = true;
+      var tongue = el("rcTongue"), hand = el("hand"), stage = el("stage");
+      /* stand the hand under wherever the paper actually is, whatever the orbit */
+      var t = tongue.getBoundingClientRect(), st = stage.getBoundingClientRect();
+      /* the hand is scaled off the paper, so it stays in proportion with the
+         machine at any fit; the index tip sits at 49% of the artwork's width and
+         the forearm runs off the bottom of the frame */
+      var W = Math.min(260, Math.max(104, Math.round(t.width*1.18)));
+      var H = W*780/320;
+      hand.style.setProperty("--handW", W + "px");
+      hand.style.setProperty("--handX",
+        Math.round(t.left + t.width/2 - st.left - W*0.52) + "px");
+      hand.style.bottom = Math.round((st.bottom - t.top) - H) + "px";
+      hand.removeAttribute("hidden");
+      el("msg").textContent = TAKEN[Math.floor(Math.random()*TAKEN.length)];
+      collected = true;
+      if(reduced){ reveal(); return; }
+      hand.classList.remove("grabbing"); tongue.classList.remove("taken");
+      void hand.offsetHeight;
+      hand.classList.add("grabbing"); tongue.classList.add("taken");
+      setTimeout(function(){
+        hand.classList.remove("grabbing"); tongue.classList.remove("taken");
+        reveal();
+      }, 2150);
+    }
+    el("rcTongue").addEventListener("click", collect);
 
     return {print:print, text:function(){ return last; }};
   })();
