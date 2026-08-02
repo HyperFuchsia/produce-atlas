@@ -130,17 +130,24 @@ loose ring of a cuff — drawn from a reference and rendered rather than illustr
 **There is not one stroke anywhere in it:** an outline is what makes a glove read as a
 drawing, so the whole form is carried by shading instead.
 
+**The proportions come off the reference, measured.** A visible finger there is about
+210 long on 110 of width — under 2:1. Every earlier attempt drew them near 2.5:1, and
+at that ratio they stop being fingers and become ears; that one number was most of
+what was wrong. The bases nearly touch and the tips splay, each digit leaning further
+out than the last, and the thumb comes off the left of the hand low down and points
+away from them, with the deep web between it and the first finger that says "hand"
+more than anything else in the drawing.
+
 Every part sits on its own radial ramp lit from the upper left, near-white through
 cream into a warm shadow, with a soft blurred specular that follows the form and a
-blurred core shadow turning its shaded side. The three fingers lean progressively
-further out and run well down under the hand, so what shows above it is the whole
-finger and the deep valley between one and the next; a crescent of shade hugs the
-hand's top edge where they disappear under it. The thumb sweeps into the palm rather
-than ending in a silhouette of its own. The palm creases are incised — a dark groove
-with a lit lower lip just beneath it — rather than drawn on. The cuff is a real loose
-ring: a thick stroked ellipse behind the hand and an arc with rounded caps coming
-round in front of it. Every form is doubled by a blurred pale copy behind it, so the
-cool rim of the room runs the whole silhouette against the dark.
+blurred core shadow turning its shaded side. The digits run well down under the hand,
+so what shows above it is the whole finger and the deep valley either side; a crescent
+of shade hugs the hand's top edge where they disappear under it. The palm creases are
+incised — a dark groove with a lit lower lip just beneath — rather than drawn on. The
+cuff is a real loose ring: a thick stroked ellipse behind the hand and an arc with
+rounded caps coming round in front. Every form is doubled by a blurred pale copy
+behind it, inside the same rotation, so the cool rim of the room runs the whole
+silhouette against the dark.
 
 The glove has a permanent slow float, and the three fingers are hinged at their own
 knuckles and foreshorten rather than swing as they curl. The choreography runs as five stepped

@@ -1273,126 +1273,134 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
           <!-- the whole hand is tipped, the way the reference is -->
           <g transform="rotate(-9 310 400)">
 
-            <!-- rim: the same silhouettes, blurred and pale, sitting behind
-                 the fills so a cool edge runs the whole outline against the dark -->
-            <g class="gv-rim" filter="url(#gvB4)">
-              <path d="M 266 404 C 254 320 258 208 272 152 C 282 110 302 88 326 88
-                       C 352 88 370 112 376 154 C 388 212 382 322 372 404 Z"/>
-              <path d="M 386 400 C 374 330 386 224 402 172 C 416 126 444 106 468 118
-                       C 494 130 502 168 494 214 C 482 288 456 356 446 404 Z"/>
-              <path d="M 466 448 C 458 396 476 336 506 302 C 534 270 578 274 592 306
-                       C 606 340 588 388 560 428 C 534 466 500 494 482 506 Z"/>
-              <path d="M 322 356 C 258 336 158 340 114 372 C 62 406 62 464 114 484
-                       C 168 504 258 486 316 460 C 356 442 380 420 392 396
-                       C 372 366 348 352 322 356 Z"/>
-              <path d="M 198 448 C 192 388 226 356 282 350 C 362 342 458 348 514 370
-                       C 570 392 594 430 588 480 C 582 532 546 570 484 580
-                       C 416 590 302 584 252 562 C 204 542 204 500 198 448 Z"/>
-              <path class="stroke" d="M 190 540 C 208 588 278 612 352 604
-                       C 410 598 454 576 468 550"/>
+            <!-- The reference measured, halved to this viewBox: a visible finger
+               is about 210 long on 110 of width — under 2:1. Every earlier
+               attempt drew them near 2.5:1, which is why they read as ears
+               rather than fingers.
+
+               rim: the same silhouettes, blurred and pale, behind the fills,
+               so a cool edge runs the whole outline against the dark -->
+          <!-- the whole hand is tipped, the way the reference is -->
+          <g transform="rotate(-11 320 380)">
+
+          <g class="gv-rim" filter="url(#gvB4)">
+              <path d="M 260 430 C 252 366 254 268 262 216 C 268 172 292 148 322 148
+                       C 354 148 376 174 380 218 C 386 272 382 368 374 430 Z"/>
+              <path d="M 384 426 C 374 366 388 276 400 230 C 412 188 440 168 468 180
+                       C 496 192 502 232 492 276 C 480 332 456 392 448 430 Z"/>
+              <path d="M 466 466 C 456 420 476 366 508 336 C 538 308 582 316 592 352
+                       C 602 388 580 428 552 456 C 526 482 496 500 480 508 Z"/>
+              <path d="M 268 366 C 216 344 132 344 90 372 C 44 402 44 456 90 476
+                       C 138 496 216 476 262 450 C 300 428 306 388 268 366 Z"/>
+              <path d="M 214 434 C 208 382 236 344 268 336 C 312 326 366 328 410 338
+                       C 468 350 530 378 570 414 C 606 446 610 494 578 528
+                       C 542 566 460 584 380 580 C 300 576 240 552 224 512
+                       C 212 482 216 458 214 434 Z"/>
+              <path class="stroke" d="M 198 546 C 216 594 288 616 360 608
+                       C 416 602 458 580 472 554"/>
             </g>
 
-            <!-- the cuff is a loose ring, and it passes behind the hand -->
-            <ellipse class="gv-ringback" cx="330" cy="536" rx="150" ry="48"
-                     transform="rotate(-13 330 536)"/>
+            <!-- the cuff: a loose ring, passing behind the hand -->
+            <ellipse class="gv-ringback" cx="336" cy="540" rx="146" ry="46"
+                     transform="rotate(-12 336 540)"/>
 
-            <!-- ---- digits: three, splayed, each leaning further out.
-                 They run well down under the hand, so what shows above it is
-                 the whole finger and the deep valley between one and the next. -->
+            <!-- ---- three fat digits, bases almost touching, splayed at the
+                 tips, each leaning further out than the last ---- -->
             <g class="gv-fingers">
               <g class="gv-f f1">
-                <path class="gv-skin" d="M 266 404
-                         C 254 320 258 208 272 152
-                         C 282 110 302 88 326 88
-                         C 352 88 370 112 376 154
-                         C 388 212 382 322 372 404 Z"/>
-                <ellipse class="gv-spec" cx="300" cy="180" rx="27" ry="70"
-                         transform="rotate(-4 300 180)" filter="url(#gvB18)"/>
-                <path class="gv-core" d="M 368 126 C 384 200 382 320 372 402
-                         L 340 402 C 350 320 354 200 346 130 Z" filter="url(#gvB18)"/>
+                <path class="gv-skin" d="M 260 430
+                         C 252 366 254 268 262 216
+                         C 268 172 292 148 322 148
+                         C 354 148 376 174 380 218
+                         C 386 272 382 368 374 430 Z"/>
+                <ellipse class="gv-spec" cx="292" cy="222" rx="30" ry="56"
+                         transform="rotate(-4 292 222)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 372 186 C 386 244 384 352 376 428
+                         L 340 428 C 350 352 354 246 348 190 Z" filter="url(#gvB18)"/>
               </g>
               <g class="gv-f f2">
-                <path class="gv-skin b" d="M 386 400
-                         C 374 330 386 224 402 172
-                         C 416 126 444 106 468 118
-                         C 494 130 502 168 494 214
-                         C 482 288 456 356 446 404 Z"/>
-                <ellipse class="gv-spec" cx="422" cy="200" rx="24" ry="62"
-                         transform="rotate(10 422 200)" filter="url(#gvB18)"/>
-                <path class="gv-core" d="M 490 152 C 504 202 484 292 452 398
-                         L 424 394 C 456 292 476 208 468 158 Z" filter="url(#gvB18)"/>
+                <path class="gv-skin b" d="M 384 426
+                         C 374 366 388 276 400 230
+                         C 412 188 440 168 468 180
+                         C 496 192 502 232 492 276
+                         C 480 332 456 392 448 430 Z"/>
+                <ellipse class="gv-spec" cx="418" cy="248" rx="27" ry="50"
+                         transform="rotate(10 418 248)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 490 212 C 500 256 480 336 452 424
+                         L 420 420 C 450 336 470 262 464 218 Z" filter="url(#gvB18)"/>
               </g>
               <g class="gv-f f3">
-                <path class="gv-skin b" d="M 466 448
-                         C 458 396 476 336 506 302
-                         C 534 270 578 274 592 306
-                         C 606 340 588 388 560 428
-                         C 534 466 500 494 482 506 Z"/>
-                <ellipse class="gv-spec" cx="520" cy="326" rx="21" ry="50"
-                         transform="rotate(36 520 326)" filter="url(#gvB18)"/>
-                <path class="gv-core" d="M 588 326 C 596 372 566 424 524 470
-                         C 508 488 492 500 482 506 L 468 474
-                         C 494 452 536 408 558 366 C 572 340 576 326 574 316 Z"
+                <path class="gv-skin b" d="M 466 466
+                         C 456 420 476 366 508 336
+                         C 538 308 582 316 592 352
+                         C 602 388 580 428 552 456
+                         C 526 482 496 500 480 508 Z"/>
+                <ellipse class="gv-spec" cx="522" cy="366" rx="24" ry="44"
+                         transform="rotate(38 522 366)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 588 372 C 594 410 564 450 526 480
+                         C 508 494 492 502 482 506 L 470 480
+                         C 496 462 534 428 556 396 C 570 376 574 366 572 358 Z"
                       filter="url(#gvB18)"/>
               </g>
             </g>
 
-            <!-- ---- the thumb: a long tube off the left of the hand ---- -->
+            <!-- ---- the thumb: off the left of the hand, low, pointing away
+                 from the fingers, with a deep web between it and the first ---- -->
             <g class="gv-thumbroot">
-              <path class="gv-skin" d="M 322 356
-                       C 258 336 158 340 114 372
-                       C 62 406 62 464 114 484
-                       C 168 504 258 486 316 460
-                       C 356 442 380 420 392 396
-                       C 372 366 348 352 322 356 Z"/>
-              <ellipse class="gv-spec" cx="168" cy="382" rx="62" ry="24"
-                       transform="rotate(-11 168 382)" filter="url(#gvB18)"/>
-              <path class="gv-core" d="M 122 468 C 180 496 258 478 306 444
-                       C 328 428 334 404 326 388 L 298 402
-                       C 302 420 288 436 256 452 C 212 472 158 480 124 470 Z"
+              <path class="gv-skin" d="M 268 366
+                       C 216 344 132 344 90 372
+                       C 44 402 44 456 90 476
+                       C 138 496 216 476 262 450
+                       C 300 428 306 388 268 366 Z"/>
+              <ellipse class="gv-spec" cx="146" cy="386" rx="56" ry="22"
+                       transform="rotate(-11 146 386)" filter="url(#gvB18)"/>
+              <path class="gv-core" d="M 98 462 C 152 490 226 472 272 442
+                       C 292 428 298 404 290 388 L 262 402
+                       C 266 420 252 436 222 450 C 180 468 128 474 96 464 Z"
                     filter="url(#gvB18)"/>
             </g>
 
-            <!-- ---- the hand ---- -->
-            <path class="gv-palm" d="M 198 448
-                     C 192 388 226 356 282 350
-                     C 362 342 458 348 514 370
-                     C 570 392 594 430 588 480
-                     C 582 532 546 570 484 580
-                     C 416 590 302 584 252 562
-                     C 204 542 204 500 198 448 Z"/>
-            <ellipse class="gv-spec big" cx="292" cy="418" rx="98" ry="70"
-                     transform="rotate(-14 292 418)" filter="url(#gvB28)"/>
-            <path class="gv-core" d="M 546 384 C 586 424 596 486 570 528
-                     C 544 570 470 590 398 588 L 396 552
-                     C 464 552 526 534 552 494 C 574 458 566 418 534 396 Z"
+            <!-- ---- the hand: the web sweeps up on the left to meet the first
+                 finger, which is the notch that says "hand" more than anything
+                 else in the drawing ---- -->
+            <path class="gv-palm" d="M 214 434
+                     C 208 382 236 344 268 336
+                     C 312 326 366 328 410 338
+                     C 468 350 530 378 570 414
+                     C 606 446 610 494 578 528
+                     C 542 566 460 584 380 580
+                     C 300 576 240 552 224 512
+                     C 212 482 216 458 214 434 Z"/>
+            <ellipse class="gv-spec big" cx="306" cy="410" rx="92" ry="64"
+                     transform="rotate(-16 306 410)" filter="url(#gvB28)"/>
+            <path class="gv-core" d="M 556 400 C 600 440 610 496 578 530
+                     C 544 566 470 584 396 582 L 394 546
+                     C 464 546 528 528 556 490 C 580 456 574 428 542 406 Z"
                   filter="url(#gvB28)"/>
 
-            <!-- the shading where the digits go under the hand: a crescent
-                 hugging the top edge, not spots in the middle of the palm -->
-            <path class="gv-web" filter="url(#gvB18)" d="M 226 402
-                     C 236 362 274 348 320 346 C 388 340 466 348 520 372
-                     C 508 386 486 388 456 380 C 400 366 320 362 268 374
-                     C 244 380 232 390 226 402 Z"/>
+            <!-- the shade where the digits go under the hand -->
+            <path class="gv-web" filter="url(#gvB18)" d="M 240 400
+                     C 250 356 288 338 336 334 C 404 328 486 344 546 378
+                     C 534 394 508 394 476 384 C 416 366 336 356 282 368
+                     C 258 374 246 388 240 400 Z"/>
 
             <!-- the darts, incised: a dark groove with a lit lower lip -->
             <g class="gv-dart">
-              <path class="cut" d="M 372 424 C 414 458 460 476 516 484"/>
-              <path class="lip" d="M 372 431 C 414 465 460 483 516 491"/>
-              <path class="cut" d="M 378 452 C 406 480 440 496 478 504"/>
-              <path class="lip" d="M 378 459 C 406 487 440 503 478 511"/>
-              <path class="cut" d="M 366 428 C 356 462 358 496 368 522"/>
-              <path class="lip" d="M 373 428 C 363 462 365 496 375 522"/>
+              <path class="cut" d="M 372 428 C 414 462 462 480 520 488"/>
+              <path class="lip" d="M 372 435 C 414 469 462 487 520 495"/>
+              <path class="cut" d="M 380 456 C 408 486 444 502 484 510"/>
+              <path class="lip" d="M 380 463 C 408 493 444 509 484 517"/>
+              <path class="cut" d="M 366 432 C 354 468 356 504 366 530"/>
+              <path class="lip" d="M 373 432 C 361 468 363 504 373 530"/>
             </g>
 
-            <!-- the front of the ring, coming round in front of the hand and
-                 ending in a rounded cap the way a loose cuff does -->
-            <path class="gv-ringfront" d="M 190 540
-                     C 208 588 278 612 352 604 C 410 598 454 576 468 550"/>
-            <ellipse class="gv-ringspec" cx="264" cy="584" rx="62" ry="14"
-                     transform="rotate(9 264 584)" filter="url(#gvB10)"/>
-            <ellipse class="gv-web deep" cx="340" cy="536" rx="140" ry="24"
-                     transform="rotate(-13 340 536)" filter="url(#gvB18)"/>
+            <!-- the front of the ring, coming round in front of the hand -->
+            <path class="gv-ringfront" d="M 198 546
+                     C 216 594 288 616 360 608 C 416 602 458 580 472 554"/>
+            <ellipse class="gv-ringspec" cx="272" cy="588" rx="60" ry="14"
+                     transform="rotate(9 272 588)" filter="url(#gvB10)"/>
+            <ellipse class="gv-web deep" cx="346" cy="540" rx="136" ry="24"
+                     transform="rotate(-12 346 540)" filter="url(#gvB18)"/>
           </g>
         </svg>
 
@@ -2861,11 +2869,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         var paperH = lines*fontPx*1.62 + 8;
         var paperW = Math.round(46*fontPx*0.60 + 12);  /* 44 monospace columns */
         /* Where the curled fingertips actually are: the glove art is 300x430
-           with the tips at y=88 and the knuckles at y=404, and a curled digit
+           with the tips at y=148 and the knuckles at y=430, and a curled digit
            keeps 40% of its length. The record has to come down past that point
            or the glove is holding nothing. */
         var gloveH = W*640/620;
-        var tipY = (404 - (404 - 88)*0.40)/640 * gloveH;
+        var tipY = (430 - (430 - 148)*0.40)/640 * gloveH;
         var overlap = Math.round(tipY + gloveH*0.10);
         c.classList.add("present");
         c.style.setProperty("--colS", "1");
