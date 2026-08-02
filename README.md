@@ -109,6 +109,25 @@ contact core, a soft ambient shadow, and a reflection of the lit panels coming b
 up off the floor — all in the plane of the page, and all sized from the machine's own
 footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 
+### The attendance interlock
+
+The apparatus will not observe until it is satisfied that an observer exists. The
+brass plate on the control deck — worn to the shape of a hand — is the primary
+control: **press and hold** it, and while it is held the machine reads you and reports
+what it read (*surface temperature 36.4 °C, consistent with an operator*; *two hands
+detected, one is not accounted for*). Release and it observes. Release before it has
+registered and the attendance is withdrawn and nothing happens.
+
+The readings are invented; it has no sensor, it is a button. The plate has always
+recorded more hands than the machine has spins, and the difference is exact: three
+from before you arrived, plus every time it has **registered a hand that is not
+there** — which it does roughly once every six minutes, says so on the LCD, and then
+observes without you.
+
+The hold is deliberately short (420 ms). It is an interlock, not a tease: nothing
+here builds anticipation before a result. The lever, the space bar, Enter on the
+plate and the docked Observe control all still work and none of them make you wait.
+
 ### The apparatus is not quite right
 
 Deliberately, and Schedule D on the page says so in full. The cabinet holds a pose
