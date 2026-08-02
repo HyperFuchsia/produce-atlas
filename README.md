@@ -117,7 +117,9 @@ one stop short. A third of a symbol: near enough to see the melon entering the
 window, not near enough to count. Then it comes apart, and that is where the ten
 parts on the floor come from.
 
-Thirty metres in six seconds, arriving at about eight metres a second. A camera
+Seventy-nine metres in fifteen seconds, arriving at about eight metres a second —
+long, because the drop has a script to get through and a script delivered at
+falling speed is a script nobody reads. It is skippable at any point. A camera
 that tracks a falling object perfectly shows no fall at all — the object sits dead
 still in frame and only the tumble moves — so the motion has to come from what the
 camera passes on the way down. A field of six hundred streaks hangs still in the
@@ -131,9 +133,12 @@ the middle of the drop and is caught again at the floor. Impact spikes the
 exposure and rings the shake down over a second.
 
 The reel choreography is stateful rather than scripted frame by frame: two reels
-run at eleven symbols a second and ease onto the match at 1.9 and 3.2 seconds, the
-third drops into a decelerating crawl at 3.7 and is still moving when the machine
-hits.
+run at eleven symbols a second and are down by 4.8 and 8.6 seconds, the third drops
+into a decelerating crawl at 9.2 and is still moving six seconds later when the
+machine hits. The operator's lines are cued against that, so he tells you what he
+needs while there is still time for it to happen: *that's two the same* once the
+second reel seats, then *I need the third to match — three alike is the only one
+that counts*, then nothing but *come on* as the floor arrives.
 
 One animator handles both directions. Parts fly off the machine when it lands and
 back onto it during assembly, and the only difference is which pose is the

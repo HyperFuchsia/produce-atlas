@@ -6235,11 +6235,16 @@ void main() {
   /* Short lines, because there are only seven seconds of falling and a line
      you cannot finish reading before the next one lands is not a line. The
      long ones go after the crash, where there is time. */
+  /* Cued against the reels: the first is down by 4.8, the second by 8.6, and
+     the third crawls from 9.2 to the floor. He tells you what he needs while
+     there is still time for it to happen. */
   var FALL_LINES = [
-    [0.30, "Forty years in the same room, he said.", 2.0],
-    [2.45, "Never once wrong about anybody.", 1.7],
-    [4.25, "Two alike. Two.", 1.4],
-    [5.75, "Come on. Come on —", 1.7]
+    [0.40,  "Forty years in the same room, he said.", 3.2],
+    [4.10,  "Never once wrong about anybody. That was the phrase he used.", 3.6],
+    [8.80,  "That's two the same.", 2.0],
+    [11.00, "I need the third to match. Three alike is the only one that counts.", 2.4],
+    [13.60, "Come on.", 1.2],
+    [14.70, "Come on —", 1.1]
   ];
   var fallCue = 0;
 
@@ -6311,7 +6316,7 @@ void main() {
       var m = new T.Mesh(cls.geo, cls.mats);
       m.userData.off = new T.Vector3(
         (Math.random() - 0.5) * 1.7, (Math.random() - 0.5) * 2.4, (Math.random() - 0.5) * 1.5);
-      m.userData.drift = 0.10 + Math.random() * 0.45;
+      m.userData.drift = 0.04 + Math.random() * 0.14;
       m.userData.spin = new T.Vector3(
         (Math.random() - 0.5) * 7, (Math.random() - 0.5) * 5, (Math.random() - 0.5) * 7);
       FALLFX.add(m);
@@ -6337,8 +6342,11 @@ void main() {
   /* Thirty metres, not seven. Under the old profile the cabinet arrived at
      about two metres a second, which is a heavy object being lowered rather
      than one that is falling. */
-  var FALL_H = 34.0, MATCH = 3;                  /* MELON, three alike */
-  var T_STOP = [2.40, 4.00], T_CRAWL = 4.60, T_IMPACT = 7.60;
+  /* Long. Seventy-nine metres and a quarter of a minute, because the drop has
+     a script to get through and a script delivered at falling speed is a
+     script nobody reads. It is skippable at any point. */
+  var FALL_H = 79.0, MATCH = 3;                  /* MELON, three alike */
+  var T_STOP = [4.20, 8.00], T_CRAWL = 9.20, T_IMPACT = 15.20;
   var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0;
 
   function nextMatchAt(x) {
@@ -6431,7 +6439,7 @@ void main() {
     var u = Math.min(1, introT / T_IMPACT);
     /* moving when we join it and accelerating from there, rather than starting
        from rest — a pure u-squared drop opens on a stationary object */
-    var fall = 0.30 * u + 0.70 * u * u;
+    var fall = 0.42 * u + 0.58 * u * u;
     var prevY = machine.position.y;
     machine.position.y = FALL_H * (1 - fall);
     fallSpeed = dt > 0 ? Math.abs(machine.position.y - prevY) / dt : 0;
@@ -6602,6 +6610,24 @@ void main() {
     reframe: function () { reframe(); }, dolly: dolly,
     phase: function () { return phase; }, parts: PARTS, schedule: schedule,
     skipIntro: skipIntro, introTime: function () { return introT; },
+    /* straight to a commissioned machine, skipping the fall and the build */
+    jumpToOperation: function () {
+      skipIntro();
+      schedule.forEach(function (p) {
+        p.anim = null;
+        p.group.position.copy(p.fitPos);
+        p.group.quaternion.copy(p.fitQuat);
+        p.fitted = true;
+      });
+      nextPart = schedule.length;
+      phase = "OPERATION";
+      power = 1; applyPower();
+      hush();
+      autoFrame = true; retarget();
+      orbit.target.copy(wantTarget); orbit.dist = wantDist;
+      hudLeft.textContent = idleHint();
+      showStep();
+    },
     fallSpeed: function () { return fallSpeed; },
     said: function () { return sayEl.classList.contains("on") ? sayEl.textContent : ""; },
     nextPart: function () { return nextPart; },
