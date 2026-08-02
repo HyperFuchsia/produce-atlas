@@ -70,7 +70,7 @@
     pmrem.dispose(); tex.dispose();
   })();
 
-  var camera = new T.PerspectiveCamera(32, 1, 0.05, 60);
+  var camera = new T.PerspectiveCamera(32, 1, 0.012, 80);
 
   /* ------------------------------------------------------------ materials -- */
   /* Monochrome, all of it. Metalness stays low on the paint: every point of it
@@ -1340,7 +1340,7 @@
 
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag · pinch · work the interlock"
+      ? "Drag · pinch"
       : "Drag to orbit · scroll to dolly · work the interlock in order";
   }
   function setMessage(s) { msg = s; msgLine.redraw(); }
@@ -1586,9 +1586,12 @@
     );
     camera.lookAt(orbit.target);
   }
+  /* Wide. The point of an orbit view is to get your face right up against the
+     stamp press or stand well back from the whole cabinet, and a range that
+     stops either of those is a range that gets in the way. */
   function dolly(scale) {
     var f = fitDistance();
-    orbit.dist = Math.max(f * 0.30, Math.min(f * 2.2, orbit.dist * scale));
+    orbit.dist = Math.max(f * 0.06, Math.min(f * 8, orbit.dist * scale));
   }
 
   /* Pointers are tracked by id rather than with a single dragging flag, because
@@ -1625,13 +1628,27 @@
     lastX = e.clientX; lastY = e.clientY;
     vYaw = -dx * 0.0055; vPitch = -dy * 0.0045;
   });
+  var lastTap = 0;
+  function reframe() {
+    orbit.yaw = -0.34; orbit.pitch = 0.14;
+    orbit.target.set(0, (fitBox.min.y + fitBox.max.y) / 2, 0);
+    orbit.dist = fitDistance();
+    vYaw = vPitch = 0;
+  }
   function endDrag(e) {
     if (e) pointers.delete(e.pointerId);
     if (pointers.size < 2) pinchWas = 0;
     if (pointers.size > 0) return;
     if (dragging && travel < 6 && e) {
       var hit = pick(e);
-      if (hit) press(hit);
+      if (hit) { press(hit); lastTap = 0; }
+      else {
+        /* two taps on empty space puts the whole machine back in frame, which
+           is the only way out once you have zoomed somewhere unreadable */
+        var now = clock.elapsedTime;
+        if (now - lastTap < 0.4) { reframe(); lastTap = 0; }
+        else lastTap = now;
+      }
     }
     dragging = false; canvas.classList.remove("dragging");
   }
@@ -1643,12 +1660,16 @@
   }, { passive: false });
   window.addEventListener("keydown", function (e) {
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); advance(); }
+    if (e.code === "KeyF" || e.code === "Home") { e.preventDefault(); reframe(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
   var framed = false;
   function resize() {
-    var w = window.innerWidth, h = window.innerHeight;
+    /* the canvas's own box, not the window's: inside a webview or an iframe
+       those are different rectangles and only one of them is the one on screen */
+    var w = canvas.clientWidth || window.innerWidth;
+    var h = canvas.clientHeight || window.innerHeight;
     renderer.setSize(w, h, false);
     var before = framed ? fitDistance() : 0;
     camera.aspect = w / h;
@@ -1659,6 +1680,10 @@
     if (!spinning) hudLeft.textContent = idleHint();
   }
   window.addEventListener("resize", resize);
+  window.addEventListener("orientationchange", function () { setTimeout(resize, 120); });
+  /* and watch the element itself, because an embedded page can be resized
+     without the window ever firing an event */
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
   resize();
 
   /* --------------------------------------------------------------- loop --- */
@@ -1754,6 +1779,7 @@
     reels: reels, sprites: SPRITES, symbols: NSYM,
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
+    reframe: function () { reframe(); }, dolly: dolly,
     interlock: ILK, doStep: doStep, message: function () { return msg; },
     tokens: tokens, dispense: dispenseToken, surrender: surrenderTokens,
     tokensIssued: function () { return tokensIssued; },

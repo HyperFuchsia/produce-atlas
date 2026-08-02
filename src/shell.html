@@ -6,7 +6,17 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;background:#07080B;overflow:hidden}
   body{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#B9BFC6}
-  #scene{position:fixed;inset:0;display:block;touch-action:none;cursor:grab}
+  /* width/height are explicit and NOT left to inset:0. A canvas is a replaced
+     element, so with width:auto the used size comes from its intrinsic size —
+     the drawing buffer — and the right/bottom offsets are ignored. At device
+     pixel ratio 1 the buffer happens to equal the viewport and it looks fine;
+     at ratio 3 the element becomes three times the viewport, anchored top left,
+     and a phone shows you the top-left third of the scene. */
+  #scene{
+    position:fixed;top:0;left:0;
+    width:100%;height:100%;
+    display:block;touch-action:none;cursor:grab;
+  }
   #scene.dragging{cursor:grabbing}
   /* the only chrome on the page: a strip of read-outs over the scene */
   .hud{
@@ -18,6 +28,12 @@
   }
   .hud b{font-weight:400;color:rgba(226,232,238,.9)}
   .hud .keys{display:flex;gap:14px;flex-wrap:wrap}
+  /* on a narrow screen the step name is the useful half — give it the room */
+  @media (max-width:560px){
+    .hud{padding:10px 12px;gap:10px;font-size:9px;letter-spacing:.12em}
+    #hudLeft{flex:0 1 auto;min-width:0}
+    .hud .keys{flex:0 0 auto;text-align:right}
+  }
   #loading{
     position:fixed;inset:0;z-index:9;display:grid;place-items:center;
     background:#07080B;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
