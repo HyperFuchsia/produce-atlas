@@ -4330,6 +4330,9 @@ void main() {
 
   /* ------------------------------------------------------------ printing -- */
   var MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+  /* Everything that glows registers here, because the apparatus spends the
+     first part of the game in pieces on the floor with no power in it. */
+  var LIT = [], power = 0;
   function makeCanvas(w, h) {
     var c = document.createElement("canvas");
     c.width = w; c.height = h;
@@ -4347,6 +4350,7 @@ void main() {
       emissiveIntensity: glow === undefined ? 0.22 : glow,
       roughness: 0.48, metalness: 0
     }));
+    LIT.push({ m: mesh.material, base: mesh.material.emissiveIntensity });
     mesh.redraw = function () { draw(ctx, cw, ch); tex.needsUpdate = true; };
     mesh.redraw();
     return mesh;
@@ -4383,14 +4387,59 @@ void main() {
   var machine = new T.Group();
   scene.add(machine);
 
+  /* ------------------------------------------------------- the assemblies -- */
+  /* The cabinet is built as ten separate assemblies rather than one heap of
+     meshes, because the game begins with all ten of them lying on the floor.
+     Everything goes in through ADD, which routes it to whichever assembly is
+     open; endPart then moves the group's origin to the middle of what was
+     built, so it can be laid down and stood up again without swinging around
+     the machine's origin a metre away. */
+  var PARTS = [], openPart = null;
+  function ADD(o) { (openPart ? openPart.group : machine).add(o); return o; }
+  /* find-or-create, because an assembly is not one contiguous run of code —
+     the carcass picks up its flanks and its back long after the front of it */
+  function beginPart(name, label) {
+    for (var i = 0; i < PARTS.length; i++) {
+      if (PARTS[i].name === name) { openPart = PARTS[i]; return openPart; }
+    }
+    var g = new T.Group();
+    machine.add(g);
+    openPart = { name: name, label: label || name, group: g };
+    PARTS.push(openPart);
+    return openPart;
+  }
+  function endPart() { openPart = null; }
+  /* Once everything is built, move each group's origin to the middle of what
+     it contains. Until that happens the children carry absolute coordinates
+     and the group's origin is the machine's, a metre away, so laying a part
+     down would swing it round the cabinet rather than turn it over. */
+  function finalizeParts() {
+    PARTS.forEach(function (p) {
+      var bb = new T.Box3().setFromObject(p.group);
+      var c = new T.Vector3(); bb.getCenter(c);
+      p.group.children.forEach(function (ch) { ch.position.sub(c); });
+      p.group.position.copy(c);
+      p.fitPos = c.clone();
+      p.fitQuat = p.group.quaternion.clone();
+      p.local = bb.clone().translate(c.clone().negate());
+      p.size = new T.Vector3(); p.local.getSize(p.size);
+      p.fitted = true;
+    });
+  }
+
+  beginPart("CARCASS", "THE CARCASS");
   var bodyH = H - 0.10;
   var body = slab(W, bodyH, D, 0.012, 0.008, paint);
   body.position.y = 0.10 + bodyH / 2;
-  machine.add(body);
+  ADD(body);
 
+  endPart();
+  beginPart("PLINTH", "THE PLINTH");
   var plinth = slab(W * 0.97, 0.10, D * 0.96, 0.010, 0.005, paintDark);
   plinth.position.y = 0.05;
-  machine.add(plinth);
+  ADD(plinth);
+  endPart();
+  beginPart("CARCASS");
 
   /* the polished corner posts, which is what catches the light on the original
      and reads as a machine with an edge rather than a rendered cuboid */
@@ -4400,18 +4449,19 @@ void main() {
     post.position.set(s * (W / 2 - 0.014), H / 2, FZ - 0.014);
     post.rotation.y = s > 0 ? -Math.PI * 0.30 : Math.PI * 0.30;
     post.castShadow = true;
-    machine.add(post);
+    ADD(post);
   });
 
   /* the top: a vent grille across it and a bright strip along the front edge */
   for (var tg = 0; tg < 11; tg++) {
     var slot = box(W * 0.74, 0.008, 0.009, cavity);
     slot.position.set(0, H - 0.003, FZ - 0.075 - tg * 0.026);
-    machine.add(slot);
+    ADD(slot);
   }
   var topLip = box(W * 0.99, 0.012, 0.014, steelDim);
   topLip.position.set(0, H - 0.008, FZ - 0.006);
-  machine.add(topLip);
+  ADD(topLip);
+  endPart();
 
   /* ------------------------------------------------------- the front face -- */
   /* Laid out from the top down in the proportions of the original: header
@@ -4423,16 +4473,17 @@ void main() {
   function plate(w, h, cy, cw, ch, draw, glow, frame) {
     var p = livePanel(w, h, cw, ch, draw, glow);
     p.position.set(0, cy, FZ + 0.0015);
-    machine.add(p);
+    ADD(p);
     if (frame !== false) {
       var f = ring(w + 0.022, h + 0.022, w, h, 0.008, 0.003, 0.010, 0.003, steelDim);
       f.position.set(0, cy, FZ + 0.004);
-      machine.add(f);
+      ADD(f);
     }
     return p;
   }
 
   /* ---- the header ---- */
+  beginPart("HEADER", "THE HEADER PLATE");
   var headerY = 1.628, headerH = 0.082;
   var header = plate(PW, headerH, headerY, 1500, 240, function (x, w, h) {
     var g = x.createLinearGradient(0, 0, 0, h);
@@ -4470,12 +4521,13 @@ void main() {
     }, 0.30);
     p.set = function (s) { text = s; p.redraw(); };
     p.position.set(cx, cy, FZ + 0.0015);
-    machine.add(p);
+    ADD(p);
     return p;
   }
   var stateY = 1.532, swW = PW * 0.478;
   var swState = stateWindow(-(PW / 2 - swW / 2), swW, stateY, "STATE: SUPERPOSED");
   var swMatter = stateWindow((PW / 2 - swW / 2), swW, stateY, "NO MATTER PENDING");
+  endPart();
 
   /* ============================ THE DISPLAY ================================ */
   /* An LCD, as it always was: a flat panel of pixels behind glass, not a set of
@@ -4684,6 +4736,7 @@ void main() {
     tracked(x, "PAYLINE", 8, py - 26, 2, "left");
   }
 
+  beginPart("DISPLAY", "THE DISPLAY UNIT");
   var lcd = new T.Mesh(new T.PlaneGeometry(lcdW, lcdH), null);
   (function () {
     var c = makeCanvas(LCW, LCH), ctx = c.getContext("2d");
@@ -4697,16 +4750,16 @@ void main() {
     lcd.refresh();
   })();
   lcd.position.set(0, lcdY, FZ + 0.001);
-  machine.add(lcd);
+  ADD(lcd);
 
   /* the display is recessed: a dark surround, a steel bezel and a pane */
   var lcdWell = ring(lcdW + 0.052, lcdH + 0.052, lcdW, lcdH, 0.010, 0.005, 0.014, 0.004, paintDark);
   lcdWell.position.set(0, lcdY, FZ + 0.005);
-  machine.add(lcdWell);
+  ADD(lcdWell);
   var lcdBezel = ring(lcdW + 0.062, lcdH + 0.062, lcdW + 0.040, lcdH + 0.040,
                       0.012, 0.008, 0.012, 0.004, steelDim);
   lcdBezel.position.set(0, lcdY, FZ + 0.008);
-  machine.add(lcdBezel);
+  ADD(lcdBezel);
   var pane = new T.Mesh(new T.PlaneGeometry(lcdW + 0.038, lcdH + 0.038),
     new T.MeshPhysicalMaterial({
       color: 0x9BA0A4, roughness: 0.035, metalness: 0.0,
@@ -4714,10 +4767,12 @@ void main() {
       transparent: true, opacity: 0.075, depthWrite: false
     }));
   pane.position.set(0, lcdY, FZ + 0.011);
-  machine.add(pane);
+  ADD(pane);
+  endPart();
 
   /* ---- the instrument strip ---- */
   var obsCount = 0, matchCount = 0, coherence = 1, t0 = 0;
+  beginPart("INSTRUMENTS", "THE INSTRUMENT STRIP");
   var instrY = 0.952;
   var instr = plate(PW, 0.072, instrY, 1500, 190, function (x, w, h) {
     x.fillStyle = "#191B1D"; x.fillRect(0, 0, w, h);
@@ -4770,20 +4825,22 @@ void main() {
     x.textBaseline = "middle"; x.font = "500 26px " + MONO;
     tracked(x, msg, 22, h / 2 + 1, 2, "left");
   }, 0.28, false);
+  endPart();
 
   /* ---- the controls ---- */
   /* A band across the front, not a sloping deck. The original has no lever:
      the wide OBSERVE bar is the thing you press, and the three dark keys sit
      to the right of it. */
+  beginPart("CONTROLS", "THE CONTROL BAND");
   var ctlY = 0.775;
   var ctlWell = box(PW, 0.108, 0.012, paintDark);
   ctlWell.position.set(0, ctlY, FZ - 0.002);
-  machine.add(ctlWell);
+  ADD(ctlWell);
 
   function frontKey(cx, w, h, mat, label, ink) {
     var k = slab(w, h, 0.026, 0.008, 0.004, mat);
     k.position.set(cx, ctlY, FZ + 0.012);
-    machine.add(k);
+    ADD(k);
     var lp = livePanel(w * 0.92, h * 0.5, 480, 130, function (x, cw, ch) {
       x.clearRect(0, 0, cw, ch);
       x.fillStyle = ink;
@@ -4793,7 +4850,7 @@ void main() {
     }, 0.16);
     lp.material.transparent = true;
     lp.position.set(cx, ctlY, FZ + 0.0255);
-    machine.add(lp);
+    ADD(lp);
     return k;
   }
   var observeKey = frontKey(-PW * 0.26, PW * 0.42, 0.062, observeCap, "OBSERVE", "#26241C");
@@ -4810,16 +4867,17 @@ void main() {
   }, 0.20);
   obsLegend.material.transparent = true;
   obsLegend.position.set(-PW * 0.26, ctlY + 0.044, FZ + 0.0035);
-  machine.add(obsLegend);
+  ADD(obsLegend);
 
   /* the sound toggle and its tiny labels, far right of the band */
   var toggle = box(0.012, 0.028, 0.014, steelDim);
   toggle.position.set(PW * 0.468, ctlY + 0.008, FZ + 0.008);
-  machine.add(toggle);
+  ADD(toggle);
 
   var ctlReveal = box(PW, 0.004, 0.010, paintDark);
   ctlReveal.position.set(0, ctlY - 0.078, FZ - 0.001);
-  machine.add(ctlReveal);
+  ADD(ctlReveal);
+  endPart();
 
   /* ================== THE ATTENDANCE INTERLOCK ============================ */
   /* Seven steps to start a machine whose result means nothing, each of them a
@@ -4843,6 +4901,7 @@ void main() {
     return 6;
   }
 
+  beginPart("INTERLOCK", "THE INTERLOCK BAND");
   var ilkY = 0.648, ILK_HIT = [];
   var ilkPlate = plate(PW, 0.084, ilkY, 1600, 220, function (x, w, h) {
     var g = x.createLinearGradient(0, 0, 0, h);
@@ -4871,7 +4930,7 @@ void main() {
   escutcheon.rotation.x = Math.PI / 2;
   escutcheon.position.set(keyX, ilkTop, FZ + 0.005);
   escutcheon.castShadow = true;
-  machine.add(escutcheon);
+  ADD(escutcheon);
   var keyGroup = new T.Group();
   keyGroup.position.set(keyX, ilkTop, FZ + 0.010);
   var keyBit = box(0.007, 0.030, 0.008, steel);
@@ -4880,7 +4939,7 @@ void main() {
   var keyBow = new T.Mesh(new T.TorusGeometry(0.008, 0.0025, 8, 20), steel);
   keyBow.position.y = 0.028;
   keyGroup.add(keyBow);
-  machine.add(keyGroup);
+  ADD(keyGroup);
   var keyAnim = anim(7, function (v) { keyGroup.rotation.z = -v * Math.PI / 2; });
   keyBit.userData.ilk = "key"; keyBow.userData.ilk = "key";
   escutcheon.userData.ilk = "key";
@@ -4892,7 +4951,7 @@ void main() {
     var base = new T.Mesh(new T.CylinderGeometry(0.009, 0.010, 0.008, 16), steelDim);
     base.rotation.x = Math.PI / 2;
     base.position.set(dx, ilkTop, FZ + 0.005);
-    machine.add(base);
+    ADD(base);
     var g = new T.Group();
     g.position.set(dx, ilkTop, FZ + 0.008);
     var stick = new T.Mesh(new T.CylinderGeometry(0.0035, 0.0045, 0.028, 12), steel);
@@ -4901,7 +4960,7 @@ void main() {
     var tip = new T.Mesh(new T.SphereGeometry(0.006, 14, 10), steel);
     tip.position.y = 0.029;
     g.add(tip);
-    machine.add(g);
+    ADD(g);
     /* forward-and-down for a declaration not yet made, back-and-up for one that
        has been. A toggle that only changed colour would not be a toggle. */
     declAnims.push(anim(9, function (v) { g.rotation.x = 0.70 - v * 1.20; }));
@@ -4914,10 +4973,10 @@ void main() {
   var stampX = PW * 0.34;
   var stampPost = box(0.014, 0.052, 0.016, steelDim);
   stampPost.position.set(stampX + 0.026, ilkY + 0.006, FZ + 0.014);
-  machine.add(stampPost);
+  ADD(stampPost);
   var stampPad = box(0.030, 0.007, 0.024, cavity);
   stampPad.position.set(stampX - 0.024, ilkY - 0.020, FZ + 0.016);
-  machine.add(stampPad);
+  ADD(stampPad);
   var stampArm = new T.Group();
   stampArm.position.set(stampX + 0.026, ilkY + 0.030, FZ + 0.018);
   var armBar = box(0.056, 0.008, 0.010, steel);
@@ -4929,7 +4988,7 @@ void main() {
   var stampHead = box(0.020, 0.016, 0.018, paintDark);
   stampHead.position.set(-0.050, -0.013, 0);
   stampArm.add(stampHead);
-  machine.add(stampArm);
+  ADD(stampArm);
   var stampAnim = anim(11, function (v) { stampArm.rotation.z = -0.44 * (1 - v); });
   [armBar, armKnob, stampHead].forEach(function (o) {
     o.userData.ilk = "stamp"; ILK_HIT.push(o);
@@ -4967,15 +5026,22 @@ void main() {
   }, 0.24);
   docket.material.side = T.DoubleSide;
   docket.visible = false;
-  machine.add(docket);
+  ADD(docket);
   var docketX = -PW * 0.24, docketY = 0.478;
+  /* Relative to where finalizeParts left it, not absolute: the docket lives
+     inside an assembly whose origin moved to the middle of the interlock. */
+  var docketHome = new T.Vector3();
   var docketAnim = anim(4.5, function (v) {
-    docket.position.set(docketX, docketY - 0.006 - v * 0.030, FZ - 0.020 + v * 0.062);
+    docket.position.copy(docketHome);
+    docket.position.y -= v * 0.030;
+    docket.position.z += v * 0.062;
     docket.rotation.x = -v * 0.42;
   });
   docket.userData.ilk = "docket";
   ILK_HIT.push(docket);
 
+  endPart();
+  beginPart("CONTROLS");
   /* ---- the cover over the OBSERVE bar ---- */
   var coverHinge = new T.Group();
   coverHinge.position.set(-PW * 0.26, ctlY + 0.038, FZ + 0.032);
@@ -4989,25 +5055,27 @@ void main() {
   coverHinge.add(coverFlap);
   var coverRail = box(PW * 0.47, 0.008, 0.010, steelDim);
   coverRail.position.set(-PW * 0.26, ctlY + 0.042, FZ + 0.032);
-  machine.add(coverRail);
-  machine.add(coverHinge);
+  ADD(coverRail);
+  ADD(coverHinge);
   var coverAnim = anim(6, function (v) { coverHinge.rotation.x = -v * 2.0; });
   coverFlap.userData.ilk = "cover";
   ILK_HIT.push(coverFlap);
+  endPart();
 
   /* ---- the lever ---- */
   /* On the flank, where a fruit machine's lever belongs, and carrying a plate
      that says what it does. */
+  beginPart("LEVER", "THE LEVER ASSEMBLY");
   var leverX = W / 2;
   var leverMount = slab(0.020, 0.110, 0.110, 0.014, 0.005, paintDark);
   leverMount.rotation.y = Math.PI / 2;
   leverMount.position.set(leverX + 0.008, 0.830, D * 0.28);
-  machine.add(leverMount);
+  ADD(leverMount);
   var leverBoss = new T.Mesh(new T.CylinderGeometry(0.028, 0.032, 0.030, 22), steelDim);
   leverBoss.rotation.z = Math.PI / 2;
   leverBoss.position.set(leverX + 0.028, 0.830, D * 0.28);
   leverBoss.castShadow = true;
-  machine.add(leverBoss);
+  ADD(leverBoss);
   var leverArm = new T.Group();
   leverArm.position.set(leverX + 0.032, 0.830, D * 0.28);
   var leverShaft = new T.Mesh(new T.CylinderGeometry(0.008, 0.010, 0.200, 16), steel);
@@ -5016,7 +5084,7 @@ void main() {
   var leverBall = new T.Mesh(new T.SphereGeometry(0.026, 28, 20), steel);
   leverBall.position.y = 0.210; leverBall.castShadow = true;
   leverArm.add(leverBall);
-  machine.add(leverArm);
+  ADD(leverArm);
   var leverAnim = anim(8, function (v) { leverArm.rotation.x = v * 1.05; });
   leverShaft.userData.ilk = "lever"; leverBall.userData.ilk = "lever";
   ILK_HIT.push(leverShaft, leverBall);
@@ -5031,9 +5099,11 @@ void main() {
   }, 0.16);
   leverPlate.rotation.y = Math.PI / 2;
   leverPlate.position.set(leverX + 0.0015, 0.700, D * 0.28);
-  machine.add(leverPlate);
+  ADD(leverPlate);
+  endPart();
 
   /* ---- the notice rail ---- */
+  beginPart("CARCASS");
   var notice = plate(PW, 0.038, 0.578, 1500, 90, function (x, w, h) {
     x.fillStyle = "#22252A"; x.fillRect(0, 0, w, h);
     x.fillStyle = "#8A9096";
@@ -5049,13 +5119,13 @@ void main() {
   function mouth(cx, w, cy, label, above) {
     var recess = box(w, 0.030, 0.030, cavity);
     recess.position.set(cx, cy, FZ - 0.010);
-    machine.add(recess);
+    ADD(recess);
     var lipTop = box(w + 0.016, 0.008, 0.016, steelDim);
     lipTop.position.set(cx, cy + 0.019, FZ + 0.003);
-    machine.add(lipTop);
+    ADD(lipTop);
     var lipBot = box(w + 0.016, 0.008, 0.016, steelDim);
     lipBot.position.set(cx, cy - 0.019, FZ + 0.003);
-    machine.add(lipBot);
+    ADD(lipBot);
     var lab = livePanel(w, 0.017, 620, 38, function (x, cw, ch) {
       x.clearRect(0, 0, cw, ch);
       x.fillStyle = "#7E848A";
@@ -5064,12 +5134,14 @@ void main() {
     }, 0.20);
     lab.material.transparent = true;
     lab.position.set(cx, cy + (above ? 0.034 : -0.034), FZ + 0.0025);
-    machine.add(lab);
+    ADD(lab);
   }
   mouth(-PW * 0.24, PW * 0.42, 0.478, "DETERMINATION RECORD", true);
   mouth( PW * 0.26, PW * 0.38, 0.470, "CLAIM / RECORD TRAY", true);
+  endPart();
 
   /* ---- the service panel across the belly ---- */
+  beginPart("SERVICE", "THE SERVICE PANEL");
   var bellyY = 0.338, bellyH = 0.196;
   var belly = plate(PW, bellyH, bellyY, 1400, 450, function (x, w, h) {
     var g = x.createLinearGradient(0, 0, 0, h);
@@ -5101,13 +5173,15 @@ void main() {
   }, 0.26, false);
   var bellyFrame = ring(PW + 0.026, bellyH + 0.026, PW, bellyH, 0.010, 0.004, 0.012, 0.004, steelDim);
   bellyFrame.position.set(0, bellyY, FZ + 0.005);
-  machine.add(bellyFrame);
+  ADD(bellyFrame);
 
   var bellyLock = new T.Mesh(new T.CylinderGeometry(0.011, 0.011, 0.012, 18), steel);
   bellyLock.rotation.x = Math.PI / 2;
   bellyLock.position.set(-PW * 0.455, bellyY + bellyH * 0.11, FZ + 0.006);
   bellyLock.castShadow = true;
-  machine.add(bellyLock);
+  ADD(bellyLock);
+  endPart();
+  beginPart("PLINTH");
 
   /* ============================ THE COIN TRAY ============================= */
   /* The apparatus dispenses one token per observation. It dispenses it whatever
@@ -5115,26 +5189,27 @@ void main() {
      is stamped NO VALUE on both faces so there can be no confusion about it.
      A machine with NO STAKE · NO PAYOUT written across its front had better be
      able to hand you something worthless without anyone mistaking it. */
+  beginPart("TRAY", "THE COIN TRAY");
   var trayFloorY = 0.118, trayZ = FZ + 0.046, trayW = W * 0.60, trayD = 0.092;
   var trayHoodY = 0.206;
 
   var trayFloor = box(trayW, 0.008, trayD, paintDark);
   trayFloor.position.set(0, trayFloorY - 0.004, trayZ);
-  machine.add(trayFloor);
+  ADD(trayFloor);
   var trayLinerMat = new T.MeshStandardMaterial({
     color: 0x212427, roughness: 0.82, metalness: 0.0
   });
   var trayLiner = new T.Mesh(new T.PlaneGeometry(trayW, trayD), trayLinerMat);
   trayLiner.rotation.x = -Math.PI / 2;
   trayLiner.position.set(0, trayFloorY + 0.0005, trayZ);
-  machine.add(trayLiner);
+  ADD(trayLiner);
   var trayLip = slab(trayW + 0.020, 0.030, 0.011, 0.006, 0.003, paintDark);
   trayLip.position.set(0, trayFloorY + 0.013, trayZ + trayD / 2 + 0.004);
-  machine.add(trayLip);
+  ADD(trayLip);
   [-1, 1].forEach(function (s2) {
     var cheek = box(0.011, 0.034, trayD + 0.010, paintDark);
     cheek.position.set(s2 * (trayW / 2 + 0.005), trayFloorY + 0.015, trayZ);
-    machine.add(cheek);
+    ADD(cheek);
   });
   /* No hood over the tray. The first version had one 57 mm deep, and from any
      angle you would actually stand at — around nineteen degrees above a cup
@@ -5143,17 +5218,17 @@ void main() {
      left is the chute itself and a shallow lintel over it. */
   var chute = box(trayW * 0.34, 0.017, 0.012, cavity);
   chute.position.set(0, trayHoodY - 0.012, FZ + 0.007);
-  machine.add(chute);
+  ADD(chute);
   var chuteLintel = slab(trayW * 0.40, 0.010, 0.016, 0.004, 0.003, paintDark);
   chuteLintel.position.set(0, trayHoodY, FZ + 0.008);
-  machine.add(chuteLintel);
+  ADD(chuteLintel);
 
   /* A little light in the cup. Tiny, because it sits ten centimetres from what
      it lights and illuminance goes as the inverse square — the same arithmetic
      that once clipped the whole reel window to white. */
   var trayLight = new T.PointLight(0xE8ECF0, 0.016, 0.34, 2);
   trayLight.position.set(0, trayFloorY + 0.075, trayZ + 0.020);
-  machine.add(trayLight);
+  ADD(trayLight);
 
   /* Declared up here, not with the tokens: livePanel draws once as it builds,
      so anything its draw reads must already exist. */
@@ -5176,7 +5251,8 @@ void main() {
             w / 2, 78, 2, "center");
   }, 0.22);
   trayPlate.position.set(0, trayFloorY + 0.013, trayZ + trayD / 2 + 0.0105);
-  machine.add(trayPlate);
+  ADD(trayPlate);
+  endPart();
 
   /* ---- the tokens ---- */
   /* Three sizes, issued in strict rotation from the hopper because that is how
@@ -5282,7 +5358,7 @@ void main() {
                                     (Math.random() - 0.5) * 22);
     m.userData.rest = false;
     m.userData.age = 0;
-    machine.add(m);
+    ADD(m);
     tokens.push(m); TOKEN_HIT.push(m);
     /* the tray holds eighteen. After that the Authority takes one back, which
        is the only mechanism in the apparatus that removes anything. */
@@ -5355,10 +5431,12 @@ void main() {
   for (var pg = 0; pg < 26; pg++) {
     var pslot = box(0.006, 0.030, 0.012, cavity);
     pslot.position.set(-W * 0.42 + pg * (W * 0.84 / 25), 0.055, D / 2 * 0.96 + 0.002);
-    machine.add(pslot);
+    ADD(pslot);
   }
+  endPart();
 
   /* --------------------------------------------------------- the flanks --- */
+  beginPart("CARCASS");
   [-1, 1].forEach(function (s) {
     var fx = s * (W / 2 - 0.003);
     /* the recessed carry bracket, which is the one feature on the side of the
@@ -5366,22 +5444,22 @@ void main() {
     var bracket = ring(0.070, 0.230, 0.040, 0.180, 0.012, 0.008, 0.030, 0.006, paintDark);
     bracket.rotation.y = s * Math.PI / 2;
     bracket.position.set(s * (W / 2 + 0.011), 1.10, -D * 0.20);
-    machine.add(bracket);
+    ADD(bracket);
     var bar = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.185, 14), steelDim);
     bar.position.set(s * (W / 2 + 0.016), 1.10, -D * 0.20);
     bar.castShadow = true;
-    machine.add(bar);
+    ADD(bar);
 
     for (var lv = 0; lv < 9; lv++) {
       var lo = box(0.012, 0.010, D * 0.34, cavity);
       lo.position.set(fx, 0.42 + lv * 0.026, -D * 0.16);
-      machine.add(lo);
+      ADD(lo);
     }
     /* the door edge, kept forward of the lever plate: at 0.34 it ran straight
        through the middle of it and broke the line of type */
     var vseam = box(0.010, H * 0.80, 0.005, paintDark);
     vseam.position.set(fx, H * 0.47, D * 0.42);
-    machine.add(vseam);
+    ADD(vseam);
   });
 
   /* ----------------------------------------------------------- the back --- */
@@ -5389,7 +5467,7 @@ void main() {
   function onBack(w, h, d, cx, cy, mat) {
     var m = box(w, h, d, mat);
     m.position.set(cx, cy, backZ - d / 2 + 0.004);
-    machine.add(m);
+    ADD(m);
     return m;
   }
   onBack(W * 0.90, 0.005, 0.010, 0, H * 0.90, paintDark);
@@ -5403,7 +5481,7 @@ void main() {
   latch.rotation.x = Math.PI / 2;
   latch.position.set(W * 0.40, H * 0.50, backZ - 0.008);
   latch.castShadow = true;
-  machine.add(latch);
+  ADD(latch);
   for (var gv = 0; gv < 9; gv++) {
     onBack(W * 0.44, 0.010, 0.014, 0, H * 0.60 + gv * 0.024, cavity);
   }
@@ -5436,7 +5514,14 @@ void main() {
     new T.MeshStandardMaterial({ map: plateTex, roughness: 0.44, metalness: 0.5 }));
   dataPlate.rotation.y = Math.PI;
   dataPlate.position.set(W * 0.22, H * 0.40, backZ - 0.0015);
-  machine.add(dataPlate);
+  ADD(dataPlate);
+  endPart();
+
+  finalizeParts();
+  docketHome.copy(docket.position);
+  [observeKey, burstKey, resetKey, fileKey].forEach(function (k) {
+    k.userData.homeZ = k.position.z;
+  });
 
   /* --------------------------------------------------------- the ground -- */
   /* The key is the only light that casts, and it throws the cabinet's shadow
@@ -5492,6 +5577,19 @@ void main() {
     kick.position.set(s * 4.0, 1.5, 0.5);
     scene.add(kick);
   });
+
+  /* A work light over the floor while the parts are still on it. Ten dark grey
+     assemblies on a dark grey floor in a dark room are ten things you cannot
+     tell apart, and the one that matters is the one you have to find. */
+  var workLight = new T.DirectionalLight(0xE6EAEE, 1.5);
+  workLight.position.set(-0.8, 4.0, 2.2);
+  workLight.castShadow = true;
+  workLight.shadow.mapSize.set(1024, 1024);
+  workLight.shadow.camera.near = 0.5; workLight.shadow.camera.far = 10;
+  workLight.shadow.camera.left = -2.4; workLight.shadow.camera.right = 2.4;
+  workLight.shadow.camera.top = 2.4; workLight.shadow.camera.bottom = -2.4;
+  workLight.shadow.bias = -0.0015;
+  scene.add(workLight);
 
   /* ============================== behaviour ================================ */
   var hudLeft = document.getElementById("hudLeft");
@@ -5592,6 +5690,11 @@ void main() {
      the whole arrangement */
   function advance() {
     if (spinning) return;
+    if (phase === "ASSEMBLY") {           /* the space bar fits the next part */
+      if (nextPart < schedule.length) tryFitPart(schedule[nextPart]);
+      return;
+    }
+    if (phase !== "OPERATION") return;
     var n = stepNo();
     if (n === 0) return doStep("key");
     if (n === 1) return doStep("decl" + (ILK.decl[0] ? (ILK.decl[1] ? 2 : 1) : 0));
@@ -5603,7 +5706,7 @@ void main() {
   }
 
   function observe() {
-    if (spinning) return;
+    if (spinning || phase !== "OPERATION") return;
     if (stepNo() < 6) {
       setMessage("THE INTERLOCK IS NOT SATISFIED. " + STEP_NAME[stepNo()] + ".");
       showStep();
@@ -5675,6 +5778,7 @@ void main() {
     return hits.length ? hits[0].object : null;
   }
   function press(obj) {
+    if (phase !== "OPERATION") return;    /* nothing on it works until it is built */
     if (obj.userData && obj.userData.ilk) return doStep(obj.userData.ilk);
     if ((obj.userData && obj.userData.token) || trayTargets.indexOf(obj) >= 0) {
       return surrenderTokens();
@@ -5704,7 +5808,12 @@ void main() {
   /* ------------------------------------------------------------- camera --- */
   /* An orbit controller written out rather than imported: it is forty lines,
      and the examples bundle is another download this page cannot make. */
-  var orbit = { yaw: -0.34, pitch: 0.14, dist: 3.2, target: new T.Vector3(0, H * 0.5, 0) };
+  /* Assembly starts looking down at the floor. Parts laid flat have almost no
+     vertical extent and a couple of metres of horizontal, so a near-level
+     camera spends the top half of the frame on empty room; tipping over turns
+     that spread into something the frame can actually use. */
+  var PITCH_BUILD = 0.62, PITCH_RUN = 0.15;
+  var orbit = { yaw: -0.34, pitch: PITCH_BUILD, dist: 3.2, target: new T.Vector3(0, H * 0.5, 0) };
   var vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, travel = 0;
 
   /* Frame the machine rather than sit at a fixed distance. A hard-coded number
@@ -5712,15 +5821,23 @@ void main() {
      portrait most of all, where the horizontal field is a third of the vertical
      one. This projects the eight corners of the bounding box and takes the
      distance at which the last of them fits. */
-  var fitBox = new T.Box3().setFromObject(machine);
-  orbit.target.set(0, (fitBox.min.y + fitBox.max.y) / 2, 0);
-  var fitCorners = [];
-  for (var ci = 0; ci < 8; ci++) {
-    fitCorners.push(new T.Vector3(
-      ci & 1 ? fitBox.max.x : fitBox.min.x,
-      ci & 2 ? fitBox.max.y : fitBox.min.y,
-      ci & 4 ? fitBox.max.z : fitBox.min.z
-    ).sub(orbit.target));
+  var fitBox = new T.Box3(), fitCorners = [];
+  for (var ci = 0; ci < 8; ci++) fitCorners.push(new T.Vector3());
+  var wantDist = 0, wantTargetY = 0, autoFrame = true;
+  /* Recomputed when something moves rather than every frame: the floor starts
+     covered in parts and empties as they go on, so the view that fits the work
+     is a different view at every stage of it. */
+  function retarget() {
+    fitBox.setFromObject(machine);
+    wantTargetY = (fitBox.min.y + fitBox.max.y) / 2;
+    for (var i = 0; i < 8; i++) {
+      fitCorners[i].set(
+        i & 1 ? fitBox.max.x : fitBox.min.x,
+        (i & 2 ? fitBox.max.y : fitBox.min.y) - wantTargetY,
+        i & 4 ? fitBox.max.z : fitBox.min.z
+      );
+    }
+    wantDist = fitDistance();
   }
   var _r = new T.Vector3(), _u = new T.Vector3(), _f = new T.Vector3();
   function fitDistance() {
@@ -5751,6 +5868,7 @@ void main() {
      stamp press or stand well back from the whole cabinet, and a range that
      stops either of those is a range that gets in the way. */
   function dolly(scale) {
+    autoFrame = false;                    /* the viewer has taken the wheel */
     var f = fitDistance();
     orbit.dist = Math.max(f * 0.06, Math.min(f * 8, orbit.dist * scale));
   }
@@ -5791,9 +5909,12 @@ void main() {
   });
   var lastTap = 0;
   function reframe() {
-    orbit.yaw = -0.34; orbit.pitch = 0.14;
-    orbit.target.set(0, (fitBox.min.y + fitBox.max.y) / 2, 0);
-    orbit.dist = fitDistance();
+    orbit.yaw = -0.34;
+    orbit.pitch = phase === "OPERATION" ? PITCH_RUN : PITCH_BUILD;
+    autoFrame = true;
+    retarget();
+    orbit.target.set(0, wantTargetY, 0);
+    orbit.dist = wantDist;
     vYaw = vPitch = 0;
   }
   function endDrag(e) {
@@ -5801,6 +5922,11 @@ void main() {
     if (pointers.size < 2) pinchWas = 0;
     if (pointers.size > 0) return;
     if (dragging && travel < 6 && e) {
+      if (phase === "ASSEMBLY") {
+        var part = pickPart(e);
+        if (part) { tryFitPart(part); lastTap = 0; dragging = false;
+                    canvas.classList.remove("dragging"); return; }
+      }
       var hit = pick(e);
       if (hit) { press(hit); lastTap = 0; }
       else {
@@ -5835,8 +5961,9 @@ void main() {
     var before = framed ? fitDistance() : 0;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    var after = fitDistance();
-    orbit.dist = framed ? orbit.dist * (after / before) : after;
+    retarget();
+    if (framed && !autoFrame) orbit.dist *= wantDist / (before || wantDist);
+    else if (!framed) { orbit.target.y = wantTargetY; orbit.dist = wantDist; }
     framed = true;
     if (!spinning) hudLeft.textContent = idleHint();
   }
@@ -5846,6 +5973,171 @@ void main() {
      without the window ever firing an event */
   if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
   resize();
+
+  /* ======================== THE COMMISSIONING ============================== */
+  /* The apparatus does not arrive. It arrives in ten pieces on the floor with
+     a schedule, and the schedule is to be followed in order, and only once it
+     is discharged does anything have power in it. */
+  var ASSEMBLY = [
+    ["PLINTH",      "THE PLINTH",            "PLINTH SET. THE APPARATUS NOW HAS A FLOOR."],
+    ["CARCASS",     "THE CARCASS",           "CARCASS SEATED. 88 KG. IT WILL NOT BE MOVED AGAIN."],
+    ["DISPLAY",     "THE DISPLAY UNIT",      "DISPLAY UNIT FITTED. IT SHOWS NOTHING YET."],
+    ["HEADER",      "THE HEADER PLATE",      "HEADER PLATE FIXED. THE APPARATUS NOW HAS A NAME."],
+    ["INSTRUMENTS", "THE INSTRUMENT STRIP",  "INSTRUMENT STRIP FITTED. THERE IS NOTHING TO MEASURE."],
+    ["CONTROLS",    "THE CONTROL BAND",      "CONTROL BAND FITTED. THERE IS NOTHING TO CONTROL."],
+    ["INTERLOCK",   "THE INTERLOCK BAND",    "INTERLOCK FITTED. IT IS NOT SATISFIED."],
+    ["LEVER",       "THE LEVER ASSEMBLY",    "LEVER FITTED. IT IS NOT CONNECTED TO ANYTHING."],
+    ["SERVICE",     "THE SERVICE PANEL",     "SERVICE PANEL FIXED. THE SEAL IS PRESSED, NOT PRINTED."],
+    ["TRAY",        "THE COIN TRAY",         "COIN TRAY FITTED. THE APPARATUS IS COMPLETE."]
+  ];
+  var byName = {};
+  PARTS.forEach(function (p) { byName[p.name] = p; });
+  var schedule = ASSEMBLY.map(function (a) {
+    var p = byName[a[0]];
+    if (p) { p.label = a[1]; p.seated = a[2]; }
+    return p;
+  }).filter(Boolean);
+
+  var phase = "ASSEMBLY";                 /* ASSEMBLY · COMMISSIONING · OPERATION */
+  var nextPart = 0, commissionT = 0;
+  var REFUSALS = [
+    "THAT IS NOT THE NEXT ITEM ON THE SCHEDULE.",
+    "SCHEDULE QA-77/A IS TO BE FOLLOWED IN ORDER.",
+    "SET IT DOWN. IT IS NOT WANTED YET."
+  ];
+  var refuseN = 0;
+
+  function assemblyHud(note) {
+    if (note) hudLeft.textContent = note;
+    hudRight.textContent = nextPart >= schedule.length
+      ? "COMMISSIONING"
+      : "FIT " + (nextPart + 1) + "/" + schedule.length + " · " + schedule[nextPart].label;
+  }
+
+  /* Laid out in front of the cabinet's site rather than flung about: a fitter
+     sets the parts down where they can be reached, and a semicircle keeps them
+     all inside one view instead of scattered behind you where the one that is
+     next cannot be seen to be next. */
+  var _c8 = [];
+  for (var q8 = 0; q8 < 8; q8++) _c8.push(new T.Vector3());
+  function layDown(p, i, n) {
+    var a = -Math.PI * 0.44 + ((i + 0.5) / n) * Math.PI * 0.88;
+    var rad = (p.size.y > 0.9 ? 1.20 : 0.78 + (i % 3) * 0.13);
+    var q = new T.Quaternion().setFromEuler(new T.Euler(
+      -Math.PI / 2 + (i % 2 ? 0.10 : -0.07),      /* face up, roughly */
+      a + (p.size.y > 0.9 ? Math.PI / 2 : 0) + (i % 3 - 1) * 0.22,
+      0, "YXZ"));
+    /* drop it until it is resting on the floor rather than floating or sunk */
+    var lo = p.local, minY = Infinity;
+    for (var k = 0; k < 8; k++) {
+      _c8[k].set(k & 1 ? lo.max.x : lo.min.x, k & 2 ? lo.max.y : lo.min.y,
+                 k & 4 ? lo.max.z : lo.min.z).applyQuaternion(q);
+      minY = Math.min(minY, _c8[k].y);
+    }
+    p.group.quaternion.copy(q);
+    p.group.position.set(Math.sin(a) * rad, 0.008 - minY, Math.cos(a) * rad);
+    p.restY = p.group.position.y;
+    p.fitted = false;
+    p.anim = null;
+  }
+  function scatterParts() {
+    schedule.forEach(function (p, i) { layDown(p, i, schedule.length); });
+  }
+
+  function fitPart(p) {
+    p.anim = { t: 0, dur: 1.0,
+               p0: p.group.position.clone(), q0: p.group.quaternion.clone() };
+  }
+  function onSeated(p) {
+    p.fitted = true;
+    nextPart++;
+    retarget();
+    if (nextPart >= schedule.length) {
+      phase = "COMMISSIONING"; commissionT = 0;
+      assemblyHud("SCHEDULE DISCHARGED. APPLYING SUPPLY.");
+    } else {
+      assemblyHud(p.seated);
+    }
+  }
+  function tryFitPart(p) {
+    if (phase !== "ASSEMBLY" || p.fitted || p.anim) return;
+    if (schedule[nextPart] !== p) {
+      assemblyHud(REFUSALS[refuseN++ % REFUSALS.length]);
+      return;
+    }
+    fitPart(p);
+  }
+  /* the part wanted next lifts and settles on the spot, because a schedule you
+     cannot read off the floor is a schedule you cannot follow */
+  function bobNext(t) {
+    for (var i = 0; i < schedule.length; i++) {
+      var p = schedule[i];
+      if (p.fitted || p.anim) continue;
+      p.group.position.y = p.restY + (i === nextPart ? 0.010 + Math.sin(t * 2.4) * 0.010 : 0);
+    }
+  }
+  function stepAssembly(dt) {
+    for (var i = 0; i < schedule.length; i++) {
+      var p = schedule[i];
+      if (!p.anim) continue;
+      p.anim.t += dt / p.anim.dur;
+      var e = Math.min(1, p.anim.t);
+      var k = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
+      p.group.position.lerpVectors(p.anim.p0, p.fitPos, k);
+      p.group.position.y += Math.sin(Math.PI * k) * 0.26;
+      p.group.quaternion.slerpQuaternions(p.anim.q0, p.fitQuat, k);
+      if (e >= 1) {
+        p.group.position.copy(p.fitPos);
+        p.group.quaternion.copy(p.fitQuat);
+        p.anim = null;
+        onSeated(p);
+      }
+    }
+  }
+
+  /* power comes up over a couple of seconds, and until it does the printed
+     plates read as printing and the display reads as a dead panel */
+  function applyPower() {
+    for (var i = 0; i < LIT.length; i++) LIT[i].m.emissiveIntensity = LIT[i].base * power;
+    lcd.material.color.setScalar(0.14 + power * 0.86);
+    trayLight.intensity = 0.016 * power;
+  }
+  function stepCommission(dt) {
+    commissionT += dt;
+    power = Math.min(1, commissionT / 2.2);
+    applyPower();
+    workLight.intensity = 1.5 * (1 - power);
+    orbit.pitch += (PITCH_RUN - orbit.pitch) * Math.min(1, 1.4 * dt);
+    if (commissionT > 2.6) {
+      phase = "OPERATION";
+      power = 1; applyPower();
+      workLight.intensity = 0;
+      autoFrame = true; retarget();
+      setMessage("COMMISSIONED. FORM QA-77/A IS DISCHARGED. THE APPARATUS IS YOURS TO ATTEND.");
+      hudLeft.textContent = idleHint();
+      showStep();
+    }
+  }
+
+  /* picked recursively, unlike the fixed controls: a part is a whole assembly
+     and the ray will land on whichever of its hundred meshes faces you */
+  function pickPart(e) {
+    var r = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    var loose = [];
+    for (var i = 0; i < schedule.length; i++) {
+      if (!schedule[i].fitted && !schedule[i].anim) loose.push(schedule[i].group);
+    }
+    var hits = ray.intersectObjects(loose, true);
+    if (!hits.length) return null;
+    var o = hits[0].object;
+    while (o && loose.indexOf(o) < 0) o = o.parent;
+    if (!o) return null;
+    for (var j = 0; j < schedule.length; j++) if (schedule[j].group === o) return schedule[j];
+    return null;
+  }
 
   /* --------------------------------------------------------------- loop --- */
   var clock = new T.Clock();
@@ -5884,6 +6176,14 @@ void main() {
     orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
     applyCamera();
 
+    if (phase === "ASSEMBLY") { stepAssembly(dt); bobNext(clock.elapsedTime); }
+    else if (phase === "COMMISSIONING") { stepAssembly(dt); stepCommission(dt); }
+
+    if (autoFrame) {
+      orbit.dist += (wantDist - orbit.dist) * Math.min(1, 1.9 * dt);
+      orbit.target.y += (wantTargetY - orbit.target.y) * Math.min(1, 1.9 * dt);
+    }
+
     stepReels(dt);
     stepTokens(dt);
 
@@ -5906,14 +6206,14 @@ void main() {
     /* a pressed key travels a couple of millimetres and comes back */
     if (pressed) {
       pressT = Math.max(0, pressT - dt * 3.4);
-      pressed.position.z = FZ + 0.012 - pressT * 0.005;
+      pressed.position.z = pressed.userData.homeZ - pressT * 0.005;
       if (pressT === 0) pressed = null;
     }
 
     /* the panel is old and its backlight never quite settles */
-    lcd.material.emissiveIntensity = 0.42
+    lcd.material.emissiveIntensity = power * (0.42
       + Math.sin(clock.elapsedTime * 13.7) * 0.012
-      + Math.sin(clock.elapsedTime * 2.3) * 0.018;
+      + Math.sin(clock.elapsedTime * 2.3) * 0.018);
 
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
@@ -5928,8 +6228,12 @@ void main() {
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 
-  hudLeft.textContent = idleHint();
-  showStep();
+  applyPower();                 /* dead until commissioned */
+  scatterParts();
+  retarget();
+  orbit.target.y = wantTargetY; orbit.dist = wantDist;
+  hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
+  assemblyHud();
 
   var load = document.getElementById("loading");
   load.classList.add("gone");
@@ -5941,6 +6245,11 @@ void main() {
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
     reframe: function () { reframe(); }, dolly: dolly,
+    phase: function () { return phase; }, parts: PARTS, schedule: schedule,
+    nextPart: function () { return nextPart; },
+    fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },
+    tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },
+    power: function () { return power; },
     interlock: ILK, doStep: doStep, message: function () { return msg; },
     tokens: tokens, dispense: dispenseToken, surrender: surrenderTokens,
     tokensIssued: function () { return tokensIssued; },
