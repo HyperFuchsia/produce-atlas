@@ -906,11 +906,11 @@
     machine.add(lab);
   }
   mouth(-PW * 0.24, PW * 0.42, 0.478, "DETERMINATION RECORD", true);
-  mouth( PW * 0.26, PW * 0.38, 0.470, "CLAIM / RECORD TRAY", false);
+  mouth( PW * 0.26, PW * 0.38, 0.470, "CLAIM / RECORD TRAY", true);
 
   /* ---- the service panel across the belly ---- */
-  var bellyY = 0.238, bellyH = 0.272;
-  var belly = plate(PW, bellyH, bellyY, 1400, 640, function (x, w, h) {
+  var bellyY = 0.338, bellyH = 0.196;
+  var belly = plate(PW, bellyH, bellyY, 1400, 450, function (x, w, h) {
     var g = x.createLinearGradient(0, 0, 0, h);
     g.addColorStop(0, "#3E4247"); g.addColorStop(0.55, "#484C51"); g.addColorStop(1, "#34383C");
     x.fillStyle = g; x.fillRect(0, 0, w, h);
@@ -948,6 +948,174 @@
   bellyLock.castShadow = true;
   machine.add(bellyLock);
 
+  /* ============================ THE COIN TRAY ============================= */
+  /* The apparatus dispenses one token per observation. It dispenses it whatever
+     the reels did, because the reels are not what it is counting, and the token
+     is stamped NO VALUE on both faces so there can be no confusion about it.
+     A machine with NO STAKE · NO PAYOUT written across its front had better be
+     able to hand you something worthless without anyone mistaking it. */
+  var trayFloorY = 0.118, trayZ = FZ + 0.046, trayW = W * 0.60, trayD = 0.092;
+  var trayHoodY = 0.206;
+
+  var trayFloor = box(trayW, 0.008, trayD, paintDark);
+  trayFloor.position.set(0, trayFloorY - 0.004, trayZ);
+  machine.add(trayFloor);
+  var trayLiner = new T.Mesh(new T.PlaneGeometry(trayW, trayD), cavity);
+  trayLiner.rotation.x = -Math.PI / 2;
+  trayLiner.position.set(0, trayFloorY + 0.0005, trayZ);
+  machine.add(trayLiner);
+  var trayLip = slab(trayW + 0.020, 0.030, 0.011, 0.006, 0.003, paintDark);
+  trayLip.position.set(0, trayFloorY + 0.013, trayZ + trayD / 2 + 0.004);
+  machine.add(trayLip);
+  [-1, 1].forEach(function (s2) {
+    var cheek = box(0.011, 0.034, trayD + 0.010, paintDark);
+    cheek.position.set(s2 * (trayW / 2 + 0.005), trayFloorY + 0.015, trayZ);
+    machine.add(cheek);
+  });
+  var trayHood = slab(trayW + 0.022, 0.014, trayD * 0.62, 0.006, 0.003, paintDark);
+  trayHood.position.set(0, trayHoodY, FZ + 0.026);
+  machine.add(trayHood);
+  var chute = box(trayW * 0.34, 0.016, 0.014, cavity);
+  chute.position.set(0, trayHoodY - 0.014, FZ + 0.010);
+  machine.add(chute);
+
+  var tokensIssued = 0;
+  var trayPlate = livePanel(trayW * 0.86, 0.020, 900, 60, function (x, w, h) {
+    x.fillStyle = "#24272A"; x.fillRect(0, 0, w, h);
+    x.textBaseline = "middle"; x.font = "500 24px " + MONO;
+    x.fillStyle = "#7E848A";
+    tracked(x, "TOKENS ISSUED", 12, h / 2 + 1, 2, "left");
+    x.fillStyle = "#0E1012"; x.fillRect(w * 0.44, 6, 128, h - 12);
+    x.fillStyle = "#C6CBD0";
+    tracked(x, String(Math.min(tokensIssued, 999)).padStart(3, "0"),
+            w * 0.44 + 64, h / 2 + 1, 5, "center");
+    x.fillStyle = "#6E747A";
+    tracked(x, "NO VALUE", w - 12, h / 2 + 1, 2, "right");
+  }, 0.22);
+  trayPlate.position.set(0, trayFloorY + 0.013, trayZ + trayD / 2 + 0.0105);
+  machine.add(trayPlate);
+
+  /* ---- the token ---- */
+  var tokenTex = (function () {
+    var c = makeCanvas(320, 320), x = c.getContext("2d");
+    x.clearRect(0, 0, 320, 320);
+    var g = x.createRadialGradient(120, 110, 10, 160, 160, 170);
+    g.addColorStop(0, "#D2D6DA"); g.addColorStop(0.6, "#A9AEB3"); g.addColorStop(1, "#8A8F94");
+    x.beginPath(); x.arc(160, 160, 158, 0, TAU); x.fillStyle = g; x.fill();
+    x.strokeStyle = "rgba(60,64,68,.55)"; x.lineWidth = 5;
+    x.beginPath(); x.arc(160, 160, 140, 0, TAU); x.stroke();
+    x.fillStyle = "#2A2E32";
+    x.textBaseline = "middle"; x.textAlign = "center";
+    /* the authority's name set round the top of the rim, as a coin has it */
+    var name = "PUBLIC LUCK AUTHORITY";
+    x.save(); x.translate(160, 160);
+    x.font = "600 21px " + MONO;
+    for (var i = 0; i < name.length; i++) {
+      var a = -Math.PI * 0.78 + (i / (name.length - 1)) * Math.PI * 1.56;
+      x.save(); x.rotate(a); x.translate(0, -119); x.rotate(Math.PI);
+      x.fillText(name.charAt(i), 0, 0); x.restore();
+    }
+    x.restore();
+    x.font = "700 52px " + MONO;
+    x.fillText("NO", 160, 132);
+    x.fillText("VALUE", 160, 186);
+    x.font = "500 20px " + MONO;
+    x.fillStyle = "#4A4E52";
+    x.fillText("QA-77", 160, 236);
+    var t = new T.CanvasTexture(c);
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = MAXA;
+    return t;
+  })();
+  var tokenFace = new T.MeshPhysicalMaterial({
+    map: tokenTex, color: 0xFFFFFF, roughness: 0.34, metalness: 0.85
+  });
+  var tokenEdge = new T.MeshPhysicalMaterial({
+    color: 0x93989D, roughness: 0.46, metalness: 0.9, flatShading: true
+  });
+  var TOKEN_R = 0.0145, TOKEN_T = 0.0024;
+  var tokenGeo = new T.CylinderGeometry(TOKEN_R, TOKEN_R, TOKEN_T, 40);
+
+  var MAX_IN_TRAY = 18;
+  var tokens = [];
+  var TOKEN_HIT = [];
+
+  function dispenseToken() {
+    tokensIssued++;
+    trayPlate.redraw();
+    var m = new T.Mesh(tokenGeo, [tokenEdge, tokenFace, tokenFace]);
+    m.castShadow = true; m.receiveShadow = true;
+    m.position.set((Math.random() - 0.5) * trayW * 0.30, trayHoodY - 0.020, FZ + 0.020);
+    m.rotation.set(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU);
+    m.userData.token = true;
+    m.userData.v = new T.Vector3((Math.random() - 0.5) * 0.10, -0.05,
+                                 0.30 + Math.random() * 0.10);
+    m.userData.spin = new T.Vector3((Math.random() - 0.5) * 22,
+                                    (Math.random() - 0.5) * 14,
+                                    (Math.random() - 0.5) * 22);
+    m.userData.rest = false;
+    m.userData.age = 0;
+    machine.add(m);
+    tokens.push(m); TOKEN_HIT.push(m);
+    /* the tray holds eighteen. After that the Authority takes one back, which
+       is the only mechanism in the apparatus that removes anything. */
+    if (tokens.length > MAX_IN_TRAY) {
+      var old = tokens.shift();
+      TOKEN_HIT.splice(TOKEN_HIT.indexOf(old), 1);
+      machine.remove(old);
+      setTimeout(function () {
+        if (!spinning) setMessage("PERIODIC AUDIT. ONE (1) TOKEN RECLAIMED.");
+      }, 900);
+    }
+  }
+
+  function surrenderTokens() {
+    if (!tokens.length) {
+      setMessage("THERE ARE NO TOKENS IN THE TRAY TO SURRENDER.");
+      return;
+    }
+    var n = tokens.length;
+    tokens.forEach(function (m) { machine.remove(m); });
+    tokens.length = 0; TOKEN_HIT.length = 0;
+    setMessage("TOKENS SURRENDERED: " + n + ". THE AUTHORITY THANKS YOU. "
+               + "THE ISSUE RECORD IS UNCHANGED.");
+  }
+
+  /* Not a physics engine — a coin, a floor and three walls. Gravity, a bounce
+     that keeps a third of the speed, and a tumble that stops when it lands. */
+  var TOKEN_FLOOR = trayFloorY + TOKEN_T / 2 + 0.0006;
+  function stepTokens(dt) {
+    for (var i = 0; i < tokens.length; i++) {
+      var m = tokens[i];
+      if (m.userData.rest) continue;
+      var v = m.userData.v, s2 = m.userData.spin;
+      m.userData.age += dt;
+      v.y -= 9.81 * dt;
+      m.position.addScaledVector(v, dt);
+      m.rotation.x += s2.x * dt; m.rotation.y += s2.y * dt; m.rotation.z += s2.z * dt;
+      var zMax = trayZ + trayD / 2 - TOKEN_R, zMin = trayZ - trayD / 2 + TOKEN_R;
+      var xLim = trayW / 2 - TOKEN_R;
+      if (m.position.z > zMax) { m.position.z = zMax; v.z *= -0.35; }
+      if (m.position.z < zMin) { m.position.z = zMin; v.z *= -0.35; }
+      if (m.position.x > xLim) { m.position.x = xLim; v.x *= -0.35; }
+      if (m.position.x < -xLim) { m.position.x = -xLim; v.x *= -0.35; }
+      if (m.position.y <= TOKEN_FLOOR) {
+        m.position.y = TOKEN_FLOOR;
+        /* A bounce that keeps a third of its speed converges, but nothing in
+           the arithmetic promises it converges soon — and on a slow frame the
+           step is coarse enough to keep a coin skittering. Anything still in
+           the air after a second and a half is put down. */
+        if (Math.abs(v.y) < 0.34 || m.userData.age > 1.5) {
+          /* down for good: lie flat, keep whatever facing it happened to land on */
+          m.userData.rest = true;
+          m.rotation.set(0, Math.random() * TAU, 0);
+          m.position.y = TOKEN_FLOOR + (i % 3) * 0.0004;
+        } else {
+          v.y = -v.y * 0.34; v.x *= 0.55; v.z *= 0.55;
+          s2.multiplyScalar(0.45);
+        }
+      }
+    }
+  }
   /* the grille across the plinth */
   for (var pg = 0; pg < 26; pg++) {
     var pslot = box(0.006, 0.030, 0.012, cavity);
@@ -1240,29 +1408,41 @@
     hudLeft.textContent = idleHint();
     hudRight.textContent = result.join(" / ");
     window.QA77.result = result;
+    /* One token, every time, regardless. The apparatus is careful to say so:
+       a payout that depended on the result would be a payout. */
+    setTimeout(function () {
+      if (spinning) return;
+      dispenseToken();
+      setMessage("ONE (1) TOKEN DISPENSED. THE OUTCOME DID NOT AFFECT THIS.");
+    }, 1100);
     /* and the whole ceremony is undone, every time, without being asked */
     resetInterlock(true);
     setTimeout(function () {
       if (spinning) return;
       setMessage("THE INTERLOCK HAS RESET. IT ALWAYS DOES.");
       showStep();
-    }, 2600);
+    }, 3400);
   }
 
   /* click, but only if the pointer did not travel — otherwise every orbit drag
      that happens to end on a key would also press it */
   var ray = new T.Raycaster(), ndc = new T.Vector2();
   var hitTargets = [observeKey, burstKey, resetKey, fileKey].concat(ILK_HIT);
+  var trayTargets = [trayFloor, trayLiner, trayLip, trayPlate];
   function pick(e) {
     var r = canvas.getBoundingClientRect();
     ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
     ray.setFromCamera(ndc, camera);
-    var hits = ray.intersectObjects(hitTargets, false);
+    /* rebuilt per click rather than cached: the tokens in the tray come and go */
+    var hits = ray.intersectObjects(hitTargets.concat(trayTargets, TOKEN_HIT), false);
     return hits.length ? hits[0].object : null;
   }
   function press(obj) {
     if (obj.userData && obj.userData.ilk) return doStep(obj.userData.ilk);
+    if ((obj.userData && obj.userData.token) || trayTargets.indexOf(obj) >= 0) {
+      return surrenderTokens();
+    }
     if (obj === observeKey) {
       if (!ILK.cover) {                     /* the cover is in the way, literally */
         setMessage("THE COVER IS DOWN. " + STEP_NAME[stepNo()] + ".");
@@ -1444,6 +1624,7 @@
     applyCamera();
 
     stepReels(dt);
+    stepTokens(dt);
 
     for (var ai = 0; ai < anims.length; ai++) {
       var a = anims[ai];
@@ -1499,6 +1680,9 @@
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
     interlock: ILK, doStep: doStep, message: function () { return msg; },
+    tokens: tokens, dispense: dispenseToken, surrender: surrenderTokens,
+    tokensIssued: function () { return tokensIssued; },
+    tokensAtRest: function () { return tokens.filter(function (m) { return m.userData.rest; }).length; },
     spinning: function () { return spinning; },
     register: function () { return { obs: obsCount, match: matchCount,
                                      coherence: coherence, seconds: t0 / 1000 }; }
