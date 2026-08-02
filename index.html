@@ -4146,28 +4146,27 @@ void main() {
 /* ============================================================================
    QA-77 — the apparatus, as actual geometry.
 
-   Everything before this was painted onto flat DOM: gradients standing in for
-   form, blurred ellipses standing in for shadow. It fought back every time,
-   because a drawing of a box is not a box. This is a real scene — meshes,
-   physical materials, lights that cast, a camera you move — so the machine is
-   right because it is genuinely three-dimensional, not because the shading was
-   tuned until it nearly looked it.
+   Everything before the rebuild was painted onto flat DOM: gradients standing
+   in for form, blurred ellipses standing in for shadow. It fought back every
+   time, because a drawing of a box is not a box. This is a real scene — meshes,
+   physical materials, lights that cast, a camera you move.
 
-   The reels in particular are the reason for the rebuild. A slot machine's
-   reels are cylinders seen through a hole, and about a third of what makes one
-   legible is the curvature: symbols compress toward the top and bottom of the
-   window and only the middle row is square-on. That is not something you can
-   fake with a scrolling list, which is what every previous attempt was.
+   The design is the original one and not a reinterpretation of it: Atlas
+   Electronics, monochrome throughout, an LCD reel window with 16x16 pixel
+   sprites, the instrument strip under it, the OBSERVE bar, and the Public Luck
+   Authority service panel across the belly. An intermediate version of this
+   file went off into navy, brass and printed paper reel strips. It is not that
+   machine. It is this one, built so you can walk round it.
 
-   Units are metres. The reference cabinet is 74 x 30 x 26 inches.
+   Units are metres.
    ========================================================================== */
 (function () {
   "use strict";
 
   var T = THREE;
-  var IN = 0.0254;                       /* one inch */
-  var W = 30 * IN, H = 74 * IN, D = 26 * IN;
+  var W = 0.66, H = 1.70, D = 0.62;      /* the cabinet, 26 x 67 x 24 inches */
   var TAU = Math.PI * 2;
+  var FZ = D / 2;                        /* the front face */
 
   /* ---------------------------------------------------------------- stage -- */
   var canvas = document.getElementById("scene");
@@ -4175,28 +4174,28 @@ void main() {
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputColorSpace = T.SRGBColorSpace;
   renderer.toneMapping = T.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.04;
+  renderer.toneMappingExposure = 1.02;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = T.PCFSoftShadowMap;
+  var MAXA = renderer.capabilities.getMaxAnisotropy();
 
   var scene = new T.Scene();
-  scene.background = new T.Color(0x07080B);
-  scene.fog = new T.FogExp2(0x07080B, 0.085);
+  scene.background = new T.Color(0x060607);
+  scene.fog = new T.FogExp2(0x060607, 0.085);
 
   /* An environment. Physical materials are mostly reflection, and without
      something to reflect they come out as flat lambert no matter how many
      lights are added — which is exactly what the CSS version could never fix.
-     This is a painted equirect: cool sky, a warm softbox high on the left, a
-     dim floor bounce, run through PMREM so the roughness terms are right. */
+     Neutral grey, because nothing on this machine is allowed to be a colour. */
   (function () {
     var c = document.createElement("canvas");
     c.width = 1024; c.height = 512;
     var x = c.getContext("2d");
     var sky = x.createLinearGradient(0, 0, 0, 512);
-    sky.addColorStop(0.00, "#2A3550");
-    sky.addColorStop(0.42, "#161C28");
-    sky.addColorStop(0.52, "#0C0F14");
-    sky.addColorStop(1.00, "#05060A");
+    sky.addColorStop(0.00, "#2E3134");
+    sky.addColorStop(0.44, "#16181A");
+    sky.addColorStop(0.52, "#0C0D0E");
+    sky.addColorStop(1.00, "#050506");
     x.fillStyle = sky; x.fillRect(0, 0, 1024, 512);
     function blob(cx, cy, r, col, a) {
       var g = x.createRadialGradient(cx, cy, 0, cx, cy, r);
@@ -4204,10 +4203,10 @@ void main() {
       x.globalAlpha = a; x.fillStyle = g; x.fillRect(cx - r, cy - r, r * 2, r * 2);
       x.globalAlpha = 1;
     }
-    blob(300, 120, 210, "#FFF4DE", 1.0);      /* the key softbox */
-    blob(760, 190, 165, "#9FC0FF", 0.80);     /* cool source behind right */
-    blob(120, 300, 140, "#7E93C8", 0.35);     /* a second, lower and left */
-    blob(520, 470, 320, "#2C3348", 0.5);      /* floor bounce */
+    blob(300, 120, 215, "#F2F2F0", 1.0);      /* the key softbox */
+    blob(770, 185, 165, "#C6CBD0", 0.75);     /* a second, behind right */
+    blob(120, 300, 140, "#8A8F94", 0.35);
+    blob(520, 470, 320, "#2A2C2E", 0.5);      /* floor bounce */
     var tex = new T.CanvasTexture(c);
     tex.mapping = T.EquirectangularReflectionMapping;
     tex.colorSpace = T.SRGBColorSpace;
@@ -4216,48 +4215,43 @@ void main() {
     pmrem.dispose(); tex.dispose();
   })();
 
-  var camera = new T.PerspectiveCamera(34, 1, 0.05, 60);
+  var camera = new T.PerspectiveCamera(32, 1, 0.05, 60);
 
   /* ------------------------------------------------------------ materials -- */
-  /* Painted steel. Clearcoat is what makes it read as sprayed and lacquered
-     rather than as raw plastic — it puts a second, tighter specular over the
-     broad diffuse one. */
-  /* Metalness low: sprayed steel is a dielectric coat over metal, and every
-     point of metalness scales the diffuse term straight down. At 0.25 the
-     flanks and the back went to an unreadable black slab under anything but
-     the key. The clearcoat, not the metalness, is what makes it look sprayed. */
+  /* Monochrome, all of it. Metalness stays low on the paint: every point of it
+     scales the diffuse term straight down, and side-on the cabinet goes to an
+     unreadable slab. The clearcoat, not the metalness, is what says sprayed. */
   var paint = new T.MeshPhysicalMaterial({
-    color: 0x4C5257, roughness: 0.36, metalness: 0.12,
-    clearcoat: 0.62, clearcoatRoughness: 0.20
+    color: 0x3A3D40, roughness: 0.40, metalness: 0.10,
+    clearcoat: 0.55, clearcoatRoughness: 0.24
+  });
+  var paintMid = new T.MeshPhysicalMaterial({
+    color: 0x45484B, roughness: 0.42, metalness: 0.10,
+    clearcoat: 0.45, clearcoatRoughness: 0.28
   });
   var paintDark = new T.MeshPhysicalMaterial({
-    color: 0x1B1F22, roughness: 0.5, metalness: 0.2,
-    clearcoat: 0.4, clearcoatRoughness: 0.35
+    color: 0x1C1E20, roughness: 0.52, metalness: 0.14,
+    clearcoat: 0.35, clearcoatRoughness: 0.35
   });
-  var cavity = new T.MeshStandardMaterial({          /* inside the reel bay */
-    color: 0x0B0D10, roughness: 0.92, metalness: 0.0
+  var cavity = new T.MeshStandardMaterial({
+    color: 0x08090A, roughness: 0.94, metalness: 0.0
   });
-  var chrome = new T.MeshPhysicalMaterial({
-    color: 0xD6DCE2, roughness: 0.13, metalness: 1.0
+  var steel = new T.MeshPhysicalMaterial({
+    color: 0xB9BEC2, roughness: 0.22, metalness: 1.0
   });
-  var chromeDim = new T.MeshPhysicalMaterial({
-    color: 0x8B9299, roughness: 0.3, metalness: 1.0
+  var steelDim = new T.MeshPhysicalMaterial({
+    color: 0x7E8387, roughness: 0.34, metalness: 1.0
   });
-  var brass = new T.MeshPhysicalMaterial({
-    color: 0xC8AE72, roughness: 0.26, metalness: 0.9
+  var keyCap = new T.MeshPhysicalMaterial({
+    color: 0x25282B, roughness: 0.36, metalness: 0.10,
+    clearcoat: 0.7, clearcoatRoughness: 0.18
   });
-  var rubber = new T.MeshPhysicalMaterial({
-    color: 0x121517, roughness: 0.85, metalness: 0.0
-  });
-  var rimMat = new T.MeshPhysicalMaterial({
-    color: 0x23282D, roughness: 0.45, metalness: 0.6
+  var observeCap = new T.MeshPhysicalMaterial({     /* the one warm thing */
+    color: 0xC9C2AC, roughness: 0.34, metalness: 0.06,
+    clearcoat: 0.6, clearcoatRoughness: 0.22
   });
 
   /* ------------------------------------------------------------- geometry -- */
-  /* A cabinet has no sharp edges anywhere — every one is broken by a radius,
-     and that radius catching the light is most of what says "made object".
-     Extruding a rounded rectangle with a bevel gives rounded verticals and a
-     broken front edge in one geometry. */
   function roundedPath(w, h, r, Ctor, ox, oy) {
     var s = new (Ctor || T.Shape)();
     var x = -w / 2 + (ox || 0), y = -h / 2 + (oy || 0);
@@ -4271,26 +4265,30 @@ void main() {
   function extrude(shape, d, bevel) {
     var g = new T.ExtrudeGeometry(shape, {
       depth: Math.max(0.001, d - bevel * 2), bevelEnabled: bevel > 0,
-      bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 14
+      bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, curveSegments: 12
     });
     g.translate(0, 0, -(d - bevel * 2) / 2);
     return g;
   }
   /* ExtrudeGeometry's bevel grows OUTWARD from the profile: bevelSize is how far
-     past the outline it reaches. Feed it the finished size and you get a part
-     2*bevel too big in both axes — which is why the body's flank sat at 0.393
-     rather than 0.381 and every fitting placed against it ended up buried
-     inside. Shrink the profile first and the outer size is the one asked for. */
+     past the outline it reaches. Feed it the finished size and every part comes
+     out 2*bevel too big, which puts the flank 12 mm from where anything mounted
+     against it expects to find it. Shrink the profile first. */
   function slab(w, h, d, r, bevel, mat) {
-    bevel = bevel === undefined ? 0.010 : bevel;
-    var s = roundedPath(w - 2 * bevel, h - 2 * bevel,
-                        Math.max(0.002, (r || 0.02) - bevel));
-    var m = new T.Mesh(extrude(s, d, bevel), mat);
+    bevel = bevel === undefined ? 0.008 : bevel;
+    var m = new T.Mesh(extrude(roundedPath(w - 2 * bevel, h - 2 * bevel,
+      Math.max(0.002, (r || 0.014) - bevel)), d, bevel), mat);
     m.castShadow = true; m.receiveShadow = true;
     return m;
   }
-  /* the same compensation for a frame: the outer edge shrinks, the hole grows */
+  /* A frame, with the same compensation — and a guard on it. The bevel eats
+     into the border from BOTH sides: the outer edge shrinks by it and the hole
+     grows by it. Give this a border thinner than 2*bevel and the hole comes out
+     larger than the outline, the shape inverts, and it triangulates into a
+     filled slab that renders as a black rectangle over whatever it framed. */
   function ring(ow, oh, iw, ih, orad, irad, d, bevel, mat) {
+    var border = Math.min(ow - iw, oh - ih) / 2;
+    bevel = Math.min(bevel, Math.max(0.0004, border * 0.4));
     var s = roundedPath(ow - 2 * bevel, oh - 2 * bevel, Math.max(0.002, orad - bevel));
     s.holes.push(roundedPath(iw + 2 * bevel, ih + 2 * bevel, irad + bevel, T.Path));
     var m = new T.Mesh(extrude(s, d, bevel), mat);
@@ -4303,497 +4301,607 @@ void main() {
     return m;
   }
 
+  /* ------------------------------------------------------------ printing -- */
+  var MONO = 'ui-monospace, "SF Mono", Menlo, Consolas, monospace';
+  function makeCanvas(w, h) {
+    var c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    return c;
+  }
+  /* A panel whose face is a canvas that can be redrawn. Everything on the front
+     of this machine is a printed plate or a lit read-out, and several of them
+     say something different once you have used it. */
+  function livePanel(w, h, cw, ch, draw, glow) {
+    var c = makeCanvas(cw, ch), ctx = c.getContext("2d");
+    var tex = new T.CanvasTexture(c);
+    tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = MAXA;
+    var mesh = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshStandardMaterial({
+      map: tex, emissive: 0xFFFFFF, emissiveMap: tex,
+      emissiveIntensity: glow === undefined ? 0.22 : glow,
+      roughness: 0.48, metalness: 0
+    }));
+    mesh.redraw = function () { draw(ctx, cw, ch); tex.needsUpdate = true; };
+    mesh.redraw();
+    return mesh;
+  }
+  /* letter-spaced text, which is most of the typographic character of the
+     original: everything is tracked out and upper case */
+  function tracked(x, text, cx, cy, spacing, align) {
+    var chars = String(text).split("");
+    var total = 0, i;
+    for (i = 0; i < chars.length; i++) total += x.measureText(chars[i]).width + spacing;
+    total -= spacing;
+    var px = align === "left" ? cx : align === "right" ? cx - total : cx - total / 2;
+    x.textAlign = "left";
+    for (i = 0; i < chars.length; i++) {
+      x.fillText(chars[i], px, cy);
+      px += x.measureText(chars[i]).width + spacing;
+    }
+    return total;
+  }
+
   /* ------------------------------------------------------------- the room -- */
-  /* Rough rather than polished. At clearcoat 1.0 and roughness 0.24 the side
-     lights land on it as a hard white blob the size of the machine, which reads
-     as a blown highlight rather than as a floor. */
-  var floorMat = new T.MeshPhysicalMaterial({
-    color: 0x0D1015, roughness: 0.46, metalness: 0.08,
-    clearcoat: 0.45, clearcoatRoughness: 0.40
-  });
-  var floor = new T.Mesh(new T.CircleGeometry(14, 64), floorMat);
+  var floor = new T.Mesh(new T.CircleGeometry(14, 64), new T.MeshPhysicalMaterial({
+    color: 0x0C0D0F, roughness: 0.48, metalness: 0.08,
+    clearcoat: 0.42, clearcoatRoughness: 0.42
+  }));
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
   scene.add(floor);
 
   /* --------------------------------------------------------- the cabinet -- */
+  /* One upright box, not a body with a head balanced on it. The original is a
+     single slab whose whole front is a stack of plates, and the seam where a
+     separate head would meet it is the first thing that would give it away. */
   var machine = new T.Group();
   scene.add(machine);
 
-  var bodyH = H * 0.60;
-  var topH  = H * 0.34;
-
-  /* the body: one tall slab, standing on the floor */
-  var body = slab(W, bodyH, D, 0.030, 0.012, paint);
-  body.position.y = bodyH / 2;
+  var bodyH = H - 0.10;
+  var body = slab(W, bodyH, D, 0.012, 0.008, paint);
+  body.position.y = 0.10 + bodyH / 2;
   machine.add(body);
 
-  /* the kick plate the whole thing stands on */
-  var plinth = slab(W * 0.94, 0.11, D * 0.9, 0.014, 0.006, paintDark);
-  plinth.position.y = 0.055;
+  var plinth = slab(W * 0.97, 0.10, D * 0.96, 0.010, 0.005, paintDark);
+  plinth.position.y = 0.05;
   machine.add(plinth);
 
-  /* -------------------------------------------------------------- the head -- */
-  /* Not a solid block with a picture on the front: an assembly with an actual
-     rectangular hole in it, because the drums have to live somewhere and you
-     have to be able to see into the bay past the edges of the opening. */
-  var headW = W * 0.96, headD = D * 0.82;
-  var headZF = -D * 0.06 + headD / 2;          /* front plane of the head */
-  var headZB = headZF - headD;
-  var headTopY = bodyH + topH;
-
-  var STOPS = 11;
-  var drumR = 0.155;
-  var pitch = (TAU * drumR) / STOPS;           /* one symbol, along the arc */
-
-  var winW = W * 0.78, winH = pitch * 3;       /* the window shows three rows */
-  var winCY = bodyH + topH * 0.40;
-  var winBot = winCY - winH / 2, winTop = winCY + winH / 2;
-
-  /* The front is ONE piece with a hole in it, not four panels arranged around a
-     gap. Built the other way the seams land on the face of the machine and the
-     head reads as a stack of trays; built this way every joint in the carcass
-     behind it is hidden by a single continuous rounded front. */
-  var fasciaT = 0.055, fasciaB = 0.010;
-  var headCY = bodyH + topH / 2;
-  var fasciaShape = roundedPath(headW - 2 * fasciaB, topH - 2 * fasciaB, 0.028 - fasciaB);
-  fasciaShape.holes.push(roundedPath(winW + 2 * fasciaB, winH + 2 * fasciaB,
-                                     0.010 + fasciaB, T.Path, 0, winCY - headCY));
-  var fascia = new T.Mesh(extrude(fasciaShape, fasciaT, fasciaB), paint);
-  fascia.position.set(0, headCY, headZF - fasciaT / 2);
-  fascia.castShadow = true; fascia.receiveShadow = true;
-  machine.add(fascia);
-
-  /* the carcass behind it, which nobody ever sees the joints of */
-  var carcZF = headZF - fasciaT, carcD = headD - fasciaT;
-  var bayD = 0.40;                             /* how deep the drums sit */
-  function carcass(w, h, d, cx, cy, cz, rounded) {
-    var m = rounded ? slab(w, h, d, 0.026, 0.010, paint) : box(w, h, d, paint);
-    m.position.set(cx, cy, cz);
-    machine.add(m);
-    return m;
-  }
-  /* The two side panels run the full height of the head and the crown and shelf
-     sit between them. Cut the other way — posts only as tall as the window —
-     the joints above and below it land on the flank, and turning the machine
-     side-on shows two hard seams straight across it. */
-  var postW = (headW - winW) / 2;
-  carcass(postW, topH, carcD, -(winW + postW) / 2, headCY, carcZF - carcD / 2, true);
-  carcass(postW, topH, carcD,  (winW + postW) / 2, headCY, carcZF - carcD / 2, true);
-  carcass(winW, headTopY - winTop, carcD, 0, (headTopY + winTop) / 2, carcZF - carcD / 2, false);
-  carcass(winW, winBot - bodyH, carcD, 0, (winBot + bodyH) / 2, carcZF - carcD / 2, false);
-  carcass(winW, winH, carcD - bayD, 0, winCY, carcZF - bayD - (carcD - bayD) / 2, false);
-
-  /* line the bay so no painted steel shows behind the drums */
-  var liner = new T.Mesh(new T.BoxGeometry(winW + 0.004, winH + 0.004, bayD), cavity);
-  liner.geometry.scale(-1, -1, -1);            /* inside-out: we see its interior */
-  liner.position.set(0, winCY, carcZF - bayD / 2);
-  machine.add(liner);
-
-  /* the control deck: a wedge sloping toward the player */
-  var deckD = D * 0.46, deckH = 0.075, deckTilt = 0.42;
-  /* Darker than the rest of the paint on purpose. The deck's normal is within
-     35 degrees of the key, so it takes more light than any other surface on the
-     machine and in the cabinet grey it clipped to white every time. */
-  var deckMat = new T.MeshPhysicalMaterial({
-    color: 0x2E3338, roughness: 0.52, metalness: 0.12,
-    clearcoat: 0.45, clearcoatRoughness: 0.45
+  /* the polished corner posts, which is what catches the light on the original
+     and reads as a machine with an edge rather than a rendered cuboid */
+  [-1, 1].forEach(function (s) {
+    var post = new T.Mesh(new T.CylinderGeometry(0.016, 0.016, H - 0.02, 20, 1, false,
+      -Math.PI * 0.10, Math.PI * 1.20), steel);
+    post.position.set(s * (W / 2 - 0.014), H / 2, FZ - 0.014);
+    post.rotation.y = s > 0 ? -Math.PI * 0.30 : Math.PI * 0.30;
+    post.castShadow = true;
+    machine.add(post);
   });
-  var deck = slab(W * 0.99, deckD, deckH, 0.020, 0.008, deckMat);
-  deck.rotation.x = -Math.PI / 2 + deckTilt;   /* a real 24 degree slope */
-  deck.position.set(0, bodyH + 0.028, D * 0.30);
-  machine.add(deck);
 
-  /* --------------------------------------------------------- reel strips -- */
-  /* The strip is drawn sideways. The drum's texture u runs around the
-     circumference and its v runs along the axis, so on the front face canvas
-     +x reads as up the screen and canvas +y reads as across to the right —
-     hence the quarter turn before every glyph. Getting this wrong gives you
-     symbols lying on their sides, which is how the first attempt looked. */
-  var CELL_A = 192;                        /* px along the arc, per stop */
-  var CELL_X = Math.round(CELL_A * 2.10);  /* px across the drum */
+  /* the top: a vent grille across it and a bright strip along the front edge */
+  for (var tg = 0; tg < 11; tg++) {
+    var slot = box(W * 0.74, 0.008, 0.009, cavity);
+    slot.position.set(0, H - 0.003, FZ - 0.075 - tg * 0.026);
+    machine.add(slot);
+  }
+  var topLip = box(W * 0.99, 0.012, 0.014, steelDim);
+  topLip.position.set(0, H - 0.008, FZ - 0.006);
+  machine.add(topLip);
 
-  var SYMBOLS = [
-    { name: "RING",   ink: "#1E3F8C" },
-    { name: "WEDGE",  ink: "#B87316" },
-    { name: "BLOCK",  ink: "#8E1B24" },
-    { name: "NULL",   ink: "#2A2E33" },
-    { name: "WAVE",   ink: "#16706B" },
-    { name: "STAR",   ink: "#5A2E86" },
-    { name: "BAR",    ink: "#14171A" }
+  /* ------------------------------------------------------- the front face -- */
+  /* Laid out from the top down in the proportions of the original: header
+     plate, two state windows, the display, the instrument strip, the message
+     line, the controls, the notice, the two mouths, the service panel. */
+  function at(y) { return y; }
+  var PW = W * 0.93;                        /* the width the plates run to */
+
+  function plate(w, h, cy, cw, ch, draw, glow, frame) {
+    var p = livePanel(w, h, cw, ch, draw, glow);
+    p.position.set(0, cy, FZ + 0.0015);
+    machine.add(p);
+    if (frame !== false) {
+      var f = ring(w + 0.022, h + 0.022, w, h, 0.008, 0.003, 0.010, 0.003, steelDim);
+      f.position.set(0, cy, FZ + 0.004);
+      machine.add(f);
+    }
+    return p;
+  }
+
+  /* ---- the header ---- */
+  var headerY = 1.628, headerH = 0.082;
+  var header = plate(PW, headerH, headerY, 1500, 240, function (x, w, h) {
+    var g = x.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#EFEDE7"); g.addColorStop(1, "#DAD8D1");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#15171A";
+    x.textBaseline = "middle";
+    x.font = "700 62px " + MONO;
+    tracked(x, "ATLAS·ELECTRONICS", 44, h * 0.36, 3, "left");
+    x.fillStyle = "#3C4045";
+    x.font = "500 30px " + MONO;
+    tracked(x, "QUANTUM DETERMINATION", w - 44, h * 0.30, 5, "right");
+    tracked(x, "APPARATUS", w - 44, h * 0.60, 5, "right");
+    x.font = "500 26px " + MONO;
+    x.fillStyle = "#6A6F74";
+    tracked(x, "QA-77", w - 44, 34, 4, "right");
+    x.strokeStyle = "#9AA0A5"; x.lineWidth = 3;
+    x.beginPath(); x.moveTo(44, h - 34); x.lineTo(w - 44, h - 34); x.stroke();
+  }, 0.34);
+
+  /* ---- the two state windows ---- */
+  /* The label lives in a closure variable, not on the mesh: livePanel draws
+     once as it builds, so anything the draw reads off the returned object is
+     still undefined the first time round. */
+  function stateWindow(cx, w, cy, initial) {
+    var text = initial;
+    var p = livePanel(w, 0.040, 620, 88, function (x, cw, ch) {
+      x.fillStyle = "#DFDDD6"; x.fillRect(0, 0, cw, ch);
+      x.strokeStyle = "#8B9095"; x.lineWidth = 4;
+      x.strokeRect(6, 6, cw - 12, ch - 12);
+      x.fillStyle = "#1A1D20";
+      x.textBaseline = "middle";
+      x.font = "500 34px " + MONO;
+      tracked(x, text, 26, ch / 2 + 1, 4, "left");
+    }, 0.30);
+    p.set = function (s) { text = s; p.redraw(); };
+    p.position.set(cx, cy, FZ + 0.0015);
+    machine.add(p);
+    return p;
+  }
+  var stateY = 1.532, swW = PW * 0.478;
+  var swState = stateWindow(-(PW / 2 - swW / 2), swW, stateY, "STATE: SUPERPOSED");
+  var swMatter = stateWindow((PW / 2 - swW / 2), swW, stateY, "NO MATTER PENDING");
+
+  /* ============================ THE DISPLAY ================================ */
+  /* An LCD, as it always was: a flat panel of pixels behind glass, not a set of
+     mechanical drums. The drums were an invention of the rebuild. Every symbol
+     is a 16 x 16 bitmap and every lit pixel is drawn as its own little square
+     with a gap round it, which is the whole reason an LCD looks like an LCD. */
+  var SPRITES = [
+    { name: "CHERRY", bits: [
+      "................",
+      "..............##",
+      "...........###..",
+      ".........###....",
+      ".......###......",
+      ".....###...##...",
+      "....##....####..",
+      "...####..######.",
+      "..######.######.",
+      ".########.#####.",
+      ".########.#####.",
+      ".########.#####.",
+      "..######...###..",
+      "...####.........",
+      "................",
+      "................"] },
+    { name: "GRAPE", bits: [
+      "................",
+      "................",
+      "..........##....",
+      ".........##.....",
+      "..###.###.###...",
+      "..###.###.###...",
+      "...###.###......",
+      "...###.###......",
+      "....###.###.....",
+      "....###.###.....",
+      ".....###........",
+      ".....###........",
+      "................",
+      "................",
+      "................",
+      "................"] },
+    { name: "LEMON", bits: [
+      "................",
+      "................",
+      "................",
+      ".......##.......",
+      "....########....",
+      "..############..",
+      ".##############.",
+      ".##############.",
+      ".##############.",
+      "..############..",
+      "....########....",
+      "................",
+      "................",
+      "................",
+      "................",
+      "................"] },
+    { name: "MELON", bits: [
+      "................",
+      "................",
+      "......####......",
+      "....########....",
+      "...##########...",
+      "..###.####.###..",
+      ".###..####..###.",
+      ".###..####..###.",
+      ".###..####..###.",
+      "..###.####.###..",
+      "...##########...",
+      "....########....",
+      "......####......",
+      "................",
+      "................",
+      "................"] },
+    { name: "PLUM", bits: [
+      "................",
+      "............###.",
+      "...........###..",
+      ".....####..##...",
+      "...########.....",
+      "..##########....",
+      ".############...",
+      ".############...",
+      ".############...",
+      "..##########....",
+      "...########.....",
+      ".....####.......",
+      "................",
+      "................",
+      "................",
+      "................"] },
+    { name: "PEAR", bits: [
+      "................",
+      ".......##.......",
+      "......##........",
+      "......####......",
+      ".....######.....",
+      "....########....",
+      "...##########...",
+      "..############..",
+      "..############..",
+      "..############..",
+      "...##########...",
+      "....########....",
+      "................",
+      "................",
+      "................",
+      "................"] },
+    { name: "FIG", bits: [
+      "................",
+      ".......##.......",
+      "......##........",
+      "....######......",
+      "...########.....",
+      "..##########....",
+      ".####....####...",
+      ".###......###...",
+      ".####....####...",
+      "..##########....",
+      "...########.....",
+      ".....####.......",
+      "................",
+      "................",
+      "................",
+      "................"] }
   ];
+  var NSYM = SPRITES.length;
 
-  function drawGlyph(x, kind, ink) {
-    /* drawn into a CELL_X by CELL_A box, upright, centred */
-    var cx = CELL_X / 2, cy = CELL_A / 2, s = CELL_A * 0.36;
-    x.strokeStyle = ink; x.fillStyle = ink;
-    x.lineWidth = CELL_A * 0.105; x.lineCap = "round"; x.lineJoin = "round";
-    if (kind === 0) {                                   /* RING */
-      x.beginPath(); x.arc(cx, cy, s, 0, TAU); x.stroke();
-    } else if (kind === 1) {                            /* WEDGE */
-      x.beginPath();
-      x.moveTo(cx, cy - s); x.lineTo(cx + s * 0.92, cy + s * 0.7);
-      x.lineTo(cx - s * 0.92, cy + s * 0.7); x.closePath(); x.fill();
-    } else if (kind === 2) {                            /* BLOCK */
-      var r = s * 0.86;
-      x.beginPath(); x.rect(cx - r, cy - r, r * 2, r * 2); x.fill();
-    } else if (kind === 3) {                            /* NULL */
-      x.beginPath(); x.arc(cx, cy, s, 0, TAU); x.stroke();
-      x.beginPath();
-      x.moveTo(cx - s * 0.72, cy + s * 0.72);
-      x.lineTo(cx + s * 0.72, cy - s * 0.72); x.stroke();
-    } else if (kind === 4) {                            /* WAVE */
-      x.beginPath();
-      x.moveTo(cx - s, cy);
-      x.bezierCurveTo(cx - s * 0.5, cy - s * 0.95, cx - s * 0.1, cy + s * 0.95, cx + s * 0.35, cy);
-      x.bezierCurveTo(cx + s * 0.6, cy - s * 0.5, cx + s * 0.8, cy - s * 0.35, cx + s, cy - s * 0.2);
-      x.stroke();
-    } else if (kind === 5) {                            /* STAR */
-      x.beginPath();
-      for (var i = 0; i < 6; i++) {
-        var a = (i / 6) * Math.PI;
-        x.moveTo(cx - Math.cos(a) * s, cy - Math.sin(a) * s);
-        x.lineTo(cx + Math.cos(a) * s, cy + Math.sin(a) * s);
+  var LCD_ON = "#D3D7C5", LCD_OFF = "#454A3E", LCD_BG = "#4B5044";
+
+  /* The panel's own metrics come first, because the size of a symbol follows
+     from the size of a row and not the other way round. Fixed at 176 px the
+     sprites sat at two thirds of their cell with a visible margin all round,
+     which is not what a segment display looks like. */
+  var lcdW = W * 0.86, lcdH = lcdW / 1.28;
+  var lcdY = 1.252;
+  var LCW = 1100, LCH = Math.round(LCW * lcdH / lcdW);
+  var GUT = 70;                                     /* margin inside the glass */
+  var colW = (LCW - GUT * 2) / 3;
+  var gridTop = Math.round(GUT * 0.9);
+  var rowH = (LCH - GUT * 1.5) / 3;
+  var PIX = Math.max(4, Math.floor(rowH * 0.88 / 16));
+  var CELL = PIX * 16;
+
+  /* Each sprite is rendered once to its own little canvas and then blitted.
+     Redrawing 256 rectangles per symbol per column per frame while three reels
+     are running is the kind of thing that quietly costs you the frame rate. */
+  var spriteCanvas = SPRITES.map(function (s) {
+    var c = makeCanvas(CELL, CELL), x = c.getContext("2d");
+    for (var r = 0; r < 16; r++) {
+      for (var q = 0; q < 16; q++) {
+        var on = s.bits[r].charAt(q) === "#";
+        /* An unlit pixel is barely there. At 0.30 the whole 16 x 16 field read
+           as a pale square sitting behind every symbol. */
+        x.fillStyle = on ? LCD_ON : LCD_OFF;
+        x.globalAlpha = on ? 1 : 0.13;
+        x.fillRect(q * PIX, r * PIX, PIX - 1, PIX - 1);
       }
-      x.stroke();
-    } else {                                            /* BAR */
-      x.fillRect(cx - s * 1.15, cy - s * 0.42, s * 2.3, s * 0.84);
-      x.fillStyle = "#F3EFE2";
-      x.fillRect(cx - s * 1.15, cy - s * 0.08, s * 2.3, s * 0.16);
     }
-  }
+    x.globalAlpha = 1;
+    return c;
+  });
 
-  function stripTexture(order) {
-    var c = document.createElement("canvas");
-    c.width = CELL_A * STOPS; c.height = CELL_X;
-    var x = c.getContext("2d");
-    /* Not white. A reel strip is the brightest surface on the machine and the
-       key light hits it square on, so paper at full value clips to a flat slab
-       with no tone in it at all — which is what the window looked like. */
-    x.fillStyle = "#D9D2BF"; x.fillRect(0, 0, c.width, c.height);
-    /* the faint tone the paper of a real strip has, and its edge printing */
-    var g = x.createLinearGradient(0, 0, 0, c.height);
-    g.addColorStop(0, "rgba(120,110,90,.20)");
-    g.addColorStop(0.14, "rgba(120,110,90,0)");
-    g.addColorStop(0.86, "rgba(120,110,90,0)");
-    g.addColorStop(1, "rgba(120,110,90,.20)");
-    x.fillStyle = g; x.fillRect(0, 0, c.width, c.height);
-
-    for (var i = 0; i < STOPS; i++) {
-      x.save();
-      x.translate((i + 1) * CELL_A, 0);
-      x.rotate(Math.PI / 2);                  /* now drawing upright on screen */
-      /* the hairline between stops */
-      x.strokeStyle = "rgba(60,55,45,.30)"; x.lineWidth = 2;
-      x.beginPath(); x.moveTo(0, 0.5); x.lineTo(CELL_X, 0.5); x.stroke();
-      var sym = SYMBOLS[order[i]];
-      drawGlyph(x, order[i], sym.ink);
-      /* the stop number, printed small at the edge as they are on real strips */
-      x.fillStyle = "rgba(60,55,45,.42)";
-      x.font = "600 " + Math.round(CELL_A * 0.14) + "px ui-monospace, monospace";
-      x.textAlign = "left"; x.textBaseline = "middle";
-      x.fillText(String(i + 1).padStart(2, "0"), CELL_X * 0.075, CELL_A / 2);
-      x.restore();
-    }
-    var tex = new T.CanvasTexture(c);
-    tex.colorSpace = T.SRGBColorSpace;
-    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    tex.wrapS = T.RepeatWrapping;
-    return tex;
-  }
-
-  /* Three different orders, so the drums are not obviously the same object
-     three times over — which is exactly what you notice first if they are. */
-  var ORDERS = [
-    [0, 6, 2, 4, 1, 6, 3, 0, 5, 6, 2],
-    [6, 1, 0, 3, 6, 5, 2, 6, 4, 1, 0],
-    [2, 6, 4, 0, 6, 1, 5, 3, 6, 0, 4]
+  var reels = [
+    { pos: 0, from: 0, to: 0, t: 1, dur: 1, phase: 2, stop: 0 },
+    { pos: 0, from: 0, to: 0, t: 1, dur: 1, phase: 2, stop: 0 },
+    { pos: 0, from: 0, to: 0, t: 1, dur: 1, phase: 2, stop: 0 }
   ];
 
-  /* ------------------------------------------------------------ the drums -- */
-  var drumW = 0.186, drumGap = 0.010;
-  var drums = [];
-  for (var d0 = 0; d0 < 3; d0++) {
-    var tex = stripTexture(ORDERS[d0]);
-    var side = new T.MeshStandardMaterial({
-      map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.05,
-      roughness: 0.72, metalness: 0.0
-    });
-    var endMat = new T.MeshPhysicalMaterial({
-      color: 0x1C2024, roughness: 0.42, metalness: 0.7
-    });
-    var g = new T.CylinderGeometry(drumR, drumR, drumW, 96, 1, false);
-    g.rotateZ(Math.PI / 2);                    /* axis along X; spin is rotation.x */
-    var m = new T.Mesh(g, [side, endMat, endMat]);
-    m.castShadow = false; m.receiveShadow = true;
-    m.position.set((d0 - 1) * (drumW + drumGap), winCY, carcZF - drumR - 0.012);
-    machine.add(m);
+  function drawLCD(x, w, h) {
+    x.fillStyle = LCD_BG; x.fillRect(0, 0, w, h);
+    /* the uneven backlight every panel of this kind has */
+    var g = x.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, w * 0.72);
+    g.addColorStop(0, "rgba(226,230,214,.20)"); g.addColorStop(1, "rgba(0,0,0,.22)");
+    x.fillStyle = g; x.fillRect(0, 0, w, h);
 
-    /* the rims that hold the strip on. Dark: in chrome they read as two big
-       bright arcs floating in the window rather than as the edge of a drum. */
-    for (var e = -1; e <= 1; e += 2) {
-      var rim = new T.Mesh(new T.TorusGeometry(drumR + 0.001, 0.0035, 8, 64), rimMat);
-      rim.rotation.y = Math.PI / 2;
-      rim.position.set(m.position.x + e * drumW / 2, m.position.y, m.position.z);
-      machine.add(rim);
+    for (var c = 0; c < 3; c++) {
+      var cx = GUT + c * colW;
+      x.save();
+      x.beginPath(); x.rect(cx, gridTop, colW, rowH * 3); x.clip();
+      var pos = reels[c].pos;
+      var base = Math.floor(pos), frac = pos - base;
+      for (var k = -2; k <= 2; k++) {
+        var idx = ((base + k) % NSYM + NSYM) % NSYM;
+        var cy = gridTop + rowH * (1 + k - frac);
+        x.drawImage(spriteCanvas[idx], cx + (colW - CELL) / 2,
+                    cy + (rowH - CELL) / 2, CELL, CELL);
+      }
+      x.restore();
+      if (c > 0) {                                  /* the column divider */
+        x.strokeStyle = "rgba(24,28,20,.55)"; x.lineWidth = 3;
+        x.beginPath(); x.moveTo(cx, gridTop); x.lineTo(cx, gridTop + rowH * 3); x.stroke();
+      }
     }
-    drums.push({ mesh: m, angle: 0, from: 0, to: 0, t: 1, dur: 1, phase: 2, stop: 0 });
+
+    /* the payline: a hairline across the middle row with a marker each side */
+    var py = gridTop + rowH * 1.5;
+    x.strokeStyle = "rgba(226,230,214,.42)"; x.lineWidth = 2;
+    x.beginPath(); x.moveTo(GUT - 12, py); x.lineTo(LCW - GUT + 12, py); x.stroke();
+    x.fillStyle = "#D2D6C4";
+    x.beginPath(); x.moveTo(GUT - 16, py - 13); x.lineTo(GUT - 2, py); x.lineTo(GUT - 16, py + 13); x.fill();
+    x.beginPath(); x.moveTo(w - GUT + 16, py - 13); x.lineTo(w - GUT + 2, py); x.lineTo(w - GUT + 16, py + 13); x.fill();
+    x.fillStyle = "rgba(210,214,196,.62)";
+    x.font = "500 19px " + MONO; x.textBaseline = "middle";
+    tracked(x, "PAYLINE", 8, py - 26, 2, "left");
   }
-  /* the dividers between drums, which is how you read three reels as three */
-  for (var dv = -1; dv <= 1; dv += 2) {
-    var bar = box(0.009, winH, 0.030, paintDark);
-    bar.position.set(dv * (drumW + drumGap) / 2, winCY, carcZF - 0.016);
-    machine.add(bar);
-  }
 
-  /* --------------------------------------------------------- window glass -- */
-  var bezel = ring(winW + 0.050, winH + 0.050, winW, winH, 0.016, 0.010, 0.026, 0.006, chromeDim);
-  bezel.position.set(0, winCY, headZF + 0.006);
-  machine.add(bezel);
+  var lcd = new T.Mesh(new T.PlaneGeometry(lcdW, lcdH), null);
+  (function () {
+    var c = makeCanvas(LCW, LCH), ctx = c.getContext("2d");
+    var tex = new T.CanvasTexture(c);
+    tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = MAXA;
+    lcd.material = new T.MeshStandardMaterial({
+      map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.42,
+      roughness: 0.62, metalness: 0
+    });
+    lcd.refresh = function () { drawLCD(ctx, LCW, LCH); tex.needsUpdate = true; };
+    lcd.refresh();
+  })();
+  lcd.position.set(0, lcdY, FZ + 0.001);
+  machine.add(lcd);
 
-  /* Not a transmissive material: at this thickness refraction buys nothing and
-     the haze it adds washes out the strips. What sells glass here is a single
-     tight reflection of the environment, which a thin clearcoated pane gives. */
-  var glass = new T.Mesh(new T.PlaneGeometry(winW, winH), new T.MeshPhysicalMaterial({
-    color: 0x9FB4C6, roughness: 0.035, metalness: 0.0,
-    clearcoat: 1.0, clearcoatRoughness: 0.02,
-    transparent: true, opacity: 0.085, depthWrite: false
-  }));
-  glass.position.set(0, winCY, headZF + 0.004);
-  machine.add(glass);
-
-  /* the payline, printed on the glass at the middle row */
-  var payline = new T.Mesh(new T.PlaneGeometry(winW * 0.99, 0.0032),
-    new T.MeshStandardMaterial({ color: 0xD8452F, emissive: 0xD8452F,
-      emissiveIntensity: 1.6, transparent: true, opacity: 0.92, depthWrite: false }));
-  payline.position.set(0, winCY, headZF + 0.005);
-  machine.add(payline);
-
-  /* The bay's own light, behind the top of the opening and aimed in. These
-     numbers look absurdly small next to the directional lights, and they are
-     not: point lights fall off with the square of distance, and these sit four
-     centimetres from the paper. At 0.30 the strips received thirty times the
-     key's illuminance and the whole window clipped to a flat white slab. */
-  var bayLightA = new T.PointLight(0xFFEFD4, 0.022, 0.9, 2);
-  bayLightA.position.set(-0.13, winTop - 0.012, carcZF - 0.04);
-  machine.add(bayLightA);
-  var bayLightB = new T.PointLight(0xFFEFD4, 0.022, 0.9, 2);
-  bayLightB.position.set(0.13, winTop - 0.012, carcZF - 0.04);
-  machine.add(bayLightB);
-  var bayFill = new T.PointLight(0xB9CCF0, 0.012, 0.8, 2);
-  bayFill.position.set(0, winBot + 0.012, carcZF - 0.04);
-  machine.add(bayFill);
-
-  /* -------------------------------------------------------- printed panels -- */
-  function textureFrom(w, h, paintFn) {
-    var c = document.createElement("canvas");
-    c.width = w; c.height = h;
-    paintFn(c.getContext("2d"), w, h);
-    var t = new T.CanvasTexture(c);
-    t.colorSpace = T.SRGBColorSpace;
-    t.anisotropy = renderer.capabilities.getMaxAnisotropy();
-    return t;
-  }
-  function litPanel(w, h, tex, strength) {
-    return new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshStandardMaterial({
-      map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: strength,
-      roughness: 0.35, metalness: 0
+  /* the display is recessed: a dark surround, a steel bezel and a pane */
+  var lcdWell = ring(lcdW + 0.052, lcdH + 0.052, lcdW, lcdH, 0.010, 0.005, 0.014, 0.004, paintDark);
+  lcdWell.position.set(0, lcdY, FZ + 0.005);
+  machine.add(lcdWell);
+  var lcdBezel = ring(lcdW + 0.062, lcdH + 0.062, lcdW + 0.040, lcdH + 0.040,
+                      0.012, 0.008, 0.012, 0.004, steelDim);
+  lcdBezel.position.set(0, lcdY, FZ + 0.008);
+  machine.add(lcdBezel);
+  var pane = new T.Mesh(new T.PlaneGeometry(lcdW + 0.038, lcdH + 0.038),
+    new T.MeshPhysicalMaterial({
+      color: 0x9BA0A4, roughness: 0.035, metalness: 0.0,
+      clearcoat: 1.0, clearcoatRoughness: 0.02,
+      transparent: true, opacity: 0.075, depthWrite: false
     }));
+  pane.position.set(0, lcdY, FZ + 0.011);
+  machine.add(pane);
+
+  /* ---- the instrument strip ---- */
+  var obsCount = 0, matchCount = 0, coherence = 1, t0 = 0;
+  var instrY = 0.952;
+  var instr = plate(PW, 0.072, instrY, 1500, 190, function (x, w, h) {
+    x.fillStyle = "#191B1D"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#8E948B";
+    x.textBaseline = "middle";
+    x.font = "500 24px " + MONO;
+    tracked(x, "COHERENCE", 26, 46, 3, "left");
+    /* the segmented bar: lit blocks fall away as you observe and creep back */
+    var bx = 236, by = 30, bw = 27, bh = 32, n = 22;
+    var lit = Math.round(coherence * n);
+    for (var i = 0; i < n; i++) {
+      var on = i < lit;
+      x.fillStyle = on ? "#C6CBBC" : "#2E322D";
+      x.fillRect(bx + i * (bw + 5), by, bw, bh);
+    }
+    x.fillStyle = "#A6ACA2";
+    x.font = "500 26px " + MONO;
+    tracked(x, "T+" + (t0 / 1000).toFixed(1) + "S", w - 26, 46, 3, "right");
+
+    x.font = "500 22px " + MONO;
+    var cells = [["OBS", pad(obsCount, 3)], ["MATCH", pad(matchCount, 3)],
+                 ["LUCK", obsCount < 12 ? "- - -" : luckIndex()]];
+    var px = 26;
+    cells.forEach(function (cel) {
+      x.fillStyle = "#70766D";
+      px += tracked(x, cel[0], px, h - 46, 3, "left") + 14;
+      x.fillStyle = "#0E100E";
+      x.fillRect(px - 4, h - 66, 108, 40);
+      x.fillStyle = "#C6CBBC";
+      px += tracked(x, cel[1], px + 8, h - 46, 5, "left") + 46;
+    });
+    x.fillStyle = "#5C625A";
+    tracked(x, "ENT   COH   READ AFTER", w - 26, h - 46, 3, "right");
+  }, 0.34, false);
+  function pad(n, k) { return String(Math.min(n, 999)).padStart(k, "0"); }
+  function luckIndex() {
+    /* the measured departure from what the machine expected, in sigma. Every
+       reel is uniform over seven symbols, so a match is 1/49 per observation. */
+    var p = 1 / (NSYM * NSYM), mu = obsCount * p;
+    var sd = Math.sqrt(obsCount * p * (1 - p));
+    var z = sd > 0 ? (matchCount - mu) / sd : 0;
+    return (z >= 0 ? "+" : "−") + Math.abs(z).toFixed(2);
   }
 
-  /* The marquee. Dark ground with pale lettering, not the reverse: a backlit
-     sign that is mostly light surface has no headroom left before it clips, and
-     the first version came out as a featureless white rectangle for exactly
-     that reason. Ink on dark keeps the type legible at any exposure. */
-  var marqueeTex = textureFrom(1600, 440, function (x, w, h) {
+  /* ---- the message line ---- */
+  var msg = "READY. NO MATTER HAS BEEN PUT TO THE APPARATUS.";
+  var msgLine = plate(PW, 0.032, 0.878, 1500, 76, function (x, w, h) {
+    x.fillStyle = "#101112"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#8A9086";
+    x.textBaseline = "middle"; x.font = "500 26px " + MONO;
+    tracked(x, msg, 22, h / 2 + 1, 2, "left");
+  }, 0.28, false);
+
+  /* ---- the controls ---- */
+  /* A band across the front, not a sloping deck. The original has no lever:
+     the wide OBSERVE bar is the thing you press, and the three dark keys sit
+     to the right of it. */
+  var ctlY = 0.775;
+  var ctlWell = box(PW, 0.108, 0.012, paintDark);
+  ctlWell.position.set(0, ctlY, FZ - 0.002);
+  machine.add(ctlWell);
+
+  function frontKey(cx, w, h, mat, label, ink) {
+    var k = slab(w, h, 0.026, 0.008, 0.004, mat);
+    k.position.set(cx, ctlY, FZ + 0.012);
+    machine.add(k);
+    var lp = livePanel(w * 0.92, h * 0.5, 480, 130, function (x, cw, ch) {
+      x.clearRect(0, 0, cw, ch);
+      x.fillStyle = ink;
+      x.textBaseline = "middle";
+      x.font = "700 " + (label.length > 6 ? 44 : 56) + "px " + MONO;
+      tracked(x, label, cw / 2, ch / 2 + 2, 6, "center");
+    }, 0.16);
+    lp.material.transparent = true;
+    lp.position.set(cx, ctlY, FZ + 0.0255);
+    machine.add(lp);
+    return k;
+  }
+  var observeKey = frontKey(-PW * 0.26, PW * 0.42, 0.062, observeCap, "OBSERVE", "#26241C");
+  var burstKey  = frontKey( PW * 0.055, PW * 0.14, 0.048, keyCap, "BURST", "#C2C7CB");
+  var resetKey  = frontKey( PW * 0.215, PW * 0.14, 0.048, keyCap, "RESET", "#C2C7CB");
+  var fileKey   = frontKey( PW * 0.375, PW * 0.14, 0.048, keyCap, "FILE",  "#C2C7CB");
+
+  /* the small legend above the OBSERVE bar, as on the original */
+  var obsLegend = livePanel(PW * 0.42, 0.018, 620, 40, function (x, w, h) {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = "#767B80";
+    x.textBaseline = "middle"; x.font = "500 22px " + MONO;
+    tracked(x, "PRESS ONCE PER MATTER", w / 2, h / 2 + 1, 3, "center");
+  }, 0.20);
+  obsLegend.material.transparent = true;
+  obsLegend.position.set(-PW * 0.26, ctlY + 0.044, FZ + 0.0035);
+  machine.add(obsLegend);
+
+  /* the sound toggle and its tiny labels, far right of the band */
+  var toggle = box(0.012, 0.028, 0.014, steelDim);
+  toggle.position.set(PW * 0.468, ctlY + 0.008, FZ + 0.008);
+  machine.add(toggle);
+
+  var ctlReveal = box(PW, 0.004, 0.010, paintDark);
+  ctlReveal.position.set(0, ctlY - 0.078, FZ - 0.001);
+  machine.add(ctlReveal);
+
+  /* ---- the notice rail ---- */
+  var notice = plate(PW, 0.038, 0.578, 1500, 90, function (x, w, h) {
+    x.fillStyle = "#22252A"; x.fillRect(0, 0, w, h);
+    x.fillStyle = "#8A9096";
+    x.textBaseline = "middle"; x.font = "500 26px " + MONO;
+    tracked(x, "NO STAKE · NO PAYOUT · DETERMINES NOTHING ABOUT THE OPERATOR",
+            24, h / 2 + 1, 2, "left");
+    x.fillStyle = "#3A3E43"; x.fillRect(w - 150, 12, 128, h - 24);
+    x.fillStyle = "#C3C8CD"; x.font = "500 24px " + MONO;
+    tracked(x, "QA-77/B", w - 86, h / 2 + 1, 3, "center");
+  }, 0.24, false);
+
+  /* ---- the two mouths ---- */
+  function mouth(cx, w, cy, label, above) {
+    var recess = box(w, 0.030, 0.030, cavity);
+    recess.position.set(cx, cy, FZ - 0.010);
+    machine.add(recess);
+    var lipTop = box(w + 0.016, 0.008, 0.016, steelDim);
+    lipTop.position.set(cx, cy + 0.019, FZ + 0.003);
+    machine.add(lipTop);
+    var lipBot = box(w + 0.016, 0.008, 0.016, steelDim);
+    lipBot.position.set(cx, cy - 0.019, FZ + 0.003);
+    machine.add(lipBot);
+    var lab = livePanel(w, 0.017, 620, 38, function (x, cw, ch) {
+      x.clearRect(0, 0, cw, ch);
+      x.fillStyle = "#7E848A";
+      x.textBaseline = "middle"; x.font = "500 22px " + MONO;
+      tracked(x, label, 4, ch / 2 + 1, 3, "left");
+    }, 0.20);
+    lab.material.transparent = true;
+    lab.position.set(cx, cy + (above ? 0.034 : -0.034), FZ + 0.0025);
+    machine.add(lab);
+  }
+  mouth(-PW * 0.24, PW * 0.42, 0.478, "DETERMINATION RECORD", true);
+  mouth( PW * 0.26, PW * 0.38, 0.470, "CLAIM / RECORD TRAY", false);
+
+  /* ---- the service panel across the belly ---- */
+  var bellyY = 0.238, bellyH = 0.272;
+  var belly = plate(PW, bellyH, bellyY, 1400, 640, function (x, w, h) {
     var g = x.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#16203A"); g.addColorStop(0.5, "#1D2A48"); g.addColorStop(1, "#101728");
+    g.addColorStop(0, "#3E4247"); g.addColorStop(0.55, "#484C51"); g.addColorStop(1, "#34383C");
     x.fillStyle = g; x.fillRect(0, 0, w, h);
-    var glow = x.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, w * 0.52);
-    glow.addColorStop(0, "rgba(120,160,235,.30)"); glow.addColorStop(1, "rgba(0,0,0,0)");
-    x.fillStyle = glow; x.fillRect(0, 0, w, h);
-    x.strokeStyle = "#C8AE72"; x.lineWidth = 5;
-    x.strokeRect(26, 26, w - 52, h - 52);
-    x.textAlign = "center"; x.textBaseline = "middle";
-    x.fillStyle = "#F2ECDC";
-    x.font = "700 156px ui-monospace, Menlo, monospace";
-    x.fillText("QA·77", w / 2, h * 0.40);
-    x.font = "500 42px ui-monospace, Menlo, monospace";
-    x.fillStyle = "#9FB2D6";
-    x.fillText("QUANTUM  DETERMINATION  APPARATUS", w / 2, h * 0.70);
-    x.fillStyle = "#C8402F";
-    x.fillRect(w * 0.38, h * 0.81, w * 0.24, 5);
-  });
-  var marqueeH = topH * 0.30, marqueeW = headW * 0.86;
-  var marquee = litPanel(marqueeW, marqueeH, marqueeTex, 1.05);
-  marquee.position.set(0, bodyH + topH * 0.80, headZF + 0.0015);
-  machine.add(marquee);
-  var marqueeFrame = ring(marqueeW + 0.034, marqueeH + 0.034, marqueeW, marqueeH,
-                          0.014, 0.008, 0.018, 0.005, chromeDim);
-  marqueeFrame.position.set(0, marquee.position.y, headZF + 0.005);
-  machine.add(marqueeFrame);
-  var marqueeLight = new T.PointLight(0xBFD0F5, 0.055, 1.5, 2);
-  marqueeLight.position.set(0, marquee.position.y, headZF + 0.18);
-  machine.add(marqueeLight);
-
-  /* the belly notice rail: the small print no one reads */
-  var railTex = textureFrom(1600, 120, function (x, w, h) {
-    x.fillStyle = "#DFD8C4"; x.fillRect(0, 0, w, h);
-    x.fillStyle = "#20242E";
-    x.textAlign = "center"; x.textBaseline = "middle";
-    x.font = "500 46px ui-monospace, Menlo, monospace";
-    x.fillText("NO OUTCOME IS LUCK · EVERY OUTCOME IS MEASURED", w / 2, h / 2);
-  });
-  var rail = litPanel(W * 0.76, 0.052, railTex, 0.30);
-  rail.position.set(0, bodyH * 0.47, D / 2 + 0.0015);
-  machine.add(rail);
-
-  /* the coin slot and the claim mouth */
-  var trayMouth = box(W * 0.34, 0.030, 0.02, rubber);
-  trayMouth.position.set(-W * 0.20, bodyH * 0.58, D / 2 + 0.004);
-  machine.add(trayMouth);
-  var claimMouth = box(W * 0.30, 0.055, 0.02, rubber);
-  claimMouth.position.set(W * 0.22, bodyH * 0.58, D / 2 + 0.004);
-  machine.add(claimMouth);
-
-  /* --------------------------------------------------------- belly glass -- */
-  /* The lower half of a real cabinet is not blank steel — it is a second lit
-     panel, and leaving it blank is why the body kept reading as a filing
-     cabinet with a slot machine balanced on top of it. */
-  var bellyTex = textureFrom(1400, 680, function (x, w, h) {
-    var g = x.createLinearGradient(0, 0, 0, h);
-    g.addColorStop(0, "#141C30"); g.addColorStop(0.55, "#1A2440"); g.addColorStop(1, "#0D1322");
-    x.fillStyle = g; x.fillRect(0, 0, w, h);
-
-    /* the seal */
-    var cx = w * 0.22, cy = h * 0.50, R = h * 0.34;
-    x.strokeStyle = "#C8AE72"; x.lineWidth = 6;
-    x.beginPath(); x.arc(cx, cy, R, 0, TAU); x.stroke();
-    x.lineWidth = 3;
-    x.beginPath(); x.arc(cx, cy, R * 0.86, 0, TAU); x.stroke();
-    x.strokeStyle = "#8FA7D8"; x.lineWidth = 5;
-    for (var k = 0; k < 3; k++) {                 /* three superposed arcs */
+    /* the seal, pressed rather than printed: only just there */
+    x.save();
+    x.strokeStyle = "rgba(190,196,202,.16)"; x.lineWidth = 3;
+    x.beginPath(); x.arc(w / 2, h * 0.44, h * 0.40, 0, TAU); x.stroke();
+    x.beginPath(); x.arc(w / 2, h * 0.44, h * 0.345, 0, TAU); x.stroke();
+    for (var k = 0; k < 3; k++) {
       x.beginPath();
-      x.arc(cx, cy, R * (0.28 + k * 0.18), -Math.PI * 0.8, Math.PI * 0.2);
+      x.arc(w / 2, h * 0.44, h * (0.10 + k * 0.075), -Math.PI * 0.78, Math.PI * 0.18);
       x.stroke();
     }
-    x.fillStyle = "#C8AE72";
-    x.font = "600 26px ui-monospace, Menlo, monospace";
-    x.textAlign = "center"; x.textBaseline = "middle";
-    x.fillText("BUREAU  OF", cx, cy + R * 0.52);
-    x.fillText("DETERMINATION", cx, cy + R * 0.78);
-
-    /* the schedule, which is the part that is not decoration */
-    x.textAlign = "left";
-    x.fillStyle = "#E6E0CE";
-    x.font = "600 34px ui-monospace, Menlo, monospace";
-    x.fillText("SCHEDULE OF DISPOSITIONS", w * 0.44, h * 0.16);
-    x.strokeStyle = "rgba(200,174,114,.5)"; x.lineWidth = 2;
-    x.beginPath(); x.moveTo(w * 0.44, h * 0.22); x.lineTo(w * 0.94, h * 0.22); x.stroke();
-    var rows = [
-      ["THREE ALIKE", "DETERMINED"], ["TWO ALIKE", "PROVISIONAL"],
-      ["BAR · BAR · BAR", "REMANDED"], ["NULL PRESENT", "VOID"],
-      ["NO MAJORITY", "UNRESOLVED"]
-    ];
-    x.font = "500 27px ui-monospace, Menlo, monospace";
-    rows.forEach(function (r, i) {
-      var y = h * (0.32 + i * 0.135);
-      x.fillStyle = "#B6C2DA"; x.fillText(r[0], w * 0.44, y);
-      x.fillStyle = "#DCD5C2"; x.textAlign = "right";
-      x.fillText(r[1], w * 0.94, y); x.textAlign = "left";
-      x.strokeStyle = "rgba(140,155,190,.18)";
-      x.beginPath(); x.moveTo(w * 0.44, y + h * 0.055); x.lineTo(w * 0.94, y + h * 0.055); x.stroke();
-    });
-  });
-  var bellyW = W * 0.80, bellyH = bodyH * 0.26, bellyY = bodyH * 0.28;
-  var belly = litPanel(bellyW, bellyH, bellyTex, 0.55);
-  belly.position.set(0, bellyY, D / 2 + 0.0015);
-  machine.add(belly);
-  var bellyFrame = ring(bellyW + 0.034, bellyH + 0.034, bellyW, bellyH,
-                        0.014, 0.008, 0.018, 0.005, chromeDim);
-  bellyFrame.position.set(0, bellyY, D / 2 + 0.005);
+    x.restore();
+    x.textBaseline = "middle";
+    x.fillStyle = "#D3D8DD"; x.font = "600 40px " + MONO;
+    tracked(x, "PUBLIC LUCK AUTHORITY", w / 2, h * 0.30, 9, "center");
+    x.fillStyle = "#8E949A"; x.font = "500 26px " + MONO;
+    tracked(x, "QA-77", w / 2, h * 0.44, 6, "center");
+    tracked(x, "QUANTUM DETERMINATION APPARATUS", w / 2, h * 0.56, 5, "center");
+    x.fillStyle = "#6E747A"; x.font = "500 24px " + MONO;
+    tracked(x, "SERVICE ACCESS", w / 2, h * 0.69, 5, "center");
+    /* the grille along the foot of the panel, printed rather than cut: as
+       geometry it fell below the panel and off the bottom of the cabinet */
+    x.fillStyle = "rgba(14,16,18,.72)";
+    for (var g2 = 0; g2 < 6; g2++) x.fillRect(w * 0.26, h * 0.80 + g2 * 22, w * 0.48, 9);
+  }, 0.26, false);
+  var bellyFrame = ring(PW + 0.026, bellyH + 0.026, PW, bellyH, 0.010, 0.004, 0.012, 0.004, steelDim);
+  bellyFrame.position.set(0, bellyY, FZ + 0.005);
   machine.add(bellyFrame);
-  var bellyLight = new T.PointLight(0x9FB4E0, 0.045, 1.1, 2);
-  bellyLight.position.set(0, bellyY, D / 2 + 0.22);
-  machine.add(bellyLight);
 
-  /* the coin tray, below it: a recess you can see into */
-  var trayY = bodyH * 0.135;
-  var tray = new T.Mesh(new T.BoxGeometry(W * 0.40, 0.075, 0.09), cavity);
-  tray.geometry.scale(-1, -1, -1);
-  tray.position.set(0, trayY, D / 2 - 0.045);
-  machine.add(tray);
-  var trayLip = box(W * 0.44, 0.014, 0.030, chromeDim);
-  trayLip.position.set(0, trayY - 0.044, D / 2 + 0.010);
-  machine.add(trayLip);
+  var bellyLock = new T.Mesh(new T.CylinderGeometry(0.011, 0.011, 0.012, 18), steel);
+  bellyLock.rotation.x = Math.PI / 2;
+  bellyLock.position.set(-PW * 0.455, bellyY + bellyH * 0.11, FZ + 0.006);
+  bellyLock.castShadow = true;
+  machine.add(bellyLock);
 
-  /* the reveals that say this front is a door, not a face */
-  function reveal(w, h, cx, cy) {
-    var r = box(w, h, 0.012, paintDark);
-    r.position.set(cx, cy, D / 2 - 0.003);
-    machine.add(r);
+  /* the grille across the plinth */
+  for (var pg = 0; pg < 26; pg++) {
+    var pslot = box(0.006, 0.030, 0.012, cavity);
+    pslot.position.set(-W * 0.42 + pg * (W * 0.84 / 25), 0.055, D / 2 * 0.96 + 0.002);
+    machine.add(pslot);
   }
-  reveal(W * 0.94, 0.005, 0, bodyH * 0.70);
-  reveal(0.005, bodyH * 0.68, -W * 0.47, bodyH * 0.35);
-  reveal(0.005, bodyH * 0.68,  W * 0.47, bodyH * 0.35);
-
-  /* the service lock */
-  var lock = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.012, 20), chrome);
-  lock.rotation.x = Math.PI / 2;
-  lock.position.set(W * 0.40, bodyH * 0.645, D / 2 + 0.005);
-  lock.castShadow = true;
-  machine.add(lock);
-  var keyway = box(0.003, 0.016, 0.004, rubber);
-  keyway.position.set(W * 0.40, bodyH * 0.645, D / 2 + 0.012);
-  machine.add(keyway);
-
-  /* the fasteners. A few screws are a surprising amount of "manufactured". */
-  var screwGeo = new T.CylinderGeometry(0.0055, 0.0055, 0.004, 12);
-  screwGeo.rotateX(Math.PI / 2);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (s) {
-    var sc = new T.Mesh(screwGeo, chromeDim);
-    sc.position.set(s[0] * W * 0.44, bodyH * 0.70 + s[1] * bodyH * 0.30, D / 2 + 0.005);
-    machine.add(sc);
-  });
 
   /* --------------------------------------------------------- the flanks --- */
-  /* The largest single surface on the machine, and side-on it is the whole
-     picture. Left plain it is a rectangle of grey with nothing in it. */
-  for (var sgn = -1; sgn <= 1; sgn += 2) {
-    var fx = sgn * (W / 2 - 0.004);
-    /* the extract louvres, high and toward the back */
-    for (var lv = 0; lv < 10; lv++) {
-      var lo = box(0.014, 0.012, D * 0.40, cavity);
-      lo.position.set(fx, bodyH * 0.50 + lv * 0.032, -D * 0.14);
+  [-1, 1].forEach(function (s) {
+    var fx = s * (W / 2 - 0.003);
+    /* the recessed carry bracket, which is the one feature on the side of the
+       original that exists for a person rather than for the machine */
+    var bracket = ring(0.070, 0.230, 0.040, 0.180, 0.012, 0.008, 0.030, 0.006, paintDark);
+    bracket.rotation.y = s * Math.PI / 2;
+    bracket.position.set(s * (W / 2 + 0.011), 0.98, -D * 0.06);
+    machine.add(bracket);
+    var bar = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.185, 14), steelDim);
+    bar.position.set(s * (W / 2 + 0.016), 0.98, -D * 0.06);
+    bar.castShadow = true;
+    machine.add(bar);
+
+    for (var lv = 0; lv < 12; lv++) {
+      var lo = box(0.012, 0.010, D * 0.34, cavity);
+      lo.position.set(fx, 0.42 + lv * 0.026, -D * 0.16);
       machine.add(lo);
     }
-    /* the door's edge, and the same waist line the front carries */
-    var vseam = box(0.012, bodyH * 0.66, 0.005, paintDark);
-    vseam.position.set(fx, bodyH * 0.37, D * 0.36);
+    var vseam = box(0.010, H * 0.80, 0.005, paintDark);
+    vseam.position.set(fx, H * 0.47, D * 0.34);
     machine.add(vseam);
-    var hseam = box(0.012, 0.005, D * 0.86, paintDark);
-    hseam.position.set(fx, bodyH * 0.70, 0);
-    machine.add(hseam);
-    /* a lifting handle: the only thing on a cabinet side that is there for a
-       person rather than for the machine. Standing proud on two mounts rather
-       than sunk into the panel, because a recess needs a hole and there isn't
-       one — an inset box just sits inside the flank where nothing can see it. */
-    for (var mz = -1; mz <= 1; mz += 2) {
-      var mount = box(0.020, 0.036, 0.026, paintDark);
-      mount.position.set(sgn * (W / 2 + 0.008), bodyH * 0.80, -D * 0.02 + mz * 0.075);
-      machine.add(mount);
-    }
-    var gripBar = new T.Mesh(new T.CylinderGeometry(0.009, 0.009, 0.17, 16), chromeDim);
-    gripBar.rotation.x = Math.PI / 2;
-    gripBar.position.set(sgn * (W / 2 + 0.020), bodyH * 0.80, -D * 0.02);
-    gripBar.castShadow = true;
-    machine.add(gripBar);
-  }
+  });
 
-  /* ------------------------------------------------------------- the back -- */
-  /* You can turn this thing all the way round, so the back is a surface the
-     viewer will actually stand in front of. Blank, it announces that only the
-     front was ever modelled. */
+  /* ----------------------------------------------------------- the back --- */
   var backZ = -D / 2;
   function onBack(w, h, d, cx, cy, mat) {
     var m = box(w, h, d, mat);
@@ -4801,160 +4909,80 @@ void main() {
     machine.add(m);
     return m;
   }
-  /* the service door, as a reveal */
-  onBack(W * 0.90, 0.005, 0.010, 0, bodyH * 0.86, paintDark);
-  onBack(W * 0.90, 0.005, 0.010, 0, bodyH * 0.12, paintDark);
-  onBack(0.005, bodyH * 0.74, 0.010, -W * 0.45, bodyH * 0.49, paintDark);
-  onBack(0.005, bodyH * 0.74, 0.010,  W * 0.45, bodyH * 0.49, paintDark);
-  /* three hinges down the left edge and a latch on the right */
-  [0.22, 0.49, 0.76].forEach(function (f) {
-    onBack(0.030, 0.055, 0.014, -W * 0.44, bodyH * f, chromeDim);
+  onBack(W * 0.90, 0.005, 0.010, 0, H * 0.90, paintDark);
+  onBack(W * 0.90, 0.005, 0.010, 0, H * 0.10, paintDark);
+  onBack(0.005, H * 0.80, 0.010, -W * 0.45, H * 0.50, paintDark);
+  onBack(0.005, H * 0.80, 0.010,  W * 0.45, H * 0.50, paintDark);
+  [0.20, 0.50, 0.80].forEach(function (f) {
+    onBack(0.028, 0.050, 0.014, -W * 0.44, H * f, steelDim);
   });
-  var latch = new T.Mesh(new T.CylinderGeometry(0.016, 0.016, 0.022, 20), chromeDim);
+  var latch = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.020, 18), steelDim);
   latch.rotation.x = Math.PI / 2;
-  latch.position.set(W * 0.40, bodyH * 0.49, backZ - 0.008);
+  latch.position.set(W * 0.40, H * 0.50, backZ - 0.008);
   latch.castShadow = true;
   machine.add(latch);
-  onBack(0.038, 0.006, 0.020, W * 0.40, bodyH * 0.49, chrome);
-  /* the extract grille */
-  for (var gv = 0; gv < 7; gv++) {
-    onBack(W * 0.44, 0.011, 0.014, 0, bodyH * 0.62 + gv * 0.026, cavity);
+  for (var gv = 0; gv < 9; gv++) {
+    onBack(W * 0.44, 0.010, 0.014, 0, H * 0.60 + gv * 0.024, cavity);
   }
-  /* the inlet and the fuse carrier */
-  onBack(0.055, 0.048, 0.022, -W * 0.28, bodyH * 0.20, paintDark);
-  onBack(0.036, 0.036, 0.014, -W * 0.28, bodyH * 0.20, rubber);
-  onBack(0.024, 0.030, 0.018,  W * 0.28 - 0.05, bodyH * 0.20, chromeDim);
+  onBack(0.052, 0.046, 0.022, -W * 0.26, H * 0.22, paintDark);
+  onBack(0.034, 0.034, 0.014, -W * 0.26, H * 0.22, cavity);
+  onBack(0.022, 0.028, 0.018,  W * 0.20, H * 0.22, steelDim);
 
-  /* the data plate: the one place on the machine that states what it is */
-  var plateTex = textureFrom(760, 470, function (x, w, h) {
-    x.fillStyle = "#A9B0B6"; x.fillRect(0, 0, w, h);
-    x.strokeStyle = "#2A2E33"; x.lineWidth = 5; x.strokeRect(16, 16, w - 32, h - 32);
-    x.fillStyle = "#1B1F22";
-    x.textAlign = "center"; x.textBaseline = "middle";
-    x.font = "700 52px ui-monospace, Menlo, monospace";
-    x.fillText("QA-77", w / 2, 74);
-    x.font = "500 25px ui-monospace, Menlo, monospace";
-    x.fillText("BUREAU OF DETERMINATION", w / 2, 118);
-    x.beginPath(); x.moveTo(40, 146); x.lineTo(w - 40, 146); x.lineWidth = 3; x.stroke();
-    x.textAlign = "left";
-    x.font = "500 24px ui-monospace, Menlo, monospace";
-    [["MODEL", "QA-77/B"], ["SERIAL", "0000-0077"], ["STOPS", "11 x 3"],
-     ["SUPPLY", "230V 50Hz 0.4A"], ["MASS", "94 kg"]].forEach(function (r, i) {
-      var y = 184 + i * 46;
-      x.fillStyle = "#3A4046"; x.fillText(r[0], 46, y);
-      x.fillStyle = "#14181B"; x.textAlign = "right";
-      x.fillText(r[1], w - 46, y); x.textAlign = "left";
+  var plateTex = (function () {
+    var c = makeCanvas(760, 470), x = c.getContext("2d");
+    x.fillStyle = "#9DA2A6"; x.fillRect(0, 0, 760, 470);
+    x.strokeStyle = "#2A2E33"; x.lineWidth = 5; x.strokeRect(16, 16, 728, 438);
+    x.fillStyle = "#15181B"; x.textBaseline = "middle";
+    x.font = "700 44px " + MONO;
+    tracked(x, "ATLAS·ELECTRONICS", 380, 62, 3, "center");
+    x.font = "500 24px " + MONO;
+    tracked(x, "PUBLIC LUCK AUTHORITY", 380, 106, 4, "center");
+    x.beginPath(); x.moveTo(40, 138); x.lineTo(720, 138); x.lineWidth = 3; x.stroke();
+    x.font = "500 24px " + MONO;
+    [["MODEL", "QA-77/B"], ["SERIAL", "0000-0077"], ["SYMBOLS", "7 x 3"],
+     ["SUPPLY", "230V 50Hz 0.4A"], ["MASS", "88 kg"]].forEach(function (r, i) {
+      var y = 178 + i * 46;
+      x.fillStyle = "#3A4046"; tracked(x, r[0], 46, y, 2, "left");
+      x.fillStyle = "#14181B"; tracked(x, r[1], 714, y, 2, "right");
     });
-  });
-  var plate = new T.Mesh(new T.PlaneGeometry(0.115, 0.071),
-    new T.MeshStandardMaterial({ map: plateTex, roughness: 0.42, metalness: 0.55 }));
-  plate.rotation.y = Math.PI;                  /* it faces out the back */
-  plate.position.set(W * 0.24, bodyH * 0.40, backZ - 0.0015);
-  machine.add(plate);
-
-  /* and a vent in the back of the head, where the tube gear would be */
-  for (var hv = 0; hv < 5; hv++) {
-    var hb = box(headW * 0.40, 0.011, 0.014, cavity);
-    hb.position.set(0, winCY - 0.05 + hv * 0.026, headZB + 0.004);
-    machine.add(hb);
-  }
+    var t = new T.CanvasTexture(c);
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = MAXA;
+    return t;
+  })();
+  var dataPlate = new T.Mesh(new T.PlaneGeometry(0.115, 0.071),
+    new T.MeshStandardMaterial({ map: plateTex, roughness: 0.44, metalness: 0.5 }));
+  dataPlate.rotation.y = Math.PI;
+  dataPlate.position.set(W * 0.22, H * 0.40, backZ - 0.0015);
+  machine.add(dataPlate);
 
   /* --------------------------------------------------------- the ground -- */
-  /* The key is the only light that casts, and it throws the machine's shadow
-     back and to the right — so the floor directly beneath stays lit by three
-     lights that cast nothing and the cabinet reads as hovering. This is the
-     occlusion those lights should have been blocked by. */
-  var contactTex = textureFrom(512, 512, function (x, w, h) {
-    var g = x.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
-    g.addColorStop(0.00, "rgba(0,0,0,0.90)");
-    g.addColorStop(0.42, "rgba(0,0,0,0.62)");
+  /* The key is the only light that casts, and it throws the cabinet's shadow
+     back and to the right, so the floor directly beneath stays lit by lights
+     that cast nothing and the machine reads as hovering. */
+  var contactTex = (function () {
+    var c = makeCanvas(512, 512), x = c.getContext("2d");
+    var g = x.createRadialGradient(256, 256, 0, 256, 256, 256);
+    g.addColorStop(0.00, "rgba(0,0,0,0.92)");
+    g.addColorStop(0.40, "rgba(0,0,0,0.64)");
     g.addColorStop(0.72, "rgba(0,0,0,0.20)");
     g.addColorStop(1.00, "rgba(0,0,0,0)");
-    x.fillStyle = g; x.fillRect(0, 0, w, h);
-  });
-  var contact = new T.Mesh(new T.PlaneGeometry(W * 2.1, D * 2.3),
+    x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+    var t = new T.CanvasTexture(c); t.colorSpace = T.SRGBColorSpace;
+    return t;
+  })();
+  var contact = new T.Mesh(new T.PlaneGeometry(W * 2.2, D * 2.3),
     new T.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false }));
   contact.rotation.x = -Math.PI / 2;
   contact.position.set(0, 0.003, 0);
   contact.renderOrder = -1;
-  scene.add(contact);      /* not in the machine group: it would enlarge the
-                              bounding box the camera frames itself against */
-
-  /* ------------------------------------------------------------ the keys -- */
-  var deckDir = new T.Vector3(0, Math.cos(deckTilt), Math.sin(deckTilt));
-  function onDeck(u, v, w, h, mat) {                        /* u across, v up-slope */
-    var k = slab(w, h, 0.020, 0.006, 0.004, mat);
-    var right = new T.Vector3(1, 0, 0);
-    var up = new T.Vector3(0, Math.sin(deckTilt), -Math.cos(deckTilt));
-    /* clear the deck's own half-thickness, or the key is buried inside it */
-    k.position.copy(deck.position)
-      .addScaledVector(right, u)
-      .addScaledVector(up, v)
-      .addScaledVector(deckDir, deckH / 2 + 0.011);
-    k.quaternion.copy(deck.quaternion);
-    machine.add(k);
-    return k;
-  }
-  /* A key with nothing written on it is a lozenge. The legend is what makes the
-     deck read as a control surface rather than as four tiles glued to a wedge. */
-  function legend(u, v, w, h, text, ink, ground) {
-    var tex = textureFrom(512, 128, function (x, cw, ch) {
-      x.fillStyle = ground; x.fillRect(0, 0, cw, ch);
-      x.fillStyle = ink;
-      x.textAlign = "center"; x.textBaseline = "middle";
-      x.font = "600 " + (text.length > 8 ? 44 : 58) + "px ui-monospace, Menlo, monospace";
-      x.fillText(text, cw / 2, ch / 2 + 3);
-    });
-    var p = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshStandardMaterial({
-      map: tex, emissive: 0xFFFFFF, emissiveMap: tex, emissiveIntensity: 0.10,
-      roughness: 0.5, metalness: 0
-    }));
-    var up = new T.Vector3(0, Math.sin(deckTilt), -Math.cos(deckTilt));
-    p.position.copy(deck.position)
-      .addScaledVector(new T.Vector3(1, 0, 0), u)
-      .addScaledVector(up, v)
-      .addScaledVector(deckDir, deckH / 2 + 0.0015);
-    p.quaternion.copy(deck.quaternion);
-    machine.add(p);
-    return p;
-  }
-
-  var keyCap = new T.MeshPhysicalMaterial({
-    color: 0x2B3138, roughness: 0.32, metalness: 0.15,
-    clearcoat: 0.8, clearcoatRoughness: 0.12
-  });
-  var observeKey = onDeck(-W * 0.30, 0, W * 0.26, 0.055, brass);
-  onDeck(-W * 0.02, 0, W * 0.13, 0.045, keyCap);
-  onDeck( W * 0.14, 0, W * 0.13, 0.045, keyCap);
-  onDeck( W * 0.30, 0, W * 0.13, 0.045, keyCap);
-  legend(-W * 0.30, -0.052, W * 0.26, 0.030, "OBSERVE", "#F0E9D6", "#3A3222");
-  legend(-W * 0.02, -0.048, W * 0.13, 0.026, "HOLD I",   "#C6D2E2", "#1C2128");
-  legend( W * 0.14, -0.048, W * 0.13, 0.026, "HOLD II",  "#C6D2E2", "#1C2128");
-  legend( W * 0.30, -0.048, W * 0.13, 0.026, "HOLD III", "#C6D2E2", "#1C2128");
-
-  /* ----------------------------------------------------------- the lever -- */
-  var lever = new T.Group();
-  var boss = new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 0.09, 24), chrome);
-  boss.rotation.z = Math.PI / 2;
-  boss.castShadow = true;
-  lever.add(boss);
-  var shaft = new T.Mesh(new T.CylinderGeometry(0.011, 0.013, 0.30, 16), chrome);
-  shaft.position.y = 0.15; shaft.castShadow = true;
-  lever.add(shaft);
-  var ball = new T.Mesh(new T.SphereGeometry(0.035, 32, 24),
-    new T.MeshPhysicalMaterial({ color: 0x8E1B1B, roughness: 0.18, metalness: 0.1,
-      clearcoat: 1, clearcoatRoughness: 0.05 }));
-  ball.position.y = 0.31; ball.castShadow = true;
-  lever.add(ball);
-  lever.position.set(W / 2 + 0.075, bodyH - 0.04, D * 0.06);
-  machine.add(lever);
-  var leverTargets = [ball, shaft, boss, observeKey];
+  scene.add(contact);          /* not in the machine group: it would enlarge the
+                                  bounding box the camera frames itself against */
 
   /* ------------------------------------------------------------- lights --- */
-  scene.add(new T.HemisphereLight(0x3C4658, 0x0B0C0F, 0.48));
+  scene.add(new T.HemisphereLight(0x484C50, 0x0A0B0C, 0.46));
 
-  var key = new T.DirectionalLight(0xFFF1DC, 2.4);
-  key.position.set(-2.6, 3.4, 3.0);
+  var key = new T.DirectionalLight(0xFFFCF6, 2.5);
+  key.position.set(-2.5, 3.5, 3.0);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.camera.near = 0.5; key.shadow.camera.far = 12;
@@ -4964,97 +4992,110 @@ void main() {
   key.shadow.radius = 3;
   scene.add(key);
 
-  /* This is an object you turn all the way round, so the three quarters the key
-     never reaches have to be lit by something. Without these the back and the
-     left flank are a silhouette with no surface in them at all. */
-  var rim = new T.DirectionalLight(0xA6BEE8, 2.9);      /* cool, from behind right */
+  /* An object you turn all the way round has to be lit all the way round: with
+     a front key alone the other three quarters are a silhouette with no
+     surface in them at all. */
+  var rim = new T.DirectionalLight(0xD8DEE4, 2.6);
   rim.position.set(3.4, 2.2, -2.6);
   scene.add(rim);
-
-  var backFill = new T.DirectionalLight(0x9AA4B8, 1.15); /* and from behind left */
+  var backFill = new T.DirectionalLight(0xAAB0B6, 1.05);
   backFill.position.set(-3.0, 1.7, -2.4);
   scene.add(backFill);
-
-  var fill = new T.DirectionalLight(0xBFD2FF, 0.40);
+  var fill = new T.DirectionalLight(0xD4DAE0, 0.38);
   fill.position.set(2.2, 1.0, 2.4);
   scene.add(fill);
-
-  /* two side kickers. The flanks face neither the key nor the rim squarely, so
-     side-on the machine is the one view with nothing raking across it. */
   [-1, 1].forEach(function (s) {
-    var kick = new T.DirectionalLight(0xC2CEDE, 0.42);
+    var kick = new T.DirectionalLight(0xC6CBD0, 0.40);
     kick.position.set(s * 4.0, 1.5, 0.5);
     scene.add(kick);
   });
 
-  /* ---------------------------------------------------------- the spin ---- */
-  /* Deriving where a stop lands rather than guessing it: the cylinder's texture
-     coordinate u = 0 sits at +Z, and after the quarter turn that put the axis
-     along X, spinning by rotation.x = a carries the point at u to the front
-     when a = 2*pi*u. Stop i is centred at u = (i + 0.5)/STOPS, so its landing
-     angle is exactly 2*pi*(i + 0.5)/STOPS, plus any number of whole turns. */
-  function landingAngle(i) { return TAU * (i + 0.5) / STOPS; }
-
-  var spinning = false, leverPull = 0, leverTarget = 0;
+  /* ============================== behaviour ================================ */
   var hudLeft = document.getElementById("hudLeft");
   var hudRight = document.getElementById("hudRight");
+  var spinning = false, pressed = null, pressT = 0;
+  var result = [SPRITES[0].name, SPRITES[0].name, SPRITES[0].name];
 
-  function spin() {
-    if (spinning) return;
-    spinning = true;
-    leverTarget = 1;
-    hudLeft.textContent = "Observing";
-    hudRight.textContent = "· · ·";
-    for (var i = 0; i < 3; i++) {
-      var dr = drums[i];
-      dr.stop = Math.floor(Math.random() * STOPS);
-      var turns = 7 + i * 2 + Math.floor(Math.random() * 2);
-      var end = landingAngle(dr.stop);
-      /* wind forward to the next occurrence of that angle past the turns */
-      while (end < dr.angle + turns * TAU) end += TAU;
-      dr.from = dr.angle;
-      dr.to = end;
-      dr.dur = 2.1 + i * 0.62;
-      dr.t = 0;
-      dr.phase = 0;
-    }
-  }
-  /* Two hints, because the long one wraps to a second line on a phone and the
-     gestures are not the same ones anyway. */
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag · pinch · pull the lever"
-      : "Drag to orbit · scroll to dolly · pull the lever";
+      ? "Drag · pinch · press OBSERVE"
+      : "Drag to orbit · scroll to dolly · press OBSERVE";
   }
-  function settleReport() {
-    var names = drums.map(function (dr, i) { return SYMBOLS[ORDERS[i][dr.stop]].name; });
+  function setMessage(s) { msg = s; msgLine.redraw(); }
+  function setState(a, b) { swState.set(a); swMatter.set(b); }
+
+  function observe() {
+    if (spinning) return;
+    spinning = true;
+    pressed = observeKey; pressT = 1;
+    setState("STATE: COLLAPSING", "MATTER PENDING");
+    setMessage("MATTER PUT TO THE APPARATUS. AWAITING DETERMINATION.");
+    hudRight.textContent = "· · ·";
+    coherence = 0.06;
+    for (var i = 0; i < 3; i++) {
+      var r = reels[i];
+      r.stop = Math.floor(Math.random() * NSYM);
+      var turns = 5 + i * 2 + Math.floor(Math.random() * 2);
+      /* wind forward to the next occurrence of that symbol past the turns */
+      var end = r.stop;
+      while (end < r.pos + turns * NSYM) end += NSYM;
+      r.from = r.pos; r.to = end;
+      r.dur = 1.5 + i * 0.52; r.t = 0; r.phase = 0;
+    }
+  }
+  function settle() {
+    result = reels.map(function (r) { return SPRITES[r.stop].name; });
+    obsCount++;
+    if (result[0] === result[1] && result[1] === result[2]) {
+      matchCount++;
+      setMessage("THREE ALIKE. DETERMINED. RECORD PRINTED.");
+      setState("STATE: DETERMINED", "NO MATTER PENDING");
+    } else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) {
+      setMessage("TWO ALIKE. PROVISIONAL. RECORD PRINTED.");
+      setState("STATE: PROVISIONAL", "NO MATTER PENDING");
+    } else {
+      setMessage("RECORD PRINTED. IT STAYS IN THE PRINTER UNTIL SOMEONE TAKES IT.");
+      setState("STATE: SUPERPOSED", "NO MATTER PENDING");
+    }
     hudLeft.textContent = idleHint();
-    hudRight.textContent = names.join(" / ");
-    window.QA77.result = names;
+    hudRight.textContent = result.join(" / ");
+    window.QA77.result = result;
   }
 
   /* click, but only if the pointer did not travel — otherwise every orbit drag
-     that happens to end on the lever would also fire it */
+     that happens to end on a key would also press it */
   var ray = new T.Raycaster(), ndc = new T.Vector2();
-  function hitsLever(e) {
+  var hitTargets = [observeKey, burstKey, resetKey, fileKey];
+  function pick(e) {
     var r = canvas.getBoundingClientRect();
     ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
     ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
     ray.setFromCamera(ndc, camera);
-    return ray.intersectObjects(leverTargets, false).length > 0;
+    var hits = ray.intersectObjects(hitTargets, false);
+    return hits.length ? hits[0].object : null;
+  }
+  function press(obj) {
+    if (obj === observeKey) return observe();
+    pressed = obj; pressT = 1;
+    if (obj === burstKey) setMessage("BURST IS DISABLED WHILE THE APPARATUS IS UNATTENDED.");
+    if (obj === resetKey) {
+      obsCount = 0; matchCount = 0;
+      setMessage("REGISTER CLEARED. THE SESSION CLOCK IS NOT CLEARED.");
+    }
+    if (obj === fileKey) setMessage("NO MATTER IS PENDING. NOTHING TO FILE.");
   }
 
   /* ------------------------------------------------------------- camera --- */
   /* An orbit controller written out rather than imported: it is forty lines,
      and the examples bundle is another download this page cannot make. */
-  var orbit = { yaw: -0.30, pitch: 0.16, dist: 3.35, target: new T.Vector3(0, H * 0.46, 0) };
+  var orbit = { yaw: -0.34, pitch: 0.14, dist: 3.2, target: new T.Vector3(0, H * 0.5, 0) };
   var vYaw = 0, vPitch = 0, dragging = false, lastX = 0, lastY = 0, travel = 0;
 
-  /* Frame the machine rather than sit at a fixed distance. A hard-coded 3.35
-     happens to fit a square window and crops the top and bottom off everything
-     else — a phone in portrait most of all, where the horizontal field is a
-     third of the vertical one. This projects the eight corners of the actual
-     bounding box and takes the distance at which the last of them fits. */
+  /* Frame the machine rather than sit at a fixed distance. A hard-coded number
+     happens to fit a square window and crops everything else — a phone in
+     portrait most of all, where the horizontal field is a third of the vertical
+     one. This projects the eight corners of the bounding box and takes the
+     distance at which the last of them fits. */
   var fitBox = new T.Box3().setFromObject(machine);
   orbit.target.set(0, (fitBox.min.y + fitBox.max.y) / 2, 0);
   var fitCorners = [];
@@ -5068,7 +5109,7 @@ void main() {
   var _r = new T.Vector3(), _u = new T.Vector3(), _f = new T.Vector3();
   function fitDistance() {
     var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
-    _f.set(cp * Math.sin(orbit.yaw), sp, cp * Math.cos(orbit.yaw));   /* toward the camera */
+    _f.set(cp * Math.sin(orbit.yaw), sp, cp * Math.cos(orbit.yaw));
     _r.set(Math.cos(orbit.yaw), 0, -Math.sin(orbit.yaw));
     _u.crossVectors(_f, _r).normalize();
     var tv = Math.tan(camera.fov * Math.PI / 360);
@@ -5079,9 +5120,8 @@ void main() {
       var z = p.dot(_f);
       need = Math.max(need, z + Math.abs(p.dot(_r)) / th, z + Math.abs(p.dot(_u)) / tv);
     }
-    return need * 1.06;                       /* a little air around the silhouette */
+    return need * 1.06;
   }
-
   function applyCamera() {
     var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
     camera.position.set(
@@ -5091,10 +5131,9 @@ void main() {
     );
     camera.lookAt(orbit.target);
   }
-
   function dolly(scale) {
     var f = fitDistance();
-    orbit.dist = Math.max(f * 0.32, Math.min(f * 2.2, orbit.dist * scale));
+    orbit.dist = Math.max(f * 0.30, Math.min(f * 2.2, orbit.dist * scale));
   }
 
   /* Pointers are tracked by id rather than with a single dragging flag, because
@@ -5134,8 +5173,11 @@ void main() {
   function endDrag(e) {
     if (e) pointers.delete(e.pointerId);
     if (pointers.size < 2) pinchWas = 0;
-    if (pointers.size > 0) return;                /* a finger is still down */
-    if (dragging && travel < 6 && e && hitsLever(e)) spin();
+    if (pointers.size > 0) return;
+    if (dragging && travel < 6 && e) {
+      var hit = pick(e);
+      if (hit) press(hit);
+    }
     dragging = false; canvas.classList.remove("dragging");
   }
   canvas.addEventListener("pointerup", endDrag);
@@ -5145,13 +5187,10 @@ void main() {
     dolly(1 + e.deltaY * 0.0011);
   }, { passive: false });
   window.addEventListener("keydown", function (e) {
-    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); spin(); }
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); observe(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
-  /* Keep the viewer's own zoom relative to the fit, so widening the window
-     reframes the machine instead of leaving it stranded at whatever absolute
-     distance happened to be right for the last one. */
   var framed = false;
   function resize() {
     var w = window.innerWidth, h = window.innerHeight;
@@ -5172,66 +5211,75 @@ void main() {
   function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-  function stepDrums(dt) {
-    var busy = false;
+  function stepReels(dt) {
+    var busy = false, moved = false;
     for (var i = 0; i < 3; i++) {
-      var dr = drums[i];
-      if (dr.phase === 2) continue;
-      busy = true;
-      dr.t += dt / dr.dur;
-      if (dr.phase === 0) {
-        /* the run-up and slow-down, over-travelling by a fraction of a stop */
-        var over = TAU / STOPS * 0.14;
-        if (dr.t >= 1) {
-          dr.angle = dr.to + over;
-          dr.phase = 1; dr.t = 0; dr.dur = 0.34;
-        } else {
-          dr.angle = dr.from + (dr.to + over - dr.from) * easeOutQuart(dr.t);
-        }
+      var r = reels[i];
+      if (r.phase === 2) continue;
+      busy = true; moved = true;
+      r.t += dt / r.dur;
+      if (r.phase === 0) {
+        /* the run-down, over-travelling by a fraction of a symbol */
+        if (r.t >= 1) { r.pos = r.to + 0.16; r.phase = 1; r.t = 0; r.dur = 0.30; }
+        else r.pos = r.from + (r.to + 0.16 - r.from) * easeOutQuart(r.t);
       } else {
-        /* and the snap back onto the stop, which is the sound you can hear */
-        var o = TAU / STOPS * 0.14;
-        if (dr.t >= 1) { dr.angle = dr.to; dr.phase = 2; }
-        else dr.angle = dr.to + o * (1 - easeOutCubic(dr.t));
+        /* and the snap back onto it, which is the click you can hear */
+        if (r.t >= 1) { r.pos = r.to; r.phase = 2; }
+        else r.pos = r.to + 0.16 * (1 - easeOutCubic(r.t));
       }
-      dr.mesh.rotation.x = dr.angle;
     }
-    if (spinning && !busy) { spinning = false; leverTarget = 0; settleReport(); }
+    if (moved) lcd.refresh();
+    if (spinning && !busy) { spinning = false; settle(); }
+    return busy;
   }
 
+  var instrAcc = 0;
   function frame() {
     var dt = Math.min(0.05, clock.getDelta());
+    t0 += dt * 1000;
 
     orbit.yaw += vYaw; orbit.pitch += vPitch;
     vYaw *= 0.90; vPitch *= 0.90;
-    orbit.pitch = Math.max(-0.16, Math.min(0.92, orbit.pitch));
+    orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
     applyCamera();
 
-    stepDrums(dt);
+    stepReels(dt);
 
-    /* the lever falls fast under the hand and returns slowly on its spring */
-    var rate = leverTarget > leverPull ? 9.0 : 2.4;
-    leverPull += (leverTarget - leverPull) * Math.min(1, rate * dt);
-    lever.rotation.x = leverPull * 0.95;
+    /* coherence rebuilds after an observation and never quite reaches one */
+    if (!spinning && coherence < 0.97) coherence = Math.min(0.97, coherence + dt * 0.115);
 
-    /* the marquee tube is old and never quite settles */
-    marquee.material.emissiveIntensity =
-      1.35 + Math.sin(clock.elapsedTime * 17.3) * 0.02 + Math.sin(clock.elapsedTime * 3.1) * 0.03;
+    /* the instrument strip is a canvas: redraw it a few times a second, not
+       sixty, because the clock only shows tenths anyway */
+    instrAcc += dt;
+    if (instrAcc > 0.1) { instrAcc = 0; instr.redraw(); }
+
+    /* a pressed key travels a couple of millimetres and comes back */
+    if (pressed) {
+      pressT = Math.max(0, pressT - dt * 3.4);
+      pressed.position.z = FZ + 0.012 - pressT * 0.005;
+      if (pressT === 0) pressed = null;
+    }
+
+    /* the panel is old and its backlight never quite settles */
+    lcd.material.emissiveIntensity = 0.42
+      + Math.sin(clock.elapsedTime * 13.7) * 0.012
+      + Math.sin(clock.elapsedTime * 2.3) * 0.018;
 
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
 
-  /* park the drums on a stop rather than mid-symbol at load */
-  drums.forEach(function (dr, i) {
-    dr.stop = [3, 7, 1][i];
-    dr.angle = landingAngle(dr.stop);
-    dr.mesh.rotation.x = dr.angle;
-  });
+  /* park the reels on a symbol rather than mid-scroll at load */
+  reels.forEach(function (r, i) { r.stop = [0, 3, 5][i]; r.pos = r.stop; });
+  lcd.refresh();
+  result = reels.map(function (r) { return SPRITES[r.stop].name; });
 
   applyCamera();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
+
+  hudLeft.textContent = idleHint();
+  hudRight.textContent = result.join(" / ");
 
   var load = document.getElementById("loading");
   load.classList.add("gone");
@@ -5239,10 +5287,11 @@ void main() {
 
   window.QA77 = {
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
-    drums: drums, symbols: SYMBOLS, orders: ORDERS, stops: STOPS,
-    spin: spin, landingAngle: landingAngle, fit: fitDistance,
-    spinning: function () { return spinning; }
+    reels: reels, sprites: SPRITES, symbols: NSYM,
+    observe: observe, fit: fitDistance, result: result,
+    spinning: function () { return spinning; },
+    register: function () { return { obs: obsCount, match: matchCount,
+                                     coherence: coherence, seconds: t0 / 1000 }; }
   };
-  settleReport();
 })();
 </script>

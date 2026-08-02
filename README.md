@@ -3,16 +3,23 @@ An evidence-led interactive 3-D atlas tracing the scientific identity, origins, 
 
 ## QA-77 — The Quantum Fruit Machine (`index.html`)
 
-A standing slot machine rendered as an actual WebGL scene: real geometry, physical
-materials, lights that cast shadows, and a camera you orbit. **Drag to orbit, scroll
-to dolly, click the lever (or press space) to observe.**
+Atlas Electronics' Quantum Determination Apparatus, rendered as an actual WebGL
+scene: real geometry, physical materials, lights that cast shadows, and a camera
+you orbit. **Drag to orbit, scroll or pinch to dolly, press OBSERVE (or the space
+bar) to put matter to the apparatus.**
+
+The design is the original one and not a reinterpretation of it — monochrome
+throughout, an LCD display with 16 × 16 pixel sprites, the instrument strip under
+it, the OBSERVE bar, and the Public Luck Authority service panel across the belly.
+An intermediate rebuild drifted into navy, brass and printed paper reel strips and
+mechanical drums. That machine is gone.
 
 > **Where the rebuild stands.** Everything below the line marked *Carried over from
 > the CSS build* describes behaviour that is **not currently in the page**. The
-> earlier version faked three dimensions with CSS transforms and painted shading; it
-> is preserved at commit `7af387e` and its specification is kept here because that
-> substance is being reconnected to the new scene, not discarded. What the page does
-> today is the cabinet, the reels and the spin — described immediately below.
+> earlier version faked three dimensions with CSS transforms and painted shading;
+> it is preserved at commit `7af387e` and its specification is kept here because
+> that substance is being reconnected to the new scene, not discarded. What the
+> page does today is described immediately below.
 
 ### The scene
 
@@ -22,84 +29,79 @@ self-contained file with no network calls of any kind.
 Physical materials are mostly reflection, and with nothing to reflect they render as
 flat lambert no matter how many lights you add — which is precisely what the CSS
 version could never fix. So the scene carries a procedural environment: a painted
-equirectangular canvas (cool sky, a warm softbox high on the left, a second cooler
-source behind the right, a floor bounce) run through `PMREMGenerator` so the
-roughness terms are correct. Tone mapping is ACES filmic; shadows are PCF soft from a
-2048² directional key, with a cool rim from behind right and a weak frontal fill.
+equirectangular canvas run through `PMREMGenerator` so the roughness terms are
+correct. It is neutral grey, because nothing on this machine is allowed to be a
+colour. Tone mapping is ACES filmic; shadows are PCF soft from a 2048² directional
+key, with a rim from behind right, a back fill from behind left and two side
+kickers — an object you turn all the way round has to be lit all the way round.
 
-Point lights inside the cabinet are set in the hundredths. That is not a mistake:
-illuminance falls off with the square of distance, and a lamp four centimetres behind
-a reel strip at intensity 0.30 delivers roughly thirty times the key's illuminance,
-which clipped the entire window to a featureless white slab.
+### The display
 
-### The reels
+An LCD, as it always was: a flat panel of pixels behind glass. Seven food-plant
+sprites — cherry, grape, lemon, melon, plum, pear, fig — each a 16 × 16 bitmap,
+each lit pixel drawn as its own small square with a gap around it, which is the
+whole reason a segment display looks like one. Unlit pixels are drawn too, at
+thirteen percent, because a real panel shows them faintly; at thirty percent the
+whole field read as a pale square sitting behind every symbol.
 
-Three cylinders on a shared horizontal axis, seen through a hole. The curvature is
-the point — symbols compress toward the top and bottom of the window and only the
-middle row is square-on — and it is the one thing a scrolling list of tiles can never
-produce, which is what every previous attempt was.
+Cell metrics come from the panel and not the other way round: the row height falls
+out of the canvas size, the sprite is 88% of the row, and the pixel pitch follows.
+Fixed at a guessed 176 px the sprites sat at two thirds of their cell with a margin
+all round. Each sprite is pre-rendered to its own canvas and blitted, rather than
+redrawing 256 rectangles per symbol per column per frame while three reels run.
 
-Each drum carries an eleven-stop strip drawn to canvas: seven glyphs in a different
-order per drum, aged paper, hairlines between stops, and the stop number printed
-small at the edge as on a real strip. The strip is drawn sideways, because a
-cylinder's texture *u* runs around the circumference and its *v* runs along the axis
-— so on the front face canvas +x reads as up the screen and canvas +y reads as across
-to the right, and every glyph is laid down through a quarter turn.
-
-Where a stop lands is derived rather than tuned. Three's cylinder puts texture
-coordinate *u* = 0 at +Z, and after the quarter turn that lays the axis along X,
-spinning by `rotation.x = a` carries the point at *u* to the front when `a = 2πu`.
-Stop *i* is centred at *u* = (i + ½)/11, so its landing angle is exactly
-`2π(i + ½)/11` plus any number of whole turns. Each drum runs up, eases out,
-over-travels by a seventh of a stop and snaps back — the settle you can hear on a
-real machine — over a duration staggered so they stop left to right.
+Each column scrolls on a continuous position over the seven symbols, runs down,
+over-travels by a sixth of a symbol and snaps back, staggered so they stop left to
+right. A reel's resting position is congruent to its stop modulo seven by
+construction.
 
 ### The cabinet
 
-74 × 30 × 26 inches, modelled to scale in metres. No edge anywhere is sharp: every
-part is an extruded rounded rectangle with a bevel, and that radius catching the
-light is most of what says *made object*. The bevel is compensated for, because
-`bevelSize` grows the profile *outward*: feed `ExtrudeGeometry` the finished size
-and every part comes out 2 × bevel too big. That put the body's flank at 0.393 m
-instead of 0.381, and every fitting placed against it — louvres, seams, the lifting
-handle — ended up buried inside the panel it was supposed to sit on.
+One upright box, 26 × 67 × 24 inches, not a body with a head balanced on it. The
+original is a single slab whose whole front is a stack of plates, and the seam
+where a separate head would meet it is the first thing that would give it away.
+Polished corner posts down the front edges, a vent grille across the top.
 
-The head is one continuous fascia with a genuine rectangular hole extruded into it,
-not four panels arranged around a gap. Built the second way — which is how it was
-built first — the seams land on the face of the machine and the head reads as a stack
-of trays. The carcass behind it (crown, shelf, two posts, back wall) can then be
-plain boxes, because no joint in it is ever visible.
+Down the front: the ATLAS·ELECTRONICS header plate, two state windows, the display
+in its well, the instrument strip, the message line, the OBSERVE bar with BURST /
+RESET / FILE beside it, the notice rail, the determination-record and claim mouths,
+and the Public Luck Authority service panel with its pressed seal. It is finished
+all the way round — a hinged service door with a latch, an extract grille, a supply
+inlet and a data plate on the back; louvres, a seam and a recessed carry bracket on
+each flank.
 
-Both lit panels are dark ground with pale lettering rather than the reverse: a
-backlit sign that is mostly light surface has no headroom before it clips, and the
-first marquee came out as a blank white rectangle for exactly that reason. The
-marquee carries the bureau's name; the belly glass carries its seal and the schedule
-of dispositions. Round them out: a chromed bezel and a thin pane over the drums, a
-printed payline at the middle row, a notice rail, coin and claim mouths, a coin tray
-you can see into, panel reveals and a keyed service lock, side louvres, and a
-four-key control deck with legends under a brass observe bar.
+Two extrusion traps, both of which cost a rebuild before they were understood.
+`bevelSize` grows a profile *outward*, so feeding `ExtrudeGeometry` the finished
+size makes every part 2 × bevel too big and everything mounted against it ends up
+buried inside. And a frame whose border is thinner than 2 × bevel inverts — the
+hole comes out larger than the outline, the shape triangulates into a filled slab,
+and it renders as a black rectangle over whatever it was framing. That is exactly
+what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
+border so it cannot happen again.
 
-It is an object you can turn all the way round, so it is finished all the way
-round: a hinged service door with a latch, an extract grille, a supply inlet, a fuse
-carrier and a data plate on the back; louvres, a waist seam, a door edge and a
-lifting handle on each flank. The light rig follows from that — a warm key from the
-front left, a cool rim from behind right, a back fill from behind left and two side
-kickers — because with a front key alone the other three quarters render as
-silhouette with no surface in them.
+### The instruments read something
+
+The coherence bar collapses to nothing when you observe and creeps back over about
+eight seconds. OBS and MATCH count. LUCK stays `- - -` until twelve observations
+and then reports the departure of the match count from what the apparatus expected,
+in standard deviations: each reel is uniform over seven symbols, so three alike is
+1/49 per observation, and the figure is (matched − np) / √(np(1−p)). The session
+clock is the page's only honest score.
+
+### Verification
+
+`window.QA77` exposes the scene, camera, orbit state, reels, sprites and register.
+The spin is checked headlessly against it: over six consecutive observations every
+reel's resting position was congruent to its stop modulo seven, the symbol reported
+to the read-out matched the sprite the stop names, and the register's observation
+count tracked. Zero failures, no console errors. Framing is checked the same way —
+at 390 × 800 all eight bounding-box corners project inside the frame — and so is
+touch: a pinch dollies, a drag orbits without pressing a key.
 
 The camera frames the machine rather than sitting at a fixed distance. It projects
 the eight corners of the bounding box and takes the distance at which the last of
 them fits, so a phone in portrait — where the horizontal field is a third of the
 vertical one — gets a dolly back instead of a crop.
-
-### Verification
-
-`window.QA77` exposes the scene, camera, orbit state, drums, strip orders and the
-landing-angle function. The spin is checked headlessly against it: over six
-consecutive spins every drum's resting angle matched `landingAngle(stop)` to within
-1e-9 modulo a whole turn, and the symbol reported to the read-out matched the one the
-strip order puts on the payline. Zero failures, no console errors. Framing is checked
-the same way: at 390 × 800 all eight bounding-box corners project inside the frame.
 
 ---
 
