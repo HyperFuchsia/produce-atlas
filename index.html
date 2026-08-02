@@ -963,31 +963,34 @@ h1{
   33%     { transform:translateY(-5px)  rotate(-1.1deg) }
   66%     { transform:translateY(3px)   rotate(.8deg) }
 }
-/* Inflated vinyl. Not one stroke anywhere: an outline is what makes a glove
-   read as a drawing, and the whole point is that this one does not. */
+/* Inflated vinyl, no outlines: every form is a radial ramp, a soft specular
+   that follows it, and the dark of the valley between it and its neighbour. */
 .gv-skin{fill:url(#gvSkin)}
 .gv-skin.b{fill:url(#gvSkinB)}
 .gv-palm{fill:url(#gvSkin)}
 .gv-spec{fill:url(#gvSpecG)}
-.gv-spec.big{opacity:.72}
-.gv-core{fill:rgba(84,76,58,.42)}          /* the shadow that turns a shape into a form */
-.gv-occ ellipse{fill:rgba(74,66,50,.44)}
-.gv-occ.deep{fill:rgba(58,51,38,.5)}
-.gv-rim path,.gv-rim ellipse{fill:rgba(228,234,226,.20)}
-.gv-dart path{fill:none;stroke:rgba(126,116,92,.42);stroke-width:4;stroke-linecap:round;
-  filter:url(#gvB3)}
-.gv-rollback{fill:#9E9376}
-.gv-rollfront{fill:url(#gvRoll)}
-.gv-rollhole{fill:#6E6552;opacity:.62}
-.gv-rollspec{fill:rgba(255,255,255,.6)}
-.gv-rollcore{fill:rgba(84,76,58,.52)}
+.gv-spec.big{opacity:.66}
+.gv-core{fill:rgba(88,79,60,.40)}
+.gv-web{fill:rgba(74,66,50,.34)}
+.gv-rim path{fill:rgba(224,232,226,.42)}
+.gv-rim path.stroke{fill:none;stroke:rgba(224,232,226,.42);stroke-width:54;stroke-linecap:round}
+.gv-web.deep{fill:rgba(52,46,34,.46)}
+/* an incised groove is a dark cut with a lit lip just below it */
+.gv-dart path{fill:none;stroke-linecap:round}
+.gv-dart .cut{stroke:rgba(112,101,78,.5);stroke-width:6;filter:url(#gvB4)}
+.gv-dart .lip{stroke:rgba(255,252,240,.4);stroke-width:4;filter:url(#gvB4)}
+/* the cuff is a loose ring: the back of it is stroked behind the hand, the
+   front comes round on top and ends in a rounded cap */
+.gv-ringback{fill:none;stroke:url(#gvRingB);stroke-width:46}
+.gv-ringfront{fill:none;stroke:url(#gvRing);stroke-width:48;stroke-linecap:round}
+.gv-ringspec{fill:rgba(255,255,255,.5)}
 /* the digits are hinged at their own knuckles: one folding toward the viewer
    foreshortens, it does not swing */
 .gv-f{transform-box:fill-box;transform-origin:50% 100%;
   transition:transform .34s cubic-bezier(.3,.1,.2,1)}
-.collector.grip .f1{transform:rotate(-4deg) scaleY(.44)}
-.collector.grip .f2{transform:rotate(0deg)  scaleY(.38)}
-.collector.grip .f3{transform:rotate(6deg)  scaleY(.34)}
+.collector.grip .f1{transform:rotate(-3deg) scaleY(.46)}
+.collector.grip .f2{transform:rotate(2deg)  scaleY(.40)}
+.collector.grip .f3{transform:rotate(7deg)  scaleY(.36)}
 
 /* the record in the glove */
 .held{
@@ -1013,23 +1016,6 @@ h1{
   content:"";position:absolute;left:0;right:0;bottom:-4px;height:5px;
   background:radial-gradient(circle at 4px 5px, transparent 0 3px, #0A0C0C 3.1px) 0 0/8px 5px repeat-x;
 }
-/* the thumb that comes round in front once the record is held up */
-.gv-thumbwrap{
-  position:absolute;left:var(--thX,52%);top:var(--thY,-8%);width:var(--thW,46%);
-  height:auto;opacity:1;transform-origin:74% 30%;
-  transform:rotate(var(--thR,26deg)) scale(.92);
-  transition:opacity .3s linear, transform .5s cubic-bezier(.22,.68,.24,1);
-  filter:drop-shadow(-5px -3px 12px rgba(0,0,0,.6));
-}
-.gv-thumb{fill:url(#gvThumbG)}
-.gv-thumbrim{fill:rgba(228,234,226,.22)}
-.gv-thumbspec{fill:url(#gvThumbSpec)}
-.gv-thumbcore{fill:rgba(84,76,58,.42)}
-.gv-thumbcast{fill:rgba(20,23,18,.46)}
-.collector .gv-thumbwrap{opacity:1}
-.collector.grip .gv-thumbwrap,
-.collector.take .gv-thumbwrap,
-.collector.present .gv-thumbwrap{transform:rotate(var(--thR2,2deg)) scale(1)}
 .collector.away{opacity:0;transition:transform .55s ease-in, opacity .55s linear}
 @media (prefers-reduced-motion: reduce){
   .glove{animation:none}
@@ -1240,179 +1226,179 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <!-- the collector: a floating glove, the record it takes, and the thumb
            that comes round in front of it when the record is held up -->
       <div class="collector" id="collector" hidden aria-hidden="true">
-        <svg class="glove" viewBox="0 0 380 480">
+        <svg class="glove" viewBox="0 0 620 640">
           <defs>
-            <!-- Inflated vinyl, lit from the upper left. No outlines anywhere:
-                 the form is carried entirely by the shading, which is the whole
-                 difference between a drawing of a glove and a rendering of one. -->
-            <radialGradient id="gvSkin" cx=".34" cy=".22" r=".92">
-              <stop offset="0"   stop-color="#FBF6E7"/>
-              <stop offset=".30" stop-color="#F2EBD8"/>
-              <stop offset=".58" stop-color="#E2D9C1"/>
-              <stop offset=".80" stop-color="#C6BB9F"/>
+            <!-- Inflated vinyl. No outlines anywhere; every form is carried by
+                 a broad radial ramp, a soft specular that follows it, and the
+                 occlusion in the valleys between it and its neighbours. -->
+            <radialGradient id="gvSkin" cx=".33" cy=".20" r=".95">
+              <stop offset="0"   stop-color="#FDF9EC"/>
+              <stop offset=".26" stop-color="#F6F0DE"/>
+              <stop offset=".54" stop-color="#E7DFC8"/>
+              <stop offset=".78" stop-color="#CBC0A4"/>
               <stop offset="1"   stop-color="#A0957B"/>
             </radialGradient>
-            <radialGradient id="gvSkinB" cx=".38" cy=".26" r=".95">
-              <stop offset="0"   stop-color="#F7F1E1"/>
-              <stop offset=".34" stop-color="#EBE3CE"/>
-              <stop offset=".64" stop-color="#D5CBB0"/>
-              <stop offset=".86" stop-color="#B2A78B"/>
-              <stop offset="1"   stop-color="#8E846C"/>
+            <radialGradient id="gvSkinB" cx=".36" cy=".24" r=".98">
+              <stop offset="0"   stop-color="#F9F4E4"/>
+              <stop offset=".30" stop-color="#F0E9D6"/>
+              <stop offset=".60" stop-color="#DCD3B9"/>
+              <stop offset=".84" stop-color="#B9AE92"/>
+              <stop offset="1"   stop-color="#918770"/>
             </radialGradient>
-            <radialGradient id="gvRoll" cx=".40" cy=".18" r=".9">
-              <stop offset="0"   stop-color="#FAF5E6"/>
-              <stop offset=".36" stop-color="#EDE5D0"/>
-              <stop offset=".70" stop-color="#CDC2A6"/>
-              <stop offset="1"   stop-color="#948A72"/>
-            </radialGradient>
+            <linearGradient id="gvRing" x1=".1" y1="0" x2=".9" y2="1">
+              <stop offset="0"   stop-color="#FBF6E7"/>
+              <stop offset=".34" stop-color="#EFE8D4"/>
+              <stop offset=".72" stop-color="#CCC1A5"/>
+              <stop offset="1"   stop-color="#8F8569"/>
+            </linearGradient>
+            <linearGradient id="gvRingB" x1=".1" y1="0" x2=".9" y2="1">
+              <stop offset="0"   stop-color="#B3A98C"/>
+              <stop offset="1"   stop-color="#7E7560"/>
+            </linearGradient>
             <radialGradient id="gvSpecG" cx=".5" cy=".5" r=".5">
-              <stop offset="0"   stop-color="#FFFFFF" stop-opacity=".85"/>
-              <stop offset=".55" stop-color="#FFFFFF" stop-opacity=".30"/>
+              <stop offset="0"   stop-color="#FFFFFF" stop-opacity=".9"/>
+              <stop offset=".5"  stop-color="#FFFFFF" stop-opacity=".34"/>
               <stop offset="1"   stop-color="#FFFFFF" stop-opacity="0"/>
             </radialGradient>
-            <filter id="gvB6"  x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="6"/></filter>
-            <filter id="gvB12" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="12"/></filter>
-            <filter id="gvB20" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="20"/></filter>
-            <filter id="gvB3"  x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="3"/></filter>
+            <filter id="gvB4"  x="-90%" y="-90%" width="280%" height="280%">
+              <feGaussianBlur stdDeviation="4"/></filter>
+            <filter id="gvB10" x="-90%" y="-90%" width="280%" height="280%">
+              <feGaussianBlur stdDeviation="10"/></filter>
+            <filter id="gvB18" x="-90%" y="-90%" width="280%" height="280%">
+              <feGaussianBlur stdDeviation="18"/></filter>
+            <filter id="gvB28" x="-90%" y="-90%" width="280%" height="280%">
+              <feGaussianBlur stdDeviation="28"/></filter>
           </defs>
 
-          <!-- rim light: the same forms, blurred and pale, sitting behind the
-               fills so a cool edge shows all round the silhouette -->
-          <g class="gv-rim" filter="url(#gvB3)">
-            <path d="M 96 214 C 92 168 96 120 104 94 C 112 58 168 54 178 90
-                     C 184 114 178 166 174 214 Z"/>
-            <path d="M 180 206 C 176 164 178 122 186 100 C 194 66 250 62 258 98
-                     C 264 122 258 166 254 206 Z"/>
-            <path d="M 258 222 C 254 190 260 160 272 146 C 288 124 336 134 336 168
-                     C 336 194 322 218 314 232 Z"/>
-            <path d="M 98 258 C 92 212 108 188 144 184 C 190 178 240 178 278 184
-                     C 312 189 322 212 316 258 C 322 300 314 332 300 356
-                     C 284 382 236 394 194 394 C 160 394 122 386 104 370
-                     C 74 362 52 334 58 302 C 64 274 84 266 98 272 Z"/>
-            <ellipse cx="196" cy="408" rx="116" ry="40"/>
-          </g>
+          <!-- the whole hand is tipped, the way the reference is -->
+          <g transform="rotate(-9 310 400)">
 
-          <!-- the roll of the cuff, back half -->
-          <ellipse class="gv-rollback" cx="196" cy="402" rx="114" ry="38"/>
-
-          <!-- ---- digits: three, the way a glove like this always has ---- -->
-          <g class="gv-fingers">
-            <g class="gv-f f1">
-              <path class="gv-skin" d="M 96 236 C 92 168 96 120 104 94
-                       C 112 58 168 54 178 90 C 184 114 178 166 174 236 Z"/>
-              <ellipse class="gv-spec" cx="126" cy="108" rx="20" ry="34"
-                       transform="rotate(-9 126 108)" filter="url(#gvB6)"/>
-              <path class="gv-core" d="M 168 96 C 176 132 174 180 172 234
-                       L 150 234 C 154 180 156 132 152 98 Z" filter="url(#gvB12)"/>
+            <!-- rim: the same silhouettes, blurred and pale, sitting behind
+                 the fills so a cool edge runs the whole outline against the dark -->
+            <g class="gv-rim" filter="url(#gvB4)">
+              <path d="M 266 404 C 254 320 258 208 272 152 C 282 110 302 88 326 88
+                       C 352 88 370 112 376 154 C 388 212 382 322 372 404 Z"/>
+              <path d="M 386 400 C 374 330 386 224 402 172 C 416 126 444 106 468 118
+                       C 494 130 502 168 494 214 C 482 288 456 356 446 404 Z"/>
+              <path d="M 466 448 C 458 396 476 336 506 302 C 534 270 578 274 592 306
+                       C 606 340 588 388 560 428 C 534 466 500 494 482 506 Z"/>
+              <path d="M 322 356 C 258 336 158 340 114 372 C 62 406 62 464 114 484
+                       C 168 504 258 486 316 460 C 356 442 380 420 392 396
+                       C 372 366 348 352 322 356 Z"/>
+              <path d="M 198 448 C 192 388 226 356 282 350 C 362 342 458 348 514 370
+                       C 570 392 594 430 588 480 C 582 532 546 570 484 580
+                       C 416 590 302 584 252 562 C 204 542 204 500 198 448 Z"/>
+              <path class="stroke" d="M 190 540 C 208 588 278 612 352 604
+                       C 410 598 454 576 468 550"/>
             </g>
-            <g class="gv-f f2">
-              <path class="gv-skin b" d="M 180 232 C 176 164 178 122 186 100
-                       C 194 66 250 62 258 98 C 264 122 258 166 254 232 Z"/>
-              <ellipse class="gv-spec" cx="209" cy="116" rx="19" ry="32"
-                       transform="rotate(-7 209 116)" filter="url(#gvB6)"/>
-              <path class="gv-core" d="M 248 104 C 256 140 254 184 252 230
-                       L 232 230 C 236 184 238 140 234 106 Z" filter="url(#gvB12)"/>
-            </g>
-            <g class="gv-f f3">
-              <path class="gv-skin b" d="M 258 244 C 254 190 260 160 272 146
-                       C 288 124 336 134 336 168 C 336 196 322 220 314 244 Z"/>
-              <ellipse class="gv-spec" cx="288" cy="164" rx="16" ry="26"
-                       transform="rotate(16 288 164)" filter="url(#gvB6)"/>
-              <path class="gv-core" d="M 330 152 C 336 178 328 208 316 240
-                       L 300 236 C 312 206 320 178 316 154 Z" filter="url(#gvB12)"/>
-            </g>
-          </g>
-          <!-- the shadow the digits drop onto the hand behind them -->
-          <g class="gv-occ" filter="url(#gvB12)">
-            <ellipse cx="136" cy="228" rx="42" ry="20"/>
-            <ellipse cx="218" cy="222" rx="42" ry="20"/>
-            <ellipse cx="292" cy="240" rx="34" ry="18"/>
-          </g>
 
-          <!-- ---- the hand ---- -->
-          <path class="gv-palm" d="M 98 258
-                   C 92 212 108 188 144 184 C 190 178 240 178 278 184
-                   C 312 189 322 212 316 258
-                   C 322 300 314 332 300 356
-                   C 284 382 236 394 194 394
-                   C 160 394 122 386 104 370
-                   C 74 362 52 334 58 302
-                   C 64 274 84 266 98 272 Z"/>
-          <!-- broad specular over the knuckle mass, and the core shadow -->
-          <ellipse class="gv-spec big" cx="148" cy="238" rx="58" ry="52"
-                   filter="url(#gvB20)"/>
-          <path class="gv-core" d="M 306 262 C 316 316 306 372 288 400
-                   C 272 424 232 432 196 430 L 196 400
-                   C 244 400 274 386 286 356 C 298 322 300 290 292 262 Z"
-                filter="url(#gvB20)"/>
-          <!-- the three darts a glove like this always has, cut into the palm -->
-          <g class="gv-dart">
-            <path d="M 196 232 C 214 258 236 274 268 282"/>
-            <path d="M 200 250 C 212 278 226 296 250 310"/>
-            <path d="M 192 244 C 182 274 178 306 180 334"/>
-          </g>
+            <!-- the cuff is a loose ring, and it passes behind the hand -->
+            <ellipse class="gv-ringback" cx="330" cy="536" rx="150" ry="48"
+                     transform="rotate(-13 330 536)"/>
 
-          <!-- the roll of the cuff, front half, and its opening -->
-          <path class="gv-rollfront" d="M 82 404
-                   C 82 380 132 362 196 362 C 260 362 310 380 310 404
-                   C 310 430 260 448 196 448 C 132 448 82 430 82 404 Z"/>
-          <ellipse class="gv-rollhole" cx="198" cy="402" rx="58" ry="16"/>
-          <ellipse class="gv-rollspec" cx="146" cy="384" rx="42" ry="12"
-                   transform="rotate(-8 146 384)" filter="url(#gvB6)"/>
-          <path class="gv-rollcore" d="M 250 372 C 290 381 310 391 310 404
-                   C 310 424 274 440 228 445 L 224 430
-                   C 266 425 292 416 292 404 C 292 393 272 384 246 378 Z"
-                filter="url(#gvB6)"/>
-          <!-- and the shadow the hand casts down into the roll -->
-          <ellipse class="gv-occ deep" cx="196" cy="380" rx="92" ry="18"
-                   filter="url(#gvB12)"/>
+            <!-- ---- digits: three, splayed, each leaning further out.
+                 They run well down under the hand, so what shows above it is
+                 the whole finger and the deep valley between one and the next. -->
+            <g class="gv-fingers">
+              <g class="gv-f f1">
+                <path class="gv-skin" d="M 266 404
+                         C 254 320 258 208 272 152
+                         C 282 110 302 88 326 88
+                         C 352 88 370 112 376 154
+                         C 388 212 382 322 372 404 Z"/>
+                <ellipse class="gv-spec" cx="300" cy="180" rx="27" ry="70"
+                         transform="rotate(-4 300 180)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 368 126 C 384 200 382 320 372 402
+                         L 340 402 C 350 320 354 200 346 130 Z" filter="url(#gvB18)"/>
+              </g>
+              <g class="gv-f f2">
+                <path class="gv-skin b" d="M 386 400
+                         C 374 330 386 224 402 172
+                         C 416 126 444 106 468 118
+                         C 494 130 502 168 494 214
+                         C 482 288 456 356 446 404 Z"/>
+                <ellipse class="gv-spec" cx="422" cy="200" rx="24" ry="62"
+                         transform="rotate(10 422 200)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 490 152 C 504 202 484 292 452 398
+                         L 424 394 C 456 292 476 208 468 158 Z" filter="url(#gvB18)"/>
+              </g>
+              <g class="gv-f f3">
+                <path class="gv-skin b" d="M 466 448
+                         C 458 396 476 336 506 302
+                         C 534 270 578 274 592 306
+                         C 606 340 588 388 560 428
+                         C 534 466 500 494 482 506 Z"/>
+                <ellipse class="gv-spec" cx="520" cy="326" rx="21" ry="50"
+                         transform="rotate(36 520 326)" filter="url(#gvB18)"/>
+                <path class="gv-core" d="M 588 326 C 596 372 566 424 524 470
+                         C 508 488 492 500 482 506 L 468 474
+                         C 494 452 536 408 558 366 C 572 340 576 326 574 316 Z"
+                      filter="url(#gvB18)"/>
+              </g>
+            </g>
+
+            <!-- ---- the thumb: a long tube off the left of the hand ---- -->
+            <g class="gv-thumbroot">
+              <path class="gv-skin" d="M 322 356
+                       C 258 336 158 340 114 372
+                       C 62 406 62 464 114 484
+                       C 168 504 258 486 316 460
+                       C 356 442 380 420 392 396
+                       C 372 366 348 352 322 356 Z"/>
+              <ellipse class="gv-spec" cx="168" cy="382" rx="62" ry="24"
+                       transform="rotate(-11 168 382)" filter="url(#gvB18)"/>
+              <path class="gv-core" d="M 122 468 C 180 496 258 478 306 444
+                       C 328 428 334 404 326 388 L 298 402
+                       C 302 420 288 436 256 452 C 212 472 158 480 124 470 Z"
+                    filter="url(#gvB18)"/>
+            </g>
+
+            <!-- ---- the hand ---- -->
+            <path class="gv-palm" d="M 198 448
+                     C 192 388 226 356 282 350
+                     C 362 342 458 348 514 370
+                     C 570 392 594 430 588 480
+                     C 582 532 546 570 484 580
+                     C 416 590 302 584 252 562
+                     C 204 542 204 500 198 448 Z"/>
+            <ellipse class="gv-spec big" cx="292" cy="418" rx="98" ry="70"
+                     transform="rotate(-14 292 418)" filter="url(#gvB28)"/>
+            <path class="gv-core" d="M 546 384 C 586 424 596 486 570 528
+                     C 544 570 470 590 398 588 L 396 552
+                     C 464 552 526 534 552 494 C 574 458 566 418 534 396 Z"
+                  filter="url(#gvB28)"/>
+
+            <!-- the shading where the digits go under the hand: a crescent
+                 hugging the top edge, not spots in the middle of the palm -->
+            <path class="gv-web" filter="url(#gvB18)" d="M 226 402
+                     C 236 362 274 348 320 346 C 388 340 466 348 520 372
+                     C 508 386 486 388 456 380 C 400 366 320 362 268 374
+                     C 244 380 232 390 226 402 Z"/>
+
+            <!-- the darts, incised: a dark groove with a lit lower lip -->
+            <g class="gv-dart">
+              <path class="cut" d="M 372 424 C 414 458 460 476 516 484"/>
+              <path class="lip" d="M 372 431 C 414 465 460 483 516 491"/>
+              <path class="cut" d="M 378 452 C 406 480 440 496 478 504"/>
+              <path class="lip" d="M 378 459 C 406 487 440 503 478 511"/>
+              <path class="cut" d="M 366 428 C 356 462 358 496 368 522"/>
+              <path class="lip" d="M 373 428 C 363 462 365 496 375 522"/>
+            </g>
+
+            <!-- the front of the ring, coming round in front of the hand and
+                 ending in a rounded cap the way a loose cuff does -->
+            <path class="gv-ringfront" d="M 190 540
+                     C 208 588 278 612 352 604 C 410 598 454 576 468 550"/>
+            <ellipse class="gv-ringspec" cx="264" cy="584" rx="62" ry="14"
+                     transform="rotate(9 264 584)" filter="url(#gvB10)"/>
+            <ellipse class="gv-web deep" cx="340" cy="536" rx="140" ry="24"
+                     transform="rotate(-13 340 536)" filter="url(#gvB18)"/>
+          </g>
         </svg>
 
         <!-- the record, held -->
         <div class="held" id="held"><pre id="heldText"></pre></div>
 
-        <!-- the thumb comes round in front of the record -->
-        <svg class="gv-thumbwrap" viewBox="0 0 230 280">
-          <defs>
-            <radialGradient id="gvThumbG" cx=".36" cy=".26" r=".92">
-              <stop offset="0"   stop-color="#FBF6E7"/>
-              <stop offset=".30" stop-color="#F1EAD7"/>
-              <stop offset=".60" stop-color="#DFD6BD"/>
-              <stop offset=".82" stop-color="#C0B59A"/>
-              <stop offset="1"   stop-color="#9A9076"/>
-            </radialGradient>
-            <radialGradient id="gvThumbSpec" cx=".5" cy=".5" r=".5">
-              <stop offset="0"   stop-color="#FFFFFF" stop-opacity=".85"/>
-              <stop offset=".55" stop-color="#FFFFFF" stop-opacity=".28"/>
-              <stop offset="1"   stop-color="#FFFFFF" stop-opacity="0"/>
-            </radialGradient>
-            <filter id="gvTB" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="7"/></filter>
-            <filter id="gvTB3" x="-80%" y="-80%" width="260%" height="260%">
-              <feGaussianBlur stdDeviation="3"/></filter>
-          </defs>
-          <!-- the shadow it lays on the record it is holding down -->
-          <path class="gv-thumbcast" d="M 176 258 C 128 250 74 214 50 166
-                   C 26 118 66 62 122 68 C 170 73 194 122 204 174
-                   C 212 216 210 250 176 258 Z" filter="url(#gvTB)"/>
-          <!-- a rim, then the form -->
-          <path class="gv-thumbrim" d="M 166 250 C 118 242 64 206 40 158
-                   C 16 110 56 54 112 60 C 160 65 184 114 194 166
-                   C 202 208 200 242 166 250 Z" filter="url(#gvTB3)"/>
-          <path class="gv-thumb" d="M 166 250 C 118 242 64 206 40 158
-                   C 16 110 56 54 112 60 C 160 65 184 114 194 166
-                   C 202 208 200 242 166 250 Z"/>
-          <ellipse class="gv-thumbspec" cx="92" cy="112" rx="34" ry="26"
-                   transform="rotate(-24 92 112)" filter="url(#gvTB)"/>
-          <path class="gv-thumbcore" d="M 172 116 C 196 152 204 204 190 236
-                   C 180 254 160 256 146 250 L 152 226
-                   C 172 226 182 208 178 178 C 175 154 168 134 158 120 Z"
-                filter="url(#gvTB)"/>
-        </svg>
       </div>
       <div class="rig" id="rig">
         <div class="box" id="box">
@@ -2834,13 +2820,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       c.style.setProperty("--heldX", Math.round(W*0.055) + "px");
       c.style.setProperty("--heldY", -Math.round(t.height*0.86) + "px");
       c.style.setProperty("--heldF", "2.5px");
-      /* the thumb rides on the hand's thenar lobe until the record is held up */
-      var gH = W*480/380, thW0 = Math.round(W*0.56), thH0 = thW0*280/230;
-      c.style.setProperty("--thW", thW0 + "px");
-      c.style.setProperty("--thX", Math.round(W*(110/380) - thW0*0.74) + "px");
-      c.style.setProperty("--thY", Math.round(gH*(322/480) - thH0*0.30) + "px");
-      c.style.setProperty("--thR", "-14deg");
-      c.style.setProperty("--thR2", "-14deg");
       c.style.setProperty("--colT", ".78s");
       /* start below the machine, off to the side, out of the light */
       var restX = Math.round(t.left - st.left - W*0.06);
@@ -2882,11 +2861,11 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         var paperH = lines*fontPx*1.62 + 8;
         var paperW = Math.round(46*fontPx*0.60 + 12);  /* 44 monospace columns */
         /* Where the curled fingertips actually are: the glove art is 300x430
-           with the tips at y=58 and the knuckles at y=232, and a curled digit
+           with the tips at y=88 and the knuckles at y=404, and a curled digit
            keeps 40% of its length. The record has to come down past that point
            or the glove is holding nothing. */
-        var gloveH = W*480/380;
-        var tipY = (232 - (232 - 58)*0.40)/480 * gloveH;
+        var gloveH = W*640/620;
+        var tipY = (404 - (404 - 88)*0.40)/640 * gloveH;
         var overlap = Math.round(tipY + gloveH*0.10);
         c.classList.add("present");
         c.style.setProperty("--colS", "1");
@@ -2900,15 +2879,6 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
         c.style.setProperty("--heldX", offX + "px");
         c.style.setProperty("--heldY", -Math.round(paperH - overlap) + "px");
         /* the thumb comes round onto the face of the record, low and to the left */
-        /* the thumb stays on its own thenar lobe — it only laps forward onto
-           the corner of the record, so it never floats free of the hand */
-        var thW = Math.round(W*0.56), thH = thW*280/230;
-        c.style.setProperty("--thW", thW + "px");
-        c.style.setProperty("--thX",
-          Math.round(W*(110/380) - thW*0.74 + W*0.20) + "px");
-        c.style.setProperty("--thY",
-          Math.round(gloveH*(322/480) - thH*0.30 - gloveH*0.12) + "px");
-        c.style.setProperty("--thR2", "-26deg");
         /* stand it where the whole record clears the top of the stage */
         c.style.setProperty("--colX",
           Math.round((st.width - (offX + paperW))/2) + "px");

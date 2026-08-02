@@ -124,20 +124,26 @@ face you and holds it up long enough to read every line before letting you have 
 
 It is not your hand either; on the machine's own account it is the second one, the one
 the attendance plate keeps reporting: *two hands detected, one is not accounted for.*
-It is a cartoon glove of the inflated-vinyl kind — three fingers, a thumb, a rolled
-cuff — and it is rendered rather than drawn. **There is not one stroke anywhere in it:**
-an outline is what makes a glove read as a drawing, and the whole form is carried by
-shading instead. Every part sits on its own radial ramp lit from the upper left, from
-near-white through cream to a warm shadow; each digit gets a soft blurred specular and
-a blurred core shadow down its shaded side; the hand carries a broad knuckle specular,
-its own core shadow turning the mass, and three soft darts cut into the palm. The
-digits are drawn *behind* the hand so they emerge from under it, and the hand has a
-thenar lobe for the thumb to grow out of. The cuff is a torus in two halves, back and
-front, with the hand overlapping between them, a shaded opening and the shadow the
-hand throws down into the roll. Every form is doubled by a blurred pale copy behind
-it, so a cool rim runs the whole silhouette against the dark. The glove has a permanent
-slow float, and the three fingers are hinged at their own knuckles and foreshorten
-rather than swing as they curl. The choreography runs as five stepped
+It is a cartoon glove of the inflated-vinyl kind — an open palm, three splayed
+fingers with bulbous tips, one long tube of a thumb off the left of the hand, and a
+loose ring of a cuff — drawn from a reference and rendered rather than illustrated.
+**There is not one stroke anywhere in it:** an outline is what makes a glove read as a
+drawing, so the whole form is carried by shading instead.
+
+Every part sits on its own radial ramp lit from the upper left, near-white through
+cream into a warm shadow, with a soft blurred specular that follows the form and a
+blurred core shadow turning its shaded side. The three fingers lean progressively
+further out and run well down under the hand, so what shows above it is the whole
+finger and the deep valley between one and the next; a crescent of shade hugs the
+hand's top edge where they disappear under it. The thumb sweeps into the palm rather
+than ending in a silhouette of its own. The palm creases are incised — a dark groove
+with a lit lower lip just beneath it — rather than drawn on. The cuff is a real loose
+ring: a thick stroked ellipse behind the hand and an arc with rounded caps coming
+round in front of it. Every form is doubled by a blurred pale copy behind it, so the
+cool rim of the room runs the whole silhouette against the dark.
+
+The glove has a permanent slow float, and the three fingers are hinged at their own
+knuckles and foreshorten rather than swing as they curl. The choreography runs as five stepped
 beats — approach, grip, take, present, release — each timed on its own and composed
 from custom properties so no two beats fight over the same transform. In the present
 beat the record is re-set at a larger type size rather than scaled up, computed from
