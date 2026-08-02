@@ -110,6 +110,35 @@ function that decides what it means. The space bar works whichever control is ne
 — nine presses from a cold start, because step two is three separate toggles —
 which is the only mercy in the arrangement.
 
+### The coin dispenser
+
+The apparatus dispenses one token per observation. It dispenses it whatever the
+reels did, because a payout that depended on the result would be a payout, and it
+says so out loud: *"ONE (1) TOKEN DISPENSED. THE OUTCOME DID NOT AFFECT THIS."*
+Three alike gets you the same token as three of nothing.
+
+The token is a minted disc — 29 mm, milled edge, PUBLIC LUCK AUTHORITY struck round
+the rim and NO VALUE across both faces. Both faces, because a cylinder's bottom cap
+carries its top cap's UVs seen from the other side, so a single texture on both
+came out mirrored and every coin that landed tails-up read ETULAV ON.
+
+It falls: out of the chute, tumbling, bouncing off the tray floor at a third of its
+speed, rattling off the lip and the cheeks if it arrives too fast, and lying flat
+where it stops. Not a physics engine — a coin, a floor and three walls — but it
+lands somewhere different every time. A bounce that keeps a third of its speed
+converges, but nothing in the arithmetic promises it converges *soon*, and on a
+coarse frame step a coin can skitter indefinitely; anything still in the air after
+a second and a half is put down.
+
+The tray holds eighteen. Past that: *"PERIODIC AUDIT. ONE (1) TOKEN RECLAIMED."* —
+the only mechanism in the apparatus that removes anything. Click the tray and you
+surrender the lot, and the issue record is unchanged, because giving them back does
+not undo having been given them. The counter on the lip only goes up.
+
+There is no hood over the cup. The first one was 57 mm deep, and from any angle a
+person would actually stand at, its shadow covered the whole floor and every coin
+in it. A real coin tray is an open cup for the same reason.
+
 ### The instruments read something
 
 The coherence bar collapses to nothing when you observe and creeps back over about
@@ -132,7 +161,10 @@ touch: a pinch dollies, a drag orbits without pressing a key. The interlock is
 checked end to end — the stamp refused before the key is turned, OBSERVE refused
 mid-form, all eight transitions landing on the right step, the reset firing after
 the observation, and the space bar walking a cold machine to the spin in exactly
-nine presses.
+nine presses. The dispenser too: six tokens all reaching rest inside the tray,
+the cap holding at eighteen while the issue record keeps counting, surrender
+emptying the tray without touching the record, and one full observation yielding
+exactly one token.
 
 The camera frames the machine rather than sitting at a fixed distance. It projects
 the eight corners of the bounding box and takes the distance at which the last of

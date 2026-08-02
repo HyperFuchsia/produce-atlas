@@ -960,7 +960,10 @@
   var trayFloor = box(trayW, 0.008, trayD, paintDark);
   trayFloor.position.set(0, trayFloorY - 0.004, trayZ);
   machine.add(trayFloor);
-  var trayLiner = new T.Mesh(new T.PlaneGeometry(trayW, trayD), cavity);
+  var trayLinerMat = new T.MeshStandardMaterial({
+    color: 0x212427, roughness: 0.82, metalness: 0.0
+  });
+  var trayLiner = new T.Mesh(new T.PlaneGeometry(trayW, trayD), trayLinerMat);
   trayLiner.rotation.x = -Math.PI / 2;
   trayLiner.position.set(0, trayFloorY + 0.0005, trayZ);
   machine.add(trayLiner);
@@ -972,12 +975,24 @@
     cheek.position.set(s2 * (trayW / 2 + 0.005), trayFloorY + 0.015, trayZ);
     machine.add(cheek);
   });
-  var trayHood = slab(trayW + 0.022, 0.014, trayD * 0.62, 0.006, 0.003, paintDark);
-  trayHood.position.set(0, trayHoodY, FZ + 0.026);
-  machine.add(trayHood);
-  var chute = box(trayW * 0.34, 0.016, 0.014, cavity);
-  chute.position.set(0, trayHoodY - 0.014, FZ + 0.010);
+  /* No hood over the tray. The first version had one 57 mm deep, and from any
+     angle you would actually stand at — around nineteen degrees above a cup
+     eighty-eight millimetres below it — its shadow covered the whole floor and
+     every coin in it. A coin tray is an open cup for the same reason. What is
+     left is the chute itself and a shallow lintel over it. */
+  var chute = box(trayW * 0.34, 0.017, 0.012, cavity);
+  chute.position.set(0, trayHoodY - 0.012, FZ + 0.007);
   machine.add(chute);
+  var chuteLintel = slab(trayW * 0.40, 0.010, 0.016, 0.004, 0.003, paintDark);
+  chuteLintel.position.set(0, trayHoodY, FZ + 0.008);
+  machine.add(chuteLintel);
+
+  /* A little light in the cup. Tiny, because it sits ten centimetres from what
+     it lights and illuminance goes as the inverse square — the same arithmetic
+     that once clipped the whole reel window to white. */
+  var trayLight = new T.PointLight(0xE8ECF0, 0.016, 0.34, 2);
+  trayLight.position.set(0, trayFloorY + 0.075, trayZ + 0.020);
+  machine.add(trayLight);
 
   var tokensIssued = 0;
   var trayPlate = livePanel(trayW * 0.86, 0.020, 900, 60, function (x, w, h) {
@@ -1029,6 +1044,19 @@
   var tokenFace = new T.MeshPhysicalMaterial({
     map: tokenTex, color: 0xFFFFFF, roughness: 0.34, metalness: 0.85
   });
+  /* A cylinder's bottom cap carries the same UVs as its top but is seen from
+     the other side, so the same texture on both comes out mirrored on the
+     reverse — every coin that landed tails-up read ETULAV ON. Both faces of a
+     real coin are struck the right way round, so the reverse gets a flipped
+     copy of the texture rather than the same one. */
+  var tokenTexRev = tokenTex.clone();
+  tokenTexRev.needsUpdate = true;
+  tokenTexRev.wrapS = T.RepeatWrapping;
+  tokenTexRev.repeat.x = -1;
+  tokenTexRev.offset.x = 1;
+  var tokenFaceRev = new T.MeshPhysicalMaterial({
+    map: tokenTexRev, color: 0xFFFFFF, roughness: 0.34, metalness: 0.85
+  });
   var tokenEdge = new T.MeshPhysicalMaterial({
     color: 0x93989D, roughness: 0.46, metalness: 0.9, flatShading: true
   });
@@ -1042,13 +1070,15 @@
   function dispenseToken() {
     tokensIssued++;
     trayPlate.redraw();
-    var m = new T.Mesh(tokenGeo, [tokenEdge, tokenFace, tokenFace]);
+    var m = new T.Mesh(tokenGeo, [tokenEdge, tokenFace, tokenFaceRev]);
     m.castShadow = true; m.receiveShadow = true;
-    m.position.set((Math.random() - 0.5) * trayW * 0.30, trayHoodY - 0.020, FZ + 0.020);
+    m.position.set((Math.random() - 0.5) * trayW * 0.30, trayHoodY - 0.022, FZ + 0.014);
     m.rotation.set(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU);
     m.userData.token = true;
-    m.userData.v = new T.Vector3((Math.random() - 0.5) * 0.10, -0.05,
-                                 0.30 + Math.random() * 0.10);
+    /* Gentle. At 0.35 m/s forward the coin crossed the whole tray during the
+       fall and every one of them ended up jammed against the front lip. */
+    m.userData.v = new T.Vector3((Math.random() - 0.5) * 0.26, -0.04,
+                                 0.08 + Math.random() * 0.14);
     m.userData.spin = new T.Vector3((Math.random() - 0.5) * 22,
                                     (Math.random() - 0.5) * 14,
                                     (Math.random() - 0.5) * 22);
