@@ -34,6 +34,23 @@
     #hudLeft{flex:0 1 auto;min-width:0}
     .hud .keys{flex:0 0 auto;text-align:right}
   }
+  /* The person, as against the apparatus. Everything the machine says is
+     tracked-out upper case in the corners; this is sentence case, centred, and
+     in the middle of the frame — so you never have to be told which of the two
+     is talking. */
+  #say{
+    position:fixed;left:50%;bottom:56px;transform:translateX(-50%);
+    z-index:6;pointer-events:none;
+    width:min(34em,calc(100vw - 48px));text-align:center;
+    font-size:14px;line-height:1.55;letter-spacing:.01em;
+    color:rgba(232,236,240,.92);
+    text-shadow:0 1px 12px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.8);
+    opacity:0;transition:opacity .38s ease;
+  }
+  #say.on{opacity:1}
+  @media (max-width:560px){
+    #say{font-size:13px;bottom:64px;width:calc(100vw - 32px)}
+  }
   #loading{
     position:fixed;inset:0;z-index:9;display:grid;place-items:center;
     background:#07080B;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
@@ -44,6 +61,7 @@
 
 <canvas id="scene"></canvas>
 <div id="loading">Building the apparatus</div>
+<div id="say"></div>
 <div class="hud">
   <span id="hudLeft">Drag to orbit · scroll to dolly</span>
   <span class="keys"><b id="hudRight">QA-77</b></span>

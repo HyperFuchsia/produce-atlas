@@ -1587,6 +1587,13 @@
     hudLeft.textContent = idleHint();
     hudRight.textContent = result.join(" / ");
     window.QA77.result = result;
+    if (obsCount === 1) {
+      setTimeout(function () {
+        say(result[0] === result[1] && result[1] === result[2]
+          ? "...Oh."
+          : "It determines nothing about the operator. It says so on the front.", 4.4);
+      }, 1600);
+    }
     /* One token, every time, regardless. The apparatus is careful to say so:
        a payout that depended on the result would be a payout. */
     setTimeout(function () {
@@ -1700,7 +1707,7 @@
     }
     return need * 1.06;
   }
-  var shakeClock = 0;
+  var simT = 0;      /* clamped simulation time, the clock every cue runs on */
   function applyCamera() {
     var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
     camera.position.set(
@@ -1712,7 +1719,7 @@
     if (shake > 0.0002) {
       /* two frequencies rather than white noise: random per frame reads as a
          broken renderer, a beat reads as something hitting something */
-      var t = shakeClock;
+      var t = simT;
       camera.position.x += (Math.sin(t * 47.3) + Math.sin(t * 29.1) * 0.6) * shake;
       camera.position.y += (Math.sin(t * 53.7) + Math.sin(t * 37.9) * 0.6) * shake;
       camera.position.z += (Math.sin(t * 41.1) + Math.sin(t * 23.3) * 0.6) * shake;
@@ -1929,6 +1936,7 @@
       assemblyHud("SCHEDULE DISCHARGED. APPLYING SUPPLY.");
     } else {
       assemblyHud(p.seated);
+      if (PART_LINES[p.name]) say(PART_LINES[p.name], 4.0);
     }
   }
   function tryFitPart(p) {
@@ -1993,6 +2001,7 @@
       workLight.intensity = 0;
       autoFrame = true; retarget();
       setMessage("COMMISSIONED. FORM QA-77/A IS DISCHARGED. THE APPARATUS IS YOURS TO ATTEND.");
+      say("All right. Same room, same floor. Let's see what it says about me.", 5.0);
       hudLeft.textContent = idleHint();
       showStep();
     }
@@ -2017,6 +2026,57 @@
     for (var j = 0; j < schedule.length; j++) if (schedule[j].group === o) return schedule[j];
     return null;
   }
+
+  /* =============================== THE VOICE =============================== */
+  /* Someone talked the operator into this. The apparatus states, on its own
+     front, that it determines nothing about anybody — and that has never once
+     stopped anybody attending it. Everything here is the operator's, in
+     sentence case; everything the machine says is upper case in the corners. */
+  var sayEl = document.getElementById("say");
+  var sayUntil = 0, sayLast = "";
+  function say(text, hold) {
+    if (text === sayLast && sayUntil > 0) return;
+    sayLast = text;
+    sayEl.textContent = text;
+    sayEl.classList.add("on");
+    /* on the simulation clock, not the wall clock: they are the same thing on
+       a machine keeping up and badly out of step on one that is not, and a
+       subtitle that expires before its scene has played is worse than none */
+    sayUntil = simT + (hold || 3.4);
+  }
+  function hush() { sayEl.classList.remove("on"); sayUntil = 0; sayLast = ""; }
+  function stepVoice() {
+    if (sayUntil && simT > sayUntil) {
+      sayEl.classList.remove("on");
+      sayUntil = 0;
+    }
+  }
+
+  /* the fall, cued off the drop's own clock so it stays in step with the reels */
+  /* Short lines, because there are only seven seconds of falling and a line
+     you cannot finish reading before the next one lands is not a line. The
+     long ones go after the crash, where there is time. */
+  var FALL_LINES = [
+    [0.30, "Forty years in the same room, he said.", 2.0],
+    [2.45, "Never once wrong about anybody.", 1.7],
+    [4.25, "Two alike. Two.", 1.4],
+    [5.75, "Come on. Come on —", 1.7]
+  ];
+  var fallCue = 0;
+
+  /* and afterwards, when there is nothing to do but read */
+  var AFTER = [
+    ["One stop short.", 2.4, 1100],
+    ["Why did I let him talk me into pulling that lever.", 3.6, 4000],
+    ["It isn't permitted to be right about anybody. It says so on the front.", 4.2, 8200]
+  ];
+  var PART_LINES = {
+    DISPLAY:    "It was showing something when it hit. I keep thinking about that.",
+    CARCASS:    "The one before me got three alike. He never said what happened to them.",
+    INTERLOCK:  "Seven steps to start it. He did all seven, every time, and told me it mattered.",
+    LEVER:      "There it is. The lever. Not connected to anything.",
+    TRAY:       "It only ever pays in tokens. That part he did tell me."
+  };
 
   /* --------------------------------------------------- the fall effects --- */
   /* A camera that tracks a falling object perfectly shows no fall at all: the
@@ -2098,8 +2158,8 @@
   /* Thirty metres, not seven. Under the old profile the cabinet arrived at
      about two metres a second, which is a heavy object being lowered rather
      than one that is falling. */
-  var FALL_H = 30.0, MATCH = 3;                  /* MELON, three alike */
-  var T_STOP = [1.95, 3.15], T_CRAWL = 3.70, T_IMPACT = 6.20;
+  var FALL_H = 34.0, MATCH = 3;                  /* MELON, three alike */
+  var T_STOP = [2.40, 4.00], T_CRAWL = 4.60, T_IMPACT = 7.60;
   var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0;
 
   function nextMatchAt(x) {
@@ -2109,6 +2169,7 @@
   function startIntro() {
     planScatter();
     phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
+    fallCue = 0; hush();
     FALLFX.visible = true;
     seedStreaks(FALL_H);
     SPILL.forEach(function (m) { m.userData.off.y = (Math.random() - 0.5) * 2.4; });
@@ -2166,6 +2227,10 @@
     shake = 0.16; flash = 1;                 /* the hit */
     camera.fov = 40; camera.updateProjectionMatrix();
     hudRight.textContent = "ONE STOP SHORT";
+    hush();
+    AFTER.forEach(function (L) {
+      setTimeout(function () { if (phase !== "OPERATION") say(L[0], L[1]); }, L[2]);
+    });
     var landed = 0;
     schedule.forEach(function (p, i) {
       moveTo(p, p.downPos, p.downQuat, 0.85 + (i % 4) * 0.09,
@@ -2216,6 +2281,10 @@
     stepStreaks(camY, fallSpeed);
     stepSpill(dt, machine.position.y);
 
+    while (fallCue < FALL_LINES.length && introT >= FALL_LINES[fallCue][0]) {
+      say(FALL_LINES[fallCue][1], FALL_LINES[fallCue][2]);
+      fallCue++;
+    }
     stepIntroReels(dt, introT);
     if (introT >= T_IMPACT && !broke) breakApart();
   }
@@ -2223,6 +2292,8 @@
   function skipIntro() {
     if (phase !== "INTRO" && phase !== "BREAK") return;
     FALLFX.visible = false;
+    hush();
+    setTimeout(function () { say(AFTER[1][0], AFTER[1][1]); }, 500);
     shake = 0; flash = 0;
     camera.fov = 32; camera.updateProjectionMatrix();
     machine.position.set(0, 0, 0); machine.rotation.set(0, 0, 0);
@@ -2274,7 +2345,8 @@
     orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
     applyCamera();
 
-    shakeClock += dt;
+    simT += dt;
+    stepVoice();
     if (phase === "INTRO") stepIntro(dt);
     else if (phase === "BREAK") {
       stepAssembly(dt);
@@ -2352,6 +2424,7 @@
     phase: function () { return phase; }, parts: PARTS, schedule: schedule,
     skipIntro: skipIntro, introTime: function () { return introT; },
     fallSpeed: function () { return fallSpeed; },
+    said: function () { return sayEl.classList.contains("on") ? sayEl.textContent : ""; },
     nextPart: function () { return nextPart; },
     fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },
     tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },

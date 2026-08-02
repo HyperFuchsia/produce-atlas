@@ -79,6 +79,35 @@ and it renders as a black rectangle over whatever it was framing. That is exactl
 what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
 border so it cannot happen again.
 
+### The operator
+
+There is a person in this. They are falling too, and they say so — sentence case,
+centred, in the middle of the frame, against a machine that only ever speaks in
+tracked-out upper case in the corners. You never have to be told which of the two
+is talking.
+
+What they say is the lore, and it is deliberately incomplete. Somebody talked them
+into attending this thing. He said it had been in the same room for forty years
+and had never once been wrong about anybody — which, as the operator works out on
+the way down, it is not permitted to be: the cabinet's own notice rail says it
+determines nothing about the operator, and that has never stopped anybody. The one
+before them got three alike. He never said what happened to them.
+
+Then it lands one stop short, and the operator asks the question the whole game is
+built on: *why did I let him talk me into pulling that lever* — a lever that, as a
+plate on the flank states, is not connected to anything.
+
+Lines are short during the fall, because there are seven seconds of it and a line
+you cannot finish before the next one lands is not a line; the long ones go after
+the crash, where there is time. They run on the simulation clock rather than the
+wall clock — the two are the same thing on a machine keeping up and badly out of
+step on one that is not, and a subtitle that expires before its scene has played
+is worse than no subtitle.
+
+More arrives as you rebuild: one line per part for four of the ten, and an answer
+to your first observation. Three alike gets *"...Oh."* Anything else gets the
+apparatus quoted back at itself.
+
 ### The fall
 
 The apparatus does not arrive new. It arrives mid-cycle, falling, having been in
