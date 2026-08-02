@@ -666,6 +666,45 @@ h1{
 .claimtray:hover .ct-label{color:#C6CCC9}
 .claimtray:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
 
+/* ---------- the paper coming out of the machine ----------
+   The tongue lives inside the cabinet's front face, so it feeds out of the
+   printer mouth, hangs down over the belly glass and turns with the machine. */
+.rc-tongue{
+  position:absolute;left:5%;right:5%;top:42px;z-index:8;
+  border:0;padding:3px 3px 0;margin:0;text-align:left;cursor:pointer;
+  /* paper hanging in the machine's own light: bright where it leaves the slot,
+     falling into the shadow of the belly as it hangs */
+  background:linear-gradient(180deg,#CFCDC2 0%,#C4C2B7 34%,#A9A79D 74%,#8E8C83 100%);
+  color:#2B2E28;transform-origin:50% 0;transform:rotate(0.5deg);
+  box-shadow:0 6px 14px -4px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.42);
+  max-height:242px;overflow:hidden;
+}
+.rc-tongue[hidden]{display:none}
+.rc-tongue pre{
+  margin:0;font-family:var(--mono);font-size:2.5px;line-height:1.55;letter-spacing:0;
+  white-space:pre;color:#43463F;
+}
+/* the curl, and the shadow it throws on the belly behind it */
+.rc-tongue::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:34px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.22) 66%,rgba(0,0,0,.42));
+}
+.rc-tongue:hover{box-shadow:0 6px 14px -4px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.75),
+  0 0 0 1px rgba(226,231,214,.35)}
+.rc-tongue:focus-visible{outline:2px solid var(--bright);outline-offset:2px}
+@keyframes feedpaper{
+  from{max-height:0;opacity:.4}
+  to{max-height:246px;opacity:1}
+}
+.rc-tongue.feeding{animation:feedpaper 1.5s cubic-bezier(.22,.7,.2,1) both}
+@keyframes tearpaper{
+  to{transform:rotate(3.4deg) translateY(38px);opacity:0}
+}
+.rc-tongue.torn{animation:tearpaper .42s cubic-bezier(.4,0,.75,.2) both}
+@media (prefers-reduced-motion: reduce){
+  .rc-tongue.feeding,.rc-tongue.torn{animation:none}
+}
+
 /* the dispensed slip */
 .slip{
   position:absolute;left:6px;top:24px;width:86%;z-index:6;
@@ -1241,6 +1280,8 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
               <div class="printer">
                 <span class="pr-label">Determination record</span>
                 <span class="pr-mouth"></span>
+                <button class="rc-tongue" id="rcTongue" hidden
+                        aria-label="Receipt in the printer — tear it off"><pre id="rcTongueText"></pre></button>
                 <div class="slip" id="slip" hidden>
                   <b>QA-77 determination slip</b>
                   <span id="slipCase">No matter pending</span>
@@ -1482,7 +1523,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       <div class="entry wide">
         <h3>The apparatus is not quite right · and that is deliberate</h3>
         <div class="cols">
-          <p><b>The receipt.</b> Every observation prints one, from a thermal head that is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records.</p>
+          <p><b>The receipt.</b> Every observation prints one, and it comes <b>out of the machine</b> — the paper feeds from the printer mouth, hangs down over the belly glass to the plinth, and turns with the cabinet when you orbit it. Click it to read it; click it again to tear it off. The head is not in good repair: the roll never feeds square, one band across the paper is faint where the platen ran cold, and a scattering of characters simply failed to fire. <b>The figures are all real</b> and all taken at the instant of observation — the payline, the exact probability of that configuration and of any match, the detection probability of all seven species with η already applied, coherence, entanglement, the interval since the last observation, the Leggett–Garg K, the running record with its expectation and its accumulated evidence, and the matter and its determination if one was filed. <b>Copy text</b> and <b>Save as .txt</b> give you the clean, complete text; what is on the paper is only what the head managed to lay down. The printer clock runs behind the apparatus clock, so about one receipt in four is stamped as having been printed before the observation it records. Every probability on it has been checked against the raw amplitudes by arithmetic that shares no code with the page: <b>luck is not a quantity and cannot be measured; every figure on the paper can be, and was.</b></p>
           <p><b>The attendance interlock.</b> The brass plate on the deck is the way in. <b>Press and hold it</b>: while it is held the apparatus reads you and reports what it read, and when you let go it observes. Let go before it has registered and the attendance is withdrawn and nothing happens. The readings are invented — it has no sensor, it is a button — and the plate has always recorded more hands than the machine has spins, because <b>every so often it registers a hand that is not there</b>, says so, and observes without you. The lever, the space bar, Enter on the plate and the docked control all still work and none of them make you wait; the interlock is the primary way in, never the only one.</p>
           <p><b>What else it does.</b> The cabinet holds a pose exactly, and then, every ten seconds or so, it is a fraction of a degree somewhere else. Its reflection is a beat behind it. The seal in the belly glass turns once every nine minutes. The rating plate and the flank plate change their serial numbers while they are turned away from you, and the service record on the back counts up whether or not you pull the lever — the apparatus was running before you opened this page and does not stop when you close it. Very occasionally a lamp lights for nothing, a second payline appears where there is only one, a character in the message line gives way, and a reel reports <b>state 8</b>, which is not in the basis. The register has always contained <b>QA-77/0000</b>, a matter you did not file, withheld, deferred, and not open to appeal.</p>
           <p><b>What it never touches.</b> Four things on this page are allowed to be true and none of the above goes near them: <b>the physics</b> — the state vector, the unitary, the Born rule and the collapse; <b>the probabilities</b> printed on every certificate, enumerated over all 343 configurations; <b>the register's arithmetic</b>, including the luck index and its variance; and <b>the session clock</b>, which is the one instrument here that has never lied to you and is not going to start. State 8 is a display artefact only: the outcome recorded, counted and certified is the one the Born rule actually produced. The serial numbers were never real, so nothing is lost when they change.</p>
@@ -2256,7 +2297,7 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
      in good repair. */
   var RECEIPT = (function(){
     var W = 44, sec = el("printout"), pre = el("rcText"), paper = el("rcPaper");
-    var last = null, collected = true, printed = 0, roll = 41.6;
+    var last = null, collected = true, printed = 0, roll = 41.6, shown = false;
 
     function rep(ch, n){ var s = ""; while(n-- > 0) s += ch; return s; }
     function rule(ch){ return rep(ch || "-", W); }
@@ -2348,6 +2389,10 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       L.push("FROM ANY FIGURE PRINTED ABOVE. IT IS A");
       L.push("RECORD THAT A THING WAS OBSERVED, AND");
       L.push("NOTHING WHATEVER ABOUT YOU.");
+      L.push("");
+      L.push("LUCK IS NOT A QUANTITY AND CANNOT BE");
+      L.push("MEASURED. EVERY FIGURE ABOVE CAN BE, AND");
+      L.push("WAS, AND SAYS NOTHING ABOUT YOURS.");
       L.push(rule());
       L.push(row("OPERATOR PRESENT", clock(Date.now() - started)));
       L.push(row("ROLL 0007", roll.toFixed(1) + " M REMAINING"));
@@ -2404,9 +2449,19 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       sec.hidden = false;
       paper.classList.remove("torn");
       el("rcNote").textContent = "Printed on the apparatus · receipt " + r.no;
+      /* and the paper itself, feeding out of the printer mouth on the cabinet
+         and hanging down over the belly glass */
+      var tongue = el("rcTongue");
+      el("rcTongueText").textContent = r.text;
+      tongue.hidden = false;
+      tongue.classList.remove("torn");
+      shown = false;
+      tongue.setAttribute("aria-label", "Receipt in the printer — click to read it");
       if(!reduced){
         paper.classList.remove("feeding"); void paper.offsetHeight;
         paper.classList.add("feeding");
+        tongue.classList.remove("feeding"); void tongue.offsetHeight;
+        tongue.classList.add("feeding");
       }
       collected = false;
     }
@@ -2434,16 +2489,30 @@ footer{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transfo
       setTimeout(function(){ document.body.classList.remove("print-receipt"); }, 400);
       collected = true;
     });
-    el("rcTear").addEventListener("click", function(){
+    function tear(){
       if(!last) return;
       collected = true;
-      paper.classList.add("torn");
+      var tongue = el("rcTongue");
+      paper.classList.add("torn"); tongue.classList.add("torn");
       var go = function(){
-        sec.hidden = true;
-        paper.classList.remove("torn");
+        sec.hidden = true; tongue.hidden = true;
+        paper.classList.remove("torn"); tongue.classList.remove("torn");
         el("msg").textContent = "RECEIPT COLLECTED. THE APPARATUS HAS NOT KEPT A COPY.";
       };
-      if(reduced) go(); else setTimeout(go, 480);
+      if(reduced) go(); else setTimeout(go, 460);
+    }
+    el("rcTear").addEventListener("click", tear);
+    /* Two steps, tracked explicitly rather than by geometry: clicking the paper
+       scrolls the readable copy into view, which scrolls the paper back out of
+       view, so a viewport test can never reach the second step. */
+    el("rcTongue").addEventListener("click", function(){
+      if(!shown){
+        shown = true;
+        this.setAttribute("aria-label", "Receipt in the printer — click again to tear it off");
+        sec.scrollIntoView({behavior: reduced ? "auto" : "smooth", block:"center"});
+        return;
+      }
+      tear();
     });
 
     return {print:print, text:function(){ return last; }};

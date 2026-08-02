@@ -112,8 +112,11 @@ footprint as it turns, `w·|cos yaw| + d·|sin yaw|`.
 ### The receipt
 
 The apparatus is glass, machined metal and a 49-dimensional state vector, and the one
-thing it hands you is 58 mm of thermal paper. Every observation prints one, from a
-head that is not in good repair: the roll never feeds square, one band across the
+thing it hands you is 58 mm of thermal paper. Every observation prints one, and it
+comes **out of the machine**: the paper feeds from the printer mouth in the cabinet's
+own front face, hangs down over the belly glass to the plinth, and turns with the
+cabinet when you orbit it. Click it once to be taken to the readable copy, again to
+tear it off. The head is not in good repair: the roll never feeds square, one band across the
 paper is faint where the platen ran cold, a scattering of characters simply failed to
 fire, and the printer clock runs behind the apparatus clock — so about one receipt in
 four is stamped as having been printed *before* the observation it records.
@@ -128,6 +131,16 @@ when there is too little evidence); and the matter, its determination, its exact
 probability and its file number when one was filed. Then the disclaimer, the session
 clock, the roll metreage, and a barcode of the receipt number that no reader on earth
 wants.
+
+**The arithmetic is checked, not asserted.** `math.js` recomputes every probability
+the receipt prints — p(any match), p(all three alike), p(this configuration) and all
+seven detection probabilities — straight from the raw complex amplitudes on
+`window.QA77`, using code that shares no line with the page's own, capturing the state
+and firing the observation in the same tick so the vectors cannot evolve between them.
+Across six observations that is 66 independent checks, and they agree to within
+6×10⁻⁵. The seven dispositions plus the no-determination case sum to 1.000000000000.
+The paper says why this matters: *luck is not a quantity and cannot be measured; every
+figure above can be, and was, and says nothing about yours.*
 
 **Copy text** and **Save as .txt** give the clean, complete text — what is on the
 paper is only what the head managed to lay down. **Print** reduces the page to the
