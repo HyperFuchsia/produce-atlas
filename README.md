@@ -79,6 +79,37 @@ and it renders as a black rectangle over whatever it was framing. That is exactl
 what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
 border so it cannot happen again.
 
+### The attendance interlock
+
+Starting the apparatus is not a button. It is a form, and the form is the point.
+Seven steps, each of them a real control on the cabinet, all of them in order:
+
+1. **The attendance key**, turned ninety degrees. *"ATTENDANCE RECORDED. YOU ARE
+   PRESENT AT T+12.4S."*
+2. **Three declaration toggles** — I ATTEND, UNPAID, AWARE. *"DECLARED: I AM AWARE
+   THAT NOTHING FOLLOWS FROM THIS."*
+3. **The stamp press**, a hinged arm swung down onto its pad.
+4. **The docket**, which extrudes from the record mouth carrying a serial number
+   and the stamp, and has to be taken. *"RETAIN IT. IT ENTITLES YOU TO NOTHING."*
+5. **The lever** — chrome, on the flank, where a fruit machine's lever belongs.
+   It is not connected to anything. There is a stamped plate beside it that says
+   so, and it is still step five of seven.
+6. **The cover**, a smoked flap hinged over the OBSERVE bar.
+7. **OBSERVE**, which is the part that works.
+
+Out of sequence is refused rather than ignored, and says so three different ways.
+The cover physically blocks OBSERVE, so that step refuses itself without any state
+to consult. BURST requires a second attendant, and there is one of you.
+
+The state window tracks STEP n OF 7. After every observation the key turns back,
+the toggles drop and the cover closes, and a beat later the message line says the
+interlock has reset. It always does.
+
+Every moving part runs on the same helper: a number easing from 0 to 1 and a
+function that decides what it means. The space bar works whichever control is next
+— nine presses from a cold start, because step two is three separate toggles —
+which is the only mercy in the arrangement.
+
 ### The instruments read something
 
 The coherence bar collapses to nothing when you observe and creeps back over about
@@ -90,13 +121,18 @@ clock is the page's only honest score.
 
 ### Verification
 
-`window.QA77` exposes the scene, camera, orbit state, reels, sprites and register.
+`window.QA77` exposes the scene, camera, orbit state, reels, sprites, register and
+interlock.
 The spin is checked headlessly against it: over six consecutive observations every
 reel's resting position was congruent to its stop modulo seven, the symbol reported
 to the read-out matched the sprite the stop names, and the register's observation
 count tracked. Zero failures, no console errors. Framing is checked the same way —
 at 390 × 800 all eight bounding-box corners project inside the frame — and so is
-touch: a pinch dollies, a drag orbits without pressing a key.
+touch: a pinch dollies, a drag orbits without pressing a key. The interlock is
+checked end to end — the stamp refused before the key is turned, OBSERVE refused
+mid-form, all eight transitions landing on the right step, the reset firing after
+the observation, and the space bar walking a cold machine to the spin in exactly
+nine presses.
 
 The camera frames the machine rather than sitting at a fixed distance. It projects
 the eight corners of the bounding box and takes the distance at which the last of

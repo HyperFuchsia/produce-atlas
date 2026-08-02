@@ -688,17 +688,19 @@
     g.addColorStop(0, "#33363A"); g.addColorStop(1, "#26292C");
     x.fillStyle = g; x.fillRect(0, 0, w, h);
     x.textBaseline = "middle";
-    x.fillStyle = "#8E949A"; x.font = "500 24px " + MONO;
-    tracked(x, "ATTENDANCE INTERLOCK", 24, 34, 3, "left");
-    x.fillStyle = "#5E646A"; x.font = "500 20px " + MONO;
-    tracked(x, "FORM QA-77/B · COMPLETE IN ORDER", 24, 66, 2, "left");
-    /* the label under each control, at the position the control stands at */
-    x.fillStyle = "#9AA0A6"; x.font = "500 20px " + MONO;
+    /* The top third of this plate is where the controls physically stand, so
+       nothing may be printed there — the first version put the title under the
+       key switch and the two overlapped. */
+    x.fillStyle = "#9AA0A6"; x.font = "500 21px " + MONO;
     var marks = [[0.10, "KEY"], [0.305, "I ATTEND"], [0.435, "UNPAID"],
                  [0.565, "AWARE"], [0.83, "STAMP"]];
-    marks.forEach(function (m) { tracked(x, m[1], w * m[0], h - 30, 2, "center"); });
+    marks.forEach(function (m) { tracked(x, m[1], w * m[0], h * 0.63, 2, "center"); });
     x.strokeStyle = "rgba(150,156,162,.22)"; x.lineWidth = 2;
-    x.beginPath(); x.moveTo(24, h - 56); x.lineTo(w - 24, h - 56); x.stroke();
+    x.beginPath(); x.moveTo(24, h * 0.775); x.lineTo(w - 24, h * 0.775); x.stroke();
+    x.fillStyle = "#6E747A"; x.font = "500 20px " + MONO;
+    tracked(x, "ATTENDANCE INTERLOCK · COMPLETE IN ORDER", 24, h * 0.90, 2, "left");
+    x.fillStyle = "#8E949A";
+    tracked(x, "FORM QA-77/B", w - 24, h * 0.90, 2, "right");
   }, 0.24, false);
   var ilkTop = ilkY + 0.014;
 
@@ -776,7 +778,7 @@
   /* It comes out of the record mouth, and it has to be taken. A machine that
      printed one and kept it would be a different kind of joke. */
   var docketNo = 0;
-  var docket = livePanel(0.096, 0.052, 640, 350, function (x, w, h) {
+  var docket = livePanel(0.140, 0.076, 640, 350, function (x, w, h) {
     x.fillStyle = "#DAD6C8"; x.fillRect(0, 0, w, h);
     x.fillStyle = "rgba(90,86,74,.18)"; x.fillRect(0, 0, w, 8);
     x.textBaseline = "middle"; x.fillStyle = "#23241F";
@@ -838,15 +840,15 @@
   var leverX = W / 2;
   var leverMount = slab(0.020, 0.110, 0.110, 0.014, 0.005, paintDark);
   leverMount.rotation.y = Math.PI / 2;
-  leverMount.position.set(leverX + 0.008, 0.830, D * 0.02);
+  leverMount.position.set(leverX + 0.008, 0.830, D * 0.28);
   machine.add(leverMount);
   var leverBoss = new T.Mesh(new T.CylinderGeometry(0.028, 0.032, 0.030, 22), steelDim);
   leverBoss.rotation.z = Math.PI / 2;
-  leverBoss.position.set(leverX + 0.028, 0.830, D * 0.02);
+  leverBoss.position.set(leverX + 0.028, 0.830, D * 0.28);
   leverBoss.castShadow = true;
   machine.add(leverBoss);
   var leverArm = new T.Group();
-  leverArm.position.set(leverX + 0.032, 0.830, D * 0.02);
+  leverArm.position.set(leverX + 0.032, 0.830, D * 0.28);
   var leverShaft = new T.Mesh(new T.CylinderGeometry(0.008, 0.010, 0.200, 16), steel);
   leverShaft.position.y = 0.100; leverShaft.castShadow = true;
   leverArm.add(leverShaft);
@@ -867,7 +869,7 @@
     tracked(x, "CONNECTED TO ANYTHING", w / 2, h * 0.68, 2, "center");
   }, 0.16);
   leverPlate.rotation.y = Math.PI / 2;
-  leverPlate.position.set(leverX + 0.0015, 0.690, D * 0.02);
+  leverPlate.position.set(leverX + 0.0015, 0.700, D * 0.28);
   machine.add(leverPlate);
 
   /* ---- the notice rail ---- */
@@ -960,20 +962,22 @@
        original that exists for a person rather than for the machine */
     var bracket = ring(0.070, 0.230, 0.040, 0.180, 0.012, 0.008, 0.030, 0.006, paintDark);
     bracket.rotation.y = s * Math.PI / 2;
-    bracket.position.set(s * (W / 2 + 0.011), 0.98, -D * 0.06);
+    bracket.position.set(s * (W / 2 + 0.011), 1.10, -D * 0.20);
     machine.add(bracket);
     var bar = new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.185, 14), steelDim);
-    bar.position.set(s * (W / 2 + 0.016), 0.98, -D * 0.06);
+    bar.position.set(s * (W / 2 + 0.016), 1.10, -D * 0.20);
     bar.castShadow = true;
     machine.add(bar);
 
-    for (var lv = 0; lv < 12; lv++) {
+    for (var lv = 0; lv < 9; lv++) {
       var lo = box(0.012, 0.010, D * 0.34, cavity);
       lo.position.set(fx, 0.42 + lv * 0.026, -D * 0.16);
       machine.add(lo);
     }
+    /* the door edge, kept forward of the lever plate: at 0.34 it ran straight
+       through the middle of it and broke the line of type */
     var vseam = box(0.010, H * 0.80, 0.005, paintDark);
-    vseam.position.set(fx, H * 0.47, D * 0.34);
+    vseam.position.set(fx, H * 0.47, D * 0.42);
     machine.add(vseam);
   });
 
