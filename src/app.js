@@ -1378,7 +1378,8 @@
     return t;
   })();
   var contact = new T.Mesh(new T.PlaneGeometry(W * 2.2, D * 2.3),
-    new T.MeshBasicMaterial({ map: contactTex, transparent: true, depthWrite: false }));
+    new T.MeshBasicMaterial({ map: contactTex, transparent: true,
+                             opacity: 0, depthWrite: false }));
   contact.rotation.x = -Math.PI / 2;
   contact.position.set(0, 0.003, 0);
   contact.renderOrder = -1;
@@ -1662,18 +1663,22 @@
      distance at which the last of them fits. */
   var fitBox = new T.Box3(), fitCorners = [];
   for (var ci = 0; ci < 8; ci++) fitCorners.push(new T.Vector3());
-  var wantDist = 0, wantTargetY = 0, autoFrame = true;
+  var wantDist = 0, wantTarget = new T.Vector3(), autoFrame = true;
   /* Recomputed when something moves rather than every frame: the floor starts
      covered in parts and empties as they go on, so the view that fits the work
      is a different view at every stage of it. */
   function retarget() {
     fitBox.setFromObject(machine);
-    wantTargetY = (fitBox.min.y + fitBox.max.y) / 2;
+    /* the middle of what is actually there, in all three axes. Pinned to
+       x = z = 0 it framed the spot the cabinet will eventually stand on, and
+       the parts — which are laid out in front of that spot — all ended up
+       bunched into one corner of the screen. */
+    fitBox.getCenter(wantTarget);
     for (var i = 0; i < 8; i++) {
       fitCorners[i].set(
-        i & 1 ? fitBox.max.x : fitBox.min.x,
-        (i & 2 ? fitBox.max.y : fitBox.min.y) - wantTargetY,
-        i & 4 ? fitBox.max.z : fitBox.min.z
+        (i & 1 ? fitBox.max.x : fitBox.min.x) - wantTarget.x,
+        (i & 2 ? fitBox.max.y : fitBox.min.y) - wantTarget.y,
+        (i & 4 ? fitBox.max.z : fitBox.min.z) - wantTarget.z
       );
     }
     wantDist = fitDistance();
@@ -1752,7 +1757,7 @@
     orbit.pitch = phase === "OPERATION" ? PITCH_RUN : PITCH_BUILD;
     autoFrame = true;
     retarget();
-    orbit.target.set(0, wantTargetY, 0);
+    orbit.target.copy(wantTarget);
     orbit.dist = wantDist;
     vYaw = vPitch = 0;
   }
@@ -1802,7 +1807,7 @@
     camera.updateProjectionMatrix();
     retarget();
     if (framed && !autoFrame) orbit.dist *= wantDist / (before || wantDist);
-    else if (!framed) { orbit.target.y = wantTargetY; orbit.dist = wantDist; }
+    else if (!framed) { orbit.target.copy(wantTarget); orbit.dist = wantDist; }
     framed = true;
     if (!spinning) hudLeft.textContent = idleHint();
   }
@@ -1912,7 +1917,10 @@
     for (var i = 0; i < schedule.length; i++) {
       var p = schedule[i];
       if (p.fitted || p.anim) continue;
-      p.group.position.y = p.restY + (i === nextPart ? 0.010 + Math.sin(t * 2.4) * 0.010 : 0);
+      /* clearly off the floor, not a few millimetres of wobble: at the distance
+         that fits ten parts in one frame a subtle cue is no cue at all */
+      p.group.position.y = p.restY
+        + (i === nextPart ? 0.055 + Math.sin(t * 2.6) * 0.022 : 0);
     }
   }
   function stepAssembly(dt) {
@@ -1940,6 +1948,9 @@
     for (var i = 0; i < LIT.length; i++) LIT[i].m.emissiveIntensity = LIT[i].base * power;
     lcd.material.color.setScalar(0.14 + power * 0.86);
     trayLight.intensity = 0.016 * power;
+    /* it is the cabinet's own occlusion, and until the cabinet is standing it
+       is a dark stain on an empty floor */
+    contact.material.opacity = power;
   }
   function stepCommission(dt) {
     commissionT += dt;
@@ -2020,7 +2031,7 @@
 
     if (autoFrame) {
       orbit.dist += (wantDist - orbit.dist) * Math.min(1, 1.9 * dt);
-      orbit.target.y += (wantTargetY - orbit.target.y) * Math.min(1, 1.9 * dt);
+      orbit.target.lerp(wantTarget, Math.min(1, 1.9 * dt));
     }
 
     stepReels(dt);
@@ -2070,7 +2081,7 @@
   applyPower();                 /* dead until commissioned */
   scatterParts();
   retarget();
-  orbit.target.y = wantTargetY; orbit.dist = wantDist;
+  orbit.target.copy(wantTarget); orbit.dist = wantDist;
   hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
   assemblyHud();
 

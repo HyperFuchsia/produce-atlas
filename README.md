@@ -79,6 +79,41 @@ and it renders as a black rectangle over whatever it was framing. That is exactl
 what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
 border so it cannot happen again.
 
+### The commissioning
+
+The apparatus does not arrive. It arrives in ten assemblies on the floor with a
+build schedule, and only once the schedule is discharged does anything on it have
+power.
+
+The cabinet is built as ten groups rather than one heap of meshes — plinth,
+carcass, display unit, header plate, instrument strip, control band, interlock
+band, lever, service panel, coin tray. Every mesh goes in through one funnel that
+routes it to whichever assembly is open, and an assembly is find-or-create because
+none of them is one contiguous run of code: the carcass picks up its flanks and its
+back several hundred lines after the front of it. Once everything is built, each
+group's origin moves to the middle of what it contains — until that happens the
+children carry absolute coordinates and the group's origin is the machine's, a
+metre away, so laying a part down would swing it round the cabinet rather than turn
+it over.
+
+Form QA-77/A runs in order. The part wanted next lifts clear of the floor and bobs,
+because a schedule you cannot read off the floor is a schedule you cannot follow;
+reaching for any other is refused three different ways. Each part reports as it
+seats — the carcass will not be moved again, the instrument strip has nothing to
+measure, the lever is not connected to anything.
+
+Nothing is lit until it is built: every emissive surface registers itself and runs
+at zero, so the plates read as printing on metal and the display is a dead panel
+with its symbols only ghosted in it. When the last part goes on, supply comes up
+over two seconds, the work light over the floor fades out, the camera tips up from
+looking down at a workshop to looking at a machine, and the interlock takes over.
+
+The camera frames whatever is still on the floor and tightens as the floor clears.
+It targets the middle of what is actually there in all three axes — pinned to the
+spot the cabinet will eventually occupy, it framed an empty patch of floor and
+pushed the parts, which are laid out in front of that spot, into one corner. A
+pinch or a scroll hands the viewer the wheel and it stops following.
+
 ### The attendance interlock
 
 Starting the apparatus is not a button. It is a form, and the form is the point.
