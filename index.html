@@ -5691,6 +5691,7 @@ void main() {
      the whole arrangement */
   function advance() {
     if (spinning) return;
+    if (phase === "INTRO" || phase === "BREAK") return skipIntro();
     if (phase === "ASSEMBLY") {           /* the space bar fits the next part */
       if (nextPart < schedule.length) tryFitPart(schedule[nextPart]);
       return;
@@ -5927,6 +5928,10 @@ void main() {
     if (pointers.size < 2) pinchWas = 0;
     if (pointers.size > 0) return;
     if (dragging && travel < 6 && e) {
+      if (phase === "INTRO" || phase === "BREAK") {
+        skipIntro(); lastTap = 0; dragging = false;
+        canvas.classList.remove("dragging"); return;
+      }
       if (phase === "ASSEMBLY") {
         var part = pickPart(e);
         if (part) { tryFitPart(part); lastTap = 0; dragging = false;
@@ -5966,11 +5971,11 @@ void main() {
     var before = framed ? fitDistance() : 0;
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    retarget();
+    if (phase !== "INTRO" && phase !== "BREAK") retarget();
     if (framed && !autoFrame) orbit.dist *= wantDist / (before || wantDist);
     else if (!framed) { orbit.target.copy(wantTarget); orbit.dist = wantDist; }
     framed = true;
-    if (!spinning) hudLeft.textContent = idleHint();
+    if (!spinning && phase === "OPERATION") hudLeft.textContent = idleHint();
   }
   window.addEventListener("resize", resize);
   window.addEventListener("orientationchange", function () { setTimeout(resize, 120); });
@@ -6039,19 +6044,31 @@ void main() {
                  k & 4 ? lo.max.z : lo.min.z).applyQuaternion(q);
       minY = Math.min(minY, _c8[k].y);
     }
-    p.group.quaternion.copy(q);
-    p.group.position.set(Math.sin(a) * rad, 0.008 - minY, Math.cos(a) * rad);
-    p.restY = p.group.position.y;
-    p.fitted = false;
-    p.anim = null;
+    p.downQuat = q;
+    p.downPos = new T.Vector3(Math.sin(a) * rad, 0.008 - minY, Math.cos(a) * rad);
+    p.restY = p.downPos.y;
   }
-  function scatterParts() {
+  function planScatter() {
     schedule.forEach(function (p, i) { layDown(p, i, schedule.length); });
   }
+  function scatterNow() {
+    schedule.forEach(function (p) {
+      p.group.position.copy(p.downPos);
+      p.group.quaternion.copy(p.downQuat);
+      p.fitted = false; p.anim = null;
+    });
+  }
 
+  /* One animator for both directions: parts fly up onto the machine during
+     assembly and off it when the machine lands, and the only difference is
+     which pose is the destination and how high the arc is. */
+  function moveTo(p, pos, quat, dur, arc, delay, onEnd) {
+    p.anim = { t: -(delay || 0) / dur, dur: dur, arc: arc, onEnd: onEnd,
+               p0: p.group.position.clone(), q0: p.group.quaternion.clone(),
+               p1: pos, q1: quat };
+  }
   function fitPart(p) {
-    p.anim = { t: 0, dur: 1.0,
-               p0: p.group.position.clone(), q0: p.group.quaternion.clone() };
+    moveTo(p, p.fitPos, p.fitQuat, 1.0, 0.26, 0, onSeated);
   }
   function onSeated(p) {
     p.fitted = true;
@@ -6086,19 +6103,20 @@ void main() {
   }
   function stepAssembly(dt) {
     for (var i = 0; i < schedule.length; i++) {
-      var p = schedule[i];
-      if (!p.anim) continue;
-      p.anim.t += dt / p.anim.dur;
-      var e = Math.min(1, p.anim.t);
+      var p = schedule[i], a = p.anim;
+      if (!a) continue;
+      a.t += dt / a.dur;
+      if (a.t < 0) continue;                     /* still waiting its turn */
+      var e = Math.min(1, a.t);
       var k = e < 0.5 ? 4 * e * e * e : 1 - Math.pow(-2 * e + 2, 3) / 2;
-      p.group.position.lerpVectors(p.anim.p0, p.fitPos, k);
-      p.group.position.y += Math.sin(Math.PI * k) * 0.26;
-      p.group.quaternion.slerpQuaternions(p.anim.q0, p.fitQuat, k);
+      p.group.position.lerpVectors(a.p0, a.p1, k);
+      p.group.position.y += Math.sin(Math.PI * k) * a.arc;
+      p.group.quaternion.slerpQuaternions(a.q0, a.q1, k);
       if (e >= 1) {
-        p.group.position.copy(p.fitPos);
-        p.group.quaternion.copy(p.fitQuat);
+        p.group.position.copy(a.p1);
+        p.group.quaternion.copy(a.q1);
         p.anim = null;
-        onSeated(p);
+        if (a.onEnd) a.onEnd(p);
       }
     }
   }
@@ -6150,6 +6168,126 @@ void main() {
     return null;
   }
 
+  /* ============================== THE FALL ================================= */
+  /* The apparatus has been in service somewhere else. It arrives mid-cycle,
+     falling, with two reels already down on the same symbol and the third
+     crawling toward it the way a reel does when the machine wants you to
+     watch. It lands one stop short of the only result that would have meant
+     anything, and it comes apart. That is where the parts on the floor come
+     from, and it is the whole reason there is a schedule to follow. */
+  var FALL_H = 7.4, MATCH = 3;                   /* MELON, three alike */
+  var T_STOP = [2.30, 3.55], T_CRAWL = 4.05, T_IMPACT = 6.90;
+  var introT = 0, broke = false;
+
+  function nextMatchAt(x) {
+    var k = Math.ceil((x - MATCH) / NSYM);
+    return MATCH + k * NSYM;
+  }
+  function startIntro() {
+    planScatter();
+    phase = "INTRO"; introT = 0; broke = false;
+    power = 1; applyPower();
+    contact.material.opacity = 0;
+    workLight.intensity = 0;
+    autoFrame = false;
+    reels.forEach(function (r, i) {
+      r.pos = i * 2.7; r.introTarget = null; r.introDone = false; r.crawl = null;
+    });
+    machine.position.set(0, FALL_H, 0);
+    hudLeft.textContent = "Tap to skip";
+    hudRight.textContent = "· · ·";
+  }
+
+  function stepIntroReels(dt, t) {
+    for (var i = 0; i < 3; i++) {
+      var r = reels[i];
+      if (r.introDone) continue;
+      if (i < 2) {
+        if (t < T_STOP[i]) { r.pos += 11.5 * dt; continue; }
+        if (!r.introTarget) {
+          r.introTarget = nextMatchAt(r.pos + 1.2);
+          r.introFrom = r.pos; r.introT = 0;
+        }
+        r.introT += dt / 0.55;
+        var e = Math.min(1, r.introT);
+        r.pos = r.introFrom + (r.introTarget - r.introFrom) * (1 - Math.pow(1 - e, 3));
+        if (e >= 1) { r.pos = r.introTarget; r.introDone = true; }
+      } else {
+        if (t < T_CRAWL) { r.pos += 11.5 * dt; continue; }
+        if (!r.crawl) {
+          /* it will arrive a third of a symbol short of the match, which is
+             near enough to see the melon entering the window and not near
+             enough to count */
+          r.crawl = { from: r.pos, to: nextMatchAt(r.pos + 2.1) - 0.34, t: 0 };
+        }
+        r.crawl.t += dt / (T_IMPACT - T_CRAWL);
+        var k = Math.min(1, r.crawl.t);
+        r.pos = r.crawl.from + (r.crawl.to - r.crawl.from) * (1 - Math.pow(1 - k, 2.8));
+      }
+    }
+    lcd.refresh();
+  }
+
+  function breakApart() {
+    broke = true;
+    phase = "BREAK";
+    machine.position.set(0, 0, 0);
+    machine.rotation.set(0, 0, 0);
+    power = 0; applyPower();
+    workLight.intensity = 1.5;
+    hudRight.textContent = "ONE STOP SHORT";
+    var landed = 0;
+    schedule.forEach(function (p, i) {
+      moveTo(p, p.downPos, p.downQuat, 0.85 + (i % 4) * 0.09,
+             0.34 + (i % 3) * 0.10, (i % 5) * 0.035,
+             function (q) {
+               q.fitted = false;
+               if (++landed === schedule.length) {
+                 phase = "ASSEMBLY";
+                 autoFrame = true; retarget();
+                 hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
+                 assemblyHud();
+               }
+             });
+    });
+  }
+
+  function stepIntro(dt) {
+    introT += dt;
+    var u = Math.min(1, introT / T_IMPACT);
+    /* falling, and straightening as it falls */
+    machine.position.y = FALL_H * (1 - u * u);
+    machine.rotation.y = 0.62 * (1 - u);
+    machine.rotation.z = 0.20 * (1 - u) * Math.sin(introT * 1.9);
+    machine.rotation.x = 0.14 * (1 - u) * Math.cos(introT * 1.5);
+    /* the shadow tightening under it is most of what says how close it is */
+    contact.material.opacity = 0.10 + 0.80 * u * u;
+    var sp = 2.6 - 1.6 * u * u;
+    contact.scale.set(sp, sp, sp);
+
+    orbit.target.set(0, machine.position.y + H * 0.52, 0);
+    orbit.yaw = -0.66 + 0.34 * u;
+    orbit.pitch = -0.05 + 0.42 * u * u;
+    orbit.dist = 4.0 - 0.8 * u;
+
+    stepIntroReels(dt, introT);
+    if (introT >= T_IMPACT && !broke) breakApart();
+  }
+
+  function skipIntro() {
+    if (phase !== "INTRO" && phase !== "BREAK") return;
+    machine.position.set(0, 0, 0); machine.rotation.set(0, 0, 0);
+    contact.scale.set(1, 1, 1);
+    power = 0; applyPower();
+    workLight.intensity = 1.5;
+    scatterNow();
+    phase = "ASSEMBLY";
+    autoFrame = true; orbit.pitch = PITCH_BUILD; retarget();
+    orbit.target.copy(wantTarget); orbit.dist = wantDist;
+    hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
+    assemblyHud();
+  }
+
   /* --------------------------------------------------------------- loop --- */
   var clock = new T.Clock();
   function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
@@ -6187,7 +6325,12 @@ void main() {
     orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
     applyCamera();
 
-    if (phase === "ASSEMBLY") { stepAssembly(dt); bobNext(clock.elapsedTime); }
+    if (phase === "INTRO") stepIntro(dt);
+    else if (phase === "BREAK") {
+      stepAssembly(dt);
+      orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
+    }
+    else if (phase === "ASSEMBLY") { stepAssembly(dt); bobNext(clock.elapsedTime); }
     else if (phase === "COMMISSIONING") { stepAssembly(dt); stepCommission(dt); }
 
     if (autoFrame) {
@@ -6239,12 +6382,7 @@ void main() {
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 
-  applyPower();                 /* dead until commissioned */
-  scatterParts();
-  retarget();
-  orbit.target.copy(wantTarget); orbit.dist = wantDist;
-  hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
-  assemblyHud();
+  startIntro();
 
   var load = document.getElementById("loading");
   load.classList.add("gone");
@@ -6257,6 +6395,7 @@ void main() {
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
     reframe: function () { reframe(); }, dolly: dolly,
     phase: function () { return phase; }, parts: PARTS, schedule: schedule,
+    skipIntro: skipIntro, introTime: function () { return introT; },
     nextPart: function () { return nextPart; },
     fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },
     tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },

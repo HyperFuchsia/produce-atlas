@@ -79,6 +79,27 @@ and it renders as a black rectangle over whatever it was framing. That is exactl
 what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
 border so it cannot happen again.
 
+### The fall
+
+The apparatus does not arrive new. It arrives mid-cycle, falling, having been in
+service somewhere else — two reels already down on the same symbol and the third
+crawling toward it the way a reel does when a machine wants you to watch. It lands
+one stop short. A third of a symbol: near enough to see the melon entering the
+window, not near enough to count. Then it comes apart, and that is where the ten
+parts on the floor come from.
+
+The fall is a straightening tumble over about seven seconds, and most of what says
+how close the floor is is the contact shadow tightening and darkening underneath
+it. The reel choreography is stateful rather than scripted frame by frame: two
+reels run at eleven symbols a second and ease onto the match, the third drops into
+a decelerating crawl at four seconds and is still moving when the machine hits.
+
+One animator handles both directions. Parts fly off the machine when it lands and
+back onto it during assembly, and the only difference is which pose is the
+destination and how high the arc is.
+
+Tapping, or the space bar, cuts the cold open short.
+
 ### The commissioning
 
 The apparatus does not arrive. It arrives in ten assemblies on the floor with a
