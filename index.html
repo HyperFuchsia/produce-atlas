@@ -5887,14 +5887,50 @@ void main() {
     return need * 1.06;
   }
   var simT = 0;      /* clamped simulation time, the clock every cue runs on */
+
+  /* ============================ THE OPERATOR ============================== */
+  /* A body with a head on it, not a camera on a rail. Through the fall the eye
+     tracks the cabinet, because that is what you would be looking at; from the
+     moment you hit the floor it is yours, and it starts face down. */
+  var camMode = "TRACK";                   /* TRACK · GROUND · FP */
+  var player = {
+    pos: new T.Vector3(1.15, 0, 2.85),
+    yaw: -0.42, pitch: 0, roll: 0,
+    eye: 1.62, bob: 0, walk: null
+  };
+  var EYE_STAND = 1.62, EYE_FLOOR = 0.135;
+  var WALK = 1.75, REACH = 2.2, KEEP_OUT = 0.66, ROAM = 6.5;
+  var held = { w: 0, a: 0, s: 0, d: 0 };
+  var riseT = 0, aimPitch = null;
+  /* Where to look, eased. Standing at two metres from the wreck with your eye
+     at 1.62, the floor in front of you is 0.6 radians down — the orbit view's
+     0.2 puts every part below the bottom of the frame. */
+  var LOOK_FLOOR = -0.48, LOOK_MACHINE = -0.08;
+  function aim(p) { aimPitch = p; }
+
+  function forward(out) { return out.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw)); }
+  function strafe(out) { return out.set(Math.cos(player.yaw), 0, -Math.sin(player.yaw)); }
+  /* With rotation order YXZ the camera looks along (-sin yaw, 0, -cos yaw), so
+     facing the origin from (x, z) is atan2(x, z) — not atan2(-x, -z), which
+     turns you to look at the empty floor behind you. */
+  function faceSite() {
+    player.yaw = Math.atan2(player.pos.x, player.pos.z);
+  }
+
   function applyCamera() {
-    var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
-    camera.position.set(
-      orbit.target.x + orbit.dist * cp * Math.sin(orbit.yaw),
-      orbit.target.y + orbit.dist * sp,
-      orbit.target.z + orbit.dist * cp * Math.cos(orbit.yaw)
-    );
-    camera.lookAt(orbit.target);
+    if (camMode === "TRACK") {
+      var cp = Math.cos(orbit.pitch), sp = Math.sin(orbit.pitch);
+      camera.position.set(
+        orbit.target.x + orbit.dist * cp * Math.sin(orbit.yaw),
+        orbit.target.y + orbit.dist * sp,
+        orbit.target.z + orbit.dist * cp * Math.cos(orbit.yaw)
+      );
+      camera.lookAt(orbit.target);
+    } else {
+      camera.rotation.order = "YXZ";
+      camera.position.set(player.pos.x, player.eye + player.bob, player.pos.z);
+      camera.rotation.set(player.pitch, player.yaw, player.roll);
+    }
     if (shake > 0.0002) {
       /* two frequencies rather than white noise: random per frame reads as a
          broken renderer, a beat reads as something hitting something */
@@ -5902,22 +5938,118 @@ void main() {
       camera.position.x += (Math.sin(t * 47.3) + Math.sin(t * 29.1) * 0.6) * shake;
       camera.position.y += (Math.sin(t * 53.7) + Math.sin(t * 37.9) * 0.6) * shake;
       camera.position.z += (Math.sin(t * 41.1) + Math.sin(t * 23.3) * 0.6) * shake;
-      camera.lookAt(orbit.target);
+      if (camMode === "TRACK") camera.lookAt(orbit.target);
       camera.rotateZ(Math.sin(t * 31.7) * shake * 0.5);
     }
   }
-  /* Wide. The point of an orbit view is to get your face right up against the
-     stamp press or stand well back from the whole cabinet, and a range that
-     stops either of those is a range that gets in the way. */
+
+  /* leaning in, rather than moving: a first-person view has no dolly, and being
+     able to read the panel from across the floor is worth more than one */
   function dolly(scale) {
-    autoFrame = false;                    /* the viewer has taken the wheel */
-    var f = fitDistance();
-    orbit.dist = Math.max(f * 0.06, Math.min(f * 8, orbit.dist * scale));
+    if (camMode === "TRACK") {
+      autoFrame = false;
+      var f = fitDistance();
+      orbit.dist = Math.max(f * 0.06, Math.min(f * 8, orbit.dist * scale));
+      return;
+    }
+    camera.fov = Math.max(22, Math.min(58, camera.fov * scale));
+    camera.updateProjectionMatrix();
   }
 
-  /* Pointers are tracked by id rather than with a single dragging flag, because
-     a wheel is not the only way to get closer: on a touchscreen there is none,
-     and without a pinch the machine is stuck at whatever distance frames it. */
+  /* ---- where the floor is under a tap ---- */
+  var _plane = new T.Plane(new T.Vector3(0, 1, 0), 0), _gp = new T.Vector3();
+  function groundAt(e) {
+    var r = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    return ray.ray.intersectPlane(_plane, _gp) ? _gp.clone() : null;
+  }
+  /* a spot you can stand in: outside the cabinet, inside the room */
+  function standable(p) {
+    var v = new T.Vector3(p.x, 0, p.z);
+    var d = Math.hypot(v.x, v.z);
+    if (d > ROAM) v.multiplyScalar(ROAM / d);
+    d = Math.hypot(v.x, v.z);
+    if (d < KEEP_OUT) {
+      if (d < 1e-4) v.set(0, 0, KEEP_OUT);
+      else v.multiplyScalar(KEEP_OUT / d);
+    }
+    return v;
+  }
+  function walkTo(point, onArrive) {
+    player.walk = { to: standable(point), onArrive: onArrive || null };
+  }
+  /* stand a comfortable arm's length off a thing rather than on top of it */
+  function approach(worldPos, gap, onArrive) {
+    var away = new T.Vector3(player.pos.x - worldPos.x, 0, player.pos.z - worldPos.z);
+    if (away.lengthSq() < 1e-6) away.set(0, 0, 1);
+    away.normalize().multiplyScalar(gap);
+    walkTo(new T.Vector3(worldPos.x + away.x, 0, worldPos.z + away.z), onArrive);
+  }
+
+  function stepPlayer(dt) {
+    if (camMode !== "FP") return;
+    var f = forward(new T.Vector3()), r = strafe(new T.Vector3());
+    var mv = new T.Vector3();
+    var ax = (held.d - held.a), az = (held.w - held.s);
+    if (ax || az) {
+      player.walk = null;                  /* the keys override a tap */
+      mv.addScaledVector(f, az).addScaledVector(r, ax);
+    } else if (player.walk) {
+      mv.set(player.walk.to.x - player.pos.x, 0, player.walk.to.z - player.pos.z);
+      if (mv.length() < 0.22) {
+        var cb = player.walk.onArrive; player.walk = null;
+        if (cb) cb();
+        mv.set(0, 0, 0);
+      }
+    }
+    var moving = mv.lengthSq() > 1e-6;
+    if (moving) {
+      mv.normalize().multiplyScalar(WALK * dt);
+      var next = standable(new T.Vector3(player.pos.x + mv.x, 0, player.pos.z + mv.z));
+      player.pos.set(next.x, 0, next.z);
+      /* the head rides on the walk. Without it a first-person view slides */
+      player.bobT = (player.bobT || 0) + dt * 8.6;
+      player.bob = Math.sin(player.bobT) * 0.024;
+      player.roll = Math.sin(player.bobT * 0.5) * 0.010;
+    } else {
+      player.bob += (0 - player.bob) * Math.min(1, 6 * dt);
+      player.roll += (0 - player.roll) * Math.min(1, 6 * dt);
+    }
+  }
+
+  /* ---- getting up ---- */
+  function goToGround() {
+    camMode = "GROUND";
+    player.pos.set(1.15, 0, 2.85);
+    faceSite();
+    player.yaw -= 0.16;
+    player.eye = EYE_FLOOR;
+    player.pitch = 0.05;                   /* looking along the floor at it */
+    player.roll = 1.12;                    /* and lying on one cheek */
+    player.bob = 0;
+  }
+  function beginRise() {
+    if (camMode !== "GROUND") return;
+    camMode = "RISE"; riseT = 0;
+  }
+  function stepRise(dt) {
+    riseT += dt;
+    var k = Math.min(1, riseT / 2.9);
+    var e = k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+    player.eye = EYE_FLOOR + (EYE_STAND - EYE_FLOOR) * e;
+    player.roll = 1.12 * (1 - e);
+    player.pitch = 0.05 + (LOOK_FLOOR - 0.05) * e;
+    if (k >= 1) {
+      camMode = "FP";
+      player.eye = EYE_STAND; player.roll = 0; player.pitch = LOOK_FLOOR;
+      hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. WALK TO THE ONE THAT IS LIFTING.";
+    }
+  }
+
+  /* Pointers are tracked by id rather than with a single dragging flag: a pinch
+     is two of them, and on a touchscreen it is the only way to lean in. */
   var pointers = new Map(), pinchWas = 0;
   function pinchSpan() {
     var it = pointers.values(), a = it.next().value, b = it.next().value;
@@ -5944,6 +6076,7 @@ void main() {
       return;
     }
     if (!dragging) return;
+    aimPitch = null;                       /* the viewer is looking for themselves */
     var dx = e.clientX - lastX, dy = e.clientY - lastY;
     travel += Math.abs(dx) + Math.abs(dy);
     lastX = e.clientX; lastY = e.clientY;
@@ -5951,6 +6084,11 @@ void main() {
   });
   var lastTap = 0;
   function reframe() {
+    if (camMode === "FP") {
+      faceSite();
+      aim(phase === "OPERATION" ? LOOK_MACHINE : LOOK_FLOOR);
+      vYaw = vPitch = 0; return;
+    }
     orbit.yaw = -0.34;
     orbit.pitch = phase === "OPERATION" ? PITCH_RUN : PITCH_BUILD;
     autoFrame = true;
@@ -5959,31 +6097,46 @@ void main() {
     orbit.dist = wantDist;
     vYaw = vPitch = 0;
   }
+
+  function worldOf(o) { return o.getWorldPosition(new T.Vector3()); }
+  function within(worldPos, r) {
+    return Math.hypot(player.pos.x - worldPos.x, player.pos.z - worldPos.z) <= r;
+  }
+
   function endDrag(e) {
     if (e) pointers.delete(e.pointerId);
     if (pointers.size < 2) pinchWas = 0;
     if (pointers.size > 0) return;
-    if (dragging && travel < 6 && e) {
-      if (phase === "INTRO" || phase === "BREAK") {
-        skipIntro(); lastTap = 0; dragging = false;
-        canvas.classList.remove("dragging"); return;
-      }
-      if (phase === "ASSEMBLY") {
-        var part = pickPart(e);
-        if (part) { tryFitPart(part); lastTap = 0; dragging = false;
-                    canvas.classList.remove("dragging"); return; }
-      }
-      var hit = pick(e);
-      if (hit) { press(hit); lastTap = 0; }
-      else {
-        /* two taps on empty space puts the whole machine back in frame, which
-           is the only way out once you have zoomed somewhere unreadable */
-        var now = clock.elapsedTime;
-        if (now - lastTap < 0.4) { reframe(); lastTap = 0; }
-        else lastTap = now;
+    var wasDrag = dragging, moved = travel;
+    dragging = false; canvas.classList.remove("dragging");
+    if (!wasDrag || moved >= 6 || !e) return;
+
+    if (phase === "INTRO" || phase === "BREAK") { skipIntro(); lastTap = 0; return; }
+    if (camMode === "GROUND") { beginRise(); lastTap = 0; return; }
+    if (camMode !== "FP") return;
+
+    if (phase === "ASSEMBLY") {
+      var part = pickPart(e);
+      if (part) {
+        /* fitted from wherever you are standing. Making you walk to each of
+           the ten first turns a build into a walking simulator, and you have
+           to be able to see the part to tap it anyway. */
+        tryFitPart(part);
+        lastTap = 0; return;
       }
     }
-    dragging = false; canvas.classList.remove("dragging");
+    var hit = pick(e);
+    if (hit) {
+      var hp = worldOf(hit);
+      if (within(hp, REACH)) press(hit);
+      else approach(hp, 1.15, function () { press(hit); });
+      lastTap = 0; return;
+    }
+    /* nothing under it: walk there, and two taps turns you back to the machine */
+    var g = groundAt(e);
+    var now = simT;
+    if (now - lastTap < 0.4) { reframe(); lastTap = 0; }
+    else { lastTap = now; if (g) walkTo(g); }
   }
   canvas.addEventListener("pointerup", endDrag);
   canvas.addEventListener("pointercancel", endDrag);
@@ -5991,8 +6144,20 @@ void main() {
     e.preventDefault();
     dolly(1 + e.deltaY * 0.0011);
   }, { passive: false });
+
+  var KEYS = { KeyW: "w", ArrowUp: "w", KeyS: "s", ArrowDown: "s",
+               KeyA: "a", ArrowLeft: "a", KeyD: "d", ArrowRight: "d" };
+  window.addEventListener("keyup", function (e) {
+    if (KEYS[e.code]) held[KEYS[e.code]] = 0;
+  });
+
   window.addEventListener("keydown", function (e) {
-    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); advance(); }
+    if (KEYS[e.code]) { held[KEYS[e.code]] = 1; e.preventDefault(); return; }
+    if (e.code === "Space" || e.code === "Enter") {
+      e.preventDefault();
+      if (camMode === "GROUND") return beginRise();
+      return advance();
+    }
     if (e.code === "KeyF" || e.code === "Home") { e.preventDefault(); reframe(); }
   });
 
@@ -6173,7 +6338,7 @@ void main() {
     power = Math.min(1, commissionT / 2.2);
     applyPower();
     workLight.intensity = 1.5 * (1 - power);
-    orbit.pitch += (PITCH_RUN - orbit.pitch) * Math.min(1, 1.4 * dt);
+    if (camMode === "TRACK") orbit.pitch += (PITCH_RUN - orbit.pitch) * Math.min(1, 1.4 * dt);
     if (commissionT > 2.6) {
       phase = "OPERATION";
       power = 1; applyPower();
@@ -6412,6 +6577,9 @@ void main() {
     workLight.intensity = 1.5;
     FALLFX.visible = false;
     shake = 0.16; flash = 1;                 /* the hit */
+    goToGround();                            /* you came down with it */
+    hudLeft.textContent = "TAP TO GET UP";
+    setTimeout(function () { beginRise(); }, 11500);
     camera.fov = 40; camera.updateProjectionMatrix();
     hudRight.textContent = "ONE STOP SHORT";
     hush();
@@ -6426,8 +6594,10 @@ void main() {
                q.fitted = false;
                if (++landed === schedule.length) {
                  phase = "ASSEMBLY";
-                 autoFrame = true; retarget();
-                 hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
+                 if (camMode === "TRACK") { autoFrame = true; retarget(); }
+                 hudLeft.textContent = camMode === "FP"
+                   ? "TEN PARTS. ONE SCHEDULE. WALK TO THE ONE THAT IS LIFTING."
+                   : "GET UP.";
                  assemblyHud();
                }
              });
@@ -6489,8 +6659,10 @@ void main() {
     workLight.intensity = 1.5;
     scatterNow();
     phase = "ASSEMBLY";
-    autoFrame = true; orbit.pitch = PITCH_BUILD; retarget();
-    orbit.target.copy(wantTarget); orbit.dist = wantDist;
+    camMode = "FP";
+    player.pos.set(1.15, 0, 2.85); faceSite();
+    player.eye = EYE_STAND; player.roll = 0; player.pitch = LOOK_FLOOR; player.bob = 0;
+    autoFrame = false;
     hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. TAP THE ONE THAT IS LIFTING.";
     assemblyHud();
   }
@@ -6527,9 +6699,20 @@ void main() {
     var dt = Math.min(0.05, clock.getDelta());
     t0 += dt * 1000;
 
-    orbit.yaw += vYaw; orbit.pitch += vPitch;
+    if (camMode === "TRACK") {
+      orbit.yaw += vYaw; orbit.pitch += vPitch;
+      orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
+    } else if (camMode === "FP") {
+      player.yaw += vYaw; player.pitch += vPitch;
+      player.pitch = Math.max(-1.32, Math.min(1.02, player.pitch));
+    }
     vYaw *= 0.90; vPitch *= 0.90;
-    orbit.pitch = Math.max(-0.14, Math.min(0.88, orbit.pitch));
+    if (camMode === "RISE") stepRise(dt);
+    if (aimPitch !== null && camMode === "FP") {
+      player.pitch += (aimPitch - player.pitch) * Math.min(1, 2.6 * dt);
+      if (Math.abs(aimPitch - player.pitch) < 0.004) { player.pitch = aimPitch; aimPitch = null; }
+    }
+    stepPlayer(dt);
     applyCamera();
 
     simT += dt;
@@ -6537,7 +6720,7 @@ void main() {
     if (phase === "INTRO") stepIntro(dt);
     else if (phase === "BREAK") {
       stepAssembly(dt);
-      orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
+      if (camMode === "TRACK") orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
       shake *= Math.pow(0.02, dt);              /* rings down over about a second */
       flash = Math.max(0, flash - dt * 3.2);
       camera.fov += (32 - camera.fov) * Math.min(1, 3 * dt);
@@ -6547,7 +6730,7 @@ void main() {
     else if (phase === "COMMISSIONING") { stepAssembly(dt); stepCommission(dt); }
     renderer.toneMappingExposure = 1.02 + flash * 0.55;
 
-    if (autoFrame) {
+    if (autoFrame && camMode === "TRACK") {
       orbit.dist += (wantDist - orbit.dist) * Math.min(1, 1.9 * dt);
       orbit.target.lerp(wantTarget, Math.min(1, 1.9 * dt));
     }
@@ -6623,12 +6806,16 @@ void main() {
       phase = "OPERATION";
       power = 1; applyPower();
       hush();
-      autoFrame = true; retarget();
-      orbit.target.copy(wantTarget); orbit.dist = wantDist;
+      camMode = "FP"; autoFrame = false;
+      player.pos.set(0.10, 0, 1.35); faceSite();
+      player.eye = EYE_STAND; player.roll = 0; player.pitch = LOOK_MACHINE; player.bob = 0;
       hudLeft.textContent = idleHint();
       showStep();
     },
     fallSpeed: function () { return fallSpeed; },
+    camMode: function () { return camMode; }, player: player,
+    rise: function () { beginRise(); },
+    walkTo: function (x, z) { walkTo(new T.Vector3(x, 0, z)); },
     said: function () { return sayEl.classList.contains("on") ? sayEl.textContent : ""; },
     nextPart: function () { return nextPart; },
     fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },

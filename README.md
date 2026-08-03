@@ -146,6 +146,34 @@ destination and how high the arc is.
 
 Tapping, or the space bar, cuts the cold open short.
 
+### First person
+
+There is a body with a head on it, not a camera on a rail. Through the fall the
+eye tracks the cabinet, because that is what anybody would be looking at. From the
+moment you hit the floor it is yours.
+
+You land face down. The eye is at 135 mm, the roll is 1.12 radians — you are on one
+cheek — and the pitch runs along the ground at the wreck, which is spread out in
+front of you where it stopped. You stay there while the last lines play. Tap, or
+press space, and you get up: eye to 1.62, roll to nothing, pitch settling to look
+down at the floor you have to clear.
+
+Then: drag to look, WASD or a tap on the floor to walk, pinch or scroll to lean in
+— a first-person view has no dolly, and being able to read the panel from across
+the floor is worth more than one. The head rides on the walk; without that a
+first-person view slides. You can roam six and a half metres and you cannot walk
+into the cabinet's footprint. Two taps on empty floor turns you back to face the
+site. Parts are fitted from wherever you are standing — making you walk to each of
+the ten first turns a build into a walking simulator, and you have to be able to
+see a part to tap it anyway.
+
+Two conventions to get right. With rotation order `YXZ` the camera looks along
+`(-sin yaw, 0, -cos yaw)`, so facing the origin from `(x, z)` is `atan2(x, z)` —
+`atan2(-x, -z)` lands you looking at the empty floor behind you. And standing two
+metres from the wreck with your eye at 1.62, the floor in front of you is about
+half a radian down; the orbit view's 0.2 puts every part below the bottom of the
+frame.
+
 ### The commissioning
 
 The apparatus does not arrive. It arrives in ten assemblies on the floor with a
