@@ -1439,8 +1439,8 @@
 
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag · pinch"
-      : "Drag to orbit · scroll to dolly · work the interlock in order";
+      ? "Drag to look · tap to walk"
+      : "Drag to look · WASD or tap the floor to walk · pinch to lean in";
   }
   function setMessage(s) { msg = s; msgLine.redraw(); }
   function setState(a, b) { swState.set(a); swMatter.set(b); }
