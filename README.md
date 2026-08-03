@@ -151,7 +151,13 @@ disappears. You never see it break.
 He wakes to it broken. Two and a half seconds of nothing, then two blinks — the
 eyes crack open, close again, crack further, half-close, and stay open — by which
 time the parts have long since settled, so what he opens them on is a floor already
-covered in wreckage.
+covered in wreckage. Nothing responds to a tap while his eyes are shut, and getting
+up is refused until they are open.
+
+The wake runs outside the phase chain. The parts finish landing about a second into
+it, which flips the phase from BREAK to ASSEMBLY — and driven from inside the BREAK
+branch, as it was first written, the whole sequence stopped dead there, froze the
+blackout at full, and left the player sitting in the dark with nothing to tap.
 
 And he never finds out. The display died with the machine and the reel it died on
 is in a heap on the floor: *I had it. I know I had it. Nothing on it now. The

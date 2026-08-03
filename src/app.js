@@ -1860,6 +1860,7 @@
     if (camMode !== "GROUND") return;
     if (blackout > 0.05) return;           /* his eyes are not open yet */
     camMode = "RISE"; riseT = 0;
+    wakeT = -1; setBlack(0);              /* awake; the rest is his own time */
   }
   function stepRise(dt) {
     riseT += dt;
@@ -1938,7 +1939,9 @@
     dragging = false; canvas.classList.remove("dragging");
     if (!wasDrag || moved >= 6 || !e) return;
 
-    if (phase === "INTRO" || phase === "BREAK") { skipIntro(); lastTap = 0; return; }
+    if (phase === "INTRO") { skipIntro(); lastTap = 0; return; }
+    if (blackout > 0.05) return;          /* he is not conscious yet */
+    if (phase === "BREAK") { skipIntro(); lastTap = 0; return; }
     if (camMode === "GROUND") { beginRise(); lastTap = 0; return; }
     if (camMode !== "FP") return;
 
@@ -2620,9 +2623,9 @@
                if (++landed === schedule.length) {
                  phase = "ASSEMBLY";
                  if (camMode === "TRACK") { autoFrame = true; retarget(); }
-                 hudLeft.textContent = camMode === "FP"
-                   ? "TEN PARTS. ONE SCHEDULE. WALK TO THE ONE THAT IS LIFTING."
-                   : "GET UP.";
+                 if (camMode === "FP") {
+                   hudLeft.textContent = "TEN PARTS. ONE SCHEDULE. WALK TO THE ONE THAT IS LIFTING.";
+                 }
                  assemblyHud();
                }
              });
@@ -2753,13 +2756,19 @@
 
     simT += dt;
     stepVoice();
-    if (phase === "INTRO") stepIntro(dt);
-    else if (phase === "BREAK") {
-      stepAssembly(dt);
+    /* Outside the phase chain on purpose. The parts finish landing about a
+       second into the wake, which flips the phase to ASSEMBLY — and run from
+       inside the BREAK branch this stopped there, froze the blackout at full,
+       and left the player sitting in the dark with nothing to tap. */
+    if (wakeT >= 0) {
       stepWake(dt);
       if (blackout < 0.05 && camMode === "GROUND" && !hudLeft.textContent) {
         hudLeft.textContent = "TAP TO GET UP";
       }
+    }
+    if (phase === "INTRO") stepIntro(dt);
+    else if (phase === "BREAK") {
+      stepAssembly(dt);
       if (camMode === "TRACK") orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
       shake *= Math.pow(0.02, dt);              /* rings down over about a second */
       flash = Math.max(0, flash - dt * 3.2);
@@ -2835,6 +2844,9 @@
       return Math.min(d, NSYM - d);
     },
     blackout: function () { return blackout; },
+    /* test hook: the drop is twenty seconds and software rasterisation runs it
+       at a crawl, so the wake can be reached without sitting through it */
+    setIntroTime: function (t) { introT = t; fallCue = FALL_LINES.length; },
     wakeTime: function () { return wakeT; },
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
