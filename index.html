@@ -4276,11 +4276,12 @@ void main() {
      transformer hum, reel detents, coins on a steel tray. Nothing sings. */
   var AC = null, bus = null, NOISE = null, audioOn = false, muted = false;
   var master = null, comp = null, meter = null, METER = null, keepAlive = null;
-  /* A phone speaker is a centimetre across, has nothing under about 500 Hz,
-     and is being held at arm's length in a room. Everything here is scaled
-     for that and then let through a compressor doing real work, because on
-     that speaker an honest dynamic range is the same thing as inaudible. */
-  var PUNCH = 1.7;
+  /* A phone speaker is a centimetre across and has nothing under about 500 Hz,
+     so everything here keeps its weight in the octave above where it would
+     naturally sit. What it does NOT do is get loud: the drop is weather and
+     the room is a room. The reels are the only thing allowed to be loud, and
+     they are only loud relative to all of that. */
+  var PUNCH = 1.0;
   var LOOPS = [], PLAYED = {};
   function tally(k) { PLAYED[k] = (PLAYED[k] || 0) + 1; }
 
@@ -4338,9 +4339,12 @@ void main() {
     var hp = AC.createBiquadFilter();
     hp.type = "highpass"; hp.frequency.value = 70; hp.Q.value = 0.7;
     comp = AC.createDynamicsCompressor();
-    comp.threshold.value = -22; comp.knee.value = 8; comp.ratio.value = 5;
-    comp.attack.value = 0.004; comp.release.value = 0.18;
-    master = AC.createGain(); master.gain.value = 2.2;
+    /* glue, not a wall. At five to one over a threshold that low the mix had
+       no dynamics left at all — a detent and a reel stop came out the same
+       size, which is exactly the thing a slot machine must not do. */
+    comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 2.5;
+    comp.attack.value = 0.006; comp.release.value = 0.25;
+    master = AC.createGain(); master.gain.value = 1.6;
     /* The compressor takes four milliseconds to lean on a transient, which is
        long enough for a detent or a reel stop to walk straight through it and
        come out the far side of the makeup gain at nearly twice full scale —
@@ -4433,12 +4437,16 @@ void main() {
     if (!L.on) {
       var built = L.make();
       L.node = built.node; L.gain = built.gain; L.filter = built.filter;
+      L.pitch = built.pitch;
       L.gain.connect(bus);
       L.node.start(aNow());
       L.on = true;
     }
     L.gain.gain.setTargetAtTime(muted ? 0 : level * PUNCH, aNow(), 0.06);
     if (cutoff && L.filter) L.filter.frequency.setTargetAtTime(cutoff, aNow(), 0.08);
+  }
+  function loopHz(L, hz) {
+    if (L.on && L.pitch) L.pitch(hz, aNow());
   }
   function loopOff(L, fade) {
     if (!L.on) return;
@@ -4476,63 +4484,94 @@ void main() {
       return {
         node: { start: function (t) { oscs.forEach(function (o) { o.start(t); }); },
                 stop: function () { oscs.forEach(function (o) { try { o.stop(); } catch (e) {} }); } },
-        gain: g, filter: f
+        gain: g, filter: f,
+        /* the whole partial stack moves together, so a rotor can be driven
+           straight from how fast the drum is actually turning */
+        pitch: function (hz, t) {
+          var base = specs[0][0];
+          for (var i = 0; i < oscs.length; i++) {
+            oscs[i].frequency.setTargetAtTime(hz * specs[i][0] / base, t, 0.05);
+          }
+        }
       };
     };
   }
 
   var WIND = loop(noiseLoop("lowpass", 400, 0.7));
-  var WHIRR = loop(noiseLoop("bandpass", 900, 1.4));
+  var WHIRR = loop(noiseLoop("bandpass", 900, 1.4));      /* bearings and air */
+  /* The drum itself. A sawtooth stack whose pitch is the reel's own speed —
+     which is why it rises through the wind-up and sags away as it comes down,
+     without anything having to tell it to. */
+  var MOTOR = loop(oscLoop([[64, 0.34, "sawtooth"], [128, 0.13], [192, 0.06]]));
   var HUM = loop(oscLoop([[50, 0.5], [100, 0.30], [150, 0.16], [200, 0.10],
-                          [300, 0.06], [400, 0.035]]));
+                          [300, 0.05], [400, 0.028]]));
   var RING = loop(oscLoop([[4180, 0.5], [4192, 0.5]]));      /* the ears, after */
   var ROOM = loop(noiseLoop("lowpass", 220, 0.6));
 
   /* ---- the named sounds ---- */
   function sClick(level) {                        /* a toggle, a keyway */
     tally("click");
-    burst({ f0: 3200, f1: 1400, q: 2.2, gain: 0.16 * (level || 1), d: 0.035 });
-    tone({ f0: 1500, f1: 700, d: 0.03, gain: 0.05 * (level || 1), type: "square" });
+    burst({ f0: 3200, f1: 1400, q: 2.2, gain: 0.075 * (level || 1), d: 0.035 });
+    tone({ f0: 1500, f1: 700, d: 0.03, gain: 0.022 * (level || 1), type: "square" });
   }
   function sClack(level) {                        /* a relay, a key cap */
     tally("clack");
     level = level || 1;
-    burst({ f0: 1900, f1: 620, q: 1.4, gain: 0.24 * level, d: 0.07 });
-    tone({ f0: 380, f1: 180, d: 0.09, gain: 0.16 * level, type: "triangle" });
+    burst({ f0: 1900, f1: 620, q: 1.4, gain: 0.10 * level, d: 0.07 });
+    tone({ f0: 380, f1: 180, d: 0.09, gain: 0.055 * level, type: "triangle" });
   }
   function sThunk(level) {                        /* a part seating, a lever catch */
     tally("thunk");
     level = level || 1;
-    burst({ f0: 1100, f1: 280, q: 0.9, gain: 0.26 * level, d: 0.16 });
+    burst({ f0: 1100, f1: 280, q: 0.9, gain: 0.065 * level, d: 0.16 });
     /* the fundamental is for headphones; the octave above it is the only part
        of a thunk a handset will ever put in the air */
-    tone({ f0: 150, f1: 60, d: 0.26, gain: 0.34 * level, type: "triangle" });
-    tone({ f0: 330, f1: 150, d: 0.16, gain: 0.22 * level, type: "sine" });
-    tone({ f0: 620, f1: 300, d: 0.09, gain: 0.10 * level, type: "sine" });
+    tone({ f0: 150, f1: 60, d: 0.26, gain: 0.075 * level, type: "triangle" });
+    tone({ f0: 330, f1: 150, d: 0.16, gain: 0.050 * level, type: "sine" });
+    tone({ f0: 620, f1: 300, d: 0.09, gain: 0.025 * level, type: "sine" });
   }
   function sScrape(level) {                       /* steel dragged off concrete */
     tally("scrape");
-    burst({ f0: 700, f1: 2600, q: 0.6, gain: 0.11 * (level || 1), d: 0.32, a: 0.06 });
+    burst({ f0: 700, f1: 2600, q: 0.6, gain: 0.045 * (level || 1), d: 0.32, a: 0.06 });
   }
   function sPaper(level) {                        /* the docket feeding out */
     tally("paper");
-    burst({ f0: 2600, f1: 5200, q: 0.5, gain: 0.10 * (level || 1), d: 0.30, a: 0.05 });
+    burst({ f0: 2600, f1: 5200, q: 0.5, gain: 0.045 * (level || 1), d: 0.30, a: 0.05 });
   }
   function sStep(level) {
     tally("step");
-    burst({ f0: 420, f1: 190, q: 0.8, gain: 0.085 * (level || 1), d: 0.10 });
-    burst({ f0: 2400, f1: 1100, q: 1.0, gain: 0.030 * (level || 1), d: 0.05 });
+    burst({ f0: 420, f1: 190, q: 0.8, gain: 0.030 * (level || 1), d: 0.10 });
+    burst({ f0: 2400, f1: 1100, q: 1.0, gain: 0.012 * (level || 1), d: 0.05 });
   }
-  function sDetent(level) {                       /* one reel symbol going past */
+  /* One symbol going past the window. A pawl dropping off a tooth is a pitched
+     tick, not a hiss — a very short noise transient with a high Q on it, and a
+     body under it that decays in thirty milliseconds. The pitch wanders a few
+     per cent each time, because three hundred identical ticks in a row is a
+     buzzer and no reel has ever sounded like a buzzer.
+     `heavy` runs 0 to 1 as the drum slows: the ticks get lower and rounder as
+     the thing loses its momentum. */
+  function sDetent(level, heavy) {
     tally("detent");
-    burst({ f0: 2600, f1: 1500, q: 3.0, gain: 0.055 * (level || 1), d: 0.025 });
+    level = level || 1;
+    heavy = heavy === undefined ? 0.5 : heavy;
+    var f = (1680 - 340 * heavy) * (0.965 + Math.random() * 0.07);
+    burst({ f0: f * 2.1, f1: f * 0.95, q: 7.0, gain: 0.082 * level, d: 0.013 });
+    tone({ f0: f, f1: f * 0.80, d: 0.026 + 0.016 * heavy,
+           gain: 0.060 * level, type: "triangle" });
   }
+  /* A drum coming to rest does not stop, it arrives and then settles: the hit,
+     and forty milliseconds later the small one where it rocks back into the
+     detent. That second tick is most of what makes it sound mechanical. */
   function sReelStop(level) {
     tally("reelstop");
     level = level || 1;
-    burst({ f0: 1400, f1: 340, q: 1.1, gain: 0.32 * level, d: 0.13 });
-    tone({ f0: 155, f1: 62, d: 0.22, gain: 0.26 * level, type: "triangle" });
-    tone({ f0: 470, f1: 190, d: 0.13, gain: 0.20 * level, type: "sine" });
+    burst({ f0: 1500, f1: 380, q: 1.3, gain: 0.155 * level, d: 0.11 });
+    tone({ f0: 196, f1: 82, d: 0.20, gain: 0.115 * level, type: "triangle" });
+    tone({ f0: 480, f1: 210, d: 0.11, gain: 0.075 * level, type: "sine" });
+    setTimeout(function () {
+      burst({ f0: 2100, f1: 1200, q: 5.0, gain: 0.038 * level, d: 0.016 });
+      tone({ f0: 620, f1: 470, d: 0.045, gain: 0.028 * level, type: "triangle" });
+    }, 44);
   }
   /* a struck disc: inharmonic partials, the way a coin actually rings */
   function sCoin(level, size) {
@@ -4546,19 +4585,19 @@ void main() {
       o.type = "sine";
       o.frequency.value = base * parts[i] * (0.98 + Math.random() * 0.04);
       var g = AC.createGain();
-      var amp = (0.16 * level * PUNCH) / (1 + i * 1.5);
+      var amp = (0.054 * level * PUNCH) / (1 + i * 1.5);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp), t + 0.002);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22 / (1 + i * 0.5));
       o.connect(g); g.connect(bus);
       o.start(t); o.stop(t + 0.30);
     }
-    burst({ f0: 5200, f1: 2600, q: 2.0, gain: 0.05 * level, d: 0.04 });
+    burst({ f0: 5200, f1: 2600, q: 2.0, gain: 0.016 * level, d: 0.04 });
   }
   function sRefuse() {
     tally("refuse");
-    burst({ f0: 520, f1: 260, q: 1.6, gain: 0.18, d: 0.11 });
-    tone({ f0: 192, f1: 148, d: 0.16, gain: 0.13, type: "square" });
+    burst({ f0: 520, f1: 260, q: 1.6, gain: 0.075, d: 0.11 });
+    tone({ f0: 192, f1: 148, d: 0.16, gain: 0.05, type: "square" });
   }
   function sRelayRun(n, spread) {                 /* a rack of relays picking up */
     for (var i = 0; i < n; i++) {
@@ -4582,6 +4621,7 @@ void main() {
     tally("silence");
   }
   function unsilence(level) {
+    cutAudio = false;
     if (!audioOn) return;
     var t = aNow();
     bus.gain.cancelScheduledValues(t);
@@ -6423,8 +6463,8 @@ void main() {
     camMode = "RISE"; riseT = 0;
     awake = true; setBlack(0);            /* awake; the rest is his own time */
     if (RING.on) loopOff(RING, 1.6);
-    loopOn(ROOM, 0.042, 440);
-    sScrape(1.15);
+    loopOn(ROOM, 0.020, 440);
+    sScrape(1.0);
     setTimeout(function () { sThunk(0.5); }, 620);
     setTimeout(function () { sStep(1.1); }, 1500);
     setTimeout(function () { sStep(1.0); }, 2100);
@@ -6801,7 +6841,7 @@ void main() {
     power = Math.min(1, commissionT / 2.2);
     applyPower();
     /* the transformer coming up with the supply, and staying up for good */
-    loopOn(HUM, 0.012 + 0.030 * power);
+    loopOn(HUM, 0.006 + 0.013 * power);
     workLight.intensity = 1.5 * (1 - power);
     if (camMode === "TRACK") orbit.pitch += (PITCH_RUN - orbit.pitch) * Math.min(1, 1.4 * dt);
     if (commissionT > 2.6) {
@@ -7089,14 +7129,14 @@ void main() {
        before he does and stays for a while after. */
     if (was < 0.7 && wakeT >= 0.7) {
       unsilence(0.85);
-      loopOn(RING, 0.030);
-      loopOn(ROOM, 0.012, 180);
+      loopOn(RING, 0.014);
+      loopOn(ROOM, 0.006, 180);
     }
     /* and then the room, as the ears let go of it */
     if (wakeT > 1.2) {
       var k = Math.min(1, (wakeT - 1.2) / 9.0);
-      loopOn(RING, 0.030 * (1 - k));
-      loopOn(ROOM, 0.012 + 0.030 * k, 180 + 260 * k);
+      loopOn(RING, 0.014 * (1 - k));
+      loopOn(ROOM, 0.006 + 0.014 * k, 180 + 260 * k);
       if (k >= 1 && RING.on) loopOff(RING, 2.4);
     }
     while (wakeCue < WAKE_LINES.length && wakeT >= WAKE_LINES[wakeCue][0]) {
@@ -7152,12 +7192,12 @@ void main() {
     autoFrame = false;
     reels.forEach(function (r, i) {
       r.pos = i * 2.7; r.introTarget = null; r.introDone = false; r.crawl = null;
+      r.aPos = undefined; r.lastDet = undefined;
     });
     machine.position.set(0, FALL_H, 0);
-    cutAudio = false;
     unsilence(0.85);
-    loopOn(WIND, 0.05, 300);
-    loopOn(HUM, 0.06);
+    loopOn(WIND, 0.012, 170);
+    loopOn(HUM, 0.009);
     hudLeft.textContent = "Tap to skip";
     hudRight.textContent = "· · ·";
   }
@@ -7167,7 +7207,7 @@ void main() {
       var r = reels[i];
       if (r.introDone) continue;
       if (i < 2) {
-        if (t < T_STOP[i]) { r.pos += 11.5 * dt; reelDetents(r, dt, 0.8); continue; }
+        if (t < T_STOP[i]) { r.pos += 11.5 * dt; continue; }
         if (!r.introTarget) {
           r.introTarget = nextMatchAt(r.pos + 1.2);
           r.introFrom = r.pos; r.introT = 0;
@@ -7175,10 +7215,9 @@ void main() {
         r.introT += dt / 0.55;
         var e = Math.min(1, r.introT);
         r.pos = r.introFrom + (r.introTarget - r.introFrom) * (1 - Math.pow(1 - e, 3));
-        reelDetents(r, dt, 0.8);
-        if (e >= 1) { r.pos = r.introTarget; r.introDone = true; sReelStop(1.1); }
+        if (e >= 1) { r.pos = r.introTarget; r.introDone = true; sReelStop(1.0); }
       } else {
-        if (t < T_CRAWL) { r.pos += 11.5 * dt; reelDetents(r, dt, 0.8); continue; }
+        if (t < T_CRAWL) { r.pos += 11.5 * dt; continue; }
         if (!r.crawl) {
           /* it will arrive a third of a symbol short of the match, which is
              near enough to see the melon entering the window and not near
@@ -7188,18 +7227,8 @@ void main() {
         r.crawl.t += dt / (T_IMPACT - T_CRAWL);
         var k = Math.min(1, r.crawl.t);
         r.pos = r.crawl.from + (r.crawl.to - r.crawl.from) * (1 - Math.pow(1 - k, 2.8));
-        /* the third drum crawling: the gap between ticks opening out is the
-           whole of the anticipation, so it is not throttled like the others */
-        reelDetents(r, dt, 1.15);
       }
     }
-    /* the drums under the ticks: it thins out as each one locks, so the last
-       stretch is one drum turning on its own */
-    var turning = 0;
-    for (var j = 0; j < 3; j++) if (!reels[j].introDone) turning++;
-    if (cutAudio) loopOff(WHIRR, 0.02);
-    else if (turning) loopOn(WHIRR, 0.018 * turning, 800 + 220 * turning);
-    else loopOff(WHIRR, 0.25);
     lcd.refresh();
   }
 
@@ -7275,8 +7304,11 @@ void main() {
     /* the air. It opens up as he accelerates and the filter opens with it, so
        the noise gets brighter as well as louder rather than merely closer */
     if (!cutAudio) {
-      loopOn(WIND, 0.055 + 0.55 * u * u, 300 + 2600 * u * u);
-      loopOn(HUM, 0.06 + 0.05 * u, 0);
+      /* Dark and low, and it stays dark: the brightness is what made it
+         obnoxious, not the level. It swells over the last third rather than
+         riding up the whole way, so there is somewhere for it to go. */
+      loopOn(WIND, 0.012 + 0.092 * u * u * u, 170 + 460 * u * u);
+      loopOn(HUM, 0.009 + 0.013 * u, 0);
     }
 
     glance = glanceAt(introT);
@@ -7303,8 +7335,9 @@ void main() {
     if (phase !== "INTRO" && phase !== "BREAK") return;
     cutAudio = true;
     loopOff(WIND, 0.05); loopOff(WHIRR, 0.05); loopOff(RING, 0.05);
+    loopOff(MOTOR, 0.05);
     unsilence(0.85);
-    loopOn(ROOM, 0.042, 440);
+    loopOn(ROOM, 0.020, 440);
     FALLFX.visible = false;
     siteMark.visible = false;
     scene.fog.density = 0.085;
@@ -7334,28 +7367,56 @@ void main() {
   function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
-  /* One tick per symbol going past the window, floored to about twenty-four a
-     second. A drum coming out of a wind-up crosses forty symbols a second and
-     forty ticks a second is not a reel, it is a buzz. */
-  function reelDetents(r, dt, level) {
-    var f = Math.floor(r.pos);
-    if (r.lastDet === undefined) { r.lastDet = f; r.detGap = 0; return; }
-    r.detGap += dt;
-    if (f === r.lastDet) return;
-    r.lastDet = f;
-    if (r.detGap < 0.042) return;
-    r.detGap = 0;
-    sDetent(level);
+  /* Above about seventeen symbols a second the ear stops resolving separate
+     ticks and starts hearing a pitch, so that is where the drum hands over
+     from detents to the rotor. Coming back down through it the ticks separate
+     out again, one at a time, getting lower and heavier as they go — which is
+     the entire sound of a slot machine slowing down, and the reason the third
+     reel is worth waiting for. */
+  var BLUR = 17;
+  function reelSound(dt, level) {
+    if (dt <= 0) return;
+    var fastest = 0, anyMoving = false;
+    for (var i = 0; i < 3; i++) {
+      var r = reels[i];
+      var prev = r.aPos === undefined ? r.pos : r.aPos;
+      r.aPos = r.pos;
+      var spd = Math.abs(r.pos - prev) / dt;
+      /* a reel that has been re-seeded rather than turned is not moving */
+      if (spd > 130) spd = 0;
+      r.spd = spd;
+      if (spd > 0.15) { anyMoving = true; if (spd > fastest) fastest = spd; }
+      var f = Math.floor(r.pos);
+      if (r.lastDet === undefined) { r.lastDet = f; continue; }
+      if (f === r.lastDet) continue;
+      r.lastDet = f;
+      if (spd > BLUR || spd < 0.15) continue;       /* blurred, or not turning */
+      var heavy = 1 - spd / BLUR;
+      sDetent(level * (0.45 + 0.75 * heavy), heavy);
+    }
+    if (!anyMoving || cutAudio) {
+      loopOff(MOTOR, 0.14); loopOff(WHIRR, 0.20);
+      return;
+    }
+    /* six hertz per symbol per second: eleven and a half symbols a second — a
+       free-running drum — sits at seventy, which is about where a real one
+       hums, and the wind-up takes it up over two hundred */
+    loopHz(MOTOR, Math.max(34, Math.min(240, fastest * 6)));
+    var k = Math.min(1, fastest / 26);
+    loopOn(MOTOR, level * (0.015 + 0.040 * k));
+    loopOn(WHIRR, level * (0.007 + 0.018 * k), 500 + fastest * 26);
   }
 
   function stepReels(dt) {
+    /* first, because the drop drives the same drums from somewhere else and
+       both of them have already moved by the time we get here */
+    reelSound(dt, 1);
     var busy = false, moved = false;
     for (var i = 0; i < 3; i++) {
       var r = reels[i];
       if (r.phase === 2) continue;
       busy = true; moved = true;
       r.t += dt / r.dur;
-      reelDetents(r, dt, 1);
       if (r.phase === 0) {
         /* the run-down, over-travelling by a fraction of a symbol */
         if (r.t >= 1) { r.pos = r.to + 0.16; r.phase = 1; r.t = 0; r.dur = 0.30; }
@@ -7367,9 +7428,6 @@ void main() {
       }
     }
     if (moved) lcd.refresh();
-    /* the drums themselves, under the ticks, shut off with the last of them */
-    if (busy) loopOn(WHIRR, 0.055, 1300);
-    else if (WHIRR.on && phase !== "INTRO") loopOff(WHIRR, 0.18);
     if (spinning && !busy) { spinning = false; settle(); }
     return busy;
   }
@@ -7463,7 +7521,10 @@ void main() {
   }
 
   /* park the reels on a symbol rather than mid-scroll at load */
-  reels.forEach(function (r, i) { r.stop = [0, 3, 5][i]; r.pos = r.stop; });
+  reels.forEach(function (r, i) {
+    r.stop = [0, 3, 5][i]; r.pos = r.stop;
+    r.aPos = undefined; r.lastDet = undefined;
+  });
   lcd.refresh();
   result = reels.map(function (r) { return SPRITES[r.stop].name; });
 
@@ -7548,6 +7609,13 @@ void main() {
     power: function () { return power; },
     begin: begin,
     started: function () { return started; },
+    /* one sound at a time, in silence, so the balance between them can be
+       measured rather than guessed at from a mix */
+    sfx: {
+      detent: sDetent, reelStop: sReelStop, click: sClick, clack: sClack,
+      thunk: sThunk, coin: sCoin, refuse: sRefuse, paper: sPaper,
+      step: sStep, scrape: sScrape
+    },
     /* the sound cannot be listened to from a test, so it is counted instead */
     audio: function () {
       return {
