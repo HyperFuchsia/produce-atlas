@@ -57,11 +57,20 @@
     #say{font-size:13px;bottom:64px;width:calc(100vw - 32px)}
   }
   #loading{
-    position:fixed;inset:0;z-index:9;display:grid;place-items:center;
+    /* place-content, not place-items: with two rows the implicit tracks fill
+       the height and the sub-line ends up pinned to the bottom of the screen */
+    position:fixed;inset:0;z-index:9;
+    display:grid;place-content:center;justify-items:center;text-align:center;
     background:#07080B;font-size:11px;letter-spacing:.28em;text-transform:uppercase;
     color:rgba(185,191,198,.5);transition:opacity .6s linear;
   }
   #loading.gone{opacity:0;pointer-events:none}
+  /* the gate exists because a browser will not make a sound until the page has
+     been touched, and the first twenty seconds of this are mostly sound */
+  #loading .sub{
+    display:block;margin-top:14px;font-size:9px;letter-spacing:.20em;
+    color:rgba(185,191,198,.30);
+  }
 </style>
 
 <canvas id="scene"></canvas>

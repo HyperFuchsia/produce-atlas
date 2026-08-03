@@ -72,6 +72,239 @@
 
   var camera = new T.PerspectiveCamera(32, 1, 0.012, 80);
 
+  /* ================================ SOUND ================================== */
+  /* Every sound in here is synthesised on the spot. The page carries no audio
+     files for the same reason it carries no images: it is one self-contained
+     document, and a machine whose panels and reel strips are drawn at load may
+     as well have its clicks and clunks made the same way.
+
+     The palette is dry and mechanical to match the look — relay clacks, a
+     transformer hum, reel detents, coins on a steel tray. Nothing sings. */
+  var AC = null, bus = null, NOISE = null, audioOn = false, muted = false;
+  var LOOPS = [], PLAYED = {};
+  function tally(k) { PLAYED[k] = (PLAYED[k] || 0) + 1; }
+
+  function initAudio() {
+    if (AC) { if (AC.state === "suspended") AC.resume(); return AC; }
+    var Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    AC = new Ctx();
+    bus = AC.createGain();
+    bus.gain.value = 0;
+    bus.connect(AC.destination);
+    var n = Math.floor(AC.sampleRate * 1.2);
+    NOISE = AC.createBuffer(1, n, AC.sampleRate);
+    var d = NOISE.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    audioOn = true;
+    bus.gain.setTargetAtTime(0.85, AC.currentTime, 0.12);
+    return AC;
+  }
+  function aNow() { return AC ? AC.currentTime : 0; }
+  function live() { return audioOn && !muted && AC.state === "running"; }
+
+  /* ---- the two primitives everything else is made of ---- */
+  function burst(o) {
+    if (!live()) return;
+    var t = aNow(), dur = o.d || 0.08;
+    var src = AC.createBufferSource();
+    src.buffer = NOISE; src.loop = false;
+    src.playbackRate.value = o.rate || 1;
+    var f = AC.createBiquadFilter();
+    f.type = o.type || "bandpass";
+    f.frequency.setValueAtTime(o.f0 || 1800, t);
+    if (o.f1) f.frequency.exponentialRampToValueAtTime(Math.max(40, o.f1), t + dur);
+    f.Q.value = o.q === undefined ? 1.1 : o.q;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.3), t + (o.a || 0.002));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(bus);
+    src.start(t, Math.random() * 0.4);
+    src.stop(t + dur + 0.03);
+  }
+  function tone(o) {
+    if (!live()) return;
+    var t = aNow(), dur = o.d || 0.2;
+    var osc = AC.createOscillator();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(o.f0 || 200, t);
+    if (o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), t + dur);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.2), t + (o.a || 0.004));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(g); g.connect(bus);
+    osc.start(t); osc.stop(t + dur + 0.03);
+  }
+
+  /* ---- a continuous source that can be opened and shut ---- */
+  function loop(make) {
+    var L = { node: null, gain: null, filter: null, on: false, make: make };
+    LOOPS.push(L);
+    return L;
+  }
+  function loopOn(L, level, cutoff) {
+    if (!live()) return;
+    if (!L.on) {
+      var built = L.make();
+      L.node = built.node; L.gain = built.gain; L.filter = built.filter;
+      L.gain.connect(bus);
+      L.node.start(aNow());
+      L.on = true;
+    }
+    L.gain.gain.setTargetAtTime(muted ? 0 : level, aNow(), 0.06);
+    if (cutoff && L.filter) L.filter.frequency.setTargetAtTime(cutoff, aNow(), 0.08);
+  }
+  function loopOff(L, fade) {
+    if (!L.on) return;
+    var t = aNow();
+    L.gain.gain.setTargetAtTime(0, t, fade === undefined ? 0.10 : fade);
+    var node = L.node;
+    setTimeout(function () { try { node.stop(); } catch (e) {} }, 700);
+    L.on = false;
+  }
+  function noiseLoop(filterType, freq, q) {
+    return function () {
+      var src = AC.createBufferSource();
+      src.buffer = NOISE; src.loop = true;
+      var f = AC.createBiquadFilter();
+      f.type = filterType; f.frequency.value = freq; f.Q.value = q || 0.8;
+      var g = AC.createGain(); g.gain.value = 0;
+      src.connect(f); f.connect(g);
+      return { node: src, gain: g, filter: f };
+    };
+  }
+  function oscLoop(specs) {
+    return function () {
+      var g = AC.createGain(); g.gain.value = 0;
+      var f = AC.createBiquadFilter();
+      f.type = "lowpass"; f.frequency.value = 900;
+      var oscs = specs.map(function (sp) {
+        var o = AC.createOscillator();
+        o.type = sp[2] || "sine";
+        o.frequency.value = sp[0];
+        var og = AC.createGain(); og.gain.value = sp[1];
+        o.connect(og); og.connect(f);
+        return o;
+      });
+      f.connect(g);
+      return {
+        node: { start: function (t) { oscs.forEach(function (o) { o.start(t); }); },
+                stop: function () { oscs.forEach(function (o) { try { o.stop(); } catch (e) {} }); } },
+        gain: g, filter: f
+      };
+    };
+  }
+
+  var WIND = loop(noiseLoop("lowpass", 400, 0.7));
+  var WHIRR = loop(noiseLoop("bandpass", 900, 1.4));
+  var HUM = loop(oscLoop([[50, 0.5], [100, 0.22], [150, 0.09], [200, 0.04]]));
+  var RING = loop(oscLoop([[4180, 0.5], [4192, 0.5]]));      /* the ears, after */
+  var ROOM = loop(noiseLoop("lowpass", 220, 0.6));
+
+  /* ---- the named sounds ---- */
+  function sClick(level) {                        /* a toggle, a keyway */
+    tally("click");
+    burst({ f0: 3200, f1: 1400, q: 2.2, gain: 0.16 * (level || 1), d: 0.035 });
+    tone({ f0: 1500, f1: 700, d: 0.03, gain: 0.05 * (level || 1), type: "square" });
+  }
+  function sClack(level) {                        /* a relay, a key cap */
+    tally("clack");
+    level = level || 1;
+    burst({ f0: 1700, f1: 500, q: 1.4, gain: 0.22 * level, d: 0.07 });
+    tone({ f0: 190, f1: 90, d: 0.09, gain: 0.16 * level, type: "triangle" });
+  }
+  function sThunk(level) {                        /* a part seating, a lever catch */
+    tally("thunk");
+    level = level || 1;
+    burst({ f0: 900, f1: 220, q: 0.9, gain: 0.26 * level, d: 0.16 });
+    tone({ f0: 120, f1: 48, d: 0.26, gain: 0.34 * level, type: "triangle" });
+    tone({ f0: 240, f1: 130, d: 0.14, gain: 0.10 * level, type: "sine" });
+  }
+  function sScrape(level) {                       /* steel dragged off concrete */
+    tally("scrape");
+    burst({ f0: 700, f1: 2600, q: 0.6, gain: 0.11 * (level || 1), d: 0.32, a: 0.06 });
+  }
+  function sPaper(level) {                        /* the docket feeding out */
+    tally("paper");
+    burst({ f0: 2600, f1: 5200, q: 0.5, gain: 0.10 * (level || 1), d: 0.30, a: 0.05 });
+  }
+  function sStep(level) {
+    tally("step");
+    burst({ f0: 260, f1: 120, q: 0.8, gain: 0.075 * (level || 1), d: 0.10 });
+    burst({ f0: 2400, f1: 1100, q: 1.0, gain: 0.030 * (level || 1), d: 0.05 });
+  }
+  function sDetent(level) {                       /* one reel symbol going past */
+    tally("detent");
+    burst({ f0: 2600, f1: 1500, q: 3.0, gain: 0.055 * (level || 1), d: 0.025 });
+  }
+  function sReelStop(level) {
+    tally("reelstop");
+    level = level || 1;
+    burst({ f0: 1200, f1: 300, q: 1.1, gain: 0.30 * level, d: 0.13 });
+    tone({ f0: 155, f1: 62, d: 0.22, gain: 0.26 * level, type: "triangle" });
+  }
+  /* a struck disc: inharmonic partials, the way a coin actually rings */
+  function sCoin(level, size) {
+    tally("coin");
+    if (!live()) return;
+    var base = 2600 / (0.7 + (size || 1));
+    var parts = [1, 2.41, 4.16, 6.03];
+    var t = aNow();
+    for (var i = 0; i < parts.length; i++) {
+      var o = AC.createOscillator();
+      o.type = "sine";
+      o.frequency.value = base * parts[i] * (0.98 + Math.random() * 0.04);
+      var g = AC.createGain();
+      var amp = (0.16 * level) / (1 + i * 1.5);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp), t + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22 / (1 + i * 0.5));
+      o.connect(g); g.connect(bus);
+      o.start(t); o.stop(t + 0.30);
+    }
+    burst({ f0: 5200, f1: 2600, q: 2.0, gain: 0.05 * level, d: 0.04 });
+  }
+  function sRefuse() {
+    tally("refuse");
+    burst({ f0: 380, f1: 200, q: 1.6, gain: 0.16, d: 0.11 });
+    tone({ f0: 96, f1: 74, d: 0.16, gain: 0.11, type: "square" });
+  }
+  function sRelayRun(n, spread) {                 /* a rack of relays picking up */
+    for (var i = 0; i < n; i++) {
+      (function (k) {
+        setTimeout(function () { sClack(0.55 + Math.random() * 0.3); },
+                   k * (spread / n) + Math.random() * 40);
+      })(i);
+    }
+  }
+
+  /* Everything stops at once when the light goes. Not a fade — the point of
+     the moment is that it is cut off. */
+  function silenceAll(instant) {
+    if (!audioOn) return;
+    var t = aNow();
+    bus.gain.cancelScheduledValues(t);
+    bus.gain.setValueAtTime(bus.gain.value, t);
+    if (instant) bus.gain.setValueAtTime(0, t);
+    else bus.gain.linearRampToValueAtTime(0, t + 0.30);
+    LOOPS.forEach(function (L) { loopOff(L, 0.01); });
+    tally("silence");
+  }
+  function unsilence(level) {
+    if (!audioOn) return;
+    var t = aNow();
+    bus.gain.cancelScheduledValues(t);
+    bus.gain.setValueAtTime(bus.gain.value, t);
+    bus.gain.linearRampToValueAtTime(level === undefined ? 0.85 : level, t + 0.5);
+  }
+  function setMuted(m) {
+    muted = m;
+    if (!audioOn) return;
+    bus.gain.setTargetAtTime(m ? 0 : 0.85, aNow(), 0.05);
+  }
+
   /* ------------------------------------------------------------ materials -- */
   /* Monochrome, all of it. Metalness stays low on the paint: every point of it
      scales the diffuse term straight down, and side-on the cabinet goes to an
@@ -1197,6 +1430,7 @@
                                     (Math.random() - 0.5) * 22);
     m.userData.rest = false;
     m.userData.age = 0;
+    sClack(0.55);                        /* the hopper letting one go */
     ADD(m);
     tokens.push(m); TOKEN_HIT.push(m);
     /* the tray holds eighteen. After that the Authority takes one back, which
@@ -1224,6 +1458,11 @@
       machine.remove(m);
     });
     tokens.length = 0; TOKEN_HIT.length = 0;
+    for (var si = 0; si < Math.min(n, 7); si++) {
+      (function (k) {
+        setTimeout(function () { sCoin(0.5, 0.6 + Math.random() * 0.6); }, k * 55);
+      })(si);
+    }
     setMessage("TOKENS SURRENDERED: " + n + " (" + by[0] + " MINOR, " + by[1]
                + " COMMON, " + by[2] + " PRINCIPAL). THE ISSUE RECORD IS UNCHANGED.");
   }
@@ -1254,12 +1493,15 @@
            the arithmetic promises it converges soon — and on a slow frame the
            step is coarse enough to keep a coin skittering. Anything still in
            the air after a second and a half is put down. */
+        var cs = m.userData.cls.r * 60;
         if (Math.abs(v.y) < 0.34 || m.userData.age > 1.5) {
+          sCoin(0.30, cs);              /* the last of it, lying down */
           /* down for good: lie flat, keep whatever facing it happened to land on */
           m.userData.rest = true;
           m.rotation.set(0, Math.random() * TAU, 0);
           m.position.y = floorY + (i % 3) * 0.0004;
         } else {
+          sCoin(Math.min(1, 0.30 + Math.abs(v.y) * 0.55), cs);
           v.y = -v.y * 0.34; v.x *= 0.55; v.z *= 0.55;
           s2.multiplyScalar(0.45);
         }
@@ -1439,8 +1681,8 @@
 
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag to look · tap to walk"
-      : "Drag to look · WASD or tap the floor to walk · pinch to lean in";
+      ? "Drag to look · tap to walk · M for sound"
+      : "Drag to look · WASD or tap the floor to walk · pinch to lean in · M for sound";
   }
   function setMessage(s) { msg = s; msgLine.redraw(); }
   function setState(a, b) { swState.set(a); swMatter.set(b); }
@@ -1460,6 +1702,7 @@
   ];
   var ooo = 0;
   function refuse() {
+    sRefuse();
     setMessage(OUT_OF_ORDER[ooo++ % OUT_OF_ORDER.length]);
     showStep();
   }
@@ -1470,6 +1713,7 @@
     if (which === "key") {
       if (n !== 0) return refuse();
       ILK.key = true; keyAnim.target = 1;
+      sClick(1.2); setTimeout(function () { sClack(0.7); }, 180);
       setMessage("ATTENDANCE RECORDED. YOU ARE PRESENT AT T+"
                  + (t0 / 1000).toFixed(1) + "S.");
     } else if (which.indexOf("decl") === 0) {
@@ -1477,6 +1721,7 @@
       var i = +which.charAt(4);
       if (ILK.decl[i]) { setMessage("ALREADY DECLARED. ONCE IS SUFFICIENT."); return; }
       ILK.decl[i] = true; declAnims[i].target = 1;
+      sClick(0.9 + i * 0.08);
       setMessage(["DECLARED: I AM ATTENDING OF MY OWN ACCORD.",
                   "DECLARED: I AM NOT BEING PAID TO ATTEND.",
                   "DECLARED: I AM AWARE THAT NOTHING FOLLOWS FROM THIS."][i]);
@@ -1484,6 +1729,8 @@
       if (n !== 2) return refuse();
       ILK.stamped = true;
       stampAnim.target = 1;
+      sThunk(0.85);
+      setTimeout(function () { sPaper(1.0); }, 320);
       setTimeout(function () { stampAnim.target = 0; }, 260);
       docketNo++;
       docket.redraw();
@@ -1495,18 +1742,22 @@
     } else if (which === "docket") {
       if (n !== 3) return refuse();
       ILK.docket = true;
+      sPaper(1.2);
       docketAnim.rate = 2.6; docketAnim.target = 1.9;
       setTimeout(function () { docket.visible = false; docketAnim.rate = 4.5; }, 900);
       setMessage("DOCKET TAKEN. RETAIN IT. IT ENTITLES YOU TO NOTHING.");
     } else if (which === "lever") {
       if (n !== 4) return refuse();
       ILK.lever = true;
+      sClack(1.25);
+      setTimeout(function () { sThunk(0.9); }, 240);
       leverAnim.rate = 14; leverAnim.target = 1;
       setTimeout(function () { leverAnim.rate = 2.2; leverAnim.target = 0; }, 420);
       setMessage("LEVER PULLED. THE APPARATUS ACKNOWLEDGES THE GESTURE.");
     } else if (which === "cover") {
       if (n !== 5) return refuse();
       ILK.cover = true; coverAnim.target = 1;
+      sScrape(0.7); setTimeout(function () { sClack(0.5); }, 340);
       setMessage("COVER RAISED. PRESS OBSERVE. THIS IS THE PART THAT WORKS.");
     }
     if (stepNo() === 6 && which !== "cover") {
@@ -1550,12 +1801,15 @@
   function observe() {
     if (spinning || phase !== "OPERATION") return;
     if (stepNo() < 6) {
+      sRefuse();
       setMessage("THE INTERLOCK IS NOT SATISFIED. " + STEP_NAME[stepNo()] + ".");
       showStep();
       return;
     }
     spinning = true;
     pressed = observeKey; pressT = 1;
+    sClack(1.3);
+    sRelayRun(4, 260);
     setState("STATE: COLLAPSING", "MATTER PENDING");
     setMessage("MATTER PUT TO THE APPARATUS. AWAITING DETERMINATION.");
     hudRight.textContent = "· · ·";
@@ -1576,6 +1830,7 @@
     obsCount++;
     if (result[0] === result[1] && result[1] === result[2]) {
       matchCount++;
+      sRelayRun(7, 700);
       setMessage("THREE ALIKE. DETERMINED. RECORD PRINTED.");
       setState("STATE: DETERMINED", "NO MATTER PENDING");
     } else if (result[0] === result[1] || result[1] === result[2] || result[0] === result[2]) {
@@ -1585,6 +1840,7 @@
       setMessage("RECORD PRINTED. IT STAYS IN THE PRINTER UNTIL SOMEONE TAKES IT.");
       setState("STATE: SUPERPOSED", "NO MATTER PENDING");
     }
+    setTimeout(function () { sPaper(1.1); }, 520);
     hudLeft.textContent = idleHint();
     hudRight.textContent = result.join(" / ");
     window.QA77.result = result;
@@ -1634,6 +1890,7 @@
     }
     if (obj === observeKey) {
       if (!ILK.cover) {                     /* the cover is in the way, literally */
+        sRefuse();
         setMessage("THE COVER IS DOWN. " + STEP_NAME[stepNo()] + ".");
         showStep();
         return;
@@ -1641,6 +1898,7 @@
       return observe();
     }
     pressed = obj; pressT = 1;
+    sClack(0.8);
     if (obj === burstKey) setMessage("BURST REQUIRES A SECOND ATTENDANT. THERE IS ONE OF YOU.");
     if (obj === resetKey) {
       obsCount = 0; matchCount = 0;
@@ -1836,7 +2094,10 @@
       var next = standable(new T.Vector3(player.pos.x + mv.x, 0, player.pos.z + mv.z));
       player.pos.set(next.x, 0, next.z);
       /* the head rides on the walk. Without it a first-person view slides */
-      player.bobT = (player.bobT || 0) + dt * 8.6;
+      var bWas = player.bobT || 0;
+      player.bobT = bWas + dt * 8.6;
+      /* one footfall per half cycle of the head bob, which is what the bob is */
+      if (Math.floor(player.bobT / Math.PI) !== Math.floor(bWas / Math.PI)) sStep(1);
       player.bob = Math.sin(player.bobT) * 0.024;
       player.roll = Math.sin(player.bobT * 0.5) * 0.010;
     } else {
@@ -1860,7 +2121,13 @@
     if (camMode !== "GROUND") return;
     if (blackout > 0.05) return;           /* his eyes are not open yet */
     camMode = "RISE"; riseT = 0;
-    wakeT = -1; setBlack(0);              /* awake; the rest is his own time */
+    awake = true; setBlack(0);            /* awake; the rest is his own time */
+    if (RING.on) loopOff(RING, 1.6);
+    loopOn(ROOM, 0.042, 440);
+    sScrape(1.15);
+    setTimeout(function () { sThunk(0.5); }, 620);
+    setTimeout(function () { sStep(1.1); }, 1500);
+    setTimeout(function () { sStep(1.0); }, 2100);
   }
   function stepRise(dt) {
     riseT += dt;
@@ -1994,6 +2261,7 @@
       return advance();
     }
     if (e.code === "KeyF" || e.code === "Home") { e.preventDefault(); reframe(); }
+    if (e.code === "KeyM") { e.preventDefault(); setMuted(!muted); showMute(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
@@ -2110,10 +2378,13 @@
   }
   function onSeated(p) {
     p.fitted = true;
+    sThunk(1.0);
+    setTimeout(function () { sClack(0.45); }, 150);
     nextPart++;
     retarget();
     if (nextPart >= schedule.length) {
       phase = "COMMISSIONING"; commissionT = 0;
+      sRelayRun(9, 1500);
       assemblyHud("SCHEDULE DISCHARGED. APPLYING SUPPLY.");
     } else {
       assemblyHud(p.seated);
@@ -2138,6 +2409,8 @@
   function pickUp(p) {
     carrying = p;
     p.anim = null;
+    sScrape(1.0);
+    setTimeout(function () { sThunk(0.30); }, 210);
     if (LIFT_LINES[p.name]) say(LIFT_LINES[p.name], 3.8);
     carryHint();
   }
@@ -2170,11 +2443,13 @@
     if (carrying) {
       if (p === carrying) return tryPlace();
       assemblyHud("ONE AT A TIME.");
+      sRefuse();
       say("One at a time.", 2.0);
       return;
     }
     if (schedule[nextPart] !== p) {
       assemblyHud(REFUSALS[refuseN++ % REFUSALS.length]);
+      sRefuse();
       return;
     }
     pickUp(p);
@@ -2226,6 +2501,8 @@
     commissionT += dt;
     power = Math.min(1, commissionT / 2.2);
     applyPower();
+    /* the transformer coming up with the supply, and staying up for good */
+    loopOn(HUM, 0.012 + 0.030 * power);
     workLight.intensity = 1.5 * (1 - power);
     if (camMode === "TRACK") orbit.pitch += (PITCH_RUN - orbit.pitch) * Math.min(1, 1.4 * dt);
     if (commissionT > 2.6) {
@@ -2233,6 +2510,7 @@
       power = 1; applyPower();
       workLight.intensity = 0;
       autoFrame = true; retarget();
+      sClack(1.0);
       setMessage("COMMISSIONED. FORM QA-77/A IS DISCHARGED. THE APPARATUS IS YOURS TO ATTEND.");
       say("All right. Same room, same floor. Let's see what it says about me.", 5.0);
       hudLeft.textContent = idleHint();
@@ -2468,8 +2746,9 @@
   var FALL_H = 105.0, MATCH = 3;                 /* MELON, three alike */
   var T_STOP = [7.80, 14.30], T_CRAWL = 15.40, T_IMPACT = 19.80;
   var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0, glance = 0;
+  var cutAudio = false;
   var blackEl = document.getElementById("black");
-  var blackout = 0, wakeT = -1, wakeCue = 0;
+  var blackout = 0, wakeT = -1, wakeCue = 0, awake = false;
   function setBlack(v) {
     blackout = Math.max(0, Math.min(1, v));
     blackEl.style.opacity = blackout;
@@ -2504,12 +2783,28 @@
   ];
   function stepWake(dt) {
     if (wakeT < 0) return;
+    var was = wakeT;
     wakeT += dt;
-    setBlack(wakeOpacity(wakeT));
+    if (!awake) setBlack(wakeOpacity(wakeT));
+    /* What comes back first is not the room. It is the ringing, which arrives
+       before he does and stays for a while after. */
+    if (was < 0.7 && wakeT >= 0.7) {
+      unsilence(0.85);
+      loopOn(RING, 0.030);
+      loopOn(ROOM, 0.012, 180);
+    }
+    /* and then the room, as the ears let go of it */
+    if (wakeT > 1.2) {
+      var k = Math.min(1, (wakeT - 1.2) / 9.0);
+      loopOn(RING, 0.030 * (1 - k));
+      loopOn(ROOM, 0.012 + 0.030 * k, 180 + 260 * k);
+      if (k >= 1 && RING.on) loopOff(RING, 2.4);
+    }
     while (wakeCue < WAKE_LINES.length && wakeT >= WAKE_LINES[wakeCue][0]) {
       say(WAKE_LINES[wakeCue][1], WAKE_LINES[wakeCue][2]);
       wakeCue++;
     }
+    if (awake && wakeCue >= WAKE_LINES.length) wakeT = -1;   /* he has said it */
   }
   /* Three looks down, each held straight at the floor and each shorter than the
      last: four seconds the first time, when there is nothing to do but take it
@@ -2540,7 +2835,7 @@
     planScatter();
     phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
     fallCue = 0; hush(); glance = 0;
-    setBlack(0); wakeT = -1; wakeCue = 0;
+    setBlack(0); wakeT = -1; wakeCue = 0; awake = false;
     siteMark.visible = true;
     /* The drop starts at a hundred and five metres and the far plane was at
        eighty, so the floor — and the mark on it — were clipped away entirely
@@ -2560,6 +2855,10 @@
       r.pos = i * 2.7; r.introTarget = null; r.introDone = false; r.crawl = null;
     });
     machine.position.set(0, FALL_H, 0);
+    cutAudio = false;
+    unsilence(0.85);
+    loopOn(WIND, 0.05, 300);
+    loopOn(HUM, 0.06);
     hudLeft.textContent = "Tap to skip";
     hudRight.textContent = "· · ·";
   }
@@ -2569,7 +2868,7 @@
       var r = reels[i];
       if (r.introDone) continue;
       if (i < 2) {
-        if (t < T_STOP[i]) { r.pos += 11.5 * dt; continue; }
+        if (t < T_STOP[i]) { r.pos += 11.5 * dt; reelDetents(r, dt, 0.8); continue; }
         if (!r.introTarget) {
           r.introTarget = nextMatchAt(r.pos + 1.2);
           r.introFrom = r.pos; r.introT = 0;
@@ -2577,9 +2876,10 @@
         r.introT += dt / 0.55;
         var e = Math.min(1, r.introT);
         r.pos = r.introFrom + (r.introTarget - r.introFrom) * (1 - Math.pow(1 - e, 3));
-        if (e >= 1) { r.pos = r.introTarget; r.introDone = true; }
+        reelDetents(r, dt, 0.8);
+        if (e >= 1) { r.pos = r.introTarget; r.introDone = true; sReelStop(1.1); }
       } else {
-        if (t < T_CRAWL) { r.pos += 11.5 * dt; continue; }
+        if (t < T_CRAWL) { r.pos += 11.5 * dt; reelDetents(r, dt, 0.8); continue; }
         if (!r.crawl) {
           /* it will arrive a third of a symbol short of the match, which is
              near enough to see the melon entering the window and not near
@@ -2589,14 +2889,25 @@
         r.crawl.t += dt / (T_IMPACT - T_CRAWL);
         var k = Math.min(1, r.crawl.t);
         r.pos = r.crawl.from + (r.crawl.to - r.crawl.from) * (1 - Math.pow(1 - k, 2.8));
+        /* the third drum crawling: the gap between ticks opening out is the
+           whole of the anticipation, so it is not throttled like the others */
+        reelDetents(r, dt, 1.15);
       }
     }
+    /* the drums under the ticks: it thins out as each one locks, so the last
+       stretch is one drum turning on its own */
+    var turning = 0;
+    for (var j = 0; j < 3; j++) if (!reels[j].introDone) turning++;
+    if (cutAudio) loopOff(WHIRR, 0.02);
+    else if (turning) loopOn(WHIRR, 0.018 * turning, 800 + 220 * turning);
+    else loopOff(WHIRR, 0.25);
     lcd.refresh();
   }
 
   function breakApart() {
     broke = true;
     phase = "BREAK";
+    if (!cutAudio) { cutAudio = true; silenceAll(true); }
     machine.position.set(0, 0, 0);
     machine.rotation.set(0, 0, 0);
     power = 0; applyPower();
@@ -2613,7 +2924,7 @@
     camera.fov = 40; camera.updateProjectionMatrix();
     hudRight.textContent = "";
     setBlack(1);
-    wakeT = 0; wakeCue = 0;
+    wakeT = 0; wakeCue = 0; awake = false;
     var landed = 0;
     schedule.forEach(function (p, i) {
       moveTo(p, p.downPos, p.downQuat, 0.85 + (i % 4) * 0.09,
@@ -2662,8 +2973,18 @@
     camera.updateProjectionMatrix();
     shake = 0.006 + 0.030 * u * u;
 
+    /* the air. It opens up as he accelerates and the filter opens with it, so
+       the noise gets brighter as well as louder rather than merely closer */
+    if (!cutAudio) {
+      loopOn(WIND, 0.055 + 0.55 * u * u, 300 + 2600 * u * u);
+      loopOn(HUM, 0.06 + 0.05 * u, 0);
+    }
+
     glance = glanceAt(introT);
     if (introT > T_FADE) setBlack((introT - T_FADE) / FADE_LEN);
+    /* Cut, not faded: the light goes and the sound goes with it, on the same
+       frame. He does not hear the machine land any more than he sees it. */
+    if (blackout >= 1 && !cutAudio) { cutAudio = true; silenceAll(true); }
     /* the fog lifts as you come down, so the floor arrives out of the dark
        rather than being permanently hidden by it */
     scene.fog.density = 0.016 + 0.069 * u * u;
@@ -2681,11 +3002,15 @@
 
   function skipIntro() {
     if (phase !== "INTRO" && phase !== "BREAK") return;
+    cutAudio = true;
+    loopOff(WIND, 0.05); loopOff(WHIRR, 0.05); loopOff(RING, 0.05);
+    unsilence(0.85);
+    loopOn(ROOM, 0.042, 440);
     FALLFX.visible = false;
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
-    setBlack(0); wakeT = -1;
+    setBlack(0); wakeT = -1; awake = true;
     camera.near = 0.012; camera.far = 80; camera.updateProjectionMatrix();
     hush();
     setTimeout(function () { say(AFTER[1][0], AFTER[1][1]); }, 500);
@@ -2710,6 +3035,20 @@
   function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
 
+  /* One tick per symbol going past the window, floored to about twenty-four a
+     second. A drum coming out of a wind-up crosses forty symbols a second and
+     forty ticks a second is not a reel, it is a buzz. */
+  function reelDetents(r, dt, level) {
+    var f = Math.floor(r.pos);
+    if (r.lastDet === undefined) { r.lastDet = f; r.detGap = 0; return; }
+    r.detGap += dt;
+    if (f === r.lastDet) return;
+    r.lastDet = f;
+    if (r.detGap < 0.042) return;
+    r.detGap = 0;
+    sDetent(level);
+  }
+
   function stepReels(dt) {
     var busy = false, moved = false;
     for (var i = 0; i < 3; i++) {
@@ -2717,17 +3056,21 @@
       if (r.phase === 2) continue;
       busy = true; moved = true;
       r.t += dt / r.dur;
+      reelDetents(r, dt, 1);
       if (r.phase === 0) {
         /* the run-down, over-travelling by a fraction of a symbol */
         if (r.t >= 1) { r.pos = r.to + 0.16; r.phase = 1; r.t = 0; r.dur = 0.30; }
         else r.pos = r.from + (r.to + 0.16 - r.from) * easeOutQuart(r.t);
       } else {
         /* and the snap back onto it, which is the click you can hear */
-        if (r.t >= 1) { r.pos = r.to; r.phase = 2; }
+        if (r.t >= 1) { r.pos = r.to; r.phase = 2; sReelStop(1); }
         else r.pos = r.to + 0.16 * (1 - easeOutCubic(r.t));
       }
     }
     if (moved) lcd.refresh();
+    /* the drums themselves, under the ticks, shut off with the last of them */
+    if (busy) loopOn(WHIRR, 0.055, 1300);
+    else if (WHIRR.on && phase !== "INTRO") loopOff(WHIRR, 0.18);
     if (spinning && !busy) { spinning = false; settle(); }
     return busy;
   }
@@ -2735,6 +3078,7 @@
   var instrAcc = 0;
   function frame() {
     var dt = Math.min(0.05, clock.getDelta());
+    if (!started) { renderer.render(scene, camera); requestAnimationFrame(frame); return; }
     t0 += dt * 1000;
 
     if (camMode === "TRACK") {
@@ -2828,11 +3172,37 @@
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 
-  startIntro();
-
+  /* Nothing may make a sound until the page has been touched, and the fall —
+     the one sequence that is mostly sound — starts the instant it loads. So
+     the drop waits behind a tap rather than behind a spinner. */
   var load = document.getElementById("loading");
-  load.classList.add("gone");
-  setTimeout(function () { load.remove(); }, 700);
+  var started = false;
+  function begin() {
+    if (started) return;
+    started = true;
+    initAudio();
+    load.classList.add("gone");
+    setTimeout(function () { if (load.parentNode) load.remove(); }, 700);
+    startIntro();
+  }
+  load.innerHTML = "QA-77 · TAP TO BEGIN"
+    + "<span class=\"sub\">SOUND ON &middot; PRESS M TO MUTE</span>";
+  load.style.cursor = "pointer";
+  load.addEventListener("pointerdown", begin);
+  window.addEventListener("keydown", function (e) {
+    if (started) return;
+    if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); begin(); }
+  });
+  var muteWas = null, muteTimer = 0;
+  function showMute() {
+    if (muteWas === null) muteWas = hudRight.textContent;
+    hudRight.textContent = muted ? "SOUND MUTED" : "SOUND ON";
+    clearTimeout(muteTimer);
+    muteTimer = setTimeout(function () {
+      if (muteWas !== null) hudRight.textContent = muteWas;
+      muteWas = null;
+    }, 1600);
+  }
 
   window.QA77 = {
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
@@ -2848,6 +3218,7 @@
        at a crawl, so the wake can be reached without sitting through it */
     setIntroTime: function (t) { introT = t; fallCue = FALL_LINES.length; },
     wakeTime: function () { return wakeT; },
+    setWakeTime: function (t) { wakeT = t; wakeCue = 0; },
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
     reframe: function () { reframe(); }, dolly: dolly,
@@ -2886,6 +3257,19 @@
     place: function () { tryPlace(); },
     tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },
     power: function () { return power; },
+    begin: begin,
+    started: function () { return started; },
+    muted: function () { return muted; },
+    setMuted: setMuted,
+    /* the sound cannot be listened to from a test, so it is counted instead */
+    audio: function () {
+      return {
+        on: audioOn, state: AC ? AC.state : null, muted: muted,
+        bus: bus ? bus.gain.value : null,
+        loops: LOOPS.filter(function (L) { return L.on; }).length,
+        played: PLAYED
+      };
+    },
     interlock: ILK, doStep: doStep, message: function () { return msg; },
     tokens: tokens, dispense: dispenseToken, surrender: surrenderTokens,
     tokensIssued: function () { return tokensIssued; },
