@@ -4275,23 +4275,113 @@ void main() {
      The palette is dry and mechanical to match the look — relay clacks, a
      transformer hum, reel detents, coins on a steel tray. Nothing sings. */
   var AC = null, bus = null, NOISE = null, audioOn = false, muted = false;
+  var master = null, comp = null, meter = null, METER = null, keepAlive = null;
+  /* A phone speaker is a centimetre across, has nothing under about 500 Hz,
+     and is being held at arm's length in a room. Everything here is scaled
+     for that and then let through a compressor doing real work, because on
+     that speaker an honest dynamic range is the same thing as inaudible. */
+  var PUNCH = 1.7;
   var LOOPS = [], PLAYED = {};
   function tally(k) { PLAYED[k] = (PLAYED[k] || 0) + 1; }
 
+  /* iOS hands Web Audio to the ambient audio session, and the ambient session
+     is the one the ringer switch silences — so a phone with the switch flicked
+     plays the whole thing to nobody. Declaring playback moves it to the media
+     session, which the switch does not touch; on anything older than iOS 17
+     an <audio> element that is genuinely playing does the same job. */
+  function silentWav(seconds) {
+    var rate = 8000, n = Math.floor(rate * seconds);
+    var buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    function str(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+    str(0, "RIFF"); v.setUint32(4, 36 + n * 2, true); str(8, "WAVEfmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    str(36, "data"); v.setUint32(40, n * 2, true);
+    var b = new Uint8Array(buf), sBin = "";
+    for (var i = 0; i < b.length; i++) sBin += String.fromCharCode(b[i]);
+    return "data:audio/wav;base64," + btoa(sBin);
+  }
+  function claimPlayback() {
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+    if (keepAlive) return;
+    keepAlive = document.createElement("audio");
+    keepAlive.setAttribute("playsinline", "");
+    keepAlive.loop = true;
+    keepAlive.volume = 1;
+    keepAlive.src = silentWav(1);
+    /* in the document, not merely constructed: a detached element does not
+       hold the audio session, which is the entire reason it exists */
+    keepAlive.setAttribute("aria-hidden", "true");
+    keepAlive.style.cssText = "position:fixed;width:0;height:0;opacity:0;pointer-events:none";
+    document.body.appendChild(keepAlive);
+    var pr = keepAlive.play();
+    if (pr && pr.catch) pr.catch(function () {});
+  }
+  /* Safari suspends the context whenever the page goes to the background and
+     does not always bring it back, so every touch is also a nudge. */
+  function resumeAudio() {
+    if (!AC) return;
+    if (AC.state === "suspended") { var r = AC.resume(); if (r && r.catch) r.catch(function () {}); }
+    if (keepAlive && keepAlive.paused) { var q = keepAlive.play(); if (q && q.catch) q.catch(function () {}); }
+  }
   function initAudio() {
-    if (AC) { if (AC.state === "suspended") AC.resume(); return AC; }
+    if (AC) { resumeAudio(); return AC; }
+    claimPlayback();
     var Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return null;
     AC = new Ctx();
     bus = AC.createGain();
     bus.gain.value = 0;
-    bus.connect(AC.destination);
+    /* Below seventy hertz nothing reaches a phone at all, and on the way past
+       it robs the compressor of the headroom the audible half needs. */
+    var hp = AC.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 70; hp.Q.value = 0.7;
+    comp = AC.createDynamicsCompressor();
+    comp.threshold.value = -22; comp.knee.value = 8; comp.ratio.value = 5;
+    comp.attack.value = 0.004; comp.release.value = 0.18;
+    master = AC.createGain(); master.gain.value = 2.2;
+    /* The compressor takes four milliseconds to lean on a transient, which is
+       long enough for a detent or a reel stop to walk straight through it and
+       come out the far side of the makeup gain at nearly twice full scale —
+       where the output simply clips it. This one is fast and steep and does
+       nothing else. */
+    var lim = AC.createDynamicsCompressor();
+    /* -4 rather than -2: even at twenty to one this thing overshoots its own
+       threshold by a couple of dB on the sharpest transients, and the two dB
+       of ceiling that buys are cheaper than the crackle */
+    lim.threshold.value = -4; lim.knee.value = 0; lim.ratio.value = 20;
+    lim.attack.value = 0.0008; lim.release.value = 0.06;
+    /* and a hair off the top for whatever the limiter still lets past */
+    var trim = AC.createGain(); trim.gain.value = 0.9;
+    /* the output is read back rather than trusted: a graph that is connected
+       and a graph that is making a sound are not the same claim */
+    meter = AC.createAnalyser(); meter.fftSize = 2048;
+    METER = new Float32Array(meter.fftSize);
+    bus.connect(hp); hp.connect(comp); comp.connect(master);
+    master.connect(lim); lim.connect(trim);
+    trim.connect(meter); meter.connect(AC.destination);
+    /* A running source held against the meter's input at zero offset. Without
+       it the analyser has nothing to render once the graph goes quiet, keeps
+       whatever was in its window, and reports the loudest thing that ever
+       happened as though it were still happening. */
+    var hold = AC.createConstantSource();
+    hold.offset.value = 0;
+    hold.connect(meter);
+    hold.start();
+    ["pointerdown", "touchend", "keydown"].forEach(function (ev) {
+      window.addEventListener(ev, resumeAudio, true);
+    });
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) resumeAudio();
+    });
     var n = Math.floor(AC.sampleRate * 1.2);
     NOISE = AC.createBuffer(1, n, AC.sampleRate);
     var d = NOISE.getChannelData(0);
     for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     audioOn = true;
     bus.gain.setTargetAtTime(0.85, AC.currentTime, 0.12);
+    resumeAudio();
     return AC;
   }
   function aNow() { return AC ? AC.currentTime : 0; }
@@ -4311,7 +4401,7 @@ void main() {
     f.Q.value = o.q === undefined ? 1.1 : o.q;
     var g = AC.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.3), t + (o.a || 0.002));
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, (o.gain || 0.3) * PUNCH), t + (o.a || 0.002));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     src.connect(f); f.connect(g); g.connect(bus);
     src.start(t, Math.random() * 0.4);
@@ -4326,7 +4416,7 @@ void main() {
     if (o.f1) osc.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), t + dur);
     var g = AC.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, o.gain || 0.2), t + (o.a || 0.004));
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, (o.gain || 0.2) * PUNCH), t + (o.a || 0.004));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(g); g.connect(bus);
     osc.start(t); osc.stop(t + dur + 0.03);
@@ -4347,7 +4437,7 @@ void main() {
       L.node.start(aNow());
       L.on = true;
     }
-    L.gain.gain.setTargetAtTime(muted ? 0 : level, aNow(), 0.06);
+    L.gain.gain.setTargetAtTime(muted ? 0 : level * PUNCH, aNow(), 0.06);
     if (cutoff && L.filter) L.filter.frequency.setTargetAtTime(cutoff, aNow(), 0.08);
   }
   function loopOff(L, fade) {
@@ -4393,7 +4483,8 @@ void main() {
 
   var WIND = loop(noiseLoop("lowpass", 400, 0.7));
   var WHIRR = loop(noiseLoop("bandpass", 900, 1.4));
-  var HUM = loop(oscLoop([[50, 0.5], [100, 0.22], [150, 0.09], [200, 0.04]]));
+  var HUM = loop(oscLoop([[50, 0.5], [100, 0.30], [150, 0.16], [200, 0.10],
+                          [300, 0.06], [400, 0.035]]));
   var RING = loop(oscLoop([[4180, 0.5], [4192, 0.5]]));      /* the ears, after */
   var ROOM = loop(noiseLoop("lowpass", 220, 0.6));
 
@@ -4406,15 +4497,18 @@ void main() {
   function sClack(level) {                        /* a relay, a key cap */
     tally("clack");
     level = level || 1;
-    burst({ f0: 1700, f1: 500, q: 1.4, gain: 0.22 * level, d: 0.07 });
-    tone({ f0: 190, f1: 90, d: 0.09, gain: 0.16 * level, type: "triangle" });
+    burst({ f0: 1900, f1: 620, q: 1.4, gain: 0.24 * level, d: 0.07 });
+    tone({ f0: 380, f1: 180, d: 0.09, gain: 0.16 * level, type: "triangle" });
   }
   function sThunk(level) {                        /* a part seating, a lever catch */
     tally("thunk");
     level = level || 1;
-    burst({ f0: 900, f1: 220, q: 0.9, gain: 0.26 * level, d: 0.16 });
-    tone({ f0: 120, f1: 48, d: 0.26, gain: 0.34 * level, type: "triangle" });
-    tone({ f0: 240, f1: 130, d: 0.14, gain: 0.10 * level, type: "sine" });
+    burst({ f0: 1100, f1: 280, q: 0.9, gain: 0.26 * level, d: 0.16 });
+    /* the fundamental is for headphones; the octave above it is the only part
+       of a thunk a handset will ever put in the air */
+    tone({ f0: 150, f1: 60, d: 0.26, gain: 0.34 * level, type: "triangle" });
+    tone({ f0: 330, f1: 150, d: 0.16, gain: 0.22 * level, type: "sine" });
+    tone({ f0: 620, f1: 300, d: 0.09, gain: 0.10 * level, type: "sine" });
   }
   function sScrape(level) {                       /* steel dragged off concrete */
     tally("scrape");
@@ -4426,7 +4520,7 @@ void main() {
   }
   function sStep(level) {
     tally("step");
-    burst({ f0: 260, f1: 120, q: 0.8, gain: 0.075 * (level || 1), d: 0.10 });
+    burst({ f0: 420, f1: 190, q: 0.8, gain: 0.085 * (level || 1), d: 0.10 });
     burst({ f0: 2400, f1: 1100, q: 1.0, gain: 0.030 * (level || 1), d: 0.05 });
   }
   function sDetent(level) {                       /* one reel symbol going past */
@@ -4436,8 +4530,9 @@ void main() {
   function sReelStop(level) {
     tally("reelstop");
     level = level || 1;
-    burst({ f0: 1200, f1: 300, q: 1.1, gain: 0.30 * level, d: 0.13 });
+    burst({ f0: 1400, f1: 340, q: 1.1, gain: 0.32 * level, d: 0.13 });
     tone({ f0: 155, f1: 62, d: 0.22, gain: 0.26 * level, type: "triangle" });
+    tone({ f0: 470, f1: 190, d: 0.13, gain: 0.20 * level, type: "sine" });
   }
   /* a struck disc: inharmonic partials, the way a coin actually rings */
   function sCoin(level, size) {
@@ -4451,7 +4546,7 @@ void main() {
       o.type = "sine";
       o.frequency.value = base * parts[i] * (0.98 + Math.random() * 0.04);
       var g = AC.createGain();
-      var amp = (0.16 * level) / (1 + i * 1.5);
+      var amp = (0.16 * level * PUNCH) / (1 + i * 1.5);
       g.gain.setValueAtTime(0.0001, t);
       g.gain.exponentialRampToValueAtTime(Math.max(0.0002, amp), t + 0.002);
       g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22 / (1 + i * 0.5));
@@ -4462,8 +4557,8 @@ void main() {
   }
   function sRefuse() {
     tally("refuse");
-    burst({ f0: 380, f1: 200, q: 1.6, gain: 0.16, d: 0.11 });
-    tone({ f0: 96, f1: 74, d: 0.16, gain: 0.11, type: "square" });
+    burst({ f0: 520, f1: 260, q: 1.6, gain: 0.18, d: 0.11 });
+    tone({ f0: 192, f1: 148, d: 0.16, gain: 0.13, type: "square" });
   }
   function sRelayRun(n, spread) {                 /* a rack of relays picking up */
     for (var i = 0; i < n; i++) {
@@ -4492,6 +4587,17 @@ void main() {
     bus.gain.cancelScheduledValues(t);
     bus.gain.setValueAtTime(bus.gain.value, t);
     bus.gain.linearRampToValueAtTime(level === undefined ? 0.85 : level, t + 0.5);
+  }
+  /* peak and rms of what is actually leaving the graph */
+  function levels() {
+    if (!meter) return { peak: 0, rms: 0 };
+    meter.getFloatTimeDomainData(METER);
+    var pk = 0, sum = 0;
+    for (var i = 0; i < METER.length; i++) {
+      var v = METER[i]; sum += v * v; v = Math.abs(v);
+      if (v > pk) pk = v;
+    }
+    return { peak: +pk.toFixed(4), rms: +Math.sqrt(sum / METER.length).toFixed(4) };
   }
   function setMuted(m) {
     muted = m;
@@ -5875,8 +5981,8 @@ void main() {
 
   function idleHint() {
     return window.innerWidth < 560
-      ? "Drag to look · tap to walk · M for sound"
-      : "Drag to look · WASD or tap the floor to walk · pinch to lean in · M for sound";
+      ? "Drag to look · tap to walk"
+      : "Drag to look · WASD or tap the floor to walk · pinch to lean in";
   }
   function setMessage(s) { msg = s; msgLine.redraw(); }
   function setState(a, b) { swState.set(a); swMatter.set(b); }
@@ -6455,7 +6561,6 @@ void main() {
       return advance();
     }
     if (e.code === "KeyF" || e.code === "Home") { e.preventDefault(); reframe(); }
-    if (e.code === "KeyM") { e.preventDefault(); setMuted(!muted); showMute(); }
   });
 
   /* ------------------------------------------------------------- resize --- */
@@ -7380,23 +7485,13 @@ void main() {
     startIntro();
   }
   load.innerHTML = "QA-77 · TAP TO BEGIN"
-    + "<span class=\"sub\">SOUND ON &middot; PRESS M TO MUTE</span>";
+    + "<span class=\"sub\">WITH SOUND &middot; TURN IT UP</span>";
   load.style.cursor = "pointer";
   load.addEventListener("pointerdown", begin);
   window.addEventListener("keydown", function (e) {
     if (started) return;
     if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); begin(); }
   });
-  var muteWas = null, muteTimer = 0;
-  function showMute() {
-    if (muteWas === null) muteWas = hudRight.textContent;
-    hudRight.textContent = muted ? "SOUND MUTED" : "SOUND ON";
-    clearTimeout(muteTimer);
-    muteTimer = setTimeout(function () {
-      if (muteWas !== null) hudRight.textContent = muteWas;
-      muteWas = null;
-    }, 1600);
-  }
 
   window.QA77 = {
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
@@ -7453,14 +7548,14 @@ void main() {
     power: function () { return power; },
     begin: begin,
     started: function () { return started; },
-    muted: function () { return muted; },
-    setMuted: setMuted,
     /* the sound cannot be listened to from a test, so it is counted instead */
     audio: function () {
       return {
         on: audioOn, state: AC ? AC.state : null, muted: muted,
+        time: AC ? +AC.currentTime.toFixed(3) : 0,
         bus: bus ? bus.gain.value : null,
         loops: LOOPS.filter(function (L) { return L.on; }).length,
+        level: levels(),
         played: PLAYED
       };
     },
