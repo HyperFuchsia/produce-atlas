@@ -1531,8 +1531,9 @@
   function advance() {
     if (spinning) return;
     if (phase === "INTRO" || phase === "BREAK") return skipIntro();
-    if (phase === "ASSEMBLY") {           /* the space bar fits the next part */
-      if (nextPart < schedule.length) tryFitPart(schedule[nextPart]);
+    if (phase === "ASSEMBLY") {     /* the space bar lifts, then puts it on */
+      if (carrying) tryPlace();
+      else if (nextPart < schedule.length) tapPart(schedule[nextPart]);
       return;
     }
     if (phase !== "OPERATION") return;
@@ -1762,6 +1763,8 @@
       if (camMode === "TRACK") camera.lookAt(orbit.target);
       camera.rotateZ(Math.sin(t * 31.7) * shake * 0.5);
     }
+    /* last, because the shake block re-aims at the target and would undo it */
+    if (glance > 0.001) camera.rotateX(-glance * 1.24);
   }
 
   /* leaning in, rather than moving: a first-person view has no dolly, and being
@@ -1936,6 +1939,11 @@
     if (camMode === "GROUND") { beginRise(); lastTap = 0; return; }
     if (camMode !== "FP") return;
 
+    if (phase === "ASSEMBLY" && carrying) {
+      var other = pickPart(e);
+      if (other && other !== carrying) { tapPart(other); lastTap = 0; return; }
+      tryPlace(); lastTap = 0; return;
+    }
     if (phase === "ASSEMBLY") {
       var part = pickPart(e);
       if (part) {
@@ -2050,6 +2058,8 @@
      sets the parts down where they can be reached, and a semicircle keeps them
      all inside one view instead of scattered behind you where the one that is
      next cannot be seen to be next. */
+  var _fwd = new T.Vector3(), _hold = new T.Vector3();
+  var _holdE = new T.Euler(), _holdQ = new T.Quaternion();
   var _c8 = [];
   for (var q8 = 0; q8 < 8; q8++) _c8.push(new T.Vector3());
   function layDown(p, i, n) {
@@ -2102,22 +2112,74 @@
     } else {
       assemblyHud(p.seated);
       if (PART_LINES[p.name]) say(PART_LINES[p.name], 4.0);
+      carryHint();
     }
   }
-  function tryFitPart(p) {
+  /* Picked up and carried, rather than teleported into place by a tap. It is
+     the difference between clicking ten things off a list and clearing a floor:
+     you lift a part, you walk it over, you put it on. */
+  var carrying = null, PLACE_RANGE = 2.6;
+  function holdRadius(p) {
+    return Math.max(p.size.x, Math.max(p.size.y, p.size.z)) * 0.5;
+  }
+  function carryHint() {
+    if (!carrying) return assemblyHud();
+    var near = Math.hypot(player.pos.x, player.pos.z) <= PLACE_RANGE;
+    hudRight.textContent = near
+      ? "TAP TO FIT " + carrying.label
+      : "CARRY " + carrying.label + " TO THE SITE";
+  }
+  function pickUp(p) {
+    carrying = p;
+    p.anim = null;
+    if (LIFT_LINES[p.name]) say(LIFT_LINES[p.name], 3.8);
+    carryHint();
+  }
+  function stepCarry(dt) {
+    if (!carrying) return;
+    var p = carrying, r = holdRadius(p);
+    var f = forward(_fwd);
+    /* far enough out and low enough down that you can still see where you are
+       walking. Held close, the carcass is the entire top half of the screen. */
+    _hold.set(player.pos.x, player.eye + player.bob, player.pos.z)
+         .addScaledVector(f, 0.64 + r * 1.55);
+    _hold.y -= 0.20 + r * 0.52;
+    p.group.position.lerp(_hold, Math.min(1, 9 * dt));
+    _holdE.set(-0.12, player.yaw, 0, "YXZ");
+    _holdQ.setFromEuler(_holdE);
+    p.group.quaternion.slerp(_holdQ, Math.min(1, 9 * dt));
+  }
+  function tryPlace() {
+    if (!carrying) return;
+    if (Math.hypot(player.pos.x, player.pos.z) > PLACE_RANGE) {
+      walkTo(new T.Vector3(0, 0, 1.6), tryPlace);
+      carryHint();
+      return;
+    }
+    var p = carrying; carrying = null;
+    fitPart(p);
+  }
+  function tapPart(p) {
     if (phase !== "ASSEMBLY" || p.fitted || p.anim) return;
+    if (carrying) {
+      if (p === carrying) return tryPlace();
+      assemblyHud("ONE AT A TIME.");
+      say("One at a time.", 2.0);
+      return;
+    }
     if (schedule[nextPart] !== p) {
       assemblyHud(REFUSALS[refuseN++ % REFUSALS.length]);
       return;
     }
-    fitPart(p);
+    pickUp(p);
   }
+  function tryFitPart(p) { tapPart(p); }
   /* the part wanted next lifts and settles on the spot, because a schedule you
      cannot read off the floor is a schedule you cannot follow */
   function bobNext(t) {
     for (var i = 0; i < schedule.length; i++) {
       var p = schedule[i];
-      if (p.fitted || p.anim) continue;
+      if (p.fitted || p.anim || p === carrying) continue;
       /* clearly off the floor, not a few millimetres of wobble: at the distance
          that fits ten parts in one frame a subtle cue is no cue at all */
       p.group.position.y = p.restY
@@ -2181,7 +2243,9 @@
     ray.setFromCamera(ndc, camera);
     var loose = [];
     for (var i = 0; i < schedule.length; i++) {
-      if (!schedule[i].fitted && !schedule[i].anim) loose.push(schedule[i].group);
+      if (!schedule[i].fitted && !schedule[i].anim && schedule[i] !== carrying) {
+        loose.push(schedule[i].group);
+      }
     }
     var hits = ray.intersectObjects(loose, true);
     if (!hits.length) return null;
@@ -2225,8 +2289,10 @@
      the third crawls from 9.2 to the floor. He tells you what he needs while
      there is still time for it to happen. */
   var FALL_LINES = [
-    [0.40,  "Forty years in the same room, he said.", 3.2],
-    [4.10,  "Never once wrong about anybody. That was the phrase he used.", 3.6],
+    [0.40,  "Forty years in the same room, he said.", 1.2],
+    [1.90,  "...that is a long way down.", 1.4],
+    [4.10,  "Never once wrong about anybody. That was the phrase he used.", 1.7],
+    [6.20,  "It's coming up fast.", 1.2],
     [8.80,  "That's two the same.", 2.0],
     [11.00, "I need the third to match. Three alike is the only one that counts.", 2.4],
     [13.60, "Come on.", 1.2],
@@ -2240,13 +2306,67 @@
     ["Why did I let him talk me into pulling that lever.", 3.6, 4000],
     ["It isn't permitted to be right about anybody. It says so on the front.", 4.2, 8200]
   ];
-  var PART_LINES = {
-    DISPLAY:    "It was showing something when it hit. I keep thinking about that.",
-    CARCASS:    "The one before me got three alike. He never said what happened to them.",
-    INTERLOCK:  "Seven steps to start it. He did all seven, every time, and told me it mattered.",
-    LEVER:      "There it is. The lever. Not connected to anything.",
-    TRAY:       "It only ever pays in tokens. That part he did tell me."
+  /* one on the way up, one on the way down. The build is the only stretch of
+     this where there is time to say anything, so it is where the rest of it
+     gets said. */
+  var LIFT_LINES = {
+    PLINTH:      "Start at the bottom. That's what he'd say.",
+    CARCASS:     "God. It's the whole shell.",
+    DISPLAY:     "Careful with this. Careful.",
+    HEADER:      "Atlas Electronics. Somebody put their name on it.",
+    INSTRUMENTS: "The coherence bar. He watched this like it meant something.",
+    CONTROLS:    "Observe, burst, reset, file. Four keys and one of them works.",
+    INTERLOCK:   "Seven steps before it will so much as look at you.",
+    LEVER:       "And this. The famous lever.",
+    SERVICE:     "Public Luck Authority. I never once met anybody from it.",
+    TRAY:        "Where the tokens come out. Worth nothing, he said. He kept every one."
   };
+  var PART_LINES = {
+    PLINTH:      "Level. It has to be level or the reels drift.",
+    CARCASS:     "The one before me got three alike. He never said what happened to them.",
+    DISPLAY:     "It was showing something when it hit. I keep thinking about that.",
+    HEADER:      "There. It has a name again.",
+    INSTRUMENTS: "Nothing to measure yet.",
+    CONTROLS:    "Nothing to control yet either.",
+    INTERLOCK:   "Seven steps. He did all seven, every time, and told me it mattered.",
+    LEVER:       "Not connected to anything. I checked. There's a plate.",
+    SERVICE:     "The seal's pressed, not printed. So you can't argue with it.",
+    TRAY:        "That's the last of it."
+  };
+
+  /* ------------------------------------------------------ the landing site -- */
+  /* You cannot build suspense out of a fall toward nothing. At seventy-nine
+     metres the floor is entirely inside the fog and looking down shows black,
+     so the place you are going to hit is marked, and the mark does not fog:
+     it starts as a coin at the bottom of the frame and ends up under you. */
+  var siteTex = (function () {
+    var c = makeCanvas(512, 512), x = c.getContext("2d");
+    x.clearRect(0, 0, 512, 512);
+    var g = x.createRadialGradient(256, 256, 20, 256, 256, 250);
+    g.addColorStop(0.00, "rgba(196,204,212,.30)");
+    g.addColorStop(0.55, "rgba(150,160,170,.10)");
+    g.addColorStop(1.00, "rgba(0,0,0,0)");
+    x.fillStyle = g; x.beginPath(); x.arc(256, 256, 250, 0, TAU); x.fill();
+    x.strokeStyle = "rgba(206,214,222,.55)"; x.lineWidth = 5;
+    x.beginPath(); x.arc(256, 256, 196, 0, TAU); x.stroke();
+    x.lineWidth = 3; x.strokeStyle = "rgba(206,214,222,.32)";
+    x.beginPath(); x.arc(256, 256, 124, 0, TAU); x.stroke();
+    x.strokeStyle = "rgba(206,214,222,.45)"; x.lineWidth = 4;
+    [[256, 44, 256, 108], [256, 404, 256, 468], [44, 256, 108, 256], [404, 256, 468, 256]]
+      .forEach(function (l) {
+        x.beginPath(); x.moveTo(l[0], l[1]); x.lineTo(l[2], l[3]); x.stroke();
+      });
+    var t = new T.CanvasTexture(c);
+    t.colorSpace = T.SRGBColorSpace; t.anisotropy = MAXA;
+    return t;
+  })();
+  var siteMark = new T.Mesh(new T.PlaneGeometry(6.6, 6.6),
+    new T.MeshBasicMaterial({ map: siteTex, transparent: true, depthWrite: false, fog: false }));
+  siteMark.rotation.x = -Math.PI / 2;
+  siteMark.position.y = 0.004;
+  siteMark.visible = false;
+  siteMark.renderOrder = -2;
+  scene.add(siteMark);
 
   /* --------------------------------------------------- the fall effects --- */
   /* A camera that tracks a falling object perfectly shows no fall at all: the
@@ -2333,7 +2453,16 @@
      script nobody reads. It is skippable at any point. */
   var FALL_H = 79.0, MATCH = 3;                  /* MELON, three alike */
   var T_STOP = [4.20, 8.00], T_CRAWL = 9.20, T_IMPACT = 15.20;
-  var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0;
+  var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0, glance = 0;
+  /* three looks down, escalating, then eyes back on the reel for the finish */
+  var GLANCES = [[1.50, 3.10], [5.70, 7.10], [9.30, 10.60]];
+  function glanceAt(t) {
+    for (var i = 0; i < GLANCES.length; i++) {
+      var a = GLANCES[i][0], b = GLANCES[i][1];
+      if (t >= a && t <= b) return Math.sin(((t - a) / (b - a)) * Math.PI);
+    }
+    return 0;
+  }
 
   function nextMatchAt(x) {
     var k = Math.ceil((x - MATCH) / NSYM);
@@ -2342,7 +2471,9 @@
   function startIntro() {
     planScatter();
     phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
-    fallCue = 0; hush();
+    fallCue = 0; hush(); glance = 0;
+    siteMark.visible = true;
+    scene.fog.density = 0.016;
     FALLFX.visible = true;
     seedStreaks(FALL_H);
     SPILL.forEach(function (m) { m.userData.off.y = (Math.random() - 0.5) * 2.4; });
@@ -2397,6 +2528,9 @@
     power = 0; applyPower();
     workLight.intensity = 1.5;
     FALLFX.visible = false;
+    siteMark.visible = false;
+    scene.fog.density = 0.085;
+    glance = 0;
     shake = 0.16; flash = 1;                 /* the hit */
     goToGround();                            /* you came down with it */
     hudLeft.textContent = "TAP TO GET UP";
@@ -2455,6 +2589,10 @@
     camera.updateProjectionMatrix();
     shake = 0.006 + 0.030 * u * u;
 
+    glance = glanceAt(introT);
+    /* the fog lifts as you come down, so the floor arrives out of the dark
+       rather than being permanently hidden by it */
+    scene.fog.density = 0.016 + 0.069 * u * u;
     var camY = orbit.target.y + orbit.dist * Math.sin(orbit.pitch);
     stepStreaks(camY, fallSpeed);
     stepSpill(dt, machine.position.y);
@@ -2470,6 +2608,9 @@
   function skipIntro() {
     if (phase !== "INTRO" && phase !== "BREAK") return;
     FALLFX.visible = false;
+    siteMark.visible = false;
+    scene.fog.density = 0.085;
+    glance = 0;
     hush();
     setTimeout(function () { say(AFTER[1][0], AFTER[1][1]); }, 500);
     shake = 0; flash = 0;
@@ -2534,6 +2675,7 @@
       if (Math.abs(aimPitch - player.pitch) < 0.004) { player.pitch = aimPitch; aimPitch = null; }
     }
     stepPlayer(dt);
+    stepCarry(dt);
     applyCamera();
 
     simT += dt;
@@ -2639,7 +2781,12 @@
     walkTo: function (x, z) { walkTo(new T.Vector3(x, 0, z)); },
     said: function () { return sayEl.classList.contains("on") ? sayEl.textContent : ""; },
     nextPart: function () { return nextPart; },
-    fitNext: function () { if (nextPart < schedule.length) tryFitPart(schedule[nextPart]); },
+    fitNext: function () {
+      if (carrying) tryPlace();
+      else if (nextPart < schedule.length) tapPart(schedule[nextPart]);
+    },
+    carrying: function () { return carrying ? carrying.name : null; },
+    place: function () { tryPlace(); },
     tryFit: function (name) { if (byName[name]) tryFitPart(byName[name]); },
     power: function () { return power; },
     interlock: ILK, doStep: doStep, message: function () { return msg; },

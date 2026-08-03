@@ -79,6 +79,40 @@ and it renders as a black rectangle over whatever it was framing. That is exactl
 what swallowed the service panel. `ring()` now clamps the bevel to 40% of the
 border so it cannot happen again.
 
+### Looking down
+
+You cannot build suspense out of a fall toward nothing. At seventy-nine metres the
+floor is entirely inside the fog and looking down shows black, so the place you are
+going to hit is marked — a ringed target with crosshairs that does not fog. It
+starts as a coin at the bottom of the frame and ends up under you. The fog lifts
+with height too, so the floor itself arrives out of the dark rather than being
+permanently hidden by it.
+
+Three times on the way down the eye goes to the ground and comes back: at 1.5, 5.7
+and 9.3 seconds, easing out and back over a sine. The last stretch is all on the
+reel, because by then that is what matters. Looking down, the streak field radiates
+from a vanishing point directly below, which is the only moment in the game that
+says *falling* rather than *descending*.
+
+The glance is applied last in the camera update. Applied where it reads naturally —
+right after the `lookAt` — the shake block re-aims at the target a few lines later
+and silently undoes it.
+
+### Carrying the pieces
+
+Parts are picked up and carried rather than teleported into place by a tap. It is
+the difference between clicking ten things off a list and clearing a floor: you
+lift a part, it rides in front of you as you walk, you take it to the site and put
+it on. Held distance and drop both scale with the part's own size, far enough out
+and low enough down that you can still see where you are going — held close, the
+carcass is the entire top half of the screen.
+
+Each of the ten has a line on the way up and another on the way down, which is
+where the rest of the lore lives: the coherence bar he watched like it meant
+something, the four keys of which one works, the seal that is pressed rather than
+printed so you cannot argue with it, and the tokens worth nothing that he kept
+every one of.
+
 ### The operator
 
 There is a person in this. They are falling too, and they say so — sentence case,
