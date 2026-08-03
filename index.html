@@ -5942,8 +5942,10 @@ void main() {
       if (camMode === "TRACK") camera.lookAt(orbit.target);
       camera.rotateZ(Math.sin(t * 31.7) * shake * 0.5);
     }
-    /* last, because the shake block re-aims at the target and would undo it */
-    if (glance > 0.001) camera.rotateX(-glance * 1.24);
+    /* Last, because the shake block re-aims at the target and would undo it.
+       The look-at already tilts down by orbit.pitch, so the extra needed to
+       reach vertical is what remains of a right angle. */
+    if (glance > 0.001) camera.rotateX(-glance * (Math.PI / 2 - orbit.pitch));
   }
 
   /* leaning in, rather than moving: a first-person view has no dolly, and being
@@ -6468,14 +6470,16 @@ void main() {
      the third crawls from 9.2 to the floor. He tells you what he needs while
      there is still time for it to happen. */
   var FALL_LINES = [
-    [0.40,  "Forty years in the same room, he said.", 1.2],
-    [1.90,  "...that is a long way down.", 1.4],
-    [4.10,  "Never once wrong about anybody. That was the phrase he used.", 1.7],
-    [6.20,  "It's coming up fast.", 1.2],
-    [8.80,  "That's two the same.", 2.0],
-    [11.00, "I need the third to match. Three alike is the only one that counts.", 2.4],
-    [13.60, "Come on.", 1.2],
-    [14.70, "Come on —", 1.1]
+    [0.40,  "Forty years in the same room, he said.", 1.4],
+    [2.90,  "...that is a long way down.", 2.0],
+    [5.20,  "It's just floor. All the way down.", 1.6],
+    [8.50,  "Never once wrong about anybody. That was the phrase he used.", 2.4],
+    [11.80, "It's coming up fast.", 1.5],
+    [15.10, "That's two the same.", 1.8],
+    [16.40, "No — watch the reel, watch the reel —", 1.3],
+    [17.70, "I need the third to match. Three alike is the only one that counts.", 2.2],
+    [18.60, "Come on.", 0.9],
+    [19.10, "Come on —", 0.5]
   ];
   var fallCue = 0;
 
@@ -6539,7 +6543,7 @@ void main() {
     t.colorSpace = T.SRGBColorSpace; t.anisotropy = MAXA;
     return t;
   })();
-  var siteMark = new T.Mesh(new T.PlaneGeometry(6.6, 6.6),
+  var siteMark = new T.Mesh(new T.PlaneGeometry(10.5, 10.5),
     new T.MeshBasicMaterial({ map: siteTex, transparent: true, depthWrite: false, fog: false }));
   siteMark.rotation.x = -Math.PI / 2;
   siteMark.position.y = 0.004;
@@ -6630,15 +6634,29 @@ void main() {
   /* Long. Seventy-nine metres and a quarter of a minute, because the drop has
      a script to get through and a script delivered at falling speed is a
      script nobody reads. It is skippable at any point. */
-  var FALL_H = 79.0, MATCH = 3;                  /* MELON, three alike */
-  var T_STOP = [4.20, 8.00], T_CRAWL = 9.20, T_IMPACT = 15.20;
+  /* A hundred and five metres and twenty seconds. The descent is planned round
+     the glances rather than the other way about: he looks down, holds it, and
+     is back on the machine before each reel comes in. */
+  var FALL_H = 105.0, MATCH = 3;                 /* MELON, three alike */
+  var T_STOP = [7.80, 14.30], T_CRAWL = 15.40, T_IMPACT = 19.50;
   var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0, glance = 0;
-  /* three looks down, escalating, then eyes back on the reel for the finish */
-  var GLANCES = [[1.50, 3.10], [5.70, 7.10], [9.30, 10.60]];
+  /* Three looks down, each held straight at the floor and each shorter than the
+     last: four seconds the first time, when there is nothing to do but take it
+     in; two the second; under one the third, snatched, because by then the
+     reels are coming in and he cannot spare the time. */
+  var GLANCES = [
+    { at: 1.80,  down: 0.80, hold: 4.00, up: 0.80 },
+    { at: 11.00, down: 0.50, hold: 2.00, up: 0.50 },
+    { at: 16.00, down: 0.30, hold: 0.90, up: 0.35 }
+  ];
+  function smooth(k) { return k * k * (3 - 2 * k); }
   function glanceAt(t) {
     for (var i = 0; i < GLANCES.length; i++) {
-      var a = GLANCES[i][0], b = GLANCES[i][1];
-      if (t >= a && t <= b) return Math.sin(((t - a) / (b - a)) * Math.PI);
+      var g = GLANCES[i], u = t - g.at;
+      if (u < 0 || u > g.down + g.hold + g.up) continue;
+      if (u < g.down) return smooth(u / g.down);
+      if (u < g.down + g.hold) return 1;
+      return 1 - smooth((u - g.down - g.hold) / g.up);
     }
     return 0;
   }
@@ -6652,6 +6670,11 @@ void main() {
     phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
     fallCue = 0; hush(); glance = 0;
     siteMark.visible = true;
+    /* The drop starts at a hundred and five metres and the far plane was at
+       eighty, so the floor — and the mark on it — were clipped away entirely
+       and every look down showed nothing but streaks. Nothing is near the eye
+       during the fall, so the near plane can go out to pay for it. */
+    camera.near = 0.4; camera.far = 320; camera.updateProjectionMatrix();
     scene.fog.density = 0.016;
     FALLFX.visible = true;
     seedStreaks(FALL_H);
@@ -6710,6 +6733,7 @@ void main() {
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
+    camera.near = 0.012; camera.far = 80; camera.updateProjectionMatrix();
     shake = 0.16; flash = 1;                 /* the hit */
     goToGround();                            /* you came down with it */
     hudLeft.textContent = "TAP TO GET UP";
@@ -6790,6 +6814,7 @@ void main() {
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
+    camera.near = 0.012; camera.far = 80; camera.updateProjectionMatrix();
     hush();
     setTimeout(function () { say(AFTER[1][0], AFTER[1][1]); }, 500);
     shake = 0; flash = 0;

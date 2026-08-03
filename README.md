@@ -88,11 +88,26 @@ starts as a coin at the bottom of the frame and ends up under you. The fog lifts
 with height too, so the floor itself arrives out of the dark rather than being
 permanently hidden by it.
 
-Three times on the way down the eye goes to the ground and comes back: at 1.5, 5.7
-and 9.3 seconds, easing out and back over a sine. The last stretch is all on the
-reel, because by then that is what matters. Looking down, the streak field radiates
-from a vanishing point directly below, which is the only moment in the game that
-says *falling* rather than *descending*.
+Three times on the way down the eye goes to the ground and comes back, and each
+look is **held straight at the floor** — four seconds the first time, when there is
+nothing to do but take it in; two the second; under one the third, snatched,
+because by then the reels are coming in and he cannot spare it. *No — watch the
+reel, watch the reel.* The descent is planned round the glances rather than the
+other way about: he is back on the machine before each reel comes in, and the last
+stretch is all on the third one.
+
+Straight down means straight down. The look-at is already tilted by the camera's
+own elevation, so the extra rotation needed is what remains of a right angle after
+it, not a fixed amount.
+
+Looking down, the streak field radiates from a vanishing point directly below,
+which is the only moment in the game that says *falling* rather than *descending*.
+
+The drop starts at a hundred and five metres and the far plane sat at eighty, so
+the floor — and the mark on it — were clipped away entirely and every look down
+showed nothing but streaks. Nothing is near the eye during the fall, so the near
+plane goes out to 0.4 to pay for a far plane at 320, and both are put back on
+impact.
 
 The glance is applied last in the camera update. Applied where it reads naturally —
 right after the `lookAt` — the shake block re-aims at the target a few lines later
@@ -151,7 +166,7 @@ one stop short. A third of a symbol: near enough to see the melon entering the
 window, not near enough to count. Then it comes apart, and that is where the ten
 parts on the floor come from.
 
-Seventy-nine metres in fifteen seconds, arriving at about eight metres a second —
+A hundred and five metres in twenty seconds, arriving at about eight metres a second —
 long, because the drop has a script to get through and a script delivered at
 falling speed is a script nobody reads. It is skippable at any point. A camera
 that tracks a falling object perfectly shows no fall at all — the object sits dead
