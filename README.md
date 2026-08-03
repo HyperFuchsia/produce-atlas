@@ -142,9 +142,27 @@ the way down, it is not permitted to be: the cabinet's own notice rail says it
 determines nothing about the operator, and that has never stopped anybody. The one
 before them got three alike. He never said what happened to them.
 
-Then it lands one stop short, and the operator asks the question the whole game is
-built on: *why did I let him talk me into pulling that lever* — a lever that, as a
-plate on the flank states, is not connected to anything.
+He is certain, right to the end — *Come on. Come on. Come on. Yes. Yes. There we
+go.* — and then the light goes. The fade completes before the floor arrives, so the
+impact and the machine bursting apart both happen behind full black; the blackout
+sits under the subtitle layer so his last words are still on screen as the world
+disappears. You never see it break.
+
+He wakes to it broken. Two and a half seconds of nothing, then two blinks — the
+eyes crack open, close again, crack further, half-close, and stay open — by which
+time the parts have long since settled, so what he opens them on is a floor already
+covered in wreckage.
+
+And he never finds out. The display died with the machine and the reel it died on
+is in a heap on the floor: *I had it. I know I had it. Nothing on it now. The
+display's dead. I'll never know, will I.* Then the question the whole game is built
+on: *why did I let him talk me into pulling that lever* — a lever that, as a plate
+on the flank states, is not connected to anything.
+
+The third reel still genuinely stops a third of a symbol short in the simulation.
+It is simply never shown to anyone. `QA77.unobserved()` will tell you and nothing in
+the game ever will, which for a machine built on *there is no real luck, but
+everything can be measured* is the one thing that wasn't.
 
 Lines are short during the fall, because there are seven seconds of it and a line
 you cannot finish before the next one lands is not a line; the long ones go after

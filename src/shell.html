@@ -40,7 +40,7 @@
      is talking. */
   #say{
     position:fixed;left:50%;bottom:56px;transform:translateX(-50%);
-    z-index:6;pointer-events:none;
+    z-index:8;pointer-events:none;
     width:min(34em,calc(100vw - 48px));text-align:center;
     font-size:14px;line-height:1.55;letter-spacing:.01em;
     color:rgba(232,236,240,.92);
@@ -48,6 +48,11 @@
     opacity:0;transition:opacity .38s ease;
   }
   #say.on{opacity:1}
+  /* Everything goes black before the impact, not after it: the operator does
+     not see the machine break and neither do you. Under the subtitle, though —
+     the last thing he says has to land while the light goes. */
+  #black{position:fixed;top:0;left:0;width:100%;height:100%;z-index:7;
+         background:#000;opacity:0;pointer-events:none}
   @media (max-width:560px){
     #say{font-size:13px;bottom:64px;width:calc(100vw - 32px)}
   }
@@ -61,6 +66,7 @@
 
 <canvas id="scene"></canvas>
 <div id="loading">Building the apparatus</div>
+<div id="black"></div>
 <div id="say"></div>
 <div class="hud">
   <span id="hudLeft">Drag to look · tap to walk</span>

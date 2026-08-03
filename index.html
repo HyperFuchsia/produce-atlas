@@ -40,7 +40,7 @@
      is talking. */
   #say{
     position:fixed;left:50%;bottom:56px;transform:translateX(-50%);
-    z-index:6;pointer-events:none;
+    z-index:8;pointer-events:none;
     width:min(34em,calc(100vw - 48px));text-align:center;
     font-size:14px;line-height:1.55;letter-spacing:.01em;
     color:rgba(232,236,240,.92);
@@ -48,6 +48,11 @@
     opacity:0;transition:opacity .38s ease;
   }
   #say.on{opacity:1}
+  /* Everything goes black before the impact, not after it: the operator does
+     not see the machine break and neither do you. Under the subtitle, though —
+     the last thing he says has to land while the light goes. */
+  #black{position:fixed;top:0;left:0;width:100%;height:100%;z-index:7;
+         background:#000;opacity:0;pointer-events:none}
   @media (max-width:560px){
     #say{font-size:13px;bottom:64px;width:calc(100vw - 32px)}
   }
@@ -61,6 +66,7 @@
 
 <canvas id="scene"></canvas>
 <div id="loading">Building the apparatus</div>
+<div id="black"></div>
 <div id="say"></div>
 <div class="hud">
   <span id="hudLeft">Drag to look · tap to walk</span>
@@ -6037,6 +6043,7 @@ void main() {
   }
   function beginRise() {
     if (camMode !== "GROUND") return;
+    if (blackout > 0.05) return;           /* his eyes are not open yet */
     camMode = "RISE"; riseT = 0;
   }
   function stepRise(dt) {
@@ -6477,10 +6484,13 @@ void main() {
     [11.80, "It's coming up fast.", 1.5],
     [15.10, "That's two the same.", 1.8],
     [16.40, "No — watch the reel, watch the reel —", 1.3],
-    [17.70, "I need the third to match. Three alike is the only one that counts.", 2.2],
-    [18.60, "Come on.", 0.9],
-    [19.10, "Come on —", 0.5]
+    [17.70, "I need the third to match. Three alike is the only one that counts.", 0.9],
+    [18.30, "Come on. Come on. Come on —", 0.9],
+    [19.10, "Yes. Yes —", 0.4],
+    [19.45, "There we go.", 1.4]
   ];
+  /* the light goes before the floor arrives */
+  var T_FADE = 19.35, FADE_LEN = 0.42;
   var fallCue = 0;
 
   /* and afterwards, when there is nothing to do but read */
@@ -6638,8 +6648,51 @@ void main() {
      the glances rather than the other way about: he looks down, holds it, and
      is back on the machine before each reel comes in. */
   var FALL_H = 105.0, MATCH = 3;                 /* MELON, three alike */
-  var T_STOP = [7.80, 14.30], T_CRAWL = 15.40, T_IMPACT = 19.50;
+  var T_STOP = [7.80, 14.30], T_CRAWL = 15.40, T_IMPACT = 19.80;
   var introT = 0, broke = false, shake = 0, flash = 0, fallSpeed = 0, glance = 0;
+  var blackEl = document.getElementById("black");
+  var blackout = 0, wakeT = -1, wakeCue = 0;
+  function setBlack(v) {
+    blackout = Math.max(0, Math.min(1, v));
+    blackEl.style.opacity = blackout;
+  }
+  /* Coming round, not a fade-in: two blinks that half open and shut again
+     before the eyes stay open. */
+  var WAKE_OPACITY = [
+    [0.00, 1.00], [2.40, 1.00], [2.78, 0.45], [3.30, 1.00],
+    [3.95, 1.00], [4.50, 0.10], [5.05, 0.62], [6.30, 0.00]
+  ];
+  function wakeOpacity(t) {
+    var k = WAKE_OPACITY;
+    if (t <= k[0][0]) return k[0][1];
+    for (var i = 1; i < k.length; i++) {
+      if (t <= k[i][0]) {
+        var u = (t - k[i - 1][0]) / (k[i][0] - k[i - 1][0]);
+        return k[i - 1][1] + (k[i][1] - k[i - 1][1]) * u;
+      }
+    }
+    return 0;
+  }
+  /* He never finds out. The display died with the machine, and the reel it
+     died on is in a heap on the floor. */
+  var WAKE_LINES = [
+    [4.60,  "...how long was I out.", 2.2],
+    [7.20,  "It was there. It was right there.", 2.4],
+    [10.00, "I had it. I know I had it.", 2.4],
+    [12.80, "Nothing on it now. The display's dead.", 2.6],
+    [15.80, "I'll never know, will I.", 2.6],
+    [19.20, "Why did I let him talk me into pulling that lever.", 3.4],
+    [23.20, "It isn't permitted to be right about anybody. It says so on the front.", 4.0]
+  ];
+  function stepWake(dt) {
+    if (wakeT < 0) return;
+    wakeT += dt;
+    setBlack(wakeOpacity(wakeT));
+    while (wakeCue < WAKE_LINES.length && wakeT >= WAKE_LINES[wakeCue][0]) {
+      say(WAKE_LINES[wakeCue][1], WAKE_LINES[wakeCue][2]);
+      wakeCue++;
+    }
+  }
   /* Three looks down, each held straight at the floor and each shorter than the
      last: four seconds the first time, when there is nothing to do but take it
      in; two the second; under one the third, snatched, because by then the
@@ -6669,6 +6722,7 @@ void main() {
     planScatter();
     phase = "INTRO"; introT = 0; broke = false; shake = 0; flash = 0;
     fallCue = 0; hush(); glance = 0;
+    setBlack(0); wakeT = -1; wakeCue = 0;
     siteMark.visible = true;
     /* The drop starts at a hundred and five metres and the far plane was at
        eighty, so the floor — and the mark on it — were clipped away entirely
@@ -6736,14 +6790,12 @@ void main() {
     camera.near = 0.012; camera.far = 80; camera.updateProjectionMatrix();
     shake = 0.16; flash = 1;                 /* the hit */
     goToGround();                            /* you came down with it */
-    hudLeft.textContent = "TAP TO GET UP";
+    hudLeft.textContent = "";
     setTimeout(function () { beginRise(); }, 11500);
     camera.fov = 40; camera.updateProjectionMatrix();
-    hudRight.textContent = "ONE STOP SHORT";
-    hush();
-    AFTER.forEach(function (L) {
-      setTimeout(function () { if (phase !== "OPERATION") say(L[0], L[1]); }, L[2]);
-    });
+    hudRight.textContent = "";
+    setBlack(1);
+    wakeT = 0; wakeCue = 0;
     var landed = 0;
     schedule.forEach(function (p, i) {
       moveTo(p, p.downPos, p.downQuat, 0.85 + (i % 4) * 0.09,
@@ -6793,6 +6845,7 @@ void main() {
     shake = 0.006 + 0.030 * u * u;
 
     glance = glanceAt(introT);
+    if (introT > T_FADE) setBlack((introT - T_FADE) / FADE_LEN);
     /* the fog lifts as you come down, so the floor arrives out of the dark
        rather than being permanently hidden by it */
     scene.fog.density = 0.016 + 0.069 * u * u;
@@ -6814,6 +6867,7 @@ void main() {
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
+    setBlack(0); wakeT = -1;
     camera.near = 0.012; camera.far = 80; camera.updateProjectionMatrix();
     hush();
     setTimeout(function () { say(AFTER[1][0], AFTER[1][1]); }, 500);
@@ -6887,6 +6941,10 @@ void main() {
     if (phase === "INTRO") stepIntro(dt);
     else if (phase === "BREAK") {
       stepAssembly(dt);
+      stepWake(dt);
+      if (blackout < 0.05 && camMode === "GROUND" && !hudLeft.textContent) {
+        hudLeft.textContent = "TAP TO GET UP";
+      }
       if (camMode === "TRACK") orbit.pitch += (PITCH_BUILD - orbit.pitch) * Math.min(1, 1.6 * dt);
       shake *= Math.pow(0.02, dt);              /* rings down over about a second */
       flash = Math.max(0, flash - dt * 3.2);
@@ -6955,6 +7013,14 @@ void main() {
   window.QA77 = {
     scene: scene, camera: camera, orbit: orbit, renderer: renderer, T: T,
     reels: reels, sprites: SPRITES, symbols: NSYM,
+    /* how far short the third reel actually stopped. Nobody in the game ever
+       sees this, which is rather the point of it. */
+    unobserved: function () {
+      var d = ((MATCH - reels[2].pos) % NSYM + NSYM) % NSYM;
+      return Math.min(d, NSYM - d);
+    },
+    blackout: function () { return blackout; },
+    wakeTime: function () { return wakeT; },
     observe: observe, fit: fitDistance, result: result,
     advance: advance, step: stepNo, stepName: function () { return STEP_NAME[stepNo()]; },
     reframe: function () { reframe(); }, dolly: dolly,
