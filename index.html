@@ -5699,13 +5699,18 @@ void main() {
     }
     x.fillStyle = "#2A2E32";
     x.textBaseline = "middle"; x.textAlign = "center";
-    /* the authority's name set round the top of the rim, as a coin has it */
+    /* The authority's name round the top of the rim, as a coin has it. Each
+       glyph is rotated to its own angle and set at the radius, and that is all:
+       the extra half turn that used to be in here put every letter on its head,
+       and a sweep of two hundred and eighty degrees carried the legend right
+       round the bottom to meet itself. */
     var name = "PUBLIC LUCK AUTHORITY";
+    var sweep = Math.PI * 0.94;
     x.save(); x.translate(180, 180);
     x.font = "600 22px " + MONO;
     for (var i = 0; i < name.length; i++) {
-      var a2 = -Math.PI * 0.78 + (i / (name.length - 1)) * Math.PI * 1.56;
-      x.save(); x.rotate(a2); x.translate(0, -122); x.rotate(Math.PI);
+      var a2 = -sweep / 2 + (i / (name.length - 1)) * sweep;
+      x.save(); x.rotate(a2); x.translate(0, -128);
       x.fillText(name.charAt(i), 0, 0); x.restore();
     }
     x.restore();
@@ -5722,15 +5727,13 @@ void main() {
 
   CLASSES.forEach(function (cls) {
     var face = mintFace(cls);
-    /* A cylinder's bottom cap carries the same UVs as its top but is seen from
-       the other side, so the same texture on both comes out mirrored on the
-       reverse — every coin that landed tails-up read ETULAV ON. Both faces of a
-       real coin are struck the right way round, so the reverse gets a flipped
-       copy rather than the same one. */
-    var rev = face.clone();
-    rev.needsUpdate = true;
-    rev.wrapS = T.RepeatWrapping;
-    rev.repeat.x = -1; rev.offset.x = 1;
+    /* The reverse takes the same texture, unflipped. There used to be a mirrored
+       copy here on the theory that a cylinder's two caps are seen from opposite
+       sides — they are, but three already accounts for it in the cap UVs, and
+       the flip was putting the mirror in rather than taking it out. What made
+       coins read ETULAV ON was the rim legend, which was being drawn backwards
+       in the canvas and so came out backwards on both faces. */
+    var rev = face;
     var matFace = new T.MeshPhysicalMaterial({
       map: face, color: cls.tone, roughness: 0.34, metalness: 0.85
     });
@@ -5742,6 +5745,25 @@ void main() {
     });
     cls.geo = new T.CylinderGeometry(cls.r, cls.r, cls.t, cls.seg);
     cls.mats = [matEdge, matFace, matRev];
+    /* The same coin, for the ones tumbling past you in the dark. At nine tenths
+       metalness a face is a mirror, and out in the fog at a hundred metres
+       there is nothing for it to reflect: they came out as black discs with a
+       lit rim, which reads as a rendering fault rather than as money. These
+       are duller and carry their own struck relief as emission, so they are
+       legible against an empty sky without any light having to reach them. */
+    var heroFace = new T.MeshPhysicalMaterial({
+      map: face, color: cls.tone, roughness: 0.44, metalness: 0.30,
+      emissive: 0x9AA0A6, emissiveMap: face, emissiveIntensity: 0.34
+    });
+    var heroRev = new T.MeshPhysicalMaterial({
+      map: rev, color: cls.tone, roughness: 0.44, metalness: 0.30,
+      emissive: 0x9AA0A6, emissiveMap: rev, emissiveIntensity: 0.34
+    });
+    var heroEdge = new T.MeshPhysicalMaterial({
+      color: cls.tone, roughness: 0.50, metalness: 0.42, flatShading: true,
+      emissive: 0x7E848A, emissiveIntensity: 0.26
+    });
+    cls.heroMats = [heroEdge, heroFace, heroRev];
   });
 
   var MAX_IN_TRAY = 18;
@@ -6546,7 +6568,17 @@ void main() {
     dragging = false; canvas.classList.remove("dragging");
     if (!wasDrag || moved >= 6 || !e) return;
 
-    if (phase === "INTRO") { skipIntro(); lastTap = 0; return; }
+    if (phase === "INTRO") {
+      var coin = pickHero(e);
+      if (coin) { catchHero(coin); lastTap = 0; return; }
+      if (caught >= 3 && !staked && tappedMachine(e)) { insertStake(); lastTap = 0; return; }
+      /* Skipping moved to a double tap the moment there was something to aim
+         at: one miss on a coin should not throw away the whole opening. */
+      var tNow = simT;
+      if (tNow - lastTap < 0.45) { skipIntro(); lastTap = 0; return; }
+      lastTap = tNow;
+      return;
+    }
     if (blackout > 0.05) return;          /* he is not conscious yet */
     if (phase === "BREAK") { skipIntro(); lastTap = 0; return; }
     if (camMode === "GROUND") { beginRise(); lastTap = 0; return; }
@@ -7066,6 +7098,175 @@ void main() {
     }
   }
 
+  /* ------------------------------------------------------------ the stake --
+     Three coins come out of the cabinet on the way down, one of each class,
+     and the apparatus will not turn its last reel until it has been paid.
+     Catching them is the only thing there is to do during the drop, and
+     putting them in is what buys the result he is about to not get.
+
+     They are held in front of the camera rather than dropped somewhere in the
+     world: a coin two centimetres across, tumbling past at speed, on a phone,
+     is not a thing anybody can hit. Six times life size at arm's length is. */
+  var HERO = [], HERO_AT = [1.50, 5.60, 9.40];
+  var caught = 0, credits = 0, staked = false, stakeT = -1;
+  var _cx = new T.Vector3(), _cy = new T.Vector3(), _cz = new T.Vector3();
+  var _ct = new T.Vector3(), _slot = new T.Vector3();
+  (function () {
+    for (var i = 0; i < CLASSES.length; i++) {
+      var cls = CLASSES[i];
+      var m = new T.Mesh(cls.geo, cls.heroMats);
+      m.visible = false;
+      m.frustumCulled = false;
+      FALLFX.add(m);
+      HERO.push({
+        mesh: m, cls: cls, idx: i, state: 0, t: 0, scale: 3.2,
+        /* Stacked, not spread. Half the frame is only fifteen centimetres wide
+           at this distance on a phone held upright but a good deal taller, so
+           the room to separate three coins is vertical. They are spaced wider
+           than the largest of them is across, which is what stops the biggest
+           one sitting on top of the smallest. */
+        lane: -0.085 + (i - 1) * 0.016, rise: (i - 1) * 0.125,
+        off: new T.Vector3(0, 0, -1.15),
+        spin: new T.Vector3(1.9 + i * 0.4, 2.6 - i * 0.3, 1.3 + i * 0.5)
+      });
+    }
+  })();
+  var CATCH_LINES = [
+    "Got it. Minor.",
+    "Two. It wants all three, it always wants all three.",
+    "Principal. That's the lot."
+  ];
+  function resetStake() {
+    caught = 0; credits = 0; staked = false; stakeT = -1;
+    for (var i = 0; i < HERO.length; i++) {
+      HERO[i].state = 0; HERO[i].t = 0; HERO[i].scale = 3.2;
+      HERO[i].off.set(0, 0, -1.15);
+      HERO[i].mesh.visible = false;
+    }
+  }
+  function fallHud() {
+    if (credits >= 3) { hudLeft.textContent = "STAKE ACCEPTED"; hudRight.textContent = "3 / 3"; return; }
+    if (staked) { hudLeft.textContent = "TAKING THE STAKE"; hudRight.textContent = credits + " / 3"; return; }
+    if (caught >= 3) { hudLeft.textContent = "TAP THE MACHINE"; hudRight.textContent = "3 COINS HELD"; return; }
+    var loose = 0;
+    for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 1) loose++;
+    hudLeft.textContent = loose ? "TAP THE COIN" : "Double-tap to skip";
+    hudRight.textContent = "COINS " + caught + " / 3";
+  }
+  /* the scripted line always wins: these are asides, not the script */
+  function sayFree(text, hold) {
+    if (sayUntil > simT) return;
+    say(text, hold);
+  }
+  function catchHero(h) {
+    if (h.state !== 1) return;
+    h.state = 2; h.t = 0;
+    caught++;
+    sCoin(1.0, h.cls.r * 60);
+    setTimeout(function () { sClick(0.7); }, 60);
+    sayFree(CATCH_LINES[h.idx], 1.7);
+    fallHud();
+  }
+  function insertStake() {
+    if (staked || caught < 3) return;
+    staked = true; stakeT = 0;
+    for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 2) HERO[i].state = 3;
+    sClack(0.9);
+    fallHud();
+  }
+  /* Everything here is smoothed in the eye's own frame and only then put into
+     the world. Smoothed in world space it is not: the camera is coming down at
+     eight metres a second, and a lerp chasing a target that fast settles at a
+     fixed distance behind it — the coins hung nearly two metres above the top
+     of the frame and never came down. */
+  function stepStake(dt, t) {
+    if (!FALLFX.visible) return;
+    camera.updateMatrixWorld();
+    _cx.setFromMatrixColumn(camera.matrixWorld, 0);
+    _cy.setFromMatrixColumn(camera.matrixWorld, 1);
+    _cz.setFromMatrixColumn(camera.matrixWorld, 2);   /* points behind the eye */
+    /* the slot, on the front of a cabinet that is tumbling as it falls */
+    _slot.set(0, H * 0.74, D * 0.52);
+    machine.localToWorld(_slot);
+    for (var i = 0; i < HERO.length; i++) {
+      var h = HERO[i], m = h.mesh, want = 3.2, rate = 6;
+      if (h.state === 0) {
+        if (t < HERO_AT[i]) continue;
+        h.state = 1; h.t = 0;
+        m.visible = true;
+        /* it arrives from below, the way everything does when you are the
+           thing that is falling fastest */
+        h.off.set(h.lane, h.rise - 0.58, -1.15);
+        h.scale = 3.2;
+        sCoin(0.35, h.cls.r * 60);
+        fallHud();
+      }
+      if (h.state === 4) continue;
+      h.t += dt;
+      if (h.state === 1) {
+        var a = h.t * 0.85 + i * 2.1;
+        _ct.set(h.lane + Math.sin(a) * 0.034,
+                h.rise + Math.cos(a * 0.8) * 0.028,
+                -1.15);
+        want = 3.2; rate = 4.5;
+      } else if (h.state === 2) {
+        /* Pocketed: a row along the TOP of the frame. The bottom is where the
+           cabinet is and where the read-outs are, and three coins parked there
+           sat squarely over the reel window — which is the one thing on screen
+           he is supposed to be watching. */
+        _ct.set((i - 1) * 0.062, 0.175, -0.80);
+        want = 2.0; rate = 9;
+      } else {
+        /* into the slot: the machine's own position, expressed from the eye */
+        _ct.copy(_slot).sub(camera.position);
+        _ct.set(_ct.dot(_cx), _ct.dot(_cy), _ct.dot(_cz));
+        want = 3.4; rate = 6;
+        if (h.off.distanceTo(_ct) < 0.16) {
+          h.state = 4; m.visible = false;
+          credits++;
+          sCoin(0.85, h.cls.r * 60);
+          setTimeout(function () { sClack(0.85); }, 70);
+          if (credits >= 3) {
+            sRelayRun(4, 300);
+            sayFree("That's the stake. Now show me.", 2.0);
+          }
+          fallHud();
+          continue;
+        }
+      }
+      h.off.lerp(_ct, Math.min(1, rate * dt));
+      m.position.copy(camera.position)
+                .addScaledVector(_cx, h.off.x)
+                .addScaledVector(_cy, h.off.y)
+                .addScaledVector(_cz, h.off.z);
+      h.scale += (want - h.scale) * Math.min(1, 7 * dt);
+      m.scale.setScalar(h.scale);
+      m.rotation.x += h.spin.x * dt;
+      m.rotation.y += h.spin.y * dt;
+      m.rotation.z += h.spin.z * dt;
+    }
+  }
+  function pickHero(e) {
+    var r = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    var loose = [];
+    for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 1) loose.push(HERO[i].mesh);
+    if (!loose.length) return null;
+    var hits = ray.intersectObjects(loose, false);
+    if (!hits.length) return null;
+    for (var j = 0; j < HERO.length; j++) if (HERO[j].mesh === hits[0].object) return HERO[j];
+    return null;
+  }
+  function tappedMachine(e) {
+    var r = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    return ray.intersectObject(machine, true).length > 0;
+  }
+
   /* ============================== THE FALL ================================= */
   /* The apparatus has been in service somewhere else. It arrives mid-cycle,
      falling, with two reels already down on the same symbol and the third
@@ -7195,11 +7396,11 @@ void main() {
       r.aPos = undefined; r.lastDet = undefined;
     });
     machine.position.set(0, FALL_H, 0);
+    resetStake();
     unsilence(0.85);
     loopOn(WIND, 0.012, 170);
     loopOn(HUM, 0.009);
-    hudLeft.textContent = "Tap to skip";
-    hudRight.textContent = "· · ·";
+    fallHud();
   }
 
   function stepIntroReels(dt, t) {
@@ -7217,14 +7418,19 @@ void main() {
         r.pos = r.introFrom + (r.introTarget - r.introFrom) * (1 - Math.pow(1 - e, 3));
         if (e >= 1) { r.pos = r.introTarget; r.introDone = true; sReelStop(1.0); }
       } else {
-        if (t < T_CRAWL) { r.pos += 11.5 * dt; continue; }
+        /* The stake is what releases it. Put the three coins in early and the
+           last reel crawls the whole rest of the way down, which is a long
+           time to watch one symbol approach another; leave it and the
+           Authority starts it anyway at the scheduled hour, on account. */
+        if (!r.crawl && t < T_CRAWL && credits < 3) { r.pos += 11.5 * dt; continue; }
         if (!r.crawl) {
           /* it will arrive a third of a symbol short of the match, which is
              near enough to see the melon entering the window and not near
              enough to count */
-          r.crawl = { from: r.pos, to: nextMatchAt(r.pos + 2.1) - 0.34, t: 0 };
+          r.crawl = { from: r.pos, to: nextMatchAt(r.pos + 2.1) - 0.34, t: 0,
+                      dur: Math.max(2.2, T_IMPACT - t) };
         }
-        r.crawl.t += dt / (T_IMPACT - T_CRAWL);
+        r.crawl.t += dt / r.crawl.dur;
         var k = Math.min(1, r.crawl.t);
         r.pos = r.crawl.from + (r.crawl.to - r.crawl.from) * (1 - Math.pow(1 - k, 2.8));
       }
@@ -7322,6 +7528,9 @@ void main() {
     var camY = orbit.target.y + orbit.dist * Math.sin(orbit.pitch);
     stepStreaks(camY, fallSpeed);
     stepSpill(dt, machine.position.y);
+    /* after applyCamera has run for this frame, so the coins are hung off
+       where the eye actually is rather than where it was */
+    stepStake(dt, introT);
 
     while (fallCue < FALL_LINES.length && introT >= FALL_LINES[fallCue][0]) {
       say(FALL_LINES[fallCue][1], FALL_LINES[fallCue][2]);
@@ -7339,6 +7548,7 @@ void main() {
     unsilence(0.85);
     loopOn(ROOM, 0.020, 440);
     FALLFX.visible = false;
+    resetStake();
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
@@ -7594,6 +7804,35 @@ void main() {
       showStep();
     },
     fallSpeed: function () { return fallSpeed; },
+    stake: function () {
+      return { caught: caught, credits: credits, staked: staked,
+               loose: HERO.filter(function (h) { return h.state === 1; })
+                          .map(function (h) { return h.cls.name; }),
+               held: HERO.filter(function (h) { return h.state === 2; })
+                         .map(function (h) { return h.cls.name; }) };
+    },
+    grab: function (i) {
+      var got = [];
+      HERO.forEach(function (h) { if (h.state === 1 && (i === undefined || h.idx === i)) { catchHero(h); got.push(h.cls.name); } });
+      return got;
+    },
+    insert: function () { insertStake(); return staked; },
+    coinScreen: function () {
+      /* where each coin lands in the frame, so a test can tell whether it is
+         somewhere a thumb could actually reach it */
+      camera.updateMatrixWorld();
+      var right = new T.Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+      return HERO.map(function (h) {
+        var c = h.mesh.position.clone();
+        var v = c.clone().project(camera);
+        /* the same point pushed out by one coin radius, so a test can ask
+           whether two of them actually overlap rather than guessing a number */
+        var e = c.clone().addScaledVector(right, h.cls.r * h.scale).project(camera);
+        return { cls: h.cls.name, state: h.state,
+                 x: +v.x.toFixed(3), y: +v.y.toFixed(3), z: +v.z.toFixed(3),
+                 r: +Math.abs(e.x - v.x).toFixed(3) };
+      });
+    },
     camMode: function () { return camMode; }, player: player,
     rise: function () { beginRise(); },
     walkTo: function (x, z) { walkTo(new T.Vector3(x, 0, z)); },
