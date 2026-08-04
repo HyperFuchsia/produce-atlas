@@ -313,6 +313,7 @@
                           [300, 0.05], [400, 0.028]]));
   var RING = loop(oscLoop([[4180, 0.5], [4192, 0.5]]));      /* the ears, after */
   var ROOM = loop(noiseLoop("lowpass", 220, 0.6));
+  var CARRIER = loop(noiseLoop("bandpass", 1500, 0.9));   /* an open channel */
 
   /* ---- the named sounds ---- */
   function sClick(level) {                        /* a toggle, a keyway */
@@ -399,6 +400,30 @@
       o.start(t); o.stop(t + 0.30);
     }
     burst({ f0: 5200, f1: 2600, q: 2.0, gain: 0.016 * level, d: 0.04 });
+  }
+  /* The squelch, which is the part of a radio you actually recognise. */
+  function sSquelch(open) {
+    tally("squelch");
+    burst({ f0: open ? 2800 : 1500, f1: open ? 900 : 380, q: 1.2,
+            gain: 0.075, d: open ? 0.055 : 0.10 });
+    if (!open) burst({ f0: 3400, f1: 2000, q: 0.7, gain: 0.030, d: 0.13, a: 0.02 });
+  }
+  /* Not words. The shape of somebody talking down a bad channel: a run of
+     band-limited syllables at about the rate a person speaks, each one landing
+     somewhere different in the voice band. Anything more literal than this
+     would need a recording, and there is no network to fetch one over. */
+  function sTalk(n, dur) {
+    tally("talk");
+    for (var i = 0; i < n; i++) {
+      (function (k) {
+        setTimeout(function () {
+          var f = 430 + Math.random() * 640;
+          burst({ f0: f, f1: f * (0.70 + Math.random() * 0.52), q: 3.6,
+                  gain: 0.030 + Math.random() * 0.020,
+                  d: 0.055 + Math.random() * 0.075, a: 0.014 });
+        }, k * (dur * 1000 / n) + Math.random() * 45);
+      })(i);
+    }
   }
   function sRefuse() {
     tally("refuse");
@@ -1949,7 +1974,13 @@
      the whole arrangement */
   function advance() {
     if (spinning) return;
-    if (phase === "INTRO" || phase === "BREAK") return skipIntro();
+    if (phase === "BREAK") return skipIntro();
+    if (phase === "INTRO") {
+      /* a coin in hand first; only an empty hand gives up the descent */
+      for (var hi = 0; hi < HERO.length; hi++) if (HERO[hi].state === 1) return catchHero(HERO[hi]);
+      if (tenderNext()) return;
+      return skipIntro();
+    }
     if (phase === "ASSEMBLY") {     /* the space bar lifts, then puts it on */
       if (carrying) tryPlace();
       else if (nextPart < schedule.length) tapPart(schedule[nextPart]);
@@ -2377,7 +2408,13 @@
     if (phase === "INTRO") {
       var coin = pickHero(e);
       if (coin) { catchHero(coin); lastTap = 0; return; }
-      if (caught >= 3 && !staked && tappedMachine(e)) { insertStake(); lastTap = 0; return; }
+      var held = pickHeld(e);
+      if (held) { tenderCoin(held); lastTap = 0; return; }
+      /* the cabinet still takes whatever is next, for anyone who would rather
+         aim at a slot machine than at a coin */
+      if (tenderIdx < 3 && caught > 0 && tappedMachine(e)) {
+        tenderNext(); lastTap = 0; return;
+      }
       /* Skipping moved to a double tap the moment there was something to aim
          at: one miss on a coin should not throw away the whole opening. */
       var tNow = simT;
@@ -2915,6 +2952,10 @@
      is not a thing anybody can hit. Six times life size at arm's length is. */
   var HERO = [], HERO_AT = [1.50, 5.60, 9.40];
   var caught = 0, credits = 0, staked = false, stakeT = -1;
+  /* The apparatus takes the three coins in one order and refuses every other,
+     and the order is drawn fresh each descent. Nothing on the cabinet says
+     what it is. The only place it exists is in the transmission. */
+  var TENDER = [0, 1, 2], tenderIdx = 0, lockUntil = -1;
   var _cx = new T.Vector3(), _cy = new T.Vector3(), _cz = new T.Vector3();
   var _ct = new T.Vector3(), _slot = new T.Vector3();
   (function () {
@@ -2937,13 +2978,80 @@
       });
     }
   })();
+  /* He is not narrating. He is instructing, and every instruction is one the
+     player needs — which of the three, in which order, and by when. The last
+     one is the reason the man on the way down keeps asking why he listened. */
+  var radioEl = document.getElementById("radio");
+  var radioLine = radioEl.querySelector(".line");
+  var RADIO = [], radioCue = 0, radioUntil = 0, radioOpen = false, duck = 1;
+  function buildRadio() {
+    var a = CLASSES[TENDER[0]].name.toLowerCase();
+    var b = CLASSES[TENDER[1]].name.toLowerCase();
+    var c = CLASSES[TENDER[2]].name.toLowerCase();
+    RADIO = [
+      [0.90, "QA-77, this is Halvorsen. I have you on the descent register.", 3.2],
+      [4.30, "You will be shedding tokens the whole way down. Three of them are "
+           + "yours. Take all three — it will not turn a reel unpaid.", 4.8],
+      [7.10, "Order of tender: " + a + ", then " + b + ", then " + c
+           + ". It will not accept them in any other order.", 5.4],
+      /* A scheduled line that has stopped being true is worse than no line:
+         he was still telling a man who had already paid to pay. */
+      [13.20, "Tender them, Halloway. It cannot bring the last reel in until it "
+            + "has been paid.", 3.6, function () { return credits < 3; }],
+      [16.30, function () {
+                return "It is still holding. Give it the " + wants().toLowerCase()
+                     + " and it will turn.";
+              }, 3.0, function () { return credits < 3 && caught >= 3; }],
+      [16.30, "Three alike. It is required to show you three alike — that was "
+            + "always the arrangement.", 3.8, function () { return credits >= 3; }],
+      [18.60, "Halloway. Listen to me. The apparatus was never the thing being—", 1.6]
+    ];
+    radioCue = 0;
+  }
+  function transmit(text, hold) {
+    radioLine.textContent = text;
+    radioEl.classList.add("on");
+    radioUntil = simT + hold;
+    if (!radioOpen) { radioOpen = true; sSquelch(true); loopOn(CARRIER, 0.016, 1400); }
+    sTalk(Math.max(3, Math.round(text.split(" ").length * 0.85)), hold * 0.74);
+  }
+  function closeRadio(quiet) {
+    radioEl.classList.remove("on");
+    if (!radioOpen) return;
+    radioOpen = false;
+    if (!quiet) sSquelch(false);
+    loopOff(CARRIER, 0.12);
+  }
+  function stepRadio(dt, t) {
+    while (radioCue < RADIO.length && t >= RADIO[radioCue][0]) {
+      var L = RADIO[radioCue++];
+      if (L[3] && !L[3]()) continue;
+      transmit(typeof L[1] === "function" ? L[1]() : L[1], L[2]);
+    }
+    if (radioOpen && simT > radioUntil) closeRadio();
+    /* the drop and the drums pull back while he is on the air, because a
+       channel you cannot hear over is a channel nobody listens to */
+    var to = radioOpen ? 0.55 : 1;
+    duck += (to - duck) * Math.min(1, 3.2 * dt);
+  }
+
   var CATCH_LINES = [
     "Got it. Minor.",
     "Two. It wants all three, it always wants all three.",
     "Principal. That's the lot."
   ];
+  function rollTender() {
+    TENDER = [0, 1, 2];
+    for (var i = 2; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)), t = TENDER[i];
+      TENDER[i] = TENDER[j]; TENDER[j] = t;
+    }
+    tenderIdx = 0; lockUntil = -1;
+  }
+  function wants() { return tenderIdx < 3 ? CLASSES[TENDER[tenderIdx]].name : null; }
   function resetStake() {
     caught = 0; credits = 0; staked = false; stakeT = -1;
+    rollTender();
     for (var i = 0; i < HERO.length; i++) {
       HERO[i].state = 0; HERO[i].t = 0; HERO[i].scale = 3.2;
       HERO[i].off.set(0, 0, -1.15);
@@ -2951,9 +3059,19 @@
     }
   }
   function fallHud() {
-    if (credits >= 3) { hudLeft.textContent = "STAKE ACCEPTED"; hudRight.textContent = "3 / 3"; return; }
-    if (staked) { hudLeft.textContent = "TAKING THE STAKE"; hudRight.textContent = credits + " / 3"; return; }
-    if (caught >= 3) { hudLeft.textContent = "TAP THE MACHINE"; hudRight.textContent = "3 COINS HELD"; return; }
+    if (credits >= 3) {
+      hudLeft.textContent = "STAKE ACCEPTED"; hudRight.textContent = "3 / 3"; return;
+    }
+    if (simT < lockUntil) {
+      hudLeft.textContent = "TENDER UNDER REVIEW";
+      hudRight.textContent = Math.ceil(lockUntil - simT) + "s";
+      return;
+    }
+    if (tenderIdx > 0 || caught >= 3) {
+      hudLeft.textContent = "TENDER THE " + wants();
+      hudRight.textContent = "STAKE " + credits + " / 3";
+      return;
+    }
     var loose = 0;
     for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 1) loose++;
     hudLeft.textContent = loose ? "TAP THE COIN" : "Double-tap to skip";
@@ -2973,12 +3091,33 @@
     sayFree(CATCH_LINES[h.idx], 1.7);
     fallHud();
   }
-  function insertStake() {
-    if (staked || caught < 3) return;
+  function tenderCoin(h) {
+    if (!h || h.state !== 2 || credits >= 3) return false;
+    if (simT < lockUntil) { sRefuse(); return false; }
+    if (h.idx !== TENDER[tenderIdx]) {
+      /* It does not eat the coin and it does not end the run. It costs you
+         the one thing there is only a fixed amount of. */
+      sRefuse();
+      lockUntil = simT + 2.6;
+      transmit("No — not that one. The " + wants().toLowerCase()
+             + " next. They will hold the tender under review.", 3.0);
+      fallHud();
+      return false;
+    }
+    h.state = 3; tenderIdx++;
     staked = true; stakeT = 0;
-    for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 2) HERO[i].state = 3;
     sClack(0.9);
     fallHud();
+    return true;
+  }
+  /* every coin in hand, in the order he gave, for the space bar and for tests */
+  function tenderNext() {
+    for (var i = 0; i < HERO.length; i++) {
+      if (HERO[i].state === 2 && HERO[i].idx === TENDER[tenderIdx]) {
+        return tenderCoin(HERO[i]);
+      }
+    }
+    return false;
   }
   /* Everything here is smoothed in the eye's own frame and only then put into
      the world. Smoothed in world space it is not: the camera is coming down at
@@ -3020,7 +3159,7 @@
            cabinet is and where the read-outs are, and three coins parked there
            sat squarely over the reel window — which is the one thing on screen
            he is supposed to be watching. */
-        _ct.set((i - 1) * 0.062, 0.175, -0.80);
+        _ct.set((i - 1) * 0.070, 0.150, -0.95);
         want = 2.0; rate = 9;
       } else {
         /* into the slot: the machine's own position, expressed from the eye */
@@ -3034,6 +3173,7 @@
           setTimeout(function () { sClack(0.85); }, 70);
           if (credits >= 3) {
             sRelayRun(4, 300);
+            transmit("Tender accepted. All three. Now watch the window.", 3.0);
             sayFree("That's the stake. Now show me.", 2.0);
           }
           fallHud();
@@ -3051,6 +3191,19 @@
       m.rotation.y += h.spin.y * dt;
       m.rotation.z += h.spin.z * dt;
     }
+  }
+  function pickHeld(e) {
+    var r = canvas.getBoundingClientRect();
+    ndc.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    ndc.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    var held = [];
+    for (var i = 0; i < HERO.length; i++) if (HERO[i].state === 2) held.push(HERO[i].mesh);
+    if (!held.length) return null;
+    var hits = ray.intersectObjects(held, false);
+    if (!hits.length) return null;
+    for (var j = 0; j < HERO.length; j++) if (HERO[j].mesh === hits[0].object) return HERO[j];
+    return null;
   }
   function pickHero(e) {
     var r = canvas.getBoundingClientRect();
@@ -3203,6 +3356,8 @@
     });
     machine.position.set(0, FALL_H, 0);
     resetStake();
+    buildRadio();
+    closeRadio(true);
     unsilence(0.85);
     loopOn(WIND, 0.012, 170);
     loopOn(HUM, 0.009);
@@ -3319,15 +3474,17 @@
       /* Dark and low, and it stays dark: the brightness is what made it
          obnoxious, not the level. It swells over the last third rather than
          riding up the whole way, so there is somewhere for it to go. */
-      loopOn(WIND, 0.012 + 0.092 * u * u * u, 170 + 460 * u * u);
-      loopOn(HUM, 0.009 + 0.013 * u, 0);
+      loopOn(WIND, (0.012 + 0.092 * u * u * u) * duck, 170 + 460 * u * u);
+      loopOn(HUM, (0.009 + 0.013 * u) * duck, 0);
     }
 
     glance = glanceAt(introT);
     if (introT > T_FADE) setBlack((introT - T_FADE) / FADE_LEN);
     /* Cut, not faded: the light goes and the sound goes with it, on the same
        frame. He does not hear the machine land any more than he sees it. */
-    if (blackout >= 1 && !cutAudio) { cutAudio = true; silenceAll(true); }
+    if (blackout >= 1 && !cutAudio) {
+      cutAudio = true; silenceAll(true); closeRadio(true);
+    }
     /* the fog lifts as you come down, so the floor arrives out of the dark
        rather than being permanently hidden by it */
     scene.fog.density = 0.016 + 0.069 * u * u;
@@ -3337,6 +3494,7 @@
     /* after applyCamera has run for this frame, so the coins are hung off
        where the eye actually is rather than where it was */
     stepStake(dt, introT);
+    stepRadio(dt, introT);
 
     while (fallCue < FALL_LINES.length && introT >= FALL_LINES[fallCue][0]) {
       say(FALL_LINES[fallCue][1], FALL_LINES[fallCue][2]);
@@ -3355,6 +3513,7 @@
     loopOn(ROOM, 0.020, 440);
     FALLFX.visible = false;
     resetStake();
+    closeRadio(true);
     siteMark.visible = false;
     scene.fog.density = 0.085;
     glance = 0;
@@ -3419,8 +3578,8 @@
        hums, and the wind-up takes it up over two hundred */
     loopHz(MOTOR, Math.max(34, Math.min(240, fastest * 6)));
     var k = Math.min(1, fastest / 26);
-    loopOn(MOTOR, level * (0.015 + 0.040 * k));
-    loopOn(WHIRR, level * (0.007 + 0.018 * k), 500 + fastest * 26);
+    loopOn(MOTOR, level * duck * (0.015 + 0.040 * k));
+    loopOn(WHIRR, level * duck * (0.007 + 0.018 * k), 500 + fastest * 26);
   }
 
   function stepReels(dt) {
@@ -3612,17 +3771,34 @@
     fallSpeed: function () { return fallSpeed; },
     stake: function () {
       return { caught: caught, credits: credits, staked: staked,
+               order: TENDER.map(function (i) { return CLASSES[i].name; }),
+               wants: wants(), locked: +Math.max(0, lockUntil - simT).toFixed(2),
                loose: HERO.filter(function (h) { return h.state === 1; })
                           .map(function (h) { return h.cls.name; }),
                held: HERO.filter(function (h) { return h.state === 2; })
                          .map(function (h) { return h.cls.name; }) };
+    },
+    radio: function () {
+      return { open: radioOpen, said: radioEl.classList.contains("on") ? radioLine.textContent : "",
+               cue: radioCue, of: RADIO.length, duck: +duck.toFixed(2) };
+    },
+    /* tender the one he asked for, or deliberately the wrong one */
+    tender: function () { return tenderNext(); },
+    tenderWrong: function () {
+      for (var i = 0; i < HERO.length; i++) {
+        if (HERO[i].state === 2 && HERO[i].idx !== TENDER[tenderIdx]) return tenderCoin(HERO[i]);
+      }
+      return false;
     },
     grab: function (i) {
       var got = [];
       HERO.forEach(function (h) { if (h.state === 1 && (i === undefined || h.idx === i)) { catchHero(h); got.push(h.cls.name); } });
       return got;
     },
-    insert: function () { insertStake(); return staked; },
+    insert: function () {          /* all three, in his order */
+      for (var i = 0; i < 3; i++) tenderNext();
+      return staked;
+    },
     coinScreen: function () {
       /* where each coin lands in the frame, so a test can tell whether it is
          somewhere a thumb could actually reach it */

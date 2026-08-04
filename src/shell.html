@@ -51,6 +51,39 @@
   /* Everything goes black before the impact, not after it: the operator does
      not see the machine break and neither do you. Under the subtitle, though —
      the last thing he says has to land while the light goes. */
+  /* A third voice, and it needs to be obviously not the other two. The machine
+     talks in tracked-out capitals in the corners; he thinks in sentence case in
+     the middle of the frame; the professor arrives in a box at the top with a
+     frequency on it, because he is not in the room and never has been. */
+  #radio{
+    position:fixed;left:50%;top:14px;transform:translateX(-50%);
+    z-index:8;pointer-events:none;
+    width:min(31em,calc(100vw - 28px));
+    padding:8px 12px 9px;
+    border:1px solid rgba(185,191,198,.22);
+    background:rgba(7,8,11,.74);
+    opacity:0;transition:opacity .28s ease;
+  }
+  #radio.on{opacity:1}
+  #radio .hdr{
+    display:block;font-size:9px;letter-spacing:.2em;text-transform:uppercase;
+    color:rgba(185,191,198,.52);margin-bottom:5px;
+  }
+  #radio .hdr i{
+    display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:rgba(226,232,238,.9);margin-right:8px;vertical-align:middle;
+    animation:sig 1.1s steps(1,end) infinite;
+  }
+  @keyframes sig{0%,58%{opacity:1}59%,100%{opacity:.16}}
+  @media (prefers-reduced-motion:reduce){ #radio .hdr i{animation:none} }
+  #radio .line{
+    display:block;font-size:12px;line-height:1.5;
+    color:rgba(214,220,226,.92);
+  }
+  @media (max-width:560px){
+    #radio{top:10px;padding:7px 10px 8px}
+    #radio .line{font-size:11.5px;line-height:1.45}
+  }
   #black{position:fixed;top:0;left:0;width:100%;height:100%;z-index:7;
          background:#000;opacity:0;pointer-events:none}
   @media (max-width:560px){
@@ -76,6 +109,7 @@
 <canvas id="scene"></canvas>
 <div id="loading">Building the apparatus</div>
 <div id="black"></div>
+<div id="radio"><span class="hdr"><i></i>41.2 MHz &middot; HALVORSEN</span><span class="line"></span></div>
 <div id="say"></div>
 <div class="hud">
   <span id="hudLeft">Drag to look · tap to walk</span>
