@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Produce Atlas</title>
+<style>
+  /* The scene is the page. Everything here is a thin overlay on top of it and
+     is expected to get out of the way — nothing owns a permanent block of the
+     screen except one input. Committed dark theme: the stage is a rendered 3-D
+     scene and a light mode would fight it. */
+  :root {
+    --ink:      #0C0F0D;
+    --line:     rgba(233, 229, 218, 0.16);
+    --paper:    #F2EFE7;
+    --muted:    #9AA097;
+    --accent:   #D6A93C;
+    --accent-2: #F4CC69;
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+    /* Text sits directly on the render, so it carries its own legibility. */
+    --lift: 0 1px 2px rgba(0,0,0,0.9), 0 2px 18px rgba(0,0,0,0.75);
+    --rail: min(660px, calc(100vw - 40px));
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #gl {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+    cursor: grab;
+  }
+  #gl:active { cursor: grabbing; }
+
+  /* ---- wordmark -------------------------------------------------------- */
+
+  #mark {
+    position: fixed;
+    top: 20px;
+    left: 24px;
+    z-index: 10;
+    font-family: var(--serif);
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+    text-shadow: var(--lift);
+    pointer-events: none;
+    user-select: none;
+  }
+  #mark em { font-style: italic; color: var(--accent); }
+
+  /* ---- conversation ----------------------------------------------------- */
+
+  /* Bottom-anchored and transient. Lines stack upward, dissolve at the top
+     edge, and remove themselves once read — so the conversation never becomes
+     a wall standing in front of the scene. */
+  #hud {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 0 20px max(20px, env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+
+  #dialogue {
+    width: var(--rail);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: 9px;
+    max-height: 32vh;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 15%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 15%);
+  }
+
+  .msg {
+    font-size: 14.5px;
+    line-height: 1.55;
+    text-shadow: var(--lift);
+    text-wrap: pretty;
+    opacity: 1;
+    transition: opacity 1.1s ease, transform 1.1s ease;
+  }
+  .msg.gone { opacity: 0; transform: translateY(-8px); }
+
+  .msg.him { color: var(--paper); }
+  .msg.him.typing::after {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 15px;
+    margin-left: 3px;
+    vertical-align: -2px;
+    background: var(--accent);
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+
+  .msg.you {
+    align-self: flex-end;
+    max-width: 85%;
+    text-align: right;
+    color: var(--accent-2);
+    font-size: 13px;
+  }
+
+  /* ---- starter prompts --------------------------------------------------- */
+
+  /* Only while the field is focused and empty. Discoverability when you want
+     it, nothing on screen when you don't. */
+  #chips {
+    width: var(--rail);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+  }
+  body.hint #chips { opacity: 1; transform: none; pointer-events: auto; }
+  .chip {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--paper);
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    padding: 6px 13px;
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+  .chip:hover, .chip:focus-visible {
+    color: var(--accent-2);
+    border-color: var(--accent);
+    outline: none;
+  }
+
+  /* ---- composer ---------------------------------------------------------- */
+
+  #composer {
+    width: var(--rail);
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    pointer-events: auto;
+  }
+  #prompt {
+    flex: 1;
+    min-width: 0;
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--line);
+    border-radius: 100px;
+    color: var(--paper);
+    font-family: var(--sans);
+    /* 16px minimum: anything smaller makes iOS zoom the page on focus. */
+    font-size: 16px;
+    padding: 12px 20px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+  #prompt:focus { border-color: rgba(214, 169, 60, 0.7); }
+  #prompt::placeholder { color: rgba(154, 160, 151, 0.8); }
+  #send {
+    flex: none;
+    border: 1px solid var(--line);
+    background: rgba(12, 16, 14, 0.72);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--accent);
+    border-radius: 100px;
+    padding: 0 20px;
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  }
+  #send:hover, #send:focus-visible {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--ink);
+    outline: none;
+  }
+
+  /* ---- specimen caption --------------------------------------------------- */
+
+  #tags {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 8;
+  }
+  .caption {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    white-space: nowrap;
+    transition: opacity 0.3s ease;
+  }
+  .caption .name {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 15px;
+    color: var(--paper);
+    text-shadow: var(--lift);
+  }
+  .caption .size {
+    display: block;
+    margin-top: 2px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    text-shadow: var(--lift);
+  }
+  .caption::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: calc(100% + 5px);
+    width: 1px;
+    height: 16px;
+    background: linear-gradient(to bottom, var(--accent), transparent);
+  }
+
+  /* ---- sound --------------------------------------------------------------- */
+
+  #sound {
+    position: fixed;
+    right: 24px;
+    top: 20px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
+    transition: color 0.15s ease;
+  }
+  #sound:hover, #sound:focus-visible { color: var(--paper); outline: none; }
+
+  /* ---- prototype ----------------------------------------------------------- */
+
+  /* One switch, in the same voice as the sound toggle, for the thing that is
+     not finished. Armed it goes gold, because you should be able to tell at a
+     glance whether the next thing you type is going to cost you the box. */
+  #voice {
+    position: fixed;
+    right: 24px;
+    top: 42px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
+    transition: color 0.15s ease;
+  }
+  #voice:hover, #voice:focus-visible { color: var(--paper); outline: none; }
+  /* Struck through when off, so the state reads without having to parse the
+     word next to it. */
+  body.mute #voice { text-decoration: line-through; opacity: 0.65; }
+
+  #proto {
+    position: fixed;
+    right: 24px;
+    top: 64px;
+    z-index: 10;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 4px 2px;
+    text-shadow: var(--lift);
+    transition: color 0.15s ease;
+  }
+  #proto:hover, #proto:focus-visible { color: var(--paper); outline: none; }
+  body.proto #proto { color: var(--accent); }
+  body.proto #proto::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    margin-right: 7px;
+    vertical-align: 1px;
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  /* ---- vitals -------------------------------------------------------------
+
+     Off unless ?vitals is on the URL. Everything the life layer claims about
+     itself out loud — its pulse, how long you were gone, how many things you
+     have said to it — is read off these numbers a frame before it is spoken,
+     so this is the panel that says whether it is telling the truth. */
+  #vitals {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 10;
+    margin: 0;
+    font-family: var(--mono, monospace);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--muted);
+    text-shadow: var(--lift);
+    white-space: pre;
+    pointer-events: none;
+  }
+  #vitals[hidden] { display: none; }
+
+  /* While he has hold of it. The transform is written frame by frame from the
+     scene, so all this does is get the browser's own animations out of the
+     way and stop the thing being clickable while it is in the air. */
+  #composer.taken {
+    pointer-events: none;
+    will-change: transform;
+    transform-origin: 50% 50%;
+  }
+  #composer.taken #prompt { transition: none; }
+  /* Once it is in his hand it is a working text box again, so it has to be
+     clickable again — hit testing follows the transform, so clicking the
+     thing where you can see it is the thing that happens. */
+  #composer.taken.held { pointer-events: auto; }
+
+  /* ---- boot ---------------------------------------------------------------- */
+
+  #boot {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink);
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 16px;
+    color: var(--muted);
+    transition: opacity 0.5s ease;
+  }
+  #boot.gone { opacity: 0; pointer-events: none; }
+
+  #fail {
+    max-width: 420px;
+    padding: 0 24px;
+    text-align: center;
+    line-height: 1.6;
+    font-family: var(--sans);
+    font-style: normal;
+    font-size: 13px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg { transition: opacity 0.2s ease; }
+    .msg.him.typing::after { animation: none; }
+    #boot, #chips { transition: none; }
+  }
+
+  @media (max-width: 640px) {
+    #mark { font-size: 13px; top: 16px; left: 16px; }
+    #sound { top: 16px; right: 16px; }
+    .msg { font-size: 13.5px; }
+    #dialogue { max-height: 24vh; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gl"></canvas>
+
+<div id="tags"></div>
+
+<div id="mark">Produce <em>Atlas</em></div>
+<button id="sound" type="button">Sound on</button>
+<button id="voice" type="button" title="He says it out loud when he is wearing a face. Uses whatever voice your machine has.">Voice on</button>
+<button id="proto" type="button" title="Unfinished. With this on, saying the wrong word to him costs you the text box.">Prototype off</button>
+
+<div id="hud">
+  <div id="dialogue"></div>
+  <div id="chips"></div>
+  <form id="composer" autocomplete="off">
+    <input id="prompt" type="text" placeholder="name a food plant…" maxlength="200" aria-label="Ask about a food plant">
+    <button id="send" type="submit">Send</button>
+  </form>
+</div>
+
+<pre id="vitals" hidden></pre>
+
+<div id="boot"><span>waking the atlas…</span></div>
+
+<script src="src/math.js"></script>
+<script src="src/geometry.js"></script>
+<script src="src/softbody.js"></script>
+<script src="src/produce.js"></script>
+<script src="src/knowledge.js"></script>
+    <script src="src/things.js"></script>
+<script src="src/faces.js"></script>
+<script src="src/slots.js"></script>
+<script src="src/blockout.js"></script>
+<script src="src/concepts.js"></script>
+<script src="src/brain.js"></script>
+<script src="src/voice.js"></script>
+<script src="src/chat.js"></script>
+<script src="src/life.js"></script>
+<script src="src/shaders.js"></script>
+<script src="src/renderer.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
