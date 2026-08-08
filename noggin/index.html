@@ -335,6 +335,28 @@
     box-shadow: 0 0 8px var(--accent);
   }
 
+  /* ---- vitals -------------------------------------------------------------
+
+     Off unless ?vitals is on the URL. Everything the life layer claims about
+     itself out loud — its pulse, how long you were gone, how many things you
+     have said to it — is read off these numbers a frame before it is spoken,
+     so this is the panel that says whether it is telling the truth. */
+  #vitals {
+    position: fixed;
+    left: 24px;
+    bottom: 24px;
+    z-index: 10;
+    margin: 0;
+    font-family: var(--mono, monospace);
+    font-size: 11px;
+    line-height: 1.55;
+    color: var(--muted);
+    text-shadow: var(--lift);
+    white-space: pre;
+    pointer-events: none;
+  }
+  #vitals[hidden] { display: none; }
+
   /* While he has hold of it. The transform is written frame by frame from the
      scene, so all this does is get the browser's own animations out of the
      way and stop the thing being clickable while it is in the air. */
@@ -411,6 +433,8 @@
   </form>
 </div>
 
+<pre id="vitals" hidden></pre>
+
 <div id="boot"><span>waking the atlas…</span></div>
 
 <script src="src/math.js"></script>
@@ -426,6 +450,7 @@
 <script src="src/brain.js"></script>
 <script src="src/voice.js"></script>
 <script src="src/chat.js"></script>
+<script src="src/life.js"></script>
 <script src="src/shaders.js"></script>
 <script src="src/renderer.js"></script>
 <script src="src/audio.js"></script>

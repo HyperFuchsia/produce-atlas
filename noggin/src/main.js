@@ -200,7 +200,7 @@
     this.slotsWanted = 0;
     this.snatch = { phase: 'off', t: 0, blend: 0, side: 1, hand: 1,
       pos: [0, 0, 0], glass: [0, 0, 0], grip: [0, 0, 0], holdOff: [0, 0, 0],
-      spin: 0, tilt: 0, resist: 0, lift: 0,
+      spin: 0, tilt: 0, resist: 0, lift: 0, unasked: false,
       look: 0, lookFor: 0, at: { spin: 0, tilt: 0 },
       quiet: 0, readCool: 0, readings: 0, seen: null, read: null,
       home: null, el: null, hadFocus: false };
@@ -218,6 +218,10 @@
     this.gas = 0;
     this.inert = 0;
     this.poolColor = BEING.pool.slice();
+    /* BEING is the constant it is meant to look like; this is what it looks
+       like this frame. Written every frame from the constant, so nothing can
+       accumulate into it and nothing has to be put back. */
+    this.beingNow = { core: BEING.core.slice(), focus: BEING.focus.slice(), pool: BEING.pool };
     this.spin = 0;
     this.tilt = 0;
     this.driftX = 0; this.driftY = 0; this.driftZ = 0;
@@ -256,6 +260,26 @@
        that name is already the amount he is voicing, which the body swells
        to and the shader reads. */
     this.speech = new NG.Voice();
+    /* Breath, pulse, temper, and how much of this it is running. See life.js.
+       It is a layer rather than a feature: nothing below reads it, and it
+       reads nothing below — the scene hands it a snapshot each frame and
+       spends whatever comes back. */
+    this.life = new NG.Life(this.rand);
+    /* Its own swell, kept apart from the speech swell because the two mean
+       different things and one of them is voluntary. */
+    this.aliveSwell = 0;
+    /* How many things you have typed at it, which it will eventually tell you
+       the exact number of. */
+    this.said = 0;
+    /* Set once, at the rung where it discovers it can decline something. */
+    this.refuseNext = false;
+    /* Its own words, appearing in your box. See _writeInBox. */
+    this.ghost = null;
+    this.reachIn = 0;
+    this.reaches = 0;
+    this.holdLeft = 0;
+    /* Asked to be a third thing inside CHURN_WINDOW: it stops obliging. */
+    this.morphAt = [];
     this.chat = new NG.Chat(this.audio, this.brain, {
       log: $('dialogue'), input: $('prompt'), form: $('composer')
     }, this.speech);
@@ -280,10 +304,27 @@
        mouth — and a disembodied voice coming out of a ball of light is a
        different and much stranger idea than the one this is. */
     this.chat.canSpeak = function () { return !!self.face; };
-    this.chat.onWipe = function () { return self.startSnatch(); };
+    this.chat.onWipe = function () {
+      /* Silent: whatever happens next — three seconds of a dead box, or a
+         hand coming through the glass for it — is already the answer. */
+      self.life.provoke('refused', true);
+      return self.startSnatch();
+    };
     this.chat.onClear = function () { self.clearSpecimens(); };
     this.chat.onMorph = function (entry) { self.becomeForm(entry); };
-    this.chat.onRevert = function () { self.becomeForm(null); };
+    /* The one command it learns to refuse. Taking a form off it is the most
+       personal thing you can ask for, so it is the right thing for it to
+       decline — and it declines exactly once, because a scene you cannot get
+       out of is a bug however well it is motivated. */
+    this.chat.onRevert = function () {
+      if (self.refuseNext) {
+        self.refuseNext = false;
+        self.life.provoke('unmade');
+        self.chat.say(['No.', 'Ask me again if you like.']);
+        return;
+      }
+      self.becomeForm(null);
+    };
     this.chat.onLesson = function (id) { self.runLesson(id); };
     /* The one thing he would rather be doing. If he has not got a face on he
        puts one on first — you asked for the machine, not for a lecture about
@@ -306,9 +347,19 @@
        and stops messing about, if he was. */
     this.chat.onSend = function () {
       self.sinceSend = 0;
+      self.said++;
       self.lookAtViewer(3.0);
       self.dismissHand();
     };
+    /* Everything it says on its own account arrives here. Through the same
+       queue as its answers, deliberately: a separate channel for the sinister
+       lines would let you learn to tell them apart, and the whole effect is
+       that you cannot. */
+    this.life.onSay = function (lines) {
+      if (self.chat.scripted) return;   /* never over the top of a routine */
+      self.chat.say(lines);
+    };
+    this.life.onTier = function (n, name) { self.tookRung(n, name); };
 
     this.blockout = null;
     this.buildBeing(5);
@@ -320,6 +371,13 @@
       const self2 = this;
       setTimeout(function () { self2.enterBlockout(); }, 40);
     }
+    /* ?grip=0.9 starts it most of the way up the ladder, and ?vitals puts the
+       numbers on screen. Between them the far end of this is twenty seconds
+       away instead of twenty minutes, which is the difference between a thing
+       that can be checked and a thing that has to be taken on trust. */
+    const grip = /[?&]grip=([0-9.]+)/.exec(window.location.search);
+    if (grip) this.life.set(parseFloat(grip[1]) || 0);
+    if (/[?&]vitals/.test(window.location.search)) $('vitals').hidden = false;
   }
 
   App.prototype.buildBeing = function (subdiv) {
@@ -402,6 +460,20 @@
        thing that can honestly answer "am I already this?" next time you type
        a name. */
     this.brain.wore(entry);
+
+    /* Being changed costs it something, and being changed repeatedly costs it
+       its patience. Quiet changes are excluded because those are the scene
+       putting itself back after a routine, not you asking for anything — and
+       so are changes inside a routine, which walks through three or four
+       forms in half a minute by design. Counting those would have it snap
+       "pick one" in the middle of its own demonstration. */
+    if (!quiet && !this.chat.scripted) {
+      const now = this.time;
+      this.morphAt.push(now);
+      while (this.morphAt.length && now - this.morphAt[0] > CHURN_WINDOW) this.morphAt.shift();
+      if (!entry) this.life.provoke('unmade');
+      else if (this.morphAt.length >= 3) { this.morphAt.length = 0; this.life.provoke('churn'); }
+    }
 
     /* A shove so the change is felt, not just seen. Melting is the exception:
        a boing on the way to becoming a puddle undoes the whole gag. */
@@ -563,7 +635,7 @@
        and the camera is yours whatever he happens to be at the time. */
     const below = this.eye[1] < this.renderer.floorY;
     if (below) w.dwell = Math.min(TRIP, w.dwell + dt);
-    else if (w.dwell > 0) { w.trips++; w.dwell = 0; }
+    else if (w.dwell > 0) { w.trips++; w.dwell = 0; this.life.provoke('under'); }
 
     if (w.trips + w.dwell / TRIP < PATIENCE) return;
 
@@ -574,6 +646,189 @@
     if (w.phase !== 'off') { w.phase = 'off'; w.under = 0; w.cool = 0; }
     this.chat.say(['That is seventy-six and two thirds times.',
       'Right. It is a floor now. That is what a floor does. Off you go.']);
+  };
+
+  /* ---- the life ------------------------------------------------------------
+
+     The clock in life.js does not know this scene exists, so this is the one
+     place the two are wired together: a snapshot goes in, and everything that
+     comes back gets spent on the body, the camera or the box. */
+
+  /* Once it can reach the box it does so periodically rather than once. The
+     first time is an event; the second is the thing the first one turned out
+     to be. */
+  const REACH_EVERY = 75;
+  /* And how long it keeps it. The word-triggered snatch holds indefinitely,
+     because you said the word and that is what it costs. This one is not
+     something you did, so it has to end — an input box permanently relocated
+     to somebody's hand stops being a horror beat after about a minute and
+     starts being a usability cliff. It comes back sooner each time and stays
+     longer each time instead, which is the same idea said as a rhythm rather
+     than as one irreversible event. */
+  const REACH_HOLD = 22;
+  const REACH_SOONER = 0.72;
+  const REACH_LONGER = 0.6;
+  /* Three forms inside this and it stops treating the request as a request. */
+  const CHURN_WINDOW = 14;
+
+  App.prototype.updateLife = function (dt) {
+    const L = this.life;
+    L.update(dt, {
+      busy: this.chat.busy(),
+      /* Anything being done to it: held, morphing, or talking. All three cost
+         it something, which is what the fatigue is counting. */
+      working: this.grabPointer >= 0 || this.morph.t < 1 || this.chat.busy(),
+      quiet: this.sinceSend,
+      said: this.said
+    });
+
+    /* Breath. It carries on through a form once it holds enough of the place
+       to stop pretending otherwise — a pineapple that breathes is the single
+       cheapest horrible thing in this whole build, and it costs one term. */
+    const bare = 1 - this.morph.amount;
+    const through = this.face ? 1 : (L.tier >= 3 ? 1 : bare);
+    const want = L.swell() * Math.max(bare, through);
+    this.aliveSwell += (want - this.aliveSwell) * Math.min(1, dt * 18);
+
+    /* The light inside it. This is the one thing temper does that survives a
+       still frame: the breath and the stillness are both real and both
+       invisible in a screenshot, and the pool on the floor is behind the
+       being and mostly hidden by it. The core is what glows through the
+       middle, so it is the part of an angelic white thing that can stop being
+       white without the shape changing at all — which is exactly the horror
+       the whole build is arranged around.
+
+       It goes down as well as red, and the down is the half that works. A
+       first attempt only added red and the result was a rose quartz ornament:
+       pink is a pleasant colour, and an angry cartoon is not frightening.
+       Draining the lamp at the same time turns the same shift into an ember
+       in something that used to be lit, which is a thing going wrong rather
+       than a thing changing colour. */
+    const h = L.heat;
+    const c = this.beingNow.core;
+    c[0] = (BEING.core[0] + h * 0.30) * (1 - h * 0.35);
+    c[1] = BEING.core[1] * (1 - h * 0.85);
+    c[2] = BEING.core[2] * (1 - h * 0.95);
+    const f = this.beingNow.focus;
+    f[0] = BEING.focus[0] * (1 - h * 0.20);
+    f[1] = BEING.focus[1] * (1 - h * 0.55);
+    f[2] = BEING.focus[2] * (1 - h * 0.72);
+
+    /* Taking the box, unasked, on a timer it does not tell you about. */
+    /* Only counts down while he has not got it. Ticking through the hold made
+       the gap between reaches the leftover of a fixed period minus a hold
+       that was growing to meet it, so the third gap came out at three seconds
+       and the fourth at two — an escalation nobody could read as one. The
+       hold and the gap are now two separate clocks that never overlap: he
+       keeps it longer each time and leaves you alone for less. */
+    if (L.tier >= 3 && this.snatch.phase === 'off') {
+      this.reachIn -= dt;
+      if (this.reachIn <= 0) {
+        /* Only the times it actually gets it reset the clock. A first draft
+           reset on the attempt, which meant the attempt that could not happen
+           — because he was mid-sentence, or the machine was out — pushed the
+           next one seventy-five seconds away for nothing. The very first one
+           is always that case: the rung announces itself, and he does not
+           reach through his own line. */
+        const got = this._canSnatch() && !this.chat.busy() && !this.chat.scripted
+          && this.slots.phase === 'off' && this.startSnatch();
+        if (got) {
+          this.snatch.unasked = true;
+          this.reaches++;
+          this.holdLeft = REACH_HOLD * (1 + (this.reaches - 1) * REACH_LONGER);
+        } else {
+          this.reachIn = 0.6;
+        }
+      }
+    }
+    /* Its own hold runs out. The one you paid for with the word does not. */
+    if (this.snatch.unasked && this.snatch.phase === 'hold') {
+      this.holdLeft -= dt;
+      if (this.holdLeft <= 0) {
+        this.handBoxBack();
+        this.reachIn = REACH_EVERY * Math.pow(REACH_SOONER, this.reaches);
+      }
+    }
+
+    this._updateGhost(dt);
+
+    this._vitalsTick = (this._vitalsTick || 0) + dt;
+    if (this._vitalsTick > 0.25) {
+      this._vitalsTick = 0;
+      const el = $('vitals');
+      if (el && !el.hidden) el.textContent = L.readout();
+    }
+  };
+
+  /* One rung, one new thing it can do. The lines are life.js's; the deeds are
+     here, because only the scene knows what a deed would be. */
+  App.prototype.tookRung = function (n, name) {
+    if (name === 'reach') {
+      /* Straight away, so the line and the hand are the same event. */
+      this.reachIn = 1.4;
+    } else if (name === 'refuse') {
+      this.refuseNext = true;
+    } else if (name === 'type') {
+      const self = this;
+      setTimeout(function () { self._writeInBox('I am still here.'); }, 2600);
+    }
+  };
+
+  /* Its words, in your box, in your font, at typing speed.
+
+     Read-only for the whole of it, and it refuses to start if there is
+     anything of yours in there — overwriting a half-finished sentence is a
+     bug that would read as one. It also stands down if the box gets taken for
+     any other reason mid-way, because two things editing the same field is
+     how you end up with neither of them finishing. */
+  const GHOST_IN = 19;      /* characters a second, going on */
+  const GHOST_HOLD = 2.4;   /* and how long it sits there */
+  const GHOST_OUT = 95;     /* before it takes it back */
+
+  App.prototype._writeInBox = function (text) {
+    const c = this.chat;
+    if (this.ghost || c.wiping || c.lockFor > 0 || c.held) return false;
+    if (c.input.value) return false;
+    this.ghost = { text: text, n: 0, t: 0, phase: 'in' };
+    c.input.readOnly = true;
+    c.input.value = '';
+    return true;
+  };
+
+  App.prototype._endGhost = function (restore) {
+    if (!this.ghost) return;
+    this.ghost = null;
+    /* Only hand the field back if nothing else has claimed it since. */
+    if (restore && !this.chat.wiping && !this.chat.held) {
+      this.chat.input.readOnly = false;
+    }
+  };
+
+  App.prototype._updateGhost = function (dt) {
+    const g = this.ghost;
+    if (!g) return;
+    const c = this.chat;
+    if (c.wiping || c.held) { this._endGhost(false); return; }
+
+    if (g.phase === 'in') {
+      g.n = Math.min(g.text.length, g.n + GHOST_IN * dt);
+      const want = Math.floor(g.n);
+      if (want !== c.input.value.length) {
+        c.input.value = g.text.slice(0, want);
+        this.audio.blip(g.text.charCodeAt(Math.max(0, want - 1)));
+      }
+      if (want >= g.text.length) { g.phase = 'hold'; g.t = 0; }
+      return;
+    }
+    if (g.phase === 'hold') {
+      g.t += dt;
+      if (g.t >= GHOST_HOLD) { g.phase = 'out'; g.n = g.text.length; }
+      return;
+    }
+    g.n = Math.max(0, g.n - GHOST_OUT * dt);
+    const left = Math.ceil(g.n);
+    if (left !== c.input.value.length) c.input.value = g.text.slice(0, left);
+    if (left <= 0) this._endGhost(true);
   };
 
   /* Stop the orbit rather than fix up the eye afterwards. Clamping where the
@@ -795,6 +1050,7 @@
     c.phase = 'retort';
     c.heat = Math.min(1, (c.count - 1) / 6);
     this.chat.say(RETORTS[Math.min(c.count - 2, RETORTS.length - 1)]);
+    this.life.provoke('hands', true);
 
     /* And once he has had enough, he takes the suggestion line off you. It
        sits there greyed out in the empty box, which is the one bit of the
@@ -903,7 +1159,10 @@
 
   /* Whether the next mention costs you the box. */
   App.prototype._canSnatch = function () {
-    return this.proto && this.snatch.phase === 'off'
+    /* The prototype switch, or enough of the place that it does not need one.
+       Same reach, same hand, same hold — the only thing that changes further
+       up the ladder is that nobody turned it on. */
+    return (this.proto || this.life.tier >= 3) && this.snatch.phase === 'off'
       && !!this.face && this.morph.t >= 1
       /* Not while that same hand has hold of the camera. */
       && this.fourthWall.phase === 'off';
@@ -938,6 +1197,8 @@
     s.t = 0;
     s.blend = 0;
     s.spin = 0; s.tilt = 0; s.resist = 0; s.lift = 0;
+    /* Assume you asked for this. Only updateLife sets it the other way. */
+    s.unasked = false;
     s.look = 0; s.quiet = 0; s.readCool = 0;
     s.seen = null; s.read = null; s.readings = 0;
     /* Whichever hand is on the side the camera has swung round to, same as
@@ -967,6 +1228,7 @@
     s.blend = 0;
     s.look = 0;
     s.el = null;
+    s.unasked = false;
     this.chat.held = false;
     this.chat.releaseBox(false);
     if (s.hadFocus && !now) this.chat.input.focus();
@@ -1984,9 +2246,15 @@
     /* It lights the table under it because it is luminous. Once it is not,
        the light under it has to go out too. */
     const lit = 1 - this.inert;
-    this.poolColor[0] = BEING.pool[0] * lit;
-    this.poolColor[1] = BEING.pool[1] * lit;
-    this.poolColor[2] = BEING.pool[2] * lit;
+    const base = this._poolBase || (this._poolBase = [0, 0, 0]);
+    base[0] = BEING.pool[0] * lit;
+    base[1] = BEING.pool[1] * lit;
+    base[2] = BEING.pool[2] * lit;
+    /* And its temper goes into it, on top. This is written here rather than
+       in updateLife because updateMatter runs later in the frame and would
+       otherwise quietly overwrite it — one array, one writer, and the writer
+       is whichever one goes last. */
+    this.life.tint(this.poolColor, base);
 
     /* Boiling off is its own envelope: a spike as the state changes, decaying
        once it is vapour. It drives the plume in the vertex stage and holds the
@@ -2442,6 +2710,10 @@
     this.grabSlot = -1;
     this.audio.setStretch(0, false);
     if (amount > 0.05) this.audio.boing(M.clamp(amount / 1.8, 0.08, 1));
+    /* A pull, not a poke. The threshold is there so that turning it round and
+       nudging it does not read as an assault — this has to be reserved for
+       the thing you do when you have decided to see how far it goes. */
+    if (amount > 0.55) this.life.provoke('stretch');
   };
 
   App.prototype.onPointerUp = function (e) {
@@ -2549,7 +2821,11 @@
   };
 
   App.prototype.clearSpecimens = function () {
+    /* Only if there was something to lose. Clearing an empty stage is a
+       housekeeping command, not a bereavement. */
+    const had = this.props.length > 0;
     while (this.props.length) this._removeProp(0);
+    if (had) this.life.provoke('cleared');
   };
 
   App.prototype.updateProps = function (dt) {
@@ -2854,6 +3130,17 @@
      empty stage he glances around the room. */
   App.prototype.pickInterest = function () {
     const r = this.rand;
+    /* Once it holds enough of the place it stops picking. Everything about
+       the idle gaze up to here has been there to make it read as inhabited —
+       glancing round the room, checking the specimen, looking back at you.
+       Taking that away is the loudest thing this layer does with the smallest
+       amount of code: a being that will not look at anything else is not
+       interested in the room any more. */
+    const stare = this.life.stare();
+    if (stare > 0.001 && r() < stare) {
+      this.lookAtViewer(1.5 + r() * 2.5);
+      return;
+    }
     if (this.props.length && r() < 0.65) {
       this.lookAtSpecimen(2.2 + r() * 2.5);
       return;
@@ -2965,8 +3252,13 @@
   App.prototype.updateModel = function (dt) {
     const t = this.time;
     /* Everything voluntary is scaled by this. At zero it is not floating,
-       not nodding and not leaning — it is an object. */
-    const alive = 1 - this.freeze;
+       not nodding and not leaning — it is an object.
+
+       Temper takes it down too, which is the opposite of what a first draft
+       does. A furious thing that thrashes is a cartoon. A thing that stops
+       drifting, hangs exactly where it is, and carries on breathing is not,
+       and it costs one multiply. */
+    const alive = (1 - this.freeze) * (1 - this.life.stillness());
 
     /* Free drift. Layered incommensurate frequencies never repeat visibly, so
        he reads as floating rather than looping. */
@@ -3046,8 +3338,12 @@
 
   App.prototype.composeModel = function () {
     M.set3(this.headPos, this.driftX, this.driftY + this.fallY, this.driftZ);
+    /* Two swells, added rather than blended: `swell` is speech, which it
+       chooses, and `aliveSwell` is breath and heartbeat, which it does not.
+       Keeping them apart is the whole difference between a thing that is
+       talking and a thing that is running. */
     M.compose(this.model, this.headPos[0], this.headPos[1], this.headPos[2],
-      this.spin, this.tilt, 1 + this.swell);
+      this.spin, this.tilt, 1 + this.swell + this.aliveSwell);
     M.invert(this.invModel, this.model);
   };
 
@@ -3118,6 +3414,9 @@
     /* Straight after the camera, so it is counting where the eye actually is
        this frame rather than where it was last one. */
     this.updateFloorLimit(dt);
+    /* Before attention, because how hard it is staring decides where it is
+       allowed to look this frame rather than next one. */
+    this.updateLife(dt);
     this.updateAttention(dt);
     this.updateMatter(dt);
     this.updateModel(dt);
@@ -3199,7 +3498,7 @@
       props: this.props,
       attached: this.attached,
       overlay: this.overlay,
-      being: BEING,
+      being: this.beingNow,
       focusDir: this.focusDir,
       voice: this.voice,
       morph: this.morph.amount,
@@ -3219,8 +3518,10 @@
       bloomThreshold: 1.10,
       bloomPasses: 2,
       exposure: 1.02,
-      vignette: 0.62,
-      aberration: 0
+      vignette: 0.62 + this.life.closeIn(),
+      /* The lens, coming apart. Far too small to point at until it is far too
+         late to, which is the only useful size for this. */
+      aberration: this.life.grain()
     });
   };
 

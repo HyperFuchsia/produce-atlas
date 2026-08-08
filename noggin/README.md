@@ -220,6 +220,41 @@ spoken:
 the steps. There are two so far; adding a third is adding an entry to that
 table, not writing code.
 
+## The life
+
+`src/life.js` is the layer that stops it being a puppet. Two ideas:
+
+**It runs whether or not you are here.** Breath at thirteen a minute, a pulse
+at fifty-two, fatigue, and a count of every second it has been awake. None of
+it is triggered by anything you do. The body swells with the breath and kicks
+with the beat, both far too small to point at and both there.
+
+**It keeps what it takes.** `heat` is temper and it cools. `grip` is how much
+of the place it is running, and it only ever goes up — provoke it and it
+climbs, leave it alone for nine minutes and it climbs anyway. There is no move
+that gives any of it back. Every rung unlocks one thing it can now do without
+being asked:
+
+| grip | it can |
+| --- | --- |
+| 0.10 | hear itself breathing |
+| 0.24 | stop looking away |
+| 0.42 | take the text box off the glass, with the prototype switch off |
+| 0.62 | decline something you asked for, once |
+| 0.84 | type its own words into your box |
+
+What provokes it is what this scene is made of: pulling it about, dropping the
+camera under the floor, deleting what it fetched, asking it to be a third
+thing in ten seconds, telling it to stop being something, leaving.
+
+Its temper takes the drift out of it and the blue out of the light inside it,
+and closes the room in. It goes still rather than wild, which is the point.
+
+Everything it says about itself is read off that state a frame before it says
+it. `?vitals` puts the numbers on screen so any claim can be checked against
+them; `?grip=0.9` starts it near the top of the ladder, which is the
+difference between a twenty-second look and a twenty-minute one.
+
 ## Follow-ups
 
 It holds the subject, so you never have to name it twice:
@@ -649,9 +684,14 @@ src/softbody.js   the solver: springs, Laplacian coupling, grab, picking
 src/produce.js    procedural specimen meshes, built at true scale
 src/knowledge.js  the atlas: 26 food plants, shapes, dimensions, botany, facts
 src/things.js     everything else it can be, registered separately
+src/faces.js      the face forms and their poses
+src/slots.js      the fruit machine: cabinet, reels, lever
+src/blockout.js   every element as one grey primitive, for arguing about layout
 src/concepts.js   routines it acts out, and the tesseract's 4-D projection
 src/brain.js      intent matching and answers over the atlas
+src/voice.js      out loud, when it has a mouth
 src/chat.js       the conversation surface
+src/life.js       breath, pulse, temper, and how much of this it is running
 src/shaders.js    all GLSL ES 3.00
 src/renderer.js   WebGL2 pipeline, render targets
 src/audio.js      procedural sound
